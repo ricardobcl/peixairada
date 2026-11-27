@@ -23,29 +23,29 @@ import { runningTasks } from './tasks.mjs';
 // of the chat (so the snooze is gone before a reply's or a question's alert, 400 ms on, reads hushOf), on the registry
 // poll (a Mac asleep through the time) and by one timer to the nearest time (armSnoozes).
 const QUIET_WAKE = Object.freeze({ quiet: true });
-const isoMs = t => Date.parse(t || '') || 0;
+const isoMs = time => Date.parse(time || '') || 0;
 
-/** Why the snooze `z` of chat `s` ends now: null (it holds), `{ quiet }` (it ends with no mark and no alert) or
+/** Why the snooze (`snooze`) of the chat (`session`) ends now: null (it holds), `{ quiet }` (it ends with no mark and no alert) or
  *  `{ kind, why }`. Reads only. */
-export function wakeWhy(s, z, now = Date.now()) {
-  const at = isoMs(z.at);
+export function wakeWhy(session, snooze, now = Date.now()) {
+  const at = isoMs(snooze.at);
 
-  if (isRemoved(s)) return QUIET_WAKE;
-  if (isDone(s) && isoMs(doneMarks[s.id]) > at) return QUIET_WAKE; // ticked since
-  if (statusOf(s) === 'needs-input') return QUIET_WAKE; // the question's own alert speaks
-  if (isoMs(s.lastUserAt) > at) return QUIET_WAKE; // you were back in it yourself
-  if (z.until && isoMs(z.until) <= now) return { kind: 'time', why: 'its time came' };
-  const pr = z.pr ? s.prs.find(p => p.url === z.pr && shownPr(p)) : null;
+  if (isRemoved(session)) return QUIET_WAKE;
+  if (isDone(session) && isoMs(doneMarks[session.id]) > at) return QUIET_WAKE; // ticked since
+  if (statusOf(session) === 'needs-input') return QUIET_WAKE; // the question's own alert speaks
+  if (isoMs(session.lastUserAt) > at) return QUIET_WAKE; // you were back in it yourself
+  if (snooze.until && isoMs(snooze.until) <= now) return { kind: 'time', why: 'its time came' };
+  const pr = snooze.pr ? session.prs.find(entry => entry.url === snooze.pr && shownPr(entry)) : null;
 
-  if (z.on === 'pr' && pr?.turn?.you && isoMs(pr.turn.movedAt) > at) {
+  if (snooze.on === 'pr' && pr?.turn?.you && isoMs(pr.turn.movedAt) > at) {
     return { kind: 'pr', why: `${pr.label} came round to you` };
   }
 
-  if (z.on === 'pr' && (!pr || pr.state === 'merged' || pr.state === 'closed')) {
+  if (snooze.on === 'pr' && (!pr || pr.state === 'merged' || pr.state === 'closed')) {
     return { kind: 'pr', why: !pr ? 'its PR left the chat' : `${pr.label} was ${pr.state}` };
   }
 
-  if (z.on === 'ci' && pr?.checks !== 'pending') {
+  if (snooze.on === 'ci' && pr?.checks !== 'pending') {
     return {
       kind: 'ci',
       why:
@@ -57,30 +57,30 @@ export function wakeWhy(s, z, now = Date.now()) {
     };
   }
 
-  if (z.on === 'reply' && statusOf(s) !== 'working') {
-    return s.alive ? { kind: 'reply', why: 'Claude replied' } : { kind: 'ended', why: 'its claude ended' };
+  if (snooze.on === 'reply' && statusOf(session) !== 'working') {
+    return session.alive ? { kind: 'reply', why: 'Claude replied' } : { kind: 'ended', why: 'its claude ended' };
   }
 
-  if (z.on === 'mon' && !runningTasks(s).length) return { kind: 'mon', why: 'its monitor ended' };
+  if (snooze.on === 'mon' && !runningTasks(session).length) return { kind: 'mon', why: 'its monitor ended' };
   return null;
 }
 
 /** The snooze ended, if it has: dropped, the mark kept (`woke`) and the `back` alert owed to the chat's next push — after
  *  the summary that says it. True when it ended; the caller pushes the chat (the push's own call pushes on). Not while
  *  the boot reads, nor on a chat being re-read. A reply's wake owes nothing: its alert is queued already. */
-export function wakeCheck(s, now = Date.now()) {
-  const z = snoozed[s.id];
+export function wakeCheck(session, now = Date.now()) {
+  const snooze = snoozed[session.id];
 
-  if (!z || indexing || s.silent) return false;
-  const w = wakeWhy(s, z, now);
+  if (!snooze || indexing || session.silent) return false;
+  const wake = wakeWhy(session, snooze, now);
 
-  if (!w) return false;
-  delete snoozed[s.id];
+  if (!wake) return false;
+  delete snoozed[session.id];
 
-  if (!w.quiet) {
-    woke[s.id] = { at: new Date(now).toISOString(), why: w.why };
-    if (!(w.kind === 'reply' && s.pendingNotify?.has('reply'))) s.backOwed = w.why;
-    console.log(`[peixairada] chat ${s.id}: back from its snooze — ${w.why}`);
+  if (!wake.quiet) {
+    woke[session.id] = { at: new Date(now).toISOString(), why: wake.why };
+    if (!(wake.kind === 'reply' && session.pendingNotify?.has('reply'))) session.backOwed = wake.why;
+    console.log(`[peixairada] chat ${session.id}: back from its snooze — ${wake.why}`);
   }
 
   saveState();
@@ -91,14 +91,14 @@ export function wakeCheck(s, now = Date.now()) {
 /** Every snoozed chat looked at: the poll's, and the timer's. One the board no longer has is let go. */
 export function wakeAll() {
   for (const id of Object.keys(snoozed)) {
-    const s = sessions.get(id);
+    const session = sessions.get(id);
 
-    if (!s) {
+    if (!session) {
       delete snoozed[id];
       continue;
     }
 
-    if (wakeCheck(s)) schedulePush(s);
+    if (wakeCheck(session)) schedulePush(session);
   }
 
   armSnoozes();
@@ -111,7 +111,7 @@ let snoozeTimer = null;
 export function armSnoozes() {
   clearTimeout(snoozeTimer);
   snoozeTimer = null;
-  const next = Math.min(...Object.values(snoozed).map(z => isoMs(z.until) || Infinity));
+  const next = Math.min(...Object.values(snoozed).map(snooze => isoMs(snooze.until) || Infinity));
 
   if (Number.isFinite(next)) {
     snoozeTimer = setTimeout(wakeAll, Math.min(Math.max(next - Date.now() + 20, 250), 2 ** 31 - 1));
@@ -119,57 +119,61 @@ export function armSnoozes() {
 }
 
 /** A snooze as asked (`POST …/snooze`): `{ snooze }`, or `{ code, error }`. */
-export function snoozeOf(s, body, now = Date.now()) {
-  if (isRemoved(s)) return { code: 409, error: 'it is deleted from the board' };
-  if (statusOf(s) === 'needs-input') return { code: 409, error: 'it is asking you: a question wakes it' };
-  const z = { at: new Date(now).toISOString() };
+export function snoozeOf(session, body, now = Date.now()) {
+  if (isRemoved(session)) return { code: 409, error: 'it is deleted from the board' };
+  if (statusOf(session) === 'needs-input') return { code: 409, error: 'it is asking you: a question wakes it' };
+  const snooze = { at: new Date(now).toISOString() };
 
   if (body.until != null) {
-    const t =
+    const until =
       typeof body.until === 'number' ? body.until : typeof body.until === 'string' ? Date.parse(body.until) : NaN;
 
-    if (!Number.isFinite(t)) return { code: 400, error: 'until: not a time' };
-    if (t <= now) return { code: 400, error: 'until: that time is past' };
-    if (t - now > SNOOZE_MAX_MS) return { code: 400, error: 'until: more than a year away' };
-    z.until = new Date(t).toISOString();
+    if (!Number.isFinite(until)) return { code: 400, error: 'until: not a time' };
+    if (until <= now) return { code: 400, error: 'until: that time is past' };
+    if (until - now > SNOOZE_MAX_MS) return { code: 400, error: 'until: more than a year away' };
+    snooze.until = new Date(until).toISOString();
   }
 
   if (body.on != null) {
     if (!SNOOZE_ON.has(body.on)) return { code: 400, error: `on: one of ${[...SNOOZE_ON].join(', ')}` };
 
     if (body.on === 'pr' || body.on === 'ci') {
-      const pr = typeof body.pr === 'string' ? s.prs.find(p => p.url === body.pr && shownPr(p)) : null;
+      const pr =
+        typeof body.pr === 'string' ? session.prs.find(entry => entry.url === body.pr && shownPr(entry)) : null;
 
       if (!pr) return { code: 404, error: 'not a PR of this chat' };
       if (body.on === 'ci' && pr.checks !== 'pending') return { code: 409, error: 'its checks are not running' };
-      z.pr = pr.url;
+      snooze.pr = pr.url;
     }
 
-    if (body.on === 'reply' && statusOf(s) !== 'working') return { code: 409, error: 'Claude is not at work in it' };
-    if (body.on === 'mon' && !runningTasks(s).length) return { code: 409, error: 'no monitor runs in it' };
-    z.on = body.on;
+    if (body.on === 'reply' && statusOf(session) !== 'working') {
+      return { code: 409, error: 'Claude is not at work in it' };
+    }
+
+    if (body.on === 'mon' && !runningTasks(session).length) return { code: 409, error: 'no monitor runs in it' };
+    snooze.on = body.on;
   }
 
-  if (!z.until && !z.on) return { code: 400, error: 'expected {until} or {on}' };
-  return { snooze: z };
+  if (!snooze.until && !snooze.on) return { code: 400, error: 'expected {until} or {on}' };
+  return { snooze };
 }
 
 /** The chat's back alert, once its summary is out: as a moved branch's, with a heading of its own. */
-export function backNotify(s, why) {
-  const sum = summary(s);
+export function backNotify(session, why) {
+  const sum = summary(session);
   const heading = `Back · ${sum.project}`;
 
   const evt = {
     kind: 'back',
-    sessionId: s.id,
+    sessionId: session.id,
     project: sum.project,
     title: sum.title,
     heading,
-    name: s.live?.name || null,
-    cwd: s.cwd,
+    name: session.live?.name || null,
+    cwd: session.cwd,
     snippet: why,
     ts: new Date().toISOString(),
-    ...hushOf(s),
+    ...hushOf(session),
   };
 
   broadcast('alert', evt);

@@ -19,27 +19,35 @@ function applyChatZoom() {
   }
 }
 
-function chatZoomKey(e) {
-  if (!e.metaKey || e.ctrlKey || e.altKey) return false;
-  const step = e.key === '=' || e.key === '+' ? 0.1 : e.key === '-' || e.key === '_' ? -0.1 : e.key === '0' ? 0 : null;
+function chatZoomKey(event) {
+  if (!event.metaKey || event.ctrlKey || event.altKey) return false;
+
+  const step =
+    event.key === '=' || event.key === '+'
+      ? 0.1
+      : event.key === '-' || event.key === '_'
+        ? -0.1
+        : event.key === '0'
+          ? 0
+          : null;
 
   if (step === null) return false;
 
-  if (prefs.space && e.target.closest?.('#space')) {
+  if (prefs.space && event.target.closest?.('#space')) {
     spZoom(step ? spZoomNow() + step : 1);
-    e.preventDefault();
+    event.preventDefault();
     return true;
   } // the keys in Space: its nodes' zoom (2026-11-18)
 
   prefs.chatZoom = step ? prefs.chatZoom + step : 1;
   applyChatZoom();
   savePrefs();
-  e.preventDefault();
+  event.preventDefault();
   return true;
 }
 
-document.addEventListener('keydown', e => {
-  if (!e.target.closest?.('.tbody')) chatZoomKey(e);
+document.addEventListener('keydown', event => {
+  if (!event.target.closest?.('.tbody')) chatZoomKey(event);
 }); // either half's drawer did it already
 
 applyChatZoom();

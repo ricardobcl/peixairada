@@ -31,7 +31,7 @@ export default async function (ctx) {
   await ctx.sleep(1500);
   const shell = await ctx.screen(1);
 
-  ctx.assert.ok(!shell.some(r => /fake mode on/.test(r)), 'the zsh tab shows the shell, not claude');
+  ctx.assert.ok(!shell.some(row => /fake mode on/.test(row)), 'the zsh tab shows the shell, not claude');
   await ctx.shot('1-zsh', { x: 430, y: 0, width: 1270, height: 1000 });
   await ctx.cmd('Digit1');
   await ctx.cmd('Digit0'); // the zsh's half closes: one column, claude in it, the zsh a tab
@@ -55,7 +55,7 @@ export default async function (ctx) {
   const back = await ctx.screen(0);
 
   await ctx.shot('2-reattached', { x: 430, y: 0, width: 1270, height: 1000 });
-  const has = (rows, re) => rows.some(r => re.test(r));
+  const has = (rows, re) => rows.some(row => re.test(row));
 
   ctx.assert.ok(has(back, /^❯/), 'the prompt is back');
   ctx.assert.ok(has(back, /^─{20,}/), 'the rules are back');
@@ -63,28 +63,28 @@ export default async function (ctx) {
   // …and the strip costs the body exactly its own height, no more: a half whose rows are not placed by hand
   // slides the body into the `auto` row, where it sizes itself to the terminal instead of the pane (2026-09-22)
   // (the half's own height inside its padding: under the floating header it pads down by the header's rows)
-  const g = await ctx
+  const heights = await ctx
     .evaluate(
       `JSON.stringify(['#grp', '#gbody', '#ptabs'].map(s => { const e = document.querySelector(s), cs = getComputedStyle(e); return e.hidden ? 0 : Math.round(e.getBoundingClientRect().height - (s === '#grp' ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth) : 0)); }))`,
     )
     .then(JSON.parse);
 
   ctx.assert.ok(
-    Math.abs(g[0] - g[1] - g[2]) <= 1,
-    `the body (${g[1]}) and the strip (${g[2]}) fill the half (${g[0]})`,
+    Math.abs(heights[0] - heights[1] - heights[2]) <= 1,
+    `the body (${heights[1]}) and the strip (${heights[2]}) fill the half (${heights[0]})`,
   );
 
-  ctx.assert.ok(g[1] > 400, `the body is the pane's height, not the terminal's (${g[1]})`);
+  ctx.assert.ok(heights[1] > 400, `the body is the pane's height, not the terminal's (${heights[1]})`);
   ctx.assert.ok(has(back, /fake mode on/), 'the status bar is whole');
   ctx.assert.ok(has(back, /elapsed \d+m \d\ds/), 'the timer line is whole, not lone digits');
   // the tab strip costs the drawer a row, so the fake's first line sits in scrollback now: the whole buffer has it
   ctx.assert.ok(has(await ctx.peix('buffer()'), /fake claude · session/), 'the scrollback came back with the screen');
   const terms = await ctx.server.terminals();
 
-  const t = terms.find(x => !x.shell);
-  const sh = terms.find(x => x.shell);
+  const term = terms.find(entry => !entry.shell);
+  const sh = terms.find(entry => entry.shell);
 
-  ctx.assert.ok(t.lastSnapshotChars > 200, 'the page was served a snapshot');
+  ctx.assert.ok(term.lastSnapshotChars > 200, 'the page was served a snapshot');
   ctx.assert.ok(sh && sh.exited === null && sh.sessionId === chat.id, 'the zsh is still there behind its tab');
 
   ctx.assert.equal(
@@ -98,7 +98,7 @@ export default async function (ctx) {
     rowsLive: live.length,
     rowsShell: shell.length,
     rowsBack: back.length,
-    snapshotChars: t.lastSnapshotChars,
+    snapshotChars: term.lastSnapshotChars,
     tail: back.slice(-4),
   };
 }

@@ -5,24 +5,28 @@
 // the resume bar, a new chat's column, the picker's line and the status bar draw it. `cloneWaits` says who waits on
 // which: a chat's id for its resume, `shell:<id>` for its ⌥⌘T, `new:<cwd>` for a new chat.
 const cloneWaits = new Map(); // key → the server's `clone`: { name, root, org, ref, dir }
-const cloneSays = c => (c.phase ? `${c.phase.toLowerCase()} · ${c.percent || 0}%` : 'asking GitHub…');
+const cloneSays = clone => (clone.phase ? `${clone.phase.toLowerCase()} · ${clone.percent || 0}%` : 'asking GitHub…');
 
 async function withCheckout(key, spawn, onClone) {
   try {
     return await spawn();
-  } catch (e) {
-    const c = e.body?.clone;
+  } catch (error) {
+    const clone = error.body?.clone;
 
-    if (!c) throw e;
-    cloneWaits.set(key, c);
-    if (!state.clones.has(c.dir)) state.clones.set(c.dir, { ref: c.ref, dir: c.dir, phase: null, percent: 0 });
-    onClone?.(c);
+    if (!clone) throw error;
+    cloneWaits.set(key, clone);
+
+    if (!state.clones.has(clone.dir)) {
+      state.clones.set(clone.dir, { ref: clone.ref, dir: clone.dir, phase: null, percent: 0 });
+    }
+
+    onClone?.(clone);
     cloneShown();
 
     try {
-      await api('POST', '/api/clone', { name: c.name, root: c.root });
+      await api('POST', '/api/clone', { name: clone.name, root: clone.root });
     } catch (ce) {
-      throw new Error(`Could not clone ${c.ref}: ${ce.message}`, { cause: ce });
+      throw new Error(`Could not clone ${clone.ref}: ${ce.message}`, { cause: ce });
     } finally {
       cloneWaits.delete(key);
       cloneShown();
@@ -38,31 +42,35 @@ function cloneShown() {
   renderResume(state.sessions.get(state.current) || null);
 
   for (const el of document.querySelectorAll('.clonebox[data-dir]')) {
-    const c = state.clones.get(el.dataset.dir);
+    const clone = state.clones.get(el.dataset.dir);
 
-    if (!c) continue;
-    el.style.setProperty('--p', (c.percent || 0) / 100);
-    const t = el.querySelector('.cp');
+    if (!clone) continue;
+    el.style.setProperty('--p', (clone.percent || 0) / 100);
+    const label = el.querySelector('.cp');
 
-    if (t) t.textContent = cloneSays(c);
+    if (label) label.textContent = cloneSays(clone);
   }
 
   renderBar();
 }
 
-function cloneEvent(c) {
-  if (!c.done) {
-    state.clones.set(c.dir, c);
+function cloneEvent(clone) {
+  if (!clone.done) {
+    state.clones.set(clone.dir, clone);
     return cloneShown();
   }
 
-  state.clones.delete(c.dir);
+  state.clones.delete(clone.dir);
 
-  if (!c.error) {
-    for (const s of state.sessions.values()) {
-      if (s.folderMissing && s.cwd && (s.cwd === c.dir || s.cwd.startsWith(`${c.dir}/`))) {
-        delete s.folderMissing;
-        delete s.cloneRef;
+  if (!clone.error) {
+    for (const session of state.sessions.values()) {
+      if (
+        session.folderMissing &&
+        session.cwd &&
+        (session.cwd === clone.dir || session.cwd.startsWith(`${clone.dir}/`))
+      ) {
+        delete session.folderMissing;
+        delete session.cloneRef;
       }
     }
   } // there now
@@ -70,47 +78,49 @@ function cloneEvent(c) {
   cloneShown();
 }
 
-async function openTerminalFor(s) {
-  if (termLive(s)) {
-    syncTerm(s);
-    renderHead(s);
+async function openTerminalFor(session) {
+  if (termLive(session)) {
+    syncTerm(session);
+    renderHead(session);
     return;
   }
 
   try {
-    const r = await withCheckout(s.id, () => api('POST', `/api/sessions/${s.id}/terminal`, termSize()));
+    const result = await withCheckout(session.id, () =>
+      api('POST', `/api/sessions/${session.id}/terminal`, termSize()),
+    );
 
-    showTerminal(s, r.terminal);
-    saidBack(r.back);
-  } catch (e) {
-    drawer.err = e.message;
+    showTerminal(session, result.terminal);
+    saidBack(result.back);
+  } catch (error) {
+    drawer.err = error.message;
   }
 
-  renderHead(s);
+  renderHead(session);
 }
 
 /** Where a chat whose folder was gone started (2026-10-19; the server's `back`): its worktree made again, the tree
  *  its branch is out in, or the nearest folder left and why — said once, by the header. */
-const saidBack = b =>
-  b &&
+const saidBack = restored =>
+  restored &&
   note(
     $('#shead'),
-    b.made
-      ? `Its worktree is back: ${homePath(b.tree)}${b.branch ? ` on ${b.branch}` : ', detached'}`
-      : b.tree
-        ? `${b.branch} is out in ${homePath(b.tree)} — started there`
-        : `Its folder is gone — started in ${homePath(b.cwd)}${b.why ? ` (${b.why})` : ''}`,
-    !!b.why,
+    restored.made
+      ? `Its worktree is back: ${homePath(restored.tree)}${restored.branch ? ` on ${restored.branch}` : ', detached'}`
+      : restored.tree
+        ? `${restored.branch} is out in ${homePath(restored.tree)} — started there`
+        : `Its folder is gone — started in ${homePath(restored.cwd)}${restored.why ? ` (${restored.why})` : ''}`,
+    !!restored.why,
   );
 
-/** A drawer the server just started for `s`, attached in the half that holds its chat tab — if `s` is still the open
+/** A drawer the server just started for `session`, attached in the half that holds its chat tab — if `session` is still the open
  *  chat (2026-10-03: attached into whatever half had the keys, under whichever chat was open by then). Otherwise the
  *  chat's summary carries it, and opening the chat again shows it. */
-function showTerminal(s, t) {
-  const cur = state.sessions.get(s.id) || s;
+function showTerminal(session, terminal) {
+  const cur = state.sessions.get(session.id) || session;
 
-  cur.terminal = t;
-  if (state.current === s.id) syncTerm(cur);
+  cur.terminal = terminal;
+  if (state.current === session.id) syncTerm(cur);
 }
 
 // The >_ button and ⌥⌘C: the chat's claude session — the drawer it runs in, started if need be, or — live
@@ -118,21 +128,21 @@ function showTerminal(s, t) {
 // when its socket opens, this covers one that was already showing (⌥⌘C as "put me in the terminal").
 const termAsking = new Set(); // the chats whose drawer is being asked for: a second press meanwhile is the same press
 
-async function termAction(s) {
-  if (termAsking.has(s.id)) return;
+async function termAction(session) {
+  if (termAsking.has(session.id)) return;
   drawer.err = null;
-  showChat(s);
-  termAsking.add(s.id);
-  renderResume(s);
+  showChat(session);
+  termAsking.add(session.id);
+  renderResume(session);
 
   try {
-    if (takeable(s)) await (drawer.arm === s.id ? takeOver(s) : armTakeOver(s));
-    else await openTerminalFor(s);
+    if (takeable(session)) await (drawer.arm === session.id ? takeOver(session) : armTakeOver(session));
+    else await openTerminalFor(session);
   } finally {
-    termAsking.delete(s.id);
+    termAsking.delete(session.id);
   }
 
-  renderResume(state.sessions.get(s.id) || s);
+  renderResume(state.sessions.get(session.id) || session);
   focusTerm();
 }
 
@@ -146,10 +156,10 @@ async function newChatIn(cwd, then = 'new', agent) {
   let launchers = [];
 
   if ($('#pick').open) {
-    const q = $('#pickq');
+    const input = $('#pickq');
 
-    q.placeholder = 'asking the folder how it starts claude…';
-    q.disabled = true;
+    input.placeholder = 'asking the folder how it starts claude…';
+    input.disabled = true;
     pick.cloning = true;
   } // a step under way: pickChoose (2026-11-04)
 

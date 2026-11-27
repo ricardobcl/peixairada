@@ -114,24 +114,24 @@ test('lid: sudo and the dialog run /usr/bin/pmset, never the one found; the one 
   const found = join(tmp, 'bin', 'pmset'); // what PMSET_BIN or a writable folder on the PATH would hand over
 
   for (const mode of ['sudo', 'osascript']) {
-    const r = lidRuns(true, mode, found);
+    const runs = lidRuns(true, mode, found);
 
     assert.deepEqual(
-      r.sudo,
+      runs.sudo,
       ['/usr/bin/sudo', ['/usr/bin/pmset', '-a', 'disablesleep', '1']],
       `${mode}: sudo runs the system's`,
     );
 
-    assert.equal(r.dialog[0], '/usr/bin/osascript');
+    assert.equal(runs.dialog[0], '/usr/bin/osascript');
 
     assert.match(
-      r.dialog[1][1],
+      runs.dialog[1][1],
       /^do shell script quoted form of "\/usr\/bin\/pmset" & " -a disablesleep 1" .* with administrator privileges$/,
       `${mode}: the dialog runs the system's`,
     );
 
-    assert.ok(!JSON.stringify(r).includes(found), `${mode}: the one found is in no command run as root`);
-    assert.equal(r.plain, undefined);
+    assert.ok(!JSON.stringify(runs).includes(found), `${mode}: the one found is in no command run as root`);
+    assert.equal(runs.plain, undefined);
   }
 
   assert.deepEqual(

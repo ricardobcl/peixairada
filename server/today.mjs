@@ -8,33 +8,33 @@ import { statusOf, summary } from './sessions.mjs';
 // added at the asking (dayOf), from the registry for a question the transcript does not have yet.
 const DAY_KEEP_MS = 36 * 3600_000;
 
-export function noteSpan(s, k, from, to) {
+export function noteSpan(session, kind, from, to) {
   if (!from || !to || Date.parse(to) <= Date.parse(from)) return;
-  const spans = (s.day ||= []);
+  const spans = (session.day ||= []);
 
-  spans.push({ k, from, to });
+  spans.push({ k: kind, from, to });
   const cut = Date.parse(to) - DAY_KEEP_MS;
 
   while (spans.length && (Date.parse(spans[0].to) < cut || spans.length > 400)) spans.shift();
 }
 
 /** Of a list of spans, the time they cover between a and b — overlaps once. */
-function covered(spans, a, b) {
+function covered(spans, from, to) {
   const xs = spans
-    .map(x => [Math.max(a, Date.parse(x.from)), Math.min(b, x.to ? Date.parse(x.to) : b)])
-    .filter(([x, y]) => y > x)
-    .sort((p, q) => p[0] - q[0]);
+    .map(span => [Math.max(from, Date.parse(span.from)), Math.min(to, span.to ? Date.parse(span.to) : to)])
+    .filter(([start, stop]) => stop > start)
+    .sort((left, right) => left[0] - right[0]);
 
-  let n = 0;
+  let total = 0;
   let end = -Infinity;
 
-  for (const [x, y] of xs) {
-    if (y <= end) continue;
-    n += y - Math.max(x, end);
-    end = y;
+  for (const [start, stop] of xs) {
+    if (stop <= end) continue;
+    total += stop - Math.max(start, end);
+    end = stop;
   }
 
-  return n;
+  return total;
 }
 
 /** Every chat's day since `since` (ms): its spans, what it worked (turns, less the time they waited on you), what it
@@ -43,38 +43,48 @@ export function dayOf(list, since, now = Date.now()) {
   const chats = [];
   const waits = [];
 
-  for (const s of list) {
-    const spans = [...(s.day || [])];
-    const st = statusOf(s);
+  for (const session of list) {
+    const spans = [...(session.day || [])];
+    const st = statusOf(session);
 
-    if (s.turnStart && st === 'working') spans.push({ k: 'w', from: s.turnStart, to: null });
+    if (session.turnStart && st === 'working') spans.push({ k: 'w', from: session.turnStart, to: null });
 
     if (st === 'needs-input') {
       spans.push({
         k: 'a',
-        from: s.askOpen?.from || (s.live?.statusAt ? new Date(s.live.statusAt).toISOString() : s.statusSince),
+        from:
+          session.askOpen?.from ||
+          (session.live?.statusAt ? new Date(session.live.statusAt).toISOString() : session.statusSince),
         to: null,
       });
     }
 
-    for (const t of s.alive ? s.tasks?.values() || [] : []) spans.push({ k: 'm', from: t.at, to: null });
-    const mine = spans.filter(x => x.from && (x.to ? Date.parse(x.to) : now) > since);
+    for (const task of session.alive ? session.tasks?.values() || [] : []) {
+      spans.push({ k: 'm', from: task.at, to: null });
+    }
+
+    const mine = spans.filter(span => span.from && (span.to ? Date.parse(span.to) : now) > since);
 
     if (!mine.length) continue;
 
-    const asks = mine.filter(x => x.k === 'a');
-    const work = mine.filter(x => x.k === 'w');
+    const asks = mine.filter(span => span.k === 'a');
+    const work = mine.filter(span => span.k === 'w');
 
     const worked = Math.max(0, covered(work, since, now) - covered(asks, since, now));
 
-    for (const a of asks) {
-      waits.push({ ms: (a.to ? Date.parse(a.to) : now) - Date.parse(a.from), id: s.id, at: a.from, open: !a.to });
+    for (const ask of asks) {
+      waits.push({
+        ms: (ask.to ? Date.parse(ask.to) : now) - Date.parse(ask.from),
+        id: session.id,
+        at: ask.from,
+        open: !ask.to,
+      });
     }
 
-    const sm = summary(s);
+    const sm = summary(session);
 
     chats.push({
-      id: s.id,
+      id: session.id,
       title: sm.title,
       project: sm.project,
       cwd: sm.cwd,
@@ -83,22 +93,22 @@ export function dayOf(list, since, now = Date.now()) {
       worked,
       waited: covered(asks, since, now),
       questions: asks.length,
-      last: mine.reduce((m, x) => Math.max(m, x.to ? Date.parse(x.to) : now), 0),
+      last: mine.reduce((latest, span) => Math.max(latest, span.to ? Date.parse(span.to) : now), 0),
     });
   }
 
-  chats.sort((a, b) => b.last - a.last);
+  chats.sort((left, right) => right.last - left.last);
 
-  const ms = waits.map(w => w.ms).sort((a, b) => a - b);
-  const longest = waits.reduce((m, w) => (!m || w.ms > m.ms ? w : m), null);
+  const ms = waits.map(wait => wait.ms).sort((left, right) => left - right);
+  const longest = waits.reduce((best, wait) => (!best || wait.ms > best.ms ? wait : best), null);
 
   return {
     since,
     now,
     chats,
     totals: {
-      worked: chats.reduce((n, c) => n + c.worked, 0),
-      waited: chats.reduce((n, c) => n + c.waited, 0),
+      worked: chats.reduce((sum, chat) => sum + chat.worked, 0),
+      waited: chats.reduce((sum, chat) => sum + chat.waited, 0),
       questions: waits.length,
       median: ms.length ? ms[ms.length >> 1] : null,
       longest,

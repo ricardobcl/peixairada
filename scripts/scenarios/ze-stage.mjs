@@ -17,9 +17,9 @@ export default async function (ctx) {
   await ctx.settle();
 
   // what the glass shows, read in the frame that drew it
-  const px = (x, y) =>
+  const px = (gameX, gameY) =>
     ctx.evaluate(
-      `(() => { const z = window.peix.ze(), gl = z.stage.gl, k = gl.canvas.width / 720; z.lab.draw(); const p = new Uint8Array(4); gl.readPixels(Math.round(${x} * k), gl.canvas.height - Math.round(${y} * k), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, p); return [...p]; })()`,
+      `(() => { const z = window.peix.ze(), gl = z.stage.gl, k = gl.canvas.width / 720; z.lab.draw(); const p = new Uint8Array(4); gl.readPixels(Math.round(${gameX} * k), gl.canvas.height - Math.round(${gameY} * k), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, p); return [...p]; })()`,
     );
 
   const sky = await px(360, 300);
@@ -30,14 +30,14 @@ export default async function (ctx) {
     `(() => { const r = e => { const b = document.querySelector(e).getBoundingClientRect(); return [b.x, b.y, b.width, b.height]; }; return JSON.stringify([r('#zeGL'), r('#zeCanvas')]); })()`,
   );
 
-  const [a, b] = JSON.parse(box);
+  const [stageBox, canvasBox] = JSON.parse(box);
 
-  assert.deepEqual(a, b, 'the stage exactly under the top canvas');
+  assert.deepEqual(stageBox, canvasBox, 'the stage exactly under the top canvas');
 
   // the HUD on the top canvas, the picture not
-  const top = (x, y) =>
+  const top = (gameX, gameY) =>
     ctx.evaluate(
-      `(() => { const c = document.querySelector('#zeCanvas'), k = c.width / 720; return [...c.getContext('2d').getImageData(Math.round(${x} * k), Math.round(${y} * k), 1, 1).data]; })()`,
+      `(() => { const c = document.querySelector('#zeCanvas'), k = c.width / 720; return [...c.getContext('2d').getImageData(Math.round(${gameX} * k), Math.round(${gameY} * k), 1, 1).data]; })()`,
     );
 
   await ctx.evaluate(`window.peix.ze().lab.demo().score = 0`);
@@ -59,7 +59,7 @@ export default async function (ctx) {
   );
 
   // the moments through the batcher: nothing thrown
-  for (const m of [
+  for (const moment of [
     `z.lab.zeRide(g, 'focus')`,
     `z.lab.zeRide(g, 'aclass')`,
     `z.lab.zeDragon(g, true)`,
@@ -72,10 +72,10 @@ export default async function (ctx) {
     `for (const it of [{ kind: 'peixe', e: '' }, { kind: 'power', p: 'bifana', e: '' }, { kind: 'gold', e: '🐓' }, { kind: 'case', e: '💼' }, { kind: 'meat', e: '🍗', special: true, dish: 'Rojões' }, { kind: 'meat', e: '🍗', stood: .5 }]) g.items.push({ x: 120 + g.items.length * 90, y: 300, vx: 0, vy: 0, g: 0, rot: 0, spin: 0, pts: 5, say: '', ...it })`,
     `g.demo = false; g.mass = 1; g.hurt = 0; g.items.push({ kind: 'veg', e: '🥦', say: 'x', x: g.x, y: g.y - 110, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 })`,
   ]) {
-    await ctx.evaluate(`(() => { const z = window.peix.ze(), g = z.lab.demo(); ${m}; })()`);
+    await ctx.evaluate(`(() => { const z = window.peix.ze(), g = z.lab.demo(); ${moment}; })()`);
     const f0 = await ctx.evaluate(`window.peix.ze().stage.frames`);
 
-    await ctx.waitFor(`window.peix.ze().stage.frames > ${f0 + 3}`, { what: m });
+    await ctx.waitFor(`window.peix.ze().stage.frames > ${f0 + 3}`, { what: moment });
   }
 
   // a level-up: fireworks over the river

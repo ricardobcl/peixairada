@@ -9,10 +9,10 @@ export const meta = { server: true, fake: true, fixture: 'auto', env: { FAKE_TUI
 
 export default async function (ctx) {
   const out = {};
-  const [, b] = ctx.fixture.chats; // b's folder is the temp dir: no Taskfile, so ⌥⌘N ⏎ ⏎ starts claude without a question
+  const [, chatB] = ctx.fixture.chats; // chatB's folder is the temp dir: no Taskfile, so ⌥⌘N ⏎ ⏎ starts claude without a question
 
   await ctx.evaluate(
-    `(() => { const p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'); p.project = ${JSON.stringify(b.cwd)}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })()`,
+    `(() => { const p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'); p.project = ${JSON.stringify(chatB.cwd)}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })()`,
   );
 
   await ctx.reload();
@@ -76,13 +76,13 @@ export default async function (ctx) {
   await ctx.shot('fresh');
 
   // turns until the screen is full: then it runs up behind the header, once
-  for (let i = 0; i < 12 && (await where()).under; i++) {
+  for (let turn = 0; turn < 12 && (await where()).under; turn++) {
     const done = await ctx.evaluate(`window.peix.buffer().filter(l => l.includes('Done in')).length`);
 
-    await ctx.type(`turn ${i}`);
+    await ctx.type(`turn ${turn}`);
 
     await ctx.waitFor(`window.peix.buffer().filter(l => l.includes('Done in')).length > ${done}`, {
-      what: `turn ${i} done`,
+      what: `turn ${turn} done`,
     });
 
     await ctx.sleep(800);
@@ -111,7 +111,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.flips, [false], `it moved once: ${JSON.stringify(out.flips)}`);
 
   ctx.assert.ok(
-    (await ctx.screen()).some(r => r.includes('❯')),
+    (await ctx.screen()).some(row => row.includes('❯')),
     'the prompt repainted at the new size',
   );
 

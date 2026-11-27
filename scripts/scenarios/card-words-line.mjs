@@ -10,7 +10,7 @@ const LONG =
 export const meta = { server: true, fixture: 'auto', prefs: { cards: 'medium', sessionsWidth: 420 } };
 
 export default async function (ctx) {
-  const a = ctx.assert;
+  const assert = ctx.assert;
   const out = {};
   const cwd = '/Users/test/words-repo';
   const at = new Date(Date.now() - 3600_000);
@@ -39,20 +39,20 @@ export default async function (ctx) {
       .evaluate(
         `(r => ({ x: 0, y: Math.max(0, r.top - 8), width: r.right + 8, height: r.height + 16 }))(${card}.getBoundingClientRect())`,
       )
-      .then(r => ctx.shot(name, r));
+      .then(clip => ctx.shot(name, clip));
 
   await ctx.evaluate(`window.__card = ${card}`);
 
   // off: as they were
   out.mediumOff = await look();
 
-  a.deepEqual(
+  assert.deepEqual(
     [out.mediumOff.attr, out.mediumOff.shown],
     [false, 1],
     `off by default, Medium's one word: ${JSON.stringify(out.mediumOff)}`,
   );
 
-  a.ok(out.mediumOff.lines[0] >= 3, `three lines of it: ${JSON.stringify(out.mediumOff)}`);
+  assert.ok(out.mediumOff.lines[0] >= 3, `three lines of it: ${JSON.stringify(out.mediumOff)}`);
   await crop('1-medium-off');
 
   // on, from the pane
@@ -69,7 +69,7 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-  a.deepEqual(
+  assert.deepEqual(
     await row(),
     { off: false, disabled: false, say: 'The last word, or the prompt and the reply, a line each' },
     'the row, on at Medium',
@@ -79,7 +79,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#cardsSnipOne').click()`);
   await ctx.settle();
 
-  a.equal(
+  assert.equal(
     await ctx.evaluate(
       `document.querySelector('#cardLab').hasAttribute('data-snipone') && getComputedStyle(document.querySelector('#cardLab .snip')).webkitLineClamp`,
     ),
@@ -91,20 +91,20 @@ export default async function (ctx) {
   await ctx.settle();
   out.mediumOn = await look();
 
-  a.deepEqual(
+  assert.deepEqual(
     [out.mediumOn.attr, out.mediumOn.shown, out.mediumOn.lines, out.mediumOn.cut, out.mediumOn.kept],
     [true, 1, [1], true, true],
     `Medium: one line, cut, no card redrawn: ${JSON.stringify(out.mediumOn)}`,
   );
 
-  a.ok(out.mediumOn.h < out.mediumOff.h, 'a shorter card');
+  assert.ok(out.mediumOn.h < out.mediumOff.h, 'a shorter card');
 
   // Large: the prompt and the reply, a line each
   await ctx.evaluate(`document.querySelector('#cardsSize [data-v="0"]').click()`);
   await ctx.settle();
   out.largeOn = await look();
 
-  a.deepEqual(
+  assert.deepEqual(
     [out.largeOn.shown, out.largeOn.lines],
     [2, [1, 1]],
     `Large: two words, a line each: ${JSON.stringify(out.largeOn)}`,
@@ -114,7 +114,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#cardsSize [data-v="2"]').click()`);
   await ctx.settle();
 
-  a.deepEqual(
+  assert.deepEqual(
     await row(),
     { off: true, disabled: true, say: 'Only where a card shows its words' },
     'compact: off, and why',
@@ -122,12 +122,12 @@ export default async function (ctx) {
 
   await ctx.evaluate(`document.querySelector('#cardsByLane').click()`);
   await ctx.settle();
-  a.equal((await row()).off, false, 'by lane brings words back at compact');
+  assert.equal((await row()).off, false, 'by lane brings words back at compact');
   await ctx.evaluate(`document.querySelector('#cardsByLane').click()`);
   await ctx.settle();
   await ctx.evaluate(`document.querySelector('#cardsSize [data-v="3"]').click()`);
   await ctx.settle();
-  a.equal((await row()).off, true, 'one line: off');
+  assert.equal((await row()).off, true, 'one line: off');
   await ctx.evaluate(`document.querySelector('#cardsSize [data-v="0"]').click()`);
   await ctx.settle();
   await ctx.evaluate(`document.querySelector('#settings').close()`);
@@ -139,17 +139,17 @@ export default async function (ctx) {
   await ctx.waitFor(`${card}?.querySelector('.snip')`, { what: 'the card again' });
   await ctx.settle();
   await ctx.evaluate(`window.__card = ${card}`);
-  a.deepEqual((await look()).lines, [1, 1], 'kept across a reload');
+  assert.deepEqual((await look()).lines, [1, 1], 'kept across a reload');
   await ctx.evaluate(`document.querySelector('#cardsSnipOne').click()`);
   await ctx.settle();
   out.largeOff = await look();
 
-  a.ok(
+  assert.ok(
     out.largeOff.lines[0] >= 2 && out.largeOff.lines[1] >= 3 && out.largeOff.h > out.largeOn.h,
     `off: as they were, on the same card: ${JSON.stringify(out.largeOff)}`,
   );
 
-  a.equal(out.largeOff.kept, true, 'no card redrawn');
+  assert.equal(out.largeOff.kept, true, 'no card redrawn');
   await crop('2-large-off');
   return out;
 }

@@ -49,8 +49,8 @@ const env = {
   GIT_COMMITTER_EMAIL: 't@t',
 };
 
-const git = (cwd, ...a) =>
-  execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env })
+const git = (cwd, ...args) =>
+  execFileSync('git', ['-C', cwd, ...args], { stdio: 'pipe', env })
     .toString()
     .trim();
 
@@ -68,12 +68,21 @@ git(seed, 'add', '.');
 git(seed, 'commit', '-qm', 'base');
 git(seed, 'push', '-q', origin, 'main');
 
-const branch = (name, n, file, { pushBranch = true } = {}) => {
+const branch = (name, number, file, { pushBranch = true } = {}) => {
   git(seed, 'checkout', '-q', '-b', name, 'main');
   writeFileSync(join(seed, file), `${name}\n`);
   git(seed, 'add', '.');
   git(seed, 'commit', '-qm', name);
-  git(seed, 'push', '-q', origin, `${name}:refs/pull/${n}/head`, ...(pushBranch ? [`${name}:refs/heads/${name}`] : []));
+
+  git(
+    seed,
+    'push',
+    '-q',
+    origin,
+    `${name}:refs/pull/${number}/head`,
+    ...(pushBranch ? [`${name}:refs/heads/${name}`] : []),
+  );
+
   return git(seed, 'rev-parse', 'HEAD');
 };
 
@@ -102,10 +111,10 @@ git(co, 'checkout', '-q', 'feat/b');
 mkdirSync(join(co, 'node_modules', 'x'), { recursive: true });
 
 const real = git(co, 'rev-parse', '--show-toplevel');
-const wt = n => join(real, '.claude', 'worktrees', n);
+const wt = name => join(real, '.claude', 'worktrees', name);
 
-const review = n => join(realpathSync(tmp), 'reviews', n); // a fork's PR: outside the repo (2026-11-06)
-const url = n => `https://github.com/acme/widgets/pull/${n}`;
+const review = name => join(realpathSync(tmp), 'reviews', name); // a fork's PR: outside the repo (2026-11-06)
+const url = number => `https://github.com/acme/widgets/pull/${number}`;
 
 const refs = (head, fork = false) =>
   prRefs({ headRefName: head, baseRefName: 'main', headRefOid: null, isCrossRepository: fork });
@@ -126,12 +135,12 @@ test("a PR's branch: the tree that has it, else one made inside the repo, tracki
   );
 
   setPrInfo(url(21), 'open', 'A', null, Date.now(), undefined, false, null, null, refs('feat/a'));
-  const a = await ensureWorktree({ cwd: co, pr: url(21) });
+  const prTree = await ensureWorktree({ cwd: co, pr: url(21) });
 
-  assert.deepEqual([a.path, a.branch, a.made], [wt('feat-a'), 'feat/a', true]);
-  assert.equal(git(a.path, 'rev-parse', '--abbrev-ref', '@{u}'), 'origin/feat/a', 'tracking origin’s branch');
-  assert.deepEqual(worktreesMade[a.path].branch, 'feat/a');
-  assert.equal(worktreesMade[a.path].pr, url(21));
+  assert.deepEqual([prTree.path, prTree.branch, prTree.made], [wt('feat-a'), 'feat/a', true]);
+  assert.equal(git(prTree.path, 'rev-parse', '--abbrev-ref', '@{u}'), 'origin/feat/a', 'tracking origin’s branch');
+  assert.deepEqual(worktreesMade[prTree.path].branch, 'feat/a');
+  assert.equal(worktreesMade[prTree.path].pr, url(21));
   assert.deepEqual(folder(), before, 'the folder’s branch and tree untouched');
   assert.equal(existsSync(join(co, '.git', 'FETCH_HEAD')), false, 'no FETCH_HEAD');
 
@@ -143,7 +152,7 @@ test("a PR's branch: the tree that has it, else one made inside the repo, tracki
 
   assert.deepEqual(
     await ensureWorktree({ cwd: co, pr: url(21) }),
-    { path: a.path, branch: 'feat/a', made: false, here: false },
+    { path: prTree.path, branch: 'feat/a', made: false, here: false },
     'asked again: the same tree',
   );
 
@@ -158,7 +167,7 @@ test("a PR's branch: the tree that has it, else one made inside the repo, tracki
   });
 
   // from inside the worktree, the same list
-  assert.deepEqual((await ensureWorktree({ cwd: a.path, pr: url(22) })).path, real);
+  assert.deepEqual((await ensureWorktree({ cwd: prTree.path, pr: url(22) })).path, real);
   assert.match((await ensureWorktree({ cwd: co, branch: 'no/such' })).error, /no branch no\/such here, nor on origin/);
 
   assert.match(
@@ -169,33 +178,42 @@ test("a PR's branch: the tree that has it, else one made inside the repo, tracki
 
 test("a fork's PR, or one asked for review only, is detached at its head; a new branch starts from origin's main", async () => {
   setPrInfo(url(23), 'open', 'Fork', null, Date.now(), undefined, false, null, null, refs('main', true)); // a fork's branch named main means nothing here
-  const f = await ensureWorktree({ cwd: co, pr: url(23) });
+  const forkTree = await ensureWorktree({ cwd: co, pr: url(23) });
 
   assert.deepEqual(
-    [f.path, f.branch, f.detached, f.made],
+    [forkTree.path, forkTree.branch, forkTree.detached, forkTree.made],
     [review('widgets-pr-23'), null, true, true],
     "a stranger's code outside the repo: no trust given to it or above reaches there",
   );
 
   assert.equal(statSync(review('')).mode & 0o777, 0o700);
-  assert.equal(git(f.path, 'rev-parse', 'HEAD'), fork);
-  assert.throws(() => git(f.path, 'symbolic-ref', '-q', 'HEAD'), 'detached');
-  const r = await ensureWorktree({ cwd: co, pr: url(21), detach: true });
+  assert.equal(git(forkTree.path, 'rev-parse', 'HEAD'), fork);
+  assert.throws(() => git(forkTree.path, 'symbolic-ref', '-q', 'HEAD'), 'detached');
+  const reviewTree = await ensureWorktree({ cwd: co, pr: url(21), detach: true });
 
-  assert.deepEqual([r.path, r.detached], [wt('pr-21'), true], 'review only: a tree of its own beside the branch’s');
+  assert.deepEqual(
+    [reviewTree.path, reviewTree.detached],
+    [wt('pr-21'), true],
+    'review only: a tree of its own beside the branch’s',
+  );
+
   assert.equal((await ensureWorktree({ cwd: co, pr: url(21), detach: true })).made, false, 'and found again');
-  const n = await ensureWorktree({ cwd: co, branch: 'feat/new', fresh: true });
+  const newTree = await ensureWorktree({ cwd: co, branch: 'feat/new', fresh: true });
 
-  assert.deepEqual([n.path, n.branch, n.made], [wt('feat-new'), 'feat/new', true]);
-  assert.equal(git(n.path, 'rev-parse', 'HEAD'), git(co, 'rev-parse', 'origin/main'), 'from origin’s main');
-  assert.throws(() => git(n.path, 'rev-parse', '--abbrev-ref', '@{u}'), 'tracking nothing — a push names its own');
+  assert.deepEqual([newTree.path, newTree.branch, newTree.made], [wt('feat-new'), 'feat/new', true]);
+  assert.equal(git(newTree.path, 'rev-parse', 'HEAD'), git(co, 'rev-parse', 'origin/main'), 'from origin’s main');
+
+  assert.throws(
+    () => git(newTree.path, 'rev-parse', '--abbrev-ref', '@{u}'),
+    'tracking nothing — a push names its own',
+  );
 });
 
 test("node_modules: linked to the main tree's when the lockfiles match, never installed", async () => {
-  const w = await worktreesFor(wt('feat-a'));
+  const listing = await worktreesFor(wt('feat-a'));
 
   assert.deepEqual(
-    w.worktrees.map(t => [t.path, t.branch, t.modules, !!t.made]),
+    listing.worktrees.map(tree => [tree.path, tree.branch, tree.modules, !!tree.made]),
     [
       [real, 'feat/b', null, false],
       [review('widgets-pr-23'), null, 'same', true],
@@ -230,73 +248,82 @@ test('the sweep removes a tree it made once its PR is merged or closed and nothi
   assert.ok(existsSync(join(co, 'node_modules', 'x')), 'the main tree’s node_modules, which it linked to, untouched');
   // a chat in it holds it; a PR still open, a tree the board did not make, are never touched
   setPrInfo(url(23), 'closed', 'Fork', null, Date.now(), undefined, false, null, null, refs('main', true));
-  const s = newSession(randomUUID(), null);
+  const session = newSession(randomUUID(), null);
 
-  s.alive = true;
-  s.live = { cwd: review('widgets-pr-23') };
-  sessions.set(s.id, s);
+  session.alive = true;
+  session.live = { cwd: review('widgets-pr-23') };
+  sessions.set(session.id, session);
   assert.deepEqual(await sweepWorktrees(), [], 'a live chat in pr-23');
-  sessions.delete(s.id);
+  sessions.delete(session.id);
   assert.deepEqual(await sweepWorktrees(), [review('widgets-pr-23')]);
   assert.ok(existsSync(wt('pr-21')) && existsSync(wt('feat-new')) && existsSync(real));
 });
 
 test('a tree made for a PR merged or closed already is a look at it: kept, until the sweep sees the PR open again (2026-10-14)', async () => {
   setPrInfo(url(24), 'merged', 'Old', null, Date.now(), undefined, false, null, null, refs('feat/old'));
-  const t = await ensureWorktree({ cwd: co, pr: url(24) }); // Editor ▾ on a merged PR's row
+  const mergedTree = await ensureWorktree({ cwd: co, pr: url(24) }); // Editor ▾ on a merged PR's row
 
-  assert.deepEqual([t.path, t.made, worktreesMade[t.path].prState], [wt('feat-old'), true, 'merged']);
+  assert.deepEqual(
+    [mergedTree.path, mergedTree.made, worktreesMade[mergedTree.path].prState],
+    [wt('feat-old'), true, 'merged'],
+  );
+
   assert.deepEqual(await sweepWorktrees(), [], 'merged before it was made: kept');
-  assert.ok(existsSync(t.path));
+  assert.ok(existsSync(mergedTree.path));
   setPrInfo(url(24), 'open', 'Old', null, Date.now(), undefined, false, null, null, refs('feat/old')); // reopened
   assert.deepEqual(await sweepWorktrees(), []);
   setPrInfo(url(24), 'closed', 'Old', null, Date.now(), undefined, false, null, null, refs('feat/old'));
-  assert.deepEqual(await sweepWorktrees(), [t.path], 'closed after the sweep saw it open: removed');
+  assert.deepEqual(await sweepWorktrees(), [mergedTree.path], 'closed after the sweep saw it open: removed');
 });
 
 test('a tree on another branch, or detached at another commit, than it was made for is kept when its PR is done (2026-10-14)', async () => {
   setPrInfo(url(25), 'open', 'D', null, Date.now(), undefined, false, null, null, refs('feat/d'));
 
-  const t = (await ensureWorktree({ cwd: co, pr: url(25) })).path;
-  const r = (await ensureWorktree({ cwd: co, pr: url(25), detach: true })).path;
+  const branchPath = (await ensureWorktree({ cwd: co, pr: url(25) })).path;
+  const reviewPath = (await ensureWorktree({ cwd: co, pr: url(25), detach: true })).path;
 
-  git(t, 'switch', '-q', '-c', 'followup'); // the next piece of work, started there after the merge
-  git(r, 'checkout', '-q', '--detach', 'HEAD~1'); // a review tree moved to look at the commit before
+  git(branchPath, 'switch', '-q', '-c', 'followup'); // the next piece of work, started there after the merge
+  git(reviewPath, 'checkout', '-q', '--detach', 'HEAD~1'); // a review tree moved to look at the commit before
   setPrInfo(url(25), 'merged', 'D', null, Date.now(), undefined, false, null, null, refs('feat/d'));
   assert.deepEqual(await sweepWorktrees(), [], 'both kept');
-  git(t, 'switch', '-q', 'feat/d');
-  git(r, 'checkout', '-q', '--detach', worktreesMade[r].head);
-  assert.deepEqual((await sweepWorktrees()).sort(), [t, r].sort(), 'back where they were made: removed');
+  git(branchPath, 'switch', '-q', 'feat/d');
+  git(reviewPath, 'checkout', '-q', '--detach', worktreesMade[reviewPath].head);
+
+  assert.deepEqual(
+    (await sweepWorktrees()).sort(),
+    [branchPath, reviewPath].sort(),
+    'back where they were made: removed',
+  );
 });
 
 test("the folder's own branch switched only when nothing else works there — said, not done", async () => {
-  const s = newSession(randomUUID(), null);
+  const session = newSession(randomUUID(), null);
 
-  s.cwd = co;
-  sessions.set(s.id, s);
-  assert.deepEqual(await switchGuard(s, 'feat/b'), { ok: false, why: ['it is on feat/b already'] });
-  assert.deepEqual(await switchGuard(s, 'feat/a'), { ok: true, why: [], branch: 'feat/a', tree: real });
-  const o = newSession(randomUUID(), null);
+  session.cwd = co;
+  sessions.set(session.id, session);
+  assert.deepEqual(await switchGuard(session, 'feat/b'), { ok: false, why: ['it is on feat/b already'] });
+  assert.deepEqual(await switchGuard(session, 'feat/a'), { ok: true, why: [], branch: 'feat/a', tree: real });
+  const other = newSession(randomUUID(), null);
 
-  o.cwd = join(co, 'node_modules');
-  o.alive = true;
-  o.live = { cwd: co };
-  o.title = 'Other work';
-  sessions.set(o.id, o);
-  const n = newSession(randomUUID(), null);
+  other.cwd = join(co, 'node_modules');
+  other.alive = true;
+  other.live = { cwd: co };
+  other.title = 'Other work';
+  sessions.set(other.id, other);
+  const nested = newSession(randomUUID(), null);
 
-  n.alive = true;
-  n.live = { cwd: wt('feat-new') };
-  sessions.set(n.id, n); // a chat in a worktree inside it is not in it
+  nested.alive = true;
+  nested.live = { cwd: wt('feat-new') };
+  sessions.set(nested.id, nested); // a chat in a worktree inside it is not in it
   writeFileSync(join(co, 'a.js'), 'dirty\n');
 
-  assert.deepEqual((await switchGuard(s, 'feat/a')).why, [
+  assert.deepEqual((await switchGuard(session, 'feat/a')).why, [
     'another chat works here — Other work',
     '1 file is not committed',
   ]);
 
   assert.deepEqual(folder().branch, 'feat/b', 'nothing switched');
-  for (const x of [s, o, n]) sessions.delete(x.id);
+  for (const chat of [session, other, nested]) sessions.delete(chat.id);
 });
 
 test("a chat in a worktree inside the repo is the repo's, with the branch it is on", () => {
@@ -304,28 +331,34 @@ test("a chat in a worktree inside the repo is the repo's, with the branch it is 
   assert.equal(projectDir('/c/widgets/.claude/worktrees/feat-x/src'), '/c/widgets');
   assert.equal(projectDir('/c/widgets-feat-x'), '/c/widgets-feat-x', 'one beside the repo is its own folder');
   assert.equal(projectDir('/c/widgets'), '/c/widgets');
-  const s = newSession(randomUUID(), null);
+  const session = newSession(randomUUID(), null);
 
-  s.cwd = wt('feat-new');
+  session.cwd = wt('feat-new');
 
   assert.deepEqual(
-    [summary(s).project, summary(s).worktree],
+    [summary(session).project, summary(session).worktree],
     ['widgets', { name: 'feat-new', branch: 'feat/new' }],
     'the branch the board made it on, before Claude Code says one',
   );
 
-  s.gitBranch = 'feat/renamed';
-  assert.deepEqual(summary(s).worktree, { name: 'feat-new', branch: 'feat/renamed' }, 'then the one Claude Code saw');
-  s.alive = true;
-  s.headNow = 'feat/now';
+  session.gitBranch = 'feat/renamed';
 
   assert.deepEqual(
-    summary(s).worktree,
+    summary(session).worktree,
+    { name: 'feat-new', branch: 'feat/renamed' },
+    'then the one Claude Code saw',
+  );
+
+  session.alive = true;
+  session.headNow = 'feat/now';
+
+  assert.deepEqual(
+    summary(session).worktree,
     { name: 'feat-new', branch: 'feat/now' },
     'and while it runs, its HEAD as the poll read it',
   );
 
-  s.alive = false;
+  session.alive = false;
   const plain = newSession(randomUUID(), null);
 
   plain.cwd = co;
@@ -363,26 +396,30 @@ test("a new chat's branch: where it is already, and a tree that has it out share
   );
 
   assert.deepEqual(
-    await branchWhere(co, 'feat/c').then(b => [b.local, b.origin, b.tree]),
+    await branchWhere(co, 'feat/c').then(where => [where.local, where.origin, where.tree]),
     [false, true, null],
     'origin’s, as last fetched',
   );
 
-  assert.deepEqual(await branchWhere(co, 'feat/b').then(b => [b.tree, b.main]), [real, true], 'the folder’s own');
+  assert.deepEqual(
+    await branchWhere(co, 'feat/b').then(where => [where.tree, where.main]),
+    [real, true],
+    'the folder’s own',
+  );
 
   assert.deepEqual(
-    await branchWhere(wt('feat-new'), 'feat/new').then(b => [b.tree, b.main, b.local]),
+    await branchWhere(wt('feat-new'), 'feat/new').then(where => [where.tree, where.main, where.local]),
     [wt('feat-new'), false, true],
     'out in a tree the board made — asked from inside it too',
   );
 
-  const s = newSession(randomUUID(), null);
+  const session = newSession(randomUUID(), null);
 
-  s.alive = true;
-  s.live = { cwd: join(wt('feat-new'), 'src') };
-  sessions.set(s.id, s);
+  session.alive = true;
+  session.live = { cwd: join(wt('feat-new'), 'src') };
+  sessions.set(session.id, session);
   assert.equal((await branchWhere(co, 'feat/new')).live, 1, 'a chat at work there');
-  sessions.delete(s.id);
+  sessions.delete(session.id);
   const out = await ensureWorktree({ cwd: co, branch: 'feat/new', fresh: true });
 
   assert.deepEqual([out.code, out.out, out.path], [409, true, wt('feat-new')]);
@@ -394,22 +431,22 @@ test("a new chat's branch: where it is already, and a tree that has it out share
     'asked for: that tree',
   );
 
-  const c = await ensureWorktree({ cwd: co, branch: 'feat/c', fresh: true });
+  const freshTree = await ensureWorktree({ cwd: co, branch: 'feat/c', fresh: true });
 
   assert.deepEqual(
-    [c.path, c.made, git(c.path, 'rev-parse', '--abbrev-ref', '@{u}')],
+    [freshTree.path, freshTree.made, git(freshTree.path, 'rev-parse', '--abbrev-ref', '@{u}')],
     [wt('feat-c'), true, 'origin/feat/c'],
     'origin’s branch: a tree of its own, tracking it',
   );
 });
 
 test("a new branch's tree goes once the PR opened from it is merged, or its commits are on origin's main — one with nothing done in it stays", async () => {
-  const t = wt('feat-new');
+  const newTree = wt('feat-new');
 
-  writeFileSync(join(t, 'n.js'), 'n\n');
-  git(t, 'add', '.');
-  git(t, 'commit', '-qm', 'n');
-  git(t, 'push', '-q', 'origin', 'feat/new');
+  writeFileSync(join(newTree, 'n.js'), 'n\n');
+  git(newTree, 'add', '.');
+  git(newTree, 'commit', '-qm', 'n');
+  git(newTree, 'push', '-q', 'origin', 'feat/new');
   assert.deepEqual(await sweepWorktrees(), [], 'no PR from it, nothing on main: kept');
 
   setPrInfo(
@@ -426,7 +463,7 @@ test("a new branch's tree goes once the PR opened from it is merged, or its comm
   );
 
   assert.deepEqual(await sweepWorktrees(), [], 'a PR of that name merged before the tree was made is not its');
-  assert.equal(worktreesMade[t].pr, null);
+  assert.equal(worktreesMade[newTree].pr, null);
 
   setPrInfo(
     url(31),
@@ -442,22 +479,22 @@ test("a new branch's tree goes once the PR opened from it is merged, or its comm
   );
 
   assert.deepEqual(await sweepWorktrees(), []);
-  assert.equal(worktreesMade[t].pr, url(31), 'the PR opened from it, kept as its own');
+  assert.equal(worktreesMade[newTree].pr, url(31), 'the PR opened from it, kept as its own');
   setPrInfo(url(31), 'merged', 'New', null, Date.now(), undefined, false, null, null, refs('feat/new'));
-  assert.deepEqual(await sweepWorktrees(), [t], 'merged: removed');
+  assert.deepEqual(await sweepWorktrees(), [newTree], 'merged: removed');
   // merged with no PR the board knows of: its commits on origin's main
-  const l = await ensureWorktree({ cwd: co, branch: 'feat/landed', fresh: true });
+  const landed = await ensureWorktree({ cwd: co, branch: 'feat/landed', fresh: true });
 
-  writeFileSync(join(l.path, 'l.js'), 'l\n');
-  git(l.path, 'add', '.');
-  git(l.path, 'commit', '-qm', 'l');
+  writeFileSync(join(landed.path, 'l.js'), 'l\n');
+  git(landed.path, 'add', '.');
+  git(landed.path, 'commit', '-qm', 'l');
   assert.deepEqual(await sweepWorktrees(), [], 'a commit no remote has: kept');
-  git(l.path, 'push', '-q', 'origin', 'HEAD:main');
+  git(landed.path, 'push', '-q', 'origin', 'HEAD:main');
   git(co, 'fetch', '-q', 'origin');
-  assert.deepEqual(await sweepWorktrees(), [l.path], 'on origin’s main: removed');
+  assert.deepEqual(await sweepWorktrees(), [landed.path], 'on origin’s main: removed');
   assert.ok(existsSync(wt('feat-c')), 'nothing done in it: it stays');
   // (2026-10-14) brought up to origin's main by a pull, nothing of its own: nothing done in it either
-  const p = await ensureWorktree({ cwd: co, branch: 'feat/pulled', fresh: true });
+  const pulled = await ensureWorktree({ cwd: co, branch: 'feat/pulled', fresh: true });
 
   git(seed, 'fetch', '-q', origin, 'main');
   git(seed, 'checkout', '-q', '-B', 'up', 'FETCH_HEAD');
@@ -465,10 +502,10 @@ test("a new branch's tree goes once the PR opened from it is merged, or its comm
   git(seed, 'add', '.');
   git(seed, 'commit', '-qm', 'someone else’s');
   git(seed, 'push', '-q', origin, 'up:main');
-  git(p.path, 'pull', '-q', '--ff-only', 'origin', 'main');
-  assert.notEqual(git(p.path, 'rev-parse', 'HEAD'), worktreesMade[p.path].head);
+  git(pulled.path, 'pull', '-q', '--ff-only', 'origin', 'main');
+  assert.notEqual(git(pulled.path, 'rev-parse', 'HEAD'), worktreesMade[pulled.path].head);
   assert.deepEqual(await sweepWorktrees(), [], 'only pulled: it stays');
-  assert.ok(existsSync(p.path));
+  assert.ok(existsSync(pulled.path));
 });
 
 // A repo at CLAUDE_DIR (~/.claude kept in git) or at the home above it: a tree made inside it would be under ~/.claude,
@@ -477,10 +514,10 @@ test('no tree is made under CLAUDE_DIR', async () => {
   const claude = process.env.CLAUDE_DIR;
 
   execFileSync('git', ['clone', '-q', '--no-local', origin, claude], { stdio: 'pipe', env });
-  const r = await ensureWorktree({ cwd: claude, branch: 'feat/fresh', fresh: true });
+  const result = await ensureWorktree({ cwd: claude, branch: 'feat/fresh', fresh: true });
 
-  assert.equal(r.code, 409);
-  assert.match(r.error, /the board writes nothing there/);
+  assert.equal(result.code, 409);
+  assert.match(result.error, /the board writes nothing there/);
   assert.equal(existsSync(join(claude, '.claude')), false, 'nothing made');
   assert.equal(git(claude, 'worktree', 'list').split('\n').length, 1);
 });
@@ -492,15 +529,15 @@ test('a branch whose tree was deleted by hand is said so, never handed back as i
   rmSync(gone, { recursive: true, force: true });
 
   assert.equal(
-    (await worktreesFor(co)).worktrees.some(t => t.branch === 'feat/gone'),
+    (await worktreesFor(co)).worktrees.some(tree => tree.branch === 'feat/gone'),
     false,
     'not among the trees',
   );
 
-  const r = await ensureWorktree({ cwd: co, branch: 'feat/gone' });
+  const result = await ensureWorktree({ cwd: co, branch: 'feat/gone' });
 
-  assert.deepEqual([r.code, r.path], [409, undefined]);
-  assert.match(r.error, /^feat\/gone is out in .*gone-tree, a folder deleted by hand/);
+  assert.deepEqual([result.code, result.path], [409, undefined]);
+  assert.match(result.error, /^feat\/gone is out in .*gone-tree, a folder deleted by hand/);
   assert.match((await branchWhere(co, 'feat/gone')).error, /deleted by hand/);
 });
 
@@ -510,7 +547,7 @@ test('a branch whose tree was deleted by hand is said so, never handed back as i
 // starts in the nearest folder of it left.
 test("a chat's worktree gone is made again for its resume, a folder gone in the checkout is the nearest one left (2026-10-19)", async () => {
   const chat = branch => Object.assign(newSession(randomUUID(), null), { gitBranch: branch });
-  const head = r => git(co, 'rev-parse', r);
+  const head = ref => git(co, 'rev-parse', ref);
 
   // its branch still here: the tree on it again, the folder it was in the nearest there is of it
   git(co, 'worktree', 'add', '-q', '-b', 'feat/again', wt('again'), 'main');
@@ -592,9 +629,13 @@ test("a chat's worktree gone is made again for its resume, a folder gone in the 
 
   assert.equal(existsSync(wt('elsewhere')), false);
   // detached: detached again, at the main ahead
-  const d = await putBack(wt('looked'), chat('HEAD'));
+  const restored = await putBack(wt('looked'), chat('HEAD'));
 
-  assert.deepEqual([d.branch, d.made, git(wt('looked'), 'rev-parse', 'HEAD')], [null, true, head('origin/main')]);
+  assert.deepEqual(
+    [restored.branch, restored.made, git(wt('looked'), 'rev-parse', 'HEAD')],
+    [null, true, head('origin/main')],
+  );
+
   assert.throws(() => git(wt('looked'), 'symbolic-ref', '-q', 'HEAD'), 'detached');
   // not a worktree: the nearest folder of the checkout left; in no checkout, nowhere
   assert.deepEqual(await putBack(join(co, 'gone', 'deeper'), chat('feat/b')), { cwd: co });
@@ -605,14 +646,14 @@ test("a chat's worktree gone is made again for its resume, a folder gone in the 
 // ⌥⌘N's base step (2026-10-28): a new chat's new branch starts from the branch picked — the bases offered lead with the
 // default branch, origin's unless this checkout's is ahead of it, and leave out a branch here at origin's commit.
 test("a new branch starts from the base asked for; the bases lead with the default branch, this checkout's when it is ahead (2026-10-28)", async () => {
-  const head = r => git(co, 'rev-parse', r);
+  const head = ref => git(co, 'rev-parse', ref);
   // main here behind origin's (as the test before left it): origin's first, then this checkout's
-  let b = await worktreeBases(co);
+  let bases = await worktreeBases(co);
 
-  assert.deepEqual([b.dflt, b.prefer], ['main', 'refs/remotes/origin/main']);
+  assert.deepEqual([bases.dflt, bases.prefer], ['main', 'refs/remotes/origin/main']);
 
   assert.deepEqual(
-    b.branches.slice(0, 2).map(x => [x.name, x.where, x.ref]),
+    bases.branches.slice(0, 2).map(baseBranch => [baseBranch.name, baseBranch.where, baseBranch.ref]),
     [
       ['origin/main', 'origin', 'refs/remotes/origin/main'],
       ['main', 'local', 'refs/heads/main'],
@@ -620,22 +661,27 @@ test("a new branch starts from the base asked for; the bases lead with the defau
   );
 
   assert.equal(
-    b.branches.some(x => /HEAD$/.test(x.name)),
+    bases.branches.some(baseBranch => /HEAD$/.test(baseBranch.name)),
     false,
     'no origin/HEAD',
   );
 
   assert.ok(
-    b.branches.some(x => x.name === 'origin/feat/c') && !b.branches.some(x => x.name === 'feat/c'),
+    bases.branches.some(baseBranch => baseBranch.name === 'origin/feat/c') &&
+      !bases.branches.some(baseBranch => baseBranch.name === 'feat/c'),
     'feat/c here is at origin’s: left out',
   );
 
   assert.ok(
-    b.branches.some(x => x.name === 'feat/again' && x.where === 'local'),
+    bases.branches.some(baseBranch => baseBranch.name === 'feat/again' && baseBranch.where === 'local'),
     'a branch of this checkout’s alone',
   );
 
-  assert.ok(b.branches.every(x => /^\d{4}-\d\d-\d\dT/.test(x.at) && /^[0-9a-f]{40}$/.test(x.oid)));
+  assert.ok(
+    bases.branches.every(
+      baseBranch => /^\d{4}-\d\d-\d\dT/.test(baseBranch.at) && /^[0-9a-f]{40}$/.test(baseBranch.oid),
+    ),
+  );
 
   // main here ahead of origin's: this checkout's first
   git(
@@ -645,34 +691,40 @@ test("a new branch starts from the base asked for; the bases lead with the defau
     git(co, 'commit-tree', '-p', 'origin/main', '-m', 'ahead here', 'origin/main^{tree}'),
   );
 
-  b = await worktreeBases(co);
-  assert.equal(b.prefer, 'refs/heads/main');
+  bases = await worktreeBases(co);
+  assert.equal(bases.prefer, 'refs/heads/main');
 
   assert.deepEqual(
-    b.branches.slice(0, 2).map(x => x.name),
+    bases.branches.slice(0, 2).map(baseBranch => baseBranch.name),
     ['main', 'origin/main'],
   );
 
   // at origin's: one row, origin's
   git(co, 'update-ref', 'refs/heads/main', head('origin/main'));
-  b = await worktreeBases(co);
-  assert.equal(b.prefer, 'refs/remotes/origin/main');
+  bases = await worktreeBases(co);
+  assert.equal(bases.prefer, 'refs/remotes/origin/main');
 
   assert.deepEqual(
-    b.branches.filter(x => /^(origin\/)?main$/.test(x.name)).map(x => x.name),
+    bases.branches.filter(baseBranch => /^(origin\/)?main$/.test(baseBranch.name)).map(baseBranch => baseBranch.name),
     ['origin/main'],
   );
 
-  assert.equal(b.branches[0].name, 'origin/main');
+  assert.equal(bases.branches[0].name, 'origin/main');
+
   // made from a base: origin's feat/a, this checkout's feat/b — tracking nothing
-  const a = await ensureWorktree({ cwd: co, branch: 'feat/on-a', fresh: true, base: 'refs/remotes/origin/feat/a' });
+  const onFeatA = await ensureWorktree({
+    cwd: co,
+    branch: 'feat/on-a',
+    fresh: true,
+    base: 'refs/remotes/origin/feat/a',
+  });
 
-  assert.deepEqual([a.path, a.made, a.branch], [wt('feat-on-a'), true, 'feat/on-a']);
-  assert.equal(git(a.path, 'rev-parse', 'HEAD'), head('refs/remotes/origin/feat/a'), 'at origin’s feat/a');
-  assert.throws(() => git(a.path, 'rev-parse', '--abbrev-ref', '@{u}'), 'tracking nothing');
-  const l = await ensureWorktree({ cwd: co, branch: 'feat/on-b', fresh: true, base: 'refs/heads/feat/b' });
+  assert.deepEqual([onFeatA.path, onFeatA.made, onFeatA.branch], [wt('feat-on-a'), true, 'feat/on-a']);
+  assert.equal(git(onFeatA.path, 'rev-parse', 'HEAD'), head('refs/remotes/origin/feat/a'), 'at origin’s feat/a');
+  assert.throws(() => git(onFeatA.path, 'rev-parse', '--abbrev-ref', '@{u}'), 'tracking nothing');
+  const onFeatB = await ensureWorktree({ cwd: co, branch: 'feat/on-b', fresh: true, base: 'refs/heads/feat/b' });
 
-  assert.equal(git(l.path, 'rev-parse', 'HEAD'), head('refs/heads/feat/b'), 'at this checkout’s feat/b');
+  assert.equal(git(onFeatB.path, 'rev-parse', 'HEAD'), head('refs/heads/feat/b'), 'at this checkout’s feat/b');
 
   // refused: not a full ref of a branch here or of origin's, or one that is not there
   for (const base of [
@@ -689,8 +741,8 @@ test("a new branch starts from the base asked for; the bases lead with the defau
 
   assert.equal(git(co, 'for-each-ref', 'refs/heads/feat/never'), '', 'nothing made');
   // a branch there already: the base does not apply
-  const d = await ensureWorktree({ cwd: co, branch: 'feat/d', fresh: true, base: 'refs/heads/feat/b' });
+  const featD = await ensureWorktree({ cwd: co, branch: 'feat/d', fresh: true, base: 'refs/heads/feat/b' });
 
-  assert.equal(git(d.path, 'rev-parse', 'HEAD'), head('refs/remotes/origin/feat/d'), 'origin’s feat/d');
-  assert.equal(git(d.path, 'rev-parse', '--abbrev-ref', '@{u}'), 'origin/feat/d', 'tracking it');
+  assert.equal(git(featD.path, 'rev-parse', 'HEAD'), head('refs/remotes/origin/feat/d'), 'origin’s feat/d');
+  assert.equal(git(featD.path, 'rev-parse', '--abbrev-ref', '@{u}'), 'origin/feat/d', 'tracking it');
 });

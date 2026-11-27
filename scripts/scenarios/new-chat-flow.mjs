@@ -33,18 +33,18 @@ const closePick = ctx => ctx.evaluate(`document.querySelector('#pick').close()`)
 export default async function (ctx) {
   const out = {};
   const oracleCwd = join(tmpdir(), 'peix-oracle-flow', 'oracle');
-  const h = n => new Date(Date.now() - n * 3600e3);
+  const hoursAgo = hours => new Date(Date.now() - hours * 3600e3);
 
   // Three oracle chats in one folder, oldest first — two started through a launcher, one bare `claude`.
   const [prod, sand] = makeFixture(ctx.fixture.dir, [
-    { cwd: oracleCwd, title: 'ledger sweep', prompt: 'sweep the production ledger', reply: 'swept', at: h(3) },
-    { cwd: oracleCwd, title: 'replay a batch', prompt: "replay yesterday's batch", reply: 'replayed', at: h(2) },
+    { cwd: oracleCwd, title: 'ledger sweep', prompt: 'sweep the production ledger', reply: 'swept', at: hoursAgo(3) },
+    { cwd: oracleCwd, title: 'replay a batch', prompt: "replay yesterday's batch", reply: 'replayed', at: hoursAgo(2) },
     {
       cwd: oracleCwd,
       title: 'read the Taskfile',
       prompt: 'what does this folder do?',
       reply: 'it launches claude',
-      at: h(1),
+      at: hoursAgo(1),
     },
   ]).chats;
 
@@ -92,12 +92,12 @@ export default async function (ctx) {
   await ctx.shot('oracle-environments');
 
   ctx.assert.deepEqual(
-    out.oracleEnvs.map(r => r.name),
+    out.oracleEnvs.map(row => row.name),
     ['production-workload', 'sandbox-workload'],
   );
 
   ctx.assert.deepEqual(
-    out.oracleEnvs.map(r => r.pills),
+    out.oracleEnvs.map(row => row.pills),
     ['1', '1'],
     'each environment counts the chats it holds — one ready apiece, none clauding',
   );
@@ -112,7 +112,7 @@ export default async function (ctx) {
   await ctx.shot('oracle-prod-chats');
 
   ctx.assert.deepEqual(
-    out.prodChats.map(r => r.name),
+    out.prodChats.map(row => row.name),
     ['＋ new chat', 'ledger sweep'],
     'only the chat recorded under production-workload, ＋ new chat at its head',
   );
@@ -180,7 +180,7 @@ export default async function (ctx) {
     what: 'the sandbox chats',
   });
 
-  out.sandChats = (await rows(ctx)).map(r => r.name);
+  out.sandChats = (await rows(ctx)).map(row => row.name);
   ctx.assert.deepEqual(out.sandChats, ['＋ new chat', 'replay a batch'], 'each environment sees only its own chats');
   await closePick(ctx);
 
@@ -202,13 +202,13 @@ export default async function (ctx) {
   await ctx.shot('project-chats');
 
   ctx.assert.deepEqual(
-    out.allChats.map(r => r.name),
+    out.allChats.map(row => row.name),
     ['＋ new chat', 'read the Taskfile', 'replay a batch', 'ledger sweep'],
     'every open chat of the project, newest by your last touch',
   );
 
   ctx.assert.deepEqual(
-    out.allChats.map(r => r.env),
+    out.allChats.map(row => row.env),
     ['in oracle', '', 'sandbox-workload', 'production-workload'],
     'each row says the environment it was started in, blank for a bare claude; the ＋ row says the folder',
   );
@@ -218,7 +218,7 @@ export default async function (ctx) {
   out.filtered = await rows(ctx);
 
   ctx.assert.deepEqual(
-    out.filtered.map(r => r.name),
+    out.filtered.map(row => row.name),
     ['＋ new chat', 'replay a batch'],
     '＋ stays, the chats are filtered',
   );
@@ -248,7 +248,7 @@ export default async function (ctx) {
   out.noMatch = await rows(ctx);
 
   ctx.assert.deepEqual(
-    out.noMatch.map(r => r.name),
+    out.noMatch.map(row => row.name),
     ['＋ new chat'],
     'nothing matches: ＋ is the whole list',
   );
@@ -283,12 +283,12 @@ export default async function (ctx) {
       `document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))`,
     );
 
-  const tickRow = (i, detail = 1) =>
+  const tickRow = (index, detail = 1) =>
     ctx.evaluate(
-      `document.querySelectorAll('#picklist .pkrow')[${i}].querySelector('button.pkdone').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: ${detail} }))`,
+      `document.querySelectorAll('#picklist .pkrow')[${index}].querySelector('button.pkdone').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: ${detail} }))`,
     );
 
-  const names = async () => (await rows(ctx)).map(r => r.name);
+  const names = async () => (await rows(ctx)).map(row => row.name);
 
   await ctx.key('KeyN');
 
@@ -339,7 +339,7 @@ export default async function (ctx) {
   out.afterOne = await rows(ctx);
 
   ctx.assert.deepEqual(
-    out.afterOne.map(r => r.name),
+    out.afterOne.map(row => row.name),
     ['＋ new chat', 'read the Taskfile', 'ledger sweep'],
     'the ticked chat left the list',
   );

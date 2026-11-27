@@ -31,36 +31,36 @@ const onZed = () => editor() === EDITORS.zed;
 const fileUrl = (abs, line, col) =>
   `${editor().file}${encodeURI(abs)}${line ? `:${line}` : ''}${line && col ? `:${col}` : ''}`;
 
-const unURI = u => {
+const unURI = uri => {
   try {
-    return decodeURI(u);
+    return decodeURI(uri);
   } catch {
-    return u;
+    return uri;
   }
 };
 
 const filePath = href => unURI(href.replace(/^(?:vscode|zed):\/\/file/, '')); // the tooltip's
 
 const edPick = () => {
-  for (const b of document.querySelectorAll('#edPick [data-ed]')) {
-    b.setAttribute('aria-checked', String(EDITORS[b.dataset.ed] === editor()));
+  for (const button of document.querySelectorAll('#edPick [data-ed]')) {
+    button.setAttribute('aria-checked', String(EDITORS[button.dataset.ed] === editor()));
   }
 };
 
-for (const b of document.querySelectorAll('#edPick [data-ed]')) {
-  b.addEventListener('click', () => {
-    if (EDITORS[b.dataset.ed] === editor()) return;
-    prefs.editor = b.dataset.ed;
+for (const button of document.querySelectorAll('#edPick [data-ed]')) {
+  button.addEventListener('click', () => {
+    if (EDITORS[button.dataset.ed] === editor()) return;
+    prefs.editor = button.dataset.ed;
     savePrefs();
     edPick();
     edSay();
     if (onZed()) wantZed();
-    const s = state.sessions.get(state.current);
+    const session = state.sessions.get(state.current);
 
-    if (!s) return;
+    if (!session) return;
     logView.arr = null;
     renderLog();
-    renderHead(s); // the transcript's links and ··· name the editor
+    renderHead(session); // the transcript's links and ··· name the editor
   });
 }
 
@@ -73,21 +73,21 @@ const onVim = () => prefs.inEditor === 'vim';
 const inEdName = () => IN_EDITORS[onVim() ? 'vim' : 'vscode'];
 
 const inEdPick = () => {
-  for (const b of document.querySelectorAll('#inEdPick [data-ined]')) {
-    b.setAttribute('aria-checked', String(b.dataset.ined === (onVim() ? 'vim' : 'vscode')));
+  for (const button of document.querySelectorAll('#inEdPick [data-ined]')) {
+    button.setAttribute('aria-checked', String(button.dataset.ined === (onVim() ? 'vim' : 'vscode')));
   }
 };
 
-for (const b of document.querySelectorAll('#inEdPick [data-ined]')) {
-  b.addEventListener('click', () => {
-    if (b.getAttribute('aria-checked') === 'true') return;
-    prefs.inEditor = b.dataset.ined;
+for (const button of document.querySelectorAll('#inEdPick [data-ined]')) {
+  button.addEventListener('click', () => {
+    if (button.getAttribute('aria-checked') === 'true') return;
+    prefs.inEditor = button.dataset.ined;
     savePrefs();
     inEdPick();
     edSay();
-    const s = state.sessions.get(state.current);
+    const session = state.sessions.get(state.current);
 
-    if (s) renderHead(s); // ··· names it
+    if (session) renderHead(session); // ··· names it
   });
 }
 
@@ -123,8 +123,8 @@ async function loadEditors() {
 async function installZed() {
   try {
     state.editors = await api('POST', '/api/editors/zed/install');
-  } catch (e) {
-    state.editors = { ...state.editors, zed: { ...state.editors?.zed, installing: false, error: e.message } };
+  } catch (error) {
+    state.editors = { ...state.editors, zed: { ...state.editors?.zed, installing: false, error: error.message } };
   }
 
   edSay();
@@ -132,25 +132,25 @@ async function installZed() {
 
 async function wantZed() {
   await loadEditors();
-  const z = state.editors?.zed;
+  const zed = state.editors?.zed;
 
-  if (z && !z.app && !z.installing && z.brew) await installZed();
+  if (zed && !zed.app && !zed.installing && zed.brew) await installZed();
 }
 
 function edSay() {
   const box = $('#edSay');
-  const z = state.editors?.zed;
+  const zed = state.editors?.zed;
 
   if (!box) return;
 
   const said =
-    !onZed() || !z || z.app
+    !onZed() || !zed || zed.app
       ? ''
-      : z.installing
-        ? `<span>installing Zed with Homebrew…</span><span>${esc(z.line || '')}</span>`
-        : z.error
-          ? `<span class="err">Zed's install failed — ${esc(z.error)}</span><button type="button" class="btn" data-zed="install">try again</button>`
-          : z.brew
+      : zed.installing
+        ? `<span>installing Zed with Homebrew…</span><span>${esc(zed.line || '')}</span>`
+        : zed.error
+          ? `<span class="err">Zed's install failed — ${esc(zed.error)}</span><button type="button" class="btn" data-zed="install">try again</button>`
+          : zed.brew
             ? `<span>Zed isn't on this Mac</span><button type="button" class="btn" data-zed="install">install it</button><span>with Homebrew</span>`
             : `<span>Zed isn't on this Mac, and there is no Homebrew to install it with</span><button type="button" class="btn" data-zed="get">get it from zed.dev</button>`;
 
@@ -160,41 +160,41 @@ function edSay() {
   setHtml(box, html);
 }
 
-$('#edSay').addEventListener('click', e => {
-  const b = e.target.closest('[data-zed]');
+$('#edSay').addEventListener('click', event => {
+  const button = event.target.closest('[data-zed]');
 
-  if (!b) return;
-  if (b.dataset.zed === 'install') installZed();
+  if (!button) return;
+  if (button.dataset.zed === 'install') installZed();
   else if (inApp) post({ type: 'external', url: ZED_GET });
   else window.open(ZED_GET, '_blank', 'noopener');
 });
 
 /** A path's file URL in the editor against the chat's folder, or null for one that is no file of ours: ~ needs a home
       (read off the folder), a relative path needs the folder, an absolute one a known root or an extension. */
-function pathHref(p, cwd) {
-  const m = /^(.*?)(?::(\d+)(?::(\d+))?)?$/.exec(p);
-  let f = m[1];
+function pathHref(path, cwd) {
+  const match = /^(.*?)(?::(\d+)(?::(\d+))?)?$/.exec(path);
+  let file = match[1];
 
-  if (f.startsWith('~/')) {
+  if (file.startsWith('~/')) {
     const home = /^\/(?:Users|home)\/[^/]+/.exec(cwd || '')?.[0];
 
     if (!home) return null;
-    f = home + f.slice(1);
-  } else if (f.startsWith('/')) {
-    if (!PATH_ROOTS.test(f) && !EXT_RE.test(f)) return null;
+    file = home + file.slice(1);
+  } else if (file.startsWith('/')) {
+    if (!PATH_ROOTS.test(file) && !EXT_RE.test(file)) return null;
   } else {
     if (!cwd) return null;
-    f = `${cwd}/${f}`;
+    file = `${cwd}/${file}`;
   }
 
-  return fileUrl(normPath(f), m[2], m[3]);
+  return fileUrl(normPath(file), match[2], match[3]);
 }
 
 /** `/a/b/../c/./d` → `/a/c/d`: a path with its dots resolved — a drawer's (pathHref) and a reply's relative link (md). */
-function normPath(f) {
+function normPath(path) {
   const out = [];
 
-  for (const seg of f.split('/')) {
+  for (const seg of path.split('/')) {
     if (seg === '.' || seg === '') continue;
     if (seg === '..') out.pop();
     else out.push(seg);
@@ -207,93 +207,96 @@ function normPath(f) {
 function chatLinks(text, cwd) {
   const out = [];
 
-  for (const m of text.matchAll(URL_RE)) {
+  for (const match of text.matchAll(URL_RE)) {
     // a closing parenthesis is the URL's while it closes one of the URL's own: (see https://x/wiki/Foo_(bar)) keeps one
-    let u = m[0].replace(/[.,;:!?'"]+$/, '');
+    let url = match[0].replace(/[.,;:!?'"]+$/, '');
 
-    while (u.endsWith(')') && u.split(')').length > u.split('(').length) u = u.slice(0, -1).replace(/[.,;:!?'"]+$/, '');
-    out.push({ start: m.index, end: m.index + u.length, href: u, web: true });
+    while (url.endsWith(')') && url.split(')').length > url.split('(').length) {
+      url = url.slice(0, -1).replace(/[.,;:!?'"]+$/, '');
+    }
+
+    out.push({ start: match.index, end: match.index + url.length, href: url, web: true });
   }
 
-  for (const m of text.matchAll(PATH_RE)) {
-    const p = m[0].replace(/[.,;:]+$/, '');
-    const start = m.index;
-    const end = start + p.length;
+  for (const match of text.matchAll(PATH_RE)) {
+    const path = match[0].replace(/[.,;:]+$/, '');
+    const start = match.index;
+    const end = start + path.length;
 
-    if (out.some(o => start < o.end && end > o.start)) continue;
-    const href = pathHref(p, cwd);
+    if (out.some(link => start < link.end && end > link.start)) continue;
+    const href = pathHref(path, cwd);
 
     if (href) out.push({ start, end, href, web: false });
   }
 
-  return out.sort((a, b) => a.start - b.start);
+  return out.sort((left, right) => left.start - right.start);
 }
 
 /** Anchors for the paths and pages in the text of a rendered transcript — the text nodes outside anchors. */
 function linkify(root, cwd) {
-  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const nodes = [];
 
-  for (let n; (n = w.nextNode());) {
-    if (/[/:]/.test(n.data) && !n.parentElement.closest('a, summary, .who, .agcall')) nodes.push(n);
+  for (let node; (node = walker.nextNode());) {
+    if (/[/:]/.test(node.data) && !node.parentElement.closest('a, summary, .who, .agcall')) nodes.push(node);
   }
 
-  for (const n of nodes) {
-    const t = n.data;
-    const links = chatLinks(t, cwd);
+  for (const node of nodes) {
+    const text = node.data;
+    const links = chatLinks(text, cwd);
 
     if (!links.length) continue;
     const frag = document.createDocumentFragment();
     let at = 0;
 
-    for (const l of links) {
-      frag.append(t.slice(at, l.start));
-      const a = document.createElement('a');
+    for (const link of links) {
+      frag.append(text.slice(at, link.start));
+      const anchor = document.createElement('a');
 
-      a.href = l.href;
-      a.textContent = t.slice(l.start, l.end);
-      if (l.web) {
-        a.target = '_blank';
-        a.rel = 'noopener';
-      } else a.title = `Open ${filePath(l.href)} in ${editor().name}`;
-      frag.append(a);
-      at = l.end;
+      anchor.href = link.href;
+      anchor.textContent = text.slice(link.start, link.end);
+      if (link.web) {
+        anchor.target = '_blank';
+        anchor.rel = 'noopener';
+      } else anchor.title = `Open ${filePath(link.href)} in ${editor().name}`;
+      frag.append(anchor);
+      at = link.end;
     }
 
-    frag.append(t.slice(at));
-    n.replaceWith(frag);
+    frag.append(text.slice(at));
+    node.replaceWith(frag);
   }
 }
 
 /** The paths on one line of a drawer, as xterm links: the line read back to its cells (a wide cell holds one
       character and takes two cells), each path a range that opens the way the transcript's does. */
-function termLinks(tm, y) {
-  const line = tm?.xt?.buffer.active.getLine(y - 1);
+function termLinks(tm, row) {
+  const line = tm?.xt?.buffer.active.getLine(row - 1);
 
   if (!line) return undefined;
   let text = '';
   const cell = [];
 
-  for (let x = 0; x < line.length; x++) {
-    const c = line.getCell(x);
+  for (let col = 0; col < line.length; col++) {
+    const bufferCell = line.getCell(col);
 
-    if (!c || c.getWidth() === 0) continue;
-    const ch = c.getChars() || ' ';
+    if (!bufferCell || bufferCell.getWidth() === 0) continue;
+    const ch = bufferCell.getChars() || ' ';
 
-    for (let i = 0; i < ch.length; i++) cell.push(x);
+    for (let index = 0; index < ch.length; index++) cell.push(col);
     text += ch;
   }
 
   const links = chatLinks(text, tm.cwd || state.sessions.get(state.current)?.cwd)
-    .filter(l => !l.web) // the drawer's folder: a new chat's has no chat yet
-    .map(l => ({
-      text: text.slice(l.start, l.end),
-      href: l.href,
-      range: { start: { x: cell[l.start] + 1, y }, end: { x: cell[l.end - 1] + 1, y } },
+    .filter(link => !link.web) // the drawer's folder: a new chat's has no chat yet
+    .map(link => ({
+      text: text.slice(link.start, link.end),
+      href: link.href,
+      range: { start: { x: cell[link.start] + 1, y: row }, end: { x: cell[link.end - 1] + 1, y: row } },
       activate: ev =>
         zedMissing()
           ? zedNote({ getBoundingClientRect: () => new DOMRect(ev?.clientX || 0, ev?.clientY || 0, 0, 0) })
-          : openExternal(l.href),
+          : openExternal(link.href),
     }));
 
   return links.length ? links : undefined;

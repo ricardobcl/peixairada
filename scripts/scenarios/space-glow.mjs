@@ -18,21 +18,21 @@ export default async function (ctx) {
   try {
     const root = tmpDir('peix-spg-');
 
-    const d = n => {
-      const p = join(root, n);
+    const folder = name => {
+      const path = join(root, name);
 
-      mkdirSync(p, { recursive: true });
-      return p;
+      mkdirSync(path, { recursive: true });
+      return path;
     };
 
     const now = Date.now();
-    const ago = m => new Date(now - m * 60_000);
+    const ago = minutes => new Date(now - minutes * 60_000);
 
     const {
       chats: [work, ask, ready],
     } = makeFixture(ctx.fixture.dir, [
       {
-        cwd: d('storefront'),
+        cwd: folder('storefront'),
         title: 'Retry declined card payments',
         prompt: 'go',
         reply: 'On it.',
@@ -42,14 +42,14 @@ export default async function (ctx) {
           toolLines({ id, cwd: join(root, 'storefront'), name: 'Bash', input: { command: 'npm test' }, at: ago(0.5) }),
       },
       {
-        cwd: d('billing-api'),
+        cwd: folder('billing-api'),
         title: 'Queue for invoice webhooks',
         prompt: 'pick',
         reply: 'Which?',
         at: ago(2),
         live: { pid: ps[1].pid, startedAt: now - 3_600_000, status: 'waiting', waitingFor: 'input needed' },
       },
-      { cwd: d('docs'), title: 'Write the retry docs', prompt: 'docs', reply: 'Written.', at: ago(30) },
+      { cwd: folder('docs'), title: 'Write the retry docs', prompt: 'docs', reply: 'Written.', at: ago(30) },
     ]);
 
     const node = id => `document.querySelector('#spgrid .spt[data-id="${id}"]')`;
@@ -60,7 +60,7 @@ export default async function (ctx) {
     );
 
     const out =
-      await ctx.evaluate(`[${[work, ask, ready].map(c => `'${c.id}'`).join(',')}].map(id => { const n = document.querySelector('#spgrid .spt[data-id="' + id + '"]'), rg = n.querySelector('.sprg'), hl = n.querySelector('.sphl');
+      await ctx.evaluate(`[${[work, ask, ready].map(chat => `'${chat.id}'`).join(',')}].map(id => { const n = document.querySelector('#spgrid .spt[data-id="' + id + '"]'), rg = n.querySelector('.sprg'), hl = n.querySelector('.sphl');
       return [!!rg, !!hl, rg ? getComputedStyle(rg, '::before').animationName : '', hl ? getComputedStyle(hl, '::before').animationName : ''];
     })`);
 
@@ -86,6 +86,6 @@ export default async function (ctx) {
     await ctx.shot('space-glow-light');
     return out;
   } finally {
-    for (const p of ps) p.kill();
+    for (const child of ps) child.kill();
   }
 }

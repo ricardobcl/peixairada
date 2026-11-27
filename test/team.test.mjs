@@ -57,21 +57,21 @@ test(
     });
 
     // a teammate last written before the lead's claude started died with the one before
-    const old = readdirSync(sub).find(n => n.includes('old-hand') && n.endsWith('.jsonl'));
-    const t = new Date(started - 600_000);
+    const old = readdirSync(sub).find(name => name.includes('old-hand') && name.endsWith('.jsonl'));
+    const past = new Date(started - 600_000);
 
-    utimesSync(join(sub, old), t, t);
+    utimesSync(join(sub, old), past, past);
     teamFiles({ dir, lead: alone, mates: [] }); // a team of the lead alone, as every chat on this Mac has
     teamFiles({ dir, lead: ended, mates: [{ name: 'gone', summary: 'too late', said: 'Bye.' }] });
     const srv = await startTestServer({ claudeDir: fx.dir });
 
     try {
-      const chat = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
-      const mates = rows => rows.filter(m => m.mate).sort((a, b) => a.name.localeCompare(b.name));
+      const chat = async id => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
+      const mates = rows => rows.filter(row => row.mate).sort((left, right) => left.name.localeCompare(right.name));
       const team = mates(await waitFor(async () => (await chat(lead.id))?.agentRows, { what: "the lead's rows" }));
 
       assert.deepEqual(
-        team.map(m => [m.name, m.st]),
+        team.map(mate => [mate.name, mate.st]),
         [
           ['old-hand', 'joined'],
           ['reviewer', 'run'],
@@ -100,7 +100,7 @@ test(
       );
 
       assert.equal(
-        (await chat(lead.id)).agentRows.filter(m => !m.mate).length,
+        (await chat(lead.id)).agentRows.filter(row => !row.mate).length,
         1,
         'the explore agent, a row of its own',
       );
@@ -109,7 +109,7 @@ test(
       assert.equal((await chat(alone.id)).agentRows, null, 'a team of the lead alone is none');
       assert.equal((await chat(ended.id)).agentRows, null, 'a lead with no claude has no team');
       // the teammate at work finishes: done, its last word
-      const rf = readdirSync(sub).find(n => n.includes('areviewer-') && n.endsWith('.jsonl'));
+      const rf = readdirSync(sub).find(name => name.includes('areviewer-') && name.endsWith('.jsonl'));
 
       appendFileSync(
         join(sub, rf),
@@ -127,14 +127,17 @@ test(
 
       const after = await waitFor(
         async () => {
-          const t = (await chat(lead.id))?.agentRows;
+          const agentRows = (await chat(lead.id))?.agentRows;
 
-          return t?.find(m => m.name === 'reviewer')?.st === 'done' && t;
+          return agentRows?.find(row => row.name === 'reviewer')?.st === 'done' && agentRows;
         },
         { what: 'the reviewer done' },
       );
 
-      assert.deepEqual(after.find(m => m.name === 'reviewer').last, { kind: 'text', text: 'Approved with one nit.' });
+      assert.deepEqual(after.find(row => row.name === 'reviewer').last, {
+        kind: 'text',
+        text: 'Approved with one nit.',
+      });
 
       // a re-read of the lead (opening it) keeps its team
       assert.ok(
@@ -155,7 +158,7 @@ test(
 );
 
 test("a teammate's first prompt is its last line until it says or calls something", { timeout: 30_000 }, async () => {
-  const p = standIn();
+  const child = standIn();
   const dir = tmpDir('peix-fx-');
 
   const fx = makeFixture(dir, [
@@ -165,7 +168,7 @@ test("a teammate's first prompt is its last line until it says or calls somethin
       prompt: 'go',
       reply: 'ok',
       at: yesterday(),
-      live: { pid: p.pid, startedAt: Date.now() - 3600_000 },
+      live: { pid: child.pid, startedAt: Date.now() - 3600_000 },
     },
   ]);
 
@@ -175,9 +178,9 @@ test("a teammate's first prompt is its last line until it says or calls somethin
     mates: [{ name: 'reader', summary: 'Read the &quot;old&quot; client', said: 'x' }],
   });
 
-  const f = readdirSync(sub).find(n => n.endsWith('.jsonl'));
+  const file = readdirSync(sub).find(name => name.endsWith('.jsonl'));
 
-  writeFileSync(join(sub, f), `${readFileSync(join(sub, f), 'utf8').split('\n')[0]}\n`); // the lead's ask alone
+  writeFileSync(join(sub, file), `${readFileSync(join(sub, file), 'utf8').split('\n')[0]}\n`); // the lead's ask alone
   const srv = await startTestServer({ claudeDir: fx.dir });
 
   try {
@@ -191,7 +194,7 @@ test("a teammate's first prompt is its last line until it says or calls somethin
     );
   } finally {
     await srv.stop();
-    p.kill();
+    child.kill();
   }
 });
 
@@ -199,7 +202,7 @@ test(
   'a teammate\'s category is the type the lead spawned it as — never "teammate"; general-purpose when none was named (2026-11-18)',
   { timeout: 30_000 },
   async () => {
-    const p = standIn();
+    const child = standIn();
     const dir = tmpDir('peix-fx-');
 
     const fx = makeFixture(dir, [
@@ -209,7 +212,7 @@ test(
         prompt: 'as a team',
         reply: 'Team up.',
         at: yesterday(),
-        live: { pid: p.pid, startedAt: Date.now() - 3600_000 },
+        live: { pid: child.pid, startedAt: Date.now() - 3600_000 },
       },
     ]);
 
@@ -240,15 +243,17 @@ test(
     try {
       const rows = await waitFor(
         async () => {
-          const r = (await srv.api('api/sessions')).body.sessions.find(s => s.id === lead.id)?.agentRows;
+          const agentRows = (await srv.api('api/sessions')).body.sessions.find(
+            session => session.id === lead.id,
+          )?.agentRows;
 
-          return r?.length === 7 && r;
+          return agentRows?.length === 7 && agentRows;
         },
         { what: "the team's rows" },
       );
 
       assert.deepEqual(
-        Object.fromEntries(rows.map(r => [r.name, r.type])),
+        Object.fromEntries(rows.map(row => [row.name, row.type])),
         {
           ana: 'api',
           tomas: 'api',
@@ -262,7 +267,7 @@ test(
       );
     } finally {
       await srv.stop();
-      p.kill();
+      child.kill();
     }
   },
 );
@@ -271,7 +276,7 @@ test(
   "a teammate's own metadata names its category — spawnedAgentType — with no spawn call in sight (2026-11-18, v9)",
   { timeout: 30_000 },
   async () => {
-    const p = standIn();
+    const child = standIn();
     const dir = tmpDir('peix-fx-');
 
     const fx = makeFixture(dir, [
@@ -281,7 +286,7 @@ test(
         prompt: 'go',
         reply: 'Going.',
         at: yesterday(),
-        live: { pid: p.pid, startedAt: Date.now() - 3600_000 },
+        live: { pid: child.pid, startedAt: Date.now() - 3600_000 },
       },
     ]);
 
@@ -301,21 +306,23 @@ test(
     try {
       const rows = await waitFor(
         async () => {
-          const r = (await srv.api('api/sessions')).body.sessions.find(s => s.id === lead.id)?.agentRows;
+          const agentRows = (await srv.api('api/sessions')).body.sessions.find(
+            session => session.id === lead.id,
+          )?.agentRows;
 
-          return r?.length === 2 && r;
+          return agentRows?.length === 2 && agentRows;
         },
         { what: "the team's rows" },
       );
 
       assert.deepEqual(
-        Object.fromEntries(rows.map(r => [r.name, r.type])),
+        Object.fromEntries(rows.map(row => [row.name, row.type])),
         { 'sp-1': 'specifier', 'rv-1': 'evidence-reviewer' },
         "its record's spawnedAgentType, not its agentType (its own name)",
       );
     } finally {
       await srv.stop();
-      p.kill();
+      child.kill();
     }
   },
 );

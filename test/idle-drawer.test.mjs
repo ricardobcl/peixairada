@@ -16,11 +16,11 @@ test(
 
     try {
       // A page on each until both are tied to their chats — a drawer not yet tied is judged by its own start, and a slow
-      // shell had a's ended before its fake registered (2026-10-03) — then a's page leaves. Each page goes on as soon as
-      // its drawer is there (2026-10-13: waiting for both, a's sat alone while b's holder was still starting — slow with
+      // shell had drawerA's ended before its fake registered (2026-10-03) — then drawerA's page leaves. Each page goes on as soon as
+      // its drawer is there (2026-10-13: waiting for both, drawerA's sat alone while drawerB's holder was still starting — slow with
       // every test file spawning at once — and was ended before it was looked at).
-      const page = async t => {
-        const ws = new WebSocket(srv.ws(`api/terminals/${t.body.terminal.id}/ws`));
+      const page = async started => {
+        const ws = new WebSocket(srv.ws(`api/terminals/${started.body.terminal.id}/ws`));
 
         await new Promise((res, rej) => {
           ws.onopen = res;
@@ -31,26 +31,29 @@ test(
       };
 
       const start = async () => {
-        const t = await srv.post('api/terminals', { cwd: process.cwd(), cols: 90, rows: 24 });
+        const started = await srv.post('api/terminals', { cwd: process.cwd(), cols: 90, rows: 24 });
 
-        assert.equal(t.status, 201, JSON.stringify(t.body));
-        return [t, await page(t)];
+        assert.equal(started.status, 201, JSON.stringify(started.body));
+        return [started, await page(started)];
       };
 
-      const [[a, wa], [b, ws]] = await Promise.all([start(), start()]);
+      const [[drawerA, wa], [drawerB, ws]] = await Promise.all([start(), start()]);
 
-      await waitFor(async () => (await srv.terminals()).filter(t => t.sessionId).length === 2, {
+      await waitFor(async () => (await srv.terminals()).filter(term => term.sessionId).length === 2, {
         what: 'both fakes registered and tied to their drawers',
       });
 
       wa.close();
 
-      await waitFor(async () => (await srv.terminals()).find(t => t.id === a.body.terminal.id)?.exited != null, {
-        what: 'the drawer nobody looks at to be ended',
-      });
+      await waitFor(
+        async () => (await srv.terminals()).find(term => term.id === drawerA.body.terminal.id)?.exited != null,
+        {
+          what: 'the drawer nobody looks at to be ended',
+        },
+      );
 
       assert.match(srv.logText(), /idle 0 h with no page on it — ending it \(chat /);
-      const tb = (await srv.terminals()).find(t => t.id === b.body.terminal.id);
+      const tb = (await srv.terminals()).find(term => term.id === drawerB.body.terminal.id);
 
       assert.equal(tb.exited, null, 'the one with a page attached runs on');
       assert.ok(alive(tb.pid));

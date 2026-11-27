@@ -15,15 +15,15 @@ function applySplit() {
   if (!gs.includes(focusG)) focusG = gs[0]; // a group this chat has (2026-11-26): a tile of the chat left is none of two halves'
   postTiles(); // whether ⌥⌘⇧←→ move a tile now, for the app's forwarder
   if (zoomed.has(state.current) && (!on || zoomed.get(state.current) !== focusG)) zoomed.delete(state.current); // the keys left the half that filled the column
-  const z = zoomed.get(state.current) ?? null;
+  const zoomedGroup = zoomed.get(state.current) ?? null;
 
   $('#main').classList.toggle('split', on);
-  $('#groups').classList.toggle('stack', stack && z === null); // one half showing is laid out as a column, whichever it is
-  $('#groups').classList.toggle('zoomed', z !== null);
+  $('#groups').classList.toggle('stack', stack && zoomedGroup === null); // one half showing is laid out as a column, whichever it is
+  $('#groups').classList.toggle('zoomed', zoomedGroup !== null);
   $('#groups').classList.toggle('tiled', !!tree);
 
   if (tree) {
-    tileLayout(z !== null ? { g: z } : tree);
+    tileLayout(zoomedGroup !== null ? { g: zoomedGroup } : tree);
     return;
   }
 
@@ -37,16 +37,16 @@ function applySplit() {
       if (tm.g > 1) $(tm.el.grp).hidden = true;
     }
 
-    for (const d of tdivs) d.hidden = true;
+    for (const divider of tdivs) divider.hidden = true;
   }
 
-  $('#grp').hidden = z === 1;
-  $('#grpB').hidden = !on || z === 0;
-  $('#gsplit').hidden = !on || z !== null;
+  $('#grp').hidden = zoomedGroup === 1;
+  $('#grpB').hidden = !on || zoomedGroup === 0;
+  $('#gsplit').hidden = !on || zoomedGroup !== null;
   const at = Math.max(0.15, Math.min(0.85, (stack ? prefs.stackAt : prefs.splitAt) || 0.5));
 
-  $('#grp').style.flex = on && z === null ? `${at} 1 0` : '1 1 0';
-  $('#grpB').style.flex = z === 1 ? '1 1 0' : `${1 - at} 1 0`;
+  $('#grp').style.flex = on && zoomedGroup === null ? `${at} 1 0` : '1 1 0';
+  $('#grpB').style.flex = zoomedGroup === 1 ? '1 1 0' : `${1 - at} 1 0`;
 }
 
 // The tree as a grid (2026-11-25): its leaves cut the unit square, every cut a grid line, so each tile spans the tracks
@@ -56,16 +56,20 @@ function tileLayout(node) {
   applySplit.tiled = true;
   const rects = tileRects(node);
 
-  const q = v => Math.round(v * 1e4);
-  const lines = i => [...new Set(Object.values(rects).flatMap(r => [q(r[i]), q(r[i + 2])]))].sort((a, b) => a - b);
+  const quantize = value => Math.round(value * 1e4);
+
+  const lines = axis =>
+    [...new Set(Object.values(rects).flatMap(rect => [quantize(rect[axis]), quantize(rect[axis + 2])]))].sort(
+      (left, right) => left - right,
+    );
 
   const xs = lines(0);
   const ys = lines(1);
 
-  const tracks = l =>
-    l
+  const tracks = edges =>
+    edges
       .slice(1)
-      .map((v, i) => `minmax(0, ${v - l[i]}fr)`)
+      .map((edge, index) => `minmax(0, ${edge - edges[index]}fr)`)
       .join(' ');
 
   const box = $('#groups');
@@ -74,14 +78,14 @@ function tileLayout(node) {
   box.style.gridTemplateRows = tracks(ys);
 
   for (const tm of terms) {
-    const r = rects[tm.g];
+    const rect = rects[tm.g];
     const grp = $(tm.el.grp);
 
-    grp.hidden = !r;
+    grp.hidden = !rect;
     grp.style.flex = '';
 
-    if (r) {
-      grp.style.gridArea = `${ys.indexOf(q(r[1])) + 1} / ${xs.indexOf(q(r[0])) + 1} / ${ys.indexOf(q(r[3])) + 1} / ${xs.indexOf(q(r[2])) + 1}`;
+    if (rect) {
+      grp.style.gridArea = `${ys.indexOf(quantize(rect[1])) + 1} / ${xs.indexOf(quantize(rect[0])) + 1} / ${ys.indexOf(quantize(rect[3])) + 1} / ${xs.indexOf(quantize(rect[2])) + 1}`;
     }
   }
 
@@ -93,60 +97,71 @@ function tileLayout(node) {
 // are laid out — a frame on, and whenever a tile changes size — never in the same pass as the layout that moves them.
 const tdivs = [];
 
-const splitsOf = (n, path = '') =>
-  !n || 'g' in n ? [] : [{ n, path }, ...splitsOf(n.a, `${path}a`), ...splitsOf(n.b, `${path}b`)];
+const splitsOf = (node, path = '') =>
+  !node || 'g' in node ? [] : [{ n: node, path }, ...splitsOf(node.a, `${path}a`), ...splitsOf(node.b, `${path}b`)];
 
-const nodeAt = (n, path) => [...path].reduce((x, c) => (x && !('g' in x) ? x[c] : null), n);
+const nodeAt = (node, path) =>
+  [...path].reduce((current, side) => (current && !('g' in current) ? current[side] : null), node);
 
 /** A subtree's box in #groups' own coordinates, from its tiles'. */
-function boxOf(n, br) {
-  const rs = leavesOf(n).map(g => $(GEL[g].grp).getBoundingClientRect());
+function boxOf(node, br) {
+  const rs = leavesOf(node).map(group => $(GEL[group].grp).getBoundingClientRect());
 
   return {
-    l: Math.min(...rs.map(r => r.left)) - br.left,
-    t: Math.min(...rs.map(r => r.top)) - br.top,
-    r: Math.max(...rs.map(r => r.right)) - br.left,
-    b: Math.max(...rs.map(r => r.bottom)) - br.top,
+    l: Math.min(...rs.map(rect => rect.left)) - br.left,
+    t: Math.min(...rs.map(rect => rect.top)) - br.top,
+    r: Math.max(...rs.map(rect => rect.right)) - br.left,
+    b: Math.max(...rs.map(rect => rect.bottom)) - br.top,
   };
 }
 
 function placeDividers() {
   dividersSoon.f = 0;
 
-  const s = state.sessions.get(state.current);
-  const tree = isTiled(s) && !zoomed.has(s.id) ? trees.get(s.id) : null;
+  const session = state.sessions.get(state.current);
+  const tree = isTiled(session) && !zoomed.has(session.id) ? trees.get(session.id) : null;
   const list = splitsOf(tree);
 
   const box = $('#groups');
   const br = box.getBoundingClientRect();
 
   while (tdivs.length < list.length) {
-    const d = html2el('<div class="tdiv" role="separator" title="Drag to resize these tiles" hidden></div>');
+    const divider = html2el('<div class="tdiv" role="separator" title="Drag to resize these tiles" hidden></div>');
 
-    box.append(d);
-    tdivs.push(d);
+    box.append(divider);
+    tdivs.push(divider);
   }
 
-  tdivs.forEach((d, i) => {
-    const x = list[i];
+  tdivs.forEach((divider, index) => {
+    const split = list[index];
 
-    d.hidden = !x;
-    if (!x) return;
+    divider.hidden = !split;
+    if (!split) return;
 
-    const a = boxOf(x.n.a, br);
-    const b = boxOf(x.n.b, br);
-    const all = boxOf(x.n, br);
-    const row = x.n.d === 'row';
+    const boxA = boxOf(split.n.a, br);
+    const boxB = boxOf(split.n.b, br);
+    const all = boxOf(split.n, br);
+    const row = split.n.d === 'row';
 
-    d.dataset.path = x.path;
-    d.classList.toggle('col', !row);
-    d.setAttribute('aria-orientation', row ? 'vertical' : 'horizontal');
+    divider.dataset.path = split.path;
+    divider.classList.toggle('col', !row);
+    divider.setAttribute('aria-orientation', row ? 'vertical' : 'horizontal');
 
     Object.assign(
-      d.style,
+      divider.style,
       row
-        ? { left: `${a.r}px`, width: `${Math.max(1, b.l - a.r)}px`, top: `${all.t}px`, height: `${all.b - all.t}px` }
-        : { top: `${a.b}px`, height: `${Math.max(1, b.t - a.b)}px`, left: `${all.l}px`, width: `${all.r - all.l}px` },
+        ? {
+            left: `${boxA.r}px`,
+            width: `${Math.max(1, boxB.l - boxA.r)}px`,
+            top: `${all.t}px`,
+            height: `${all.b - all.t}px`,
+          }
+        : {
+            top: `${boxA.b}px`,
+            height: `${Math.max(1, boxB.t - boxA.b)}px`,
+            left: `${all.l}px`,
+            width: `${all.r - all.l}px`,
+          },
     );
   });
 }
@@ -162,26 +177,26 @@ function dividersSoon() {
 
   onGroup(tm => ro.observe($(tm.el.grp)));
 
-  $('#groups').addEventListener('pointerdown', e => {
-    const d = e.target.closest?.('.tdiv');
-    const s = state.sessions.get(state.current);
+  $('#groups').addEventListener('pointerdown', event => {
+    const divider = event.target.closest?.('.tdiv');
+    const session = state.sessions.get(state.current);
 
-    if (!d || !isTiled(s)) return;
-    const n = nodeAt(trees.get(s.id), d.dataset.path);
+    if (!divider || !isTiled(session)) return;
+    const node = nodeAt(trees.get(session.id), divider.dataset.path);
 
-    if (!n || 'g' in n) return;
-    e.preventDefault();
-    e.stopPropagation();
-    d.classList.add('drag');
+    if (!node || 'g' in node) return;
+    event.preventDefault();
+    event.stopPropagation();
+    divider.classList.add('drag');
     document.body.style.userSelect = 'none';
 
-    const at = boxOf(n, $('#groups').getBoundingClientRect());
+    const at = boxOf(node, $('#groups').getBoundingClientRect());
     const br0 = $('#groups').getBoundingClientRect();
 
     let snapped = false;
 
     const move = ev => {
-      const row = n.d === 'row';
+      const row = node.d === 'row';
       const len = row ? at.r - at.l : at.b - at.t;
 
       const raw = Math.max(
@@ -193,7 +208,7 @@ function dividersSoon() {
 
       if (near && !snapped) haptic('alignment');
       snapped = near;
-      n.r = near ? 0.5 : raw;
+      node.r = near ? 0.5 : raw;
       applySplit();
     };
 
@@ -203,7 +218,7 @@ function dividersSoon() {
     const up = () => {
       removeEventListener('pointermove', move);
       for (const ev of ends) removeEventListener(ev, up);
-      d.classList.remove('drag');
+      divider.classList.remove('drag');
       document.body.style.userSelect = '';
       keepTabsSoon();
       fitTerm();
@@ -215,13 +230,13 @@ function dividersSoon() {
 }
 
 /** The half the keys are in fills the column, or the two come back. False with nothing split. */
-function toggleZoom(s) {
-  if (!isSplit(s)) return false;
-  if (zoomed.get(s.id) === focusG) zoomed.delete(s.id);
-  else zoomed.set(s.id, focusG);
-  syncTerm(s);
+function toggleZoom(session) {
+  if (!isSplit(session)) return false;
+  if (zoomed.get(session.id) === focusG) zoomed.delete(session.id);
+  else zoomed.set(session.id, focusG);
+  syncTerm(session);
 
-  if (!isPaneTab(tabOf(s))) {
+  if (!isPaneTab(tabOf(session))) {
     focusBoard();
     focusTerm();
   } // a page keeps the keys: the shell gives them to it again
@@ -230,59 +245,59 @@ function toggleZoom(s) {
 }
 
 /** Which half the keys are in. Re-renders the strips (the rule moves) and tells the shell which page to focus. */
-function focusGroup(g) {
-  const to = splitNow() ? g : 0;
+function focusGroup(group) {
+  const to = splitNow() ? group : 0;
 
   if (to === focusG || (tiledNow() && !leavesOf(trees.get(state.current)).includes(to))) return;
   focusG = to;
   if (zoomed.has(state.current)) applySplit(); // into the half behind the one filling the column: both come back
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  renderTabs(s || null);
-  postPane(s || null);
-  if (s) renderHead(s);
+  renderTabs(session || null);
+  postPane(session || null);
+  if (session) renderHead(session);
 }
 
 function splitOn(stack = false) {
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (!s) return noChat();
-  splitChat(s, false); // asked for by hand: it keeps its empty half
-  if (stack) stacked.add(s.id);
-  else stacked.delete(s.id);
+  if (!session) return noChat();
+  splitChat(session, false); // asked for by hand: it keeps its empty half
+  if (stack) stacked.add(session.id);
+  else stacked.delete(session.id);
   applySplit();
   focusG = 1;
-  syncTerm(s);
-  renderHead(s);
+  syncTerm(session);
+  renderHead(session);
   focusBoard();
   focusTerm();
 }
 
 /** One half closed — ⌘W on the one the keys are in, or the ⨯ in a half's own strip. The other half's tab is
       what the column keeps; a half that was showing nothing leaves the closer's tab behind rather than none. */
-function closeHalf(g) {
-  const s = state.sessions.get(state.current) || null;
+function closeHalf(half) {
+  const session = state.sessions.get(state.current) || null;
 
-  if (s && isTiled(s) && groupsOf(s).length > 2) {
-    closeTile(s, g);
-    syncTerm(s);
-    renderHead(s);
+  if (session && isTiled(session) && groupsOf(session).length > 2) {
+    closeTile(session, half);
+    syncTerm(session);
+    renderHead(session);
     focusBoard();
     focusTerm();
     return;
   } // a tile: the rest stay
 
-  if (s) {
-    const p = placeOf(s);
-    const o = groupsOf(s).find(x => x !== g) ?? (g ? 0 : 1);
+  if (session) {
+    const place = placeOf(session);
+    const other = groupsOf(session).find(group => group !== half) ?? (half ? 0 : 1);
 
-    unsplit(s, p[o] || p[g]);
+    unsplit(session, place[other] || place[half]);
   }
 
   focusG = 0;
   applySplit();
-  syncTerm(s);
-  if (s) renderHead(s);
+  syncTerm(session);
+  if (session) renderHead(session);
   focusBoard();
   focusTerm();
 }
@@ -299,16 +314,16 @@ function hotClose() {
     return true;
   }
 
-  const s = state.sessions.get(state.current);
-  const k = s && tabOf(s);
+  const session = state.sessions.get(state.current);
+  const key = session && tabOf(session);
 
-  if (k && k !== 'chat') {
-    dropTab(s, k);
+  if (key && key !== 'chat') {
+    dropTab(session, key);
     return true;
   }
 
   if (!splitNow()) {
-    if (prefs.space && s) {
+    if (prefs.space && session) {
       spCloseChat();
       return true;
     }
@@ -330,56 +345,60 @@ function hotOnlyHalf() {
     return true;
   }
 
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (isTiled(s) && groupsOf(s).length > 2) {
-    unsplit(s, placeOf(s)[focusG]);
+  if (isTiled(session) && groupsOf(session).length > 2) {
+    unsplit(session, placeOf(session)[focusG]);
     focusG = 0;
     applySplit();
-    syncTerm(s);
-    renderHead(s);
+    syncTerm(session);
+    renderHead(session);
     focusBoard();
     focusTerm();
     return true;
   } // tiles: all but this one
 
-  closeHalf(groupsOf(s).find(x => x !== focusG) ?? (focusG ? 0 : 1));
+  closeHalf(groupsOf(session).find(group => group !== focusG) ?? (focusG ? 0 : 1));
   return true;
 }
 
 /** ⌘1 / ⌘2 (side by side) and ⌥⌘1 / ⌥⌘2 (one over the other): the keys to that pane, the split made or turned first. */
-function hotGroup(g, stack = false) {
-  if (g === 1 && !splitNow()) return splitOn(stack);
+function hotGroup(group, stack = false) {
+  if (group === 1 && !splitNow()) return splitOn(stack);
   if (!splitNow()) return; // ⌘1 / ⌥⌘1 with one half is where you already are
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (isTiled(s)) {
+  if (isTiled(session)) {
     // tiles: the digit is the tile's place in the tree; the modifier turns the split it is half of, and the next one
-    const to = groupsOf(s)[g];
+    const to = groupsOf(session)[group];
 
     if (to === undefined) return;
     focusGroup(to);
-    if (stacked.has(s.id) !== stack || (parentOf(trees.get(s.id), to)?.d === 'col') !== stack) stackSplit(s, stack);
+
+    if (stacked.has(session.id) !== stack || (parentOf(trees.get(session.id), to)?.d === 'col') !== stack) {
+      stackSplit(session, stack);
+    }
+
     focusBoard();
     focusTerm();
     return;
   }
 
-  if (s && stacked.has(s.id) !== stack) stackSplit(s, stack);
-  focusGroup(g);
+  if (session && stacked.has(session.id) !== stack) stackSplit(session, stack);
+  focusGroup(group);
   focusBoard();
   focusTerm();
 }
 
 /** This chat's halves the other way round — one over the other, or side by side again. syncTerm re-attaches
       nothing (the same terminals in the same halves) and reposts the pane; the terminals refit to their new bodies. */
-function stackSplit(s, on) {
-  if (on) stacked.add(s.id);
-  else stacked.delete(s.id);
-  const par = isTiled(s) && parentOf(trees.get(s.id), focusG);
+function stackSplit(session, on) {
+  if (on) stacked.add(session.id);
+  else stacked.delete(session.id);
+  const par = isTiled(session) && parentOf(trees.get(session.id), focusG);
 
   if (par) par.d = on ? 'col' : 'row'; // tiled: the split the keys' tile is half of
-  syncTerm(s);
+  syncTerm(session);
   fitTerm();
 }
 
@@ -398,39 +417,39 @@ const TILE_DIRS = {
 /** The tile next to g that way, as i3's focus has it (2026-11-25, later): of those sharing its edge and its span, the
  *  one the keys were in last (`tileSeen`) — i3's focus stack —, else the first: the topmost sideways, the leftmost up
  *  or down. */
-function tileToward(s, tree, g, dir) {
-  const R = tileRects(tree);
-  const c = R[g];
+function tileToward(session, tree, group, dir) {
+  const rects = tileRects(tree);
+  const ownRect = rects[group];
   const [ax, sg] = TILE_DIRS[dir];
-  const o = 1 - ax;
-  const E = 1e-4;
+  const crossAxis = 1 - ax;
+  const EPSILON = 1e-4;
 
-  if (!c) return null;
+  if (!ownRect) return null;
 
-  const seen = tileSeen.get(s.id) || [];
+  const seen = tileSeen.get(session.id) || [];
 
-  const last = x => {
-    const i = seen.indexOf(x);
+  const last = candidate => {
+    const index = seen.indexOf(candidate);
 
-    return i < 0 ? Infinity : i;
+    return index < 0 ? Infinity : index;
   };
 
-  const near = Object.entries(R)
-    .map(([k, r]) => ({
-      g: +k,
-      first: r[o],
-      gap: sg > 0 ? r[ax] - c[ax + 2] : c[ax] - r[ax + 2],
-      over: Math.min(r[o + 2], c[o + 2]) - Math.max(r[o], c[o]),
+  const near = Object.entries(rects)
+    .map(([key, rect]) => ({
+      g: +key,
+      first: rect[crossAxis],
+      gap: sg > 0 ? rect[ax] - ownRect[ax + 2] : ownRect[ax] - rect[ax + 2],
+      over: Math.min(rect[crossAxis + 2], ownRect[crossAxis + 2]) - Math.max(rect[crossAxis], ownRect[crossAxis]),
     }))
-    .filter(x => x.g !== g && Math.abs(x.gap) < E && x.over > E)
-    .sort((a, b) => last(a.g) - last(b.g) || a.first - b.first);
+    .filter(tile => tile.g !== group && Math.abs(tile.gap) < EPSILON && tile.over > EPSILON)
+    .sort((left, right) => last(left.g) - last(right.g) || left.first - right.first);
 
   return near[0]?.g ?? null;
 }
 
 function hotTileGo(dir) {
-  const s = state.sessions.get(state.current);
-  const to = tileToward(s, trees.get(s.id) || halvesTree(s), focusG, dir);
+  const session = state.sessions.get(state.current);
+  const to = tileToward(session, trees.get(session.id) || halvesTree(session), focusG, dir);
 
   if (to === null) return note($('#shead'), `No tile ${TILE_DIRS[dir][2]}`);
   focusGroup(to);
@@ -445,103 +464,104 @@ function hotTileGo(dir) {
  *  out of a stack, a column of its own beside it. None: the whole column that way, a split round all of it. Every
  *  leaf keeps its group, so no terminal is attached again; each refits. */
 function hotTileMove(dir) {
-  const s = state.sessions.get(state.current);
-  const g = focusG;
-  const tree = trees.get(s.id) || halvesTree(s);
+  const session = state.sessions.get(state.current);
+  const group = focusG;
+  const tree = trees.get(session.id) || halvesTree(session);
   const [, , words, edge] = TILE_DIRS[dir];
 
-  const next = i3Move(tree, g, dir, tileSeen.get(s.id) || []);
+  const next = i3Move(tree, group, dir, tileSeen.get(session.id) || []);
 
   if (!next) return note($('#shead'), `It is the column's whole ${edge} already`);
-  if (!tilesFit(s, next)) return note($('#shead'), `No room for it ${words}`);
-  trees.set(s.id, next);
-  zoomed.delete(s.id);
+  if (!tilesFit(session, next)) return note($('#shead'), `No room for it ${words}`);
+  trees.set(session.id, next);
+  zoomed.delete(session.id);
   applySplit();
-  syncTerm(s);
+  syncTerm(session);
   fitTerm();
   focusBoard();
   focusTerm();
 }
 
 // i3's containers over the binary tree: { g } | { d, kids: [{ n, w }] }, w each part's share of its list (summing to 1).
-const clampR = r => Math.max(0.15, Math.min(0.85, r || 0.5));
+const clampR = ratio => Math.max(0.15, Math.min(0.85, ratio || 0.5));
 
-function toKids(n) {
-  if ('g' in n) return { g: n.g };
+function toKids(node) {
+  if ('g' in node) return { g: node.g };
 
   const kids = [];
 
-  const add = (x, w) => {
-    if (!('g' in x) && x.d === n.d) {
-      const r = clampR(x.r);
+  const add = (subtree, weight) => {
+    if (!('g' in subtree) && subtree.d === node.d) {
+      const ratio = clampR(subtree.r);
 
-      add(x.a, w * r);
-      add(x.b, w * (1 - r));
-    } else kids.push({ n: toKids(x), w });
+      add(subtree.a, weight * ratio);
+      add(subtree.b, weight * (1 - ratio));
+    } else kids.push({ n: toKids(subtree), w: weight });
   };
 
-  add(n, 1);
-  return { d: n.d, kids };
+  add(node, 1);
+  return { d: node.d, kids };
 }
 
-function fromKids(n) {
-  if ('g' in n) return { g: n.g };
-  if (n.kids.length === 1) return fromKids(n.kids[0].n);
+function fromKids(node) {
+  if ('g' in node) return { g: node.g };
+  if (node.kids.length === 1) return fromKids(node.kids[0].n);
 
-  const sum = n.kids.reduce((x, k) => x + k.w, 0);
-  const [k0, ...rest] = n.kids;
+  const sum = node.kids.reduce((total, kid) => total + kid.w, 0);
+  const [k0, ...rest] = node.kids;
 
-  return { d: n.d, r: k0.w / sum, a: fromKids(k0.n), b: fromKids({ d: n.d, kids: rest }) };
+  return { d: node.d, r: k0.w / sum, a: fromKids(k0.n), b: fromKids({ d: node.d, kids: rest }) };
 }
 
 /** A list as i3 keeps it: a part of one, the part; a part running the same way, its parts in its place. */
-function tidyKids(n) {
-  if ('g' in n) return n;
+function tidyKids(node) {
+  if ('g' in node) return node;
   const kids = [];
 
-  for (const k of n.kids) {
-    const c = tidyKids(k.n);
+  for (const kid of node.kids) {
+    const child = tidyKids(kid.n);
 
-    if (!('g' in c) && c.d === n.d) for (const x of c.kids) kids.push({ n: x.n, w: x.w * k.w });
-    else kids.push({ n: c, w: k.w });
+    if (!('g' in child) && child.d === node.d) {
+      for (const inner of child.kids) kids.push({ n: inner.n, w: inner.w * kid.w });
+    } else kids.push({ n: child, w: kid.w });
   }
 
   if (kids.length === 1) return kids[0].n;
-  const sum = kids.reduce((x, k) => x + k.w, 0);
+  const sum = kids.reduce((total, kid) => total + kid.w, 0);
 
-  for (const k of kids) k.w /= sum;
-  return { d: n.d, kids };
+  for (const kid of kids) kid.w /= sum;
+  return { d: node.d, kids };
 }
 
-const kidLeaves = n => ('g' in n ? [n.g] : n.kids.flatMap(k => kidLeaves(k.n)));
+const kidLeaves = node => ('g' in node ? [node.g] : node.kids.flatMap(kid => kidLeaves(kid.n)));
 
-const kidOut = (C, i) => {
-  C.kids.splice(i, 1);
-  const sum = C.kids.reduce((x, k) => x + k.w, 0) || 1;
+const kidOut = (list, index) => {
+  list.kids.splice(index, 1);
+  const sum = list.kids.reduce((total, kid) => total + kid.w, 0) || 1;
 
-  for (const k of C.kids) k.w /= sum;
+  for (const kid of list.kids) kid.w /= sum;
 };
 
-const kidIn = (C, i, n) => {
-  const m = C.kids.length;
+const kidIn = (list, index, node) => {
+  const count = list.kids.length;
 
-  for (const k of C.kids) k.w *= m / (m + 1);
-  C.kids.splice(i, 0, { n, w: 1 / (m + 1) });
+  for (const kid of list.kids) kid.w *= count / (count + 1);
+  list.kids.splice(index, 0, { n: node, w: 1 / (count + 1) });
 }; // an even share, as i3 gives
 
 /** The tree with g moved that way as i3 would, or null when it is that whole side already. */
-function i3Move(tree, g, dir, seen) {
+function i3Move(tree, group, dir, seen) {
   const [ax, sg] = TILE_DIRS[dir];
-  const d = ax ? 'col' : 'row';
+  const direction = ax ? 'col' : 'row';
   const root = toKids(tree);
   const path = [];
 
-  const find = n => {
-    if ('g' in n) return n.g === g;
+  const find = node => {
+    if ('g' in node) return node.g === group;
 
-    for (let i = 0; i < n.kids.length; i++) {
-      path.push({ n, i });
-      if (find(n.kids[i].n)) return true;
+    for (let kidIndex = 0; kidIndex < node.kids.length; kidIndex++) {
+      path.push({ n: node, i: kidIndex });
+      if (find(node.kids[kidIndex].n)) return true;
       path.pop();
     }
 
@@ -550,38 +570,38 @@ function i3Move(tree, g, dir, seen) {
 
   if (!find(root)) return null;
 
-  const { n: P, i } = path.at(-1);
-  const leaf = P.kids[i].n;
-  const T = P.d === d ? P.kids[i + sg] : null;
+  const { n: parent, i: index } = path.at(-1);
+  const leaf = parent.kids[index].n;
+  const neighbor = parent.d === direction ? parent.kids[index + sg] : null;
 
-  if (T && 'g' in T.n) {
-    P.kids[i + sg] = { n: leaf, w: T.w };
-    P.kids[i] = { n: T.n, w: P.kids[i].w };
+  if (neighbor && 'g' in neighbor.n) {
+    parent.kids[index + sg] = { n: leaf, w: neighbor.w };
+    parent.kids[index] = { n: neighbor.n, w: parent.kids[index].w };
     return fromKids(tidyKids(root));
   } // its neighbour: trade places, the room where it was
 
-  if (T) {
+  if (neighbor) {
     // a list across the arrow: into it, after the part the keys were in last
-    const C = T.n;
-    const ls = kidLeaves(C);
-    const last = seen.find(x => ls.includes(x)) ?? ls.at(-1);
-    const j = C.kids.findIndex(k => kidLeaves(k.n).includes(last));
+    const list = neighbor.n;
+    const ls = kidLeaves(list);
+    const last = seen.find(candidate => ls.includes(candidate)) ?? ls.at(-1);
+    const kidIndex = list.kids.findIndex(kid => kidLeaves(kid.n).includes(last));
 
-    kidOut(P, i);
-    kidIn(C, j + 1, leaf);
+    kidOut(parent, index);
+    kidIn(list, kidIndex + 1, leaf);
     return fromKids(tidyKids(root));
   }
 
-  let k = path.length - 2;
+  let depth = path.length - 2;
 
-  while (k >= 0 && path[k].n.d !== d) k--; // out: the nearest list the arrow's way above
-  if (k < 0 && P === root && P.d === d) return null; // its end already
-  kidOut(P, i);
+  while (depth >= 0 && path[depth].n.d !== direction) depth--; // out: the nearest list the arrow's way above
+  if (depth < 0 && parent === root && parent.d === direction) return null; // its end already
+  kidOut(parent, index);
 
-  if (k >= 0) {
-    const { n: A, i: j } = path[k];
+  if (depth >= 0) {
+    const { n: ancestor, i: ancestorIndex } = path[depth];
 
-    kidIn(A, sg > 0 ? j + 1 : j, leaf);
+    kidIn(ancestor, sg > 0 ? ancestorIndex + 1 : ancestorIndex, leaf);
     return fromKids(tidyKids(root));
   }
 
@@ -592,15 +612,15 @@ function i3Move(tree, g, dir, seen) {
     { n: leaf, w: 0.5 },
   ];
 
-  return fromKids(tidyKids({ d, kids: sg > 0 ? half : half.reverse() })); // none: the column's whole side, round the rest
+  return fromKids(tidyKids({ d: direction, kids: sg > 0 ? half : half.reverse() })); // none: the column's whole side, round the rest
 }
 
 /** The tiles tidied (2026-11-25): groups gs cut in turn, the first along the column's longer side, each the first
  *  part — the left, or the top — of the room left and the rest in its second, the cuts taking turns: the bigger tiles
  *  left and up, the smaller ones winding down to the bottom right. Every cut even. */
-function tidyTree(gs, d) {
+function tidyTree(gs, direction) {
   if (gs.length === 1) return { g: gs[0] };
-  return { d, r: 0.5, a: { g: gs[0] }, b: tidyTree(gs.slice(1), d === 'row' ? 'col' : 'row') };
+  return { d: direction, r: 0.5, a: { g: gs[0] }, b: tidyTree(gs.slice(1), direction === 'row' ? 'col' : 'row') };
 }
 
 /** Every tile of the open chat put back in order, Claude's first, then the one the keys are in, then the rest in the
@@ -608,50 +628,50 @@ function tidyTree(gs, d) {
  *  group (its tabs, its terminal attached), the keys stay where they were; the halves of an untiled split go side by
  *  side, even — Claude's dragged to the second, they trade places as two tiles do (2026-11-26). */
 function hotTidy() {
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (!s) return noChat();
+  if (!session) return noChat();
   if (!prefs.autoTile) return note($('#shead'), 'Auto-tiling is off — Settings › Terminal › Auto-tiling');
-  if (!isSplit(s)) return note($('#shead'), 'One tile — nothing to tidy');
+  if (!isSplit(session)) return note($('#shead'), 'One tile — nothing to tidy');
 
-  const b = $('#groups').getBoundingClientRect();
-  const d = b.width >= b.height ? 'row' : 'col';
+  const rect = $('#groups').getBoundingClientRect();
+  const direction = rect.width >= rect.height ? 'row' : 'col';
 
-  if (!isTiled(s) && homeOf(s, 'chat') === 0) {
-    if (d === 'row') prefs.splitAt = 0.5;
+  if (!isTiled(session) && homeOf(session, 'chat') === 0) {
+    if (direction === 'row') prefs.splitAt = 0.5;
     else prefs.stackAt = 0.5;
     savePrefs();
-    zoomed.delete(s.id);
-    if (stacked.has(s.id) !== (d === 'col')) return stackSplit(s, d === 'col');
+    zoomed.delete(session.id);
+    if (stacked.has(session.id) !== (direction === 'col')) return stackSplit(session, direction === 'col');
     applySplit();
     fitTerm();
     return;
   }
 
-  const gs = groupsOf(s);
-  const cg = gs.find(g => keysIn(s, g).includes('chat')) ?? gs[0];
+  const gs = groupsOf(session);
+  const cg = gs.find(group => keysIn(session, group).includes('chat')) ?? gs[0];
 
   const fg = gs.includes(focusG) && focusG !== cg ? [focusG] : []; // the keys' tile next: the biggest after claude's
-  const next = tidyTree([cg, ...fg, ...gs.filter(g => g !== cg && !fg.includes(g))], d);
+  const next = tidyTree([cg, ...fg, ...gs.filter(group => group !== cg && !fg.includes(group))], direction);
 
-  if (!tilesFit(s, next)) return note($('#shead'), `No room to tidy ${gs.length} tiles`);
-  trees.set(s.id, next);
-  zoomed.delete(s.id);
+  if (!tilesFit(session, next)) return note($('#shead'), `No room to tidy ${gs.length} tiles`);
+  trees.set(session.id, next);
+  zoomed.delete(session.id);
   applySplit();
-  syncTerm(s);
+  syncTerm(session);
   fitTerm();
   focusBoard();
   focusTerm();
 }
 
 /** ⌘D side by side, ⇧⌘D one over the other (2026-11-25, iTerm's pair): a new zsh in a tile cut from this one that way. */
-function hotSplitTile(d) {
-  const s = state.sessions.get(state.current);
+function hotSplitTile(direction) {
+  const session = state.sessions.get(state.current);
 
-  if (!s) return noChat();
+  if (!session) return noChat();
   if (!prefs.autoTile) return note($('#shead'), 'Auto-tiling is off — Settings › Terminal › Auto-tiling');
   focusBoard();
-  startShell(s, true, d);
+  startShell(session, true, direction);
 }
 
 // A tile by the mouse (2026-11-26, i3's floating modifier): with ⌥⌘⇧ held, Auto-tiling on and the column split, the
@@ -660,17 +680,19 @@ function hotSplitTile(d) {
 // on that side of it (the room it left closing up); on its middle or its strip, its tabs join that tile's, as a tab
 // dropped there does, and it folds (2026-11-26, later). Where it would go is shown while held (#tdrop).
 /** The tree with tile g dropped at a side of tile t: out of where it was, a split of t with g there. */
-function tileDropTree(tree, g, t, side) {
-  const rest = treeMap(tree, g, () => null);
-  const d = side === 'left' || side === 'right' ? 'row' : 'col';
+function tileDropTree(tree, group, target, side) {
+  const rest = treeMap(tree, group, () => null);
+  const direction = side === 'left' || side === 'right' ? 'row' : 'col';
   const before = side === 'left' || side === 'top';
 
-  return treeMap(rest, t, leaf => (before ? { d, r: 0.5, a: { g }, b: leaf } : { d, r: 0.5, a: leaf, b: { g } }));
+  return treeMap(rest, target, leaf =>
+    before ? { d: direction, r: 0.5, a: { g: group }, b: leaf } : { d: direction, r: 0.5, a: leaf, b: { g: group } },
+  );
 }
 
 {
-  const grabbing = e => !!(e.metaKey && e.altKey && e.shiftKey && !e.ctrlKey) && tileKeysOn();
-  const grabSync = e => document.body.classList.toggle('tilegrab', grabbing(e));
+  const grabbing = event => !!(event.metaKey && event.altKey && event.shiftKey && !event.ctrlKey) && tileKeysOn();
+  const grabSync = event => document.body.classList.toggle('tilegrab', grabbing(event));
 
   for (const ev of ['keydown', 'keyup']) window.addEventListener(ev, grabSync, true);
   window.addEventListener('blur', () => document.body.classList.remove('tilegrab'));
@@ -681,66 +703,66 @@ function tileDropTree(tree, g, t, side) {
     document.body.appendChild(Object.assign(document.createElement('div'), { id: 'tdrop', hidden: true }));
 
   /** Where a tile held at (x, y) would go: the tile under it, and a side of it or none (into its tabs); null over its own. */
-  const dropAt = (x, y) => {
-    const grp = document.elementFromPoint(x, y)?.closest('#groups > .grp');
+  const dropAt = (pointerX, pointerY) => {
+    const grp = document.elementFromPoint(pointerX, pointerY)?.closest('#groups > .grp');
 
     if (!grp || grp.hidden || +grp.dataset.g === lift.g) return null;
 
-    const t = +grp.dataset.g;
-    const r = grp.getBoundingClientRect();
-    const fx = (x - r.left) / r.width;
-    const fy = (y - r.top) / r.height;
+    const target = +grp.dataset.g;
+    const rect = grp.getBoundingClientRect();
+    const fx = (pointerX - rect.left) / rect.width;
+    const fy = (pointerY - rect.top) / rect.height;
 
     const [side, near] = [
       ['left', fx],
       ['right', 1 - fx],
       ['top', fy],
       ['bottom', 1 - fy],
-    ].sort((a, b) => a[1] - b[1])[0];
+    ].sort((left, right) => left[1] - right[1])[0];
 
-    const s = state.sessions.get(state.current);
-    const edge = near <= 0.25 && !document.elementFromPoint(x, y).closest('.ptabs') ? side : null;
-    const next = edge ? tileDropTree(trees.get(s.id) || halvesTree(s), lift.g, t, edge) : null;
+    const session = state.sessions.get(state.current);
+    const edge = near <= 0.25 && !document.elementFromPoint(pointerX, pointerY).closest('.ptabs') ? side : null;
+    const next = edge ? tileDropTree(trees.get(session.id) || halvesTree(session), lift.g, target, edge) : null;
 
-    if (next && !tilesFit(s, next)) return null;
+    if (next && !tilesFit(session, next)) return null;
 
     const box =
       edge === 'left'
-        ? [r.left, r.top, r.width / 2, r.height]
+        ? [rect.left, rect.top, rect.width / 2, rect.height]
         : edge === 'right'
-          ? [r.left + r.width / 2, r.top, r.width / 2, r.height]
+          ? [rect.left + rect.width / 2, rect.top, rect.width / 2, rect.height]
           : edge === 'top'
-            ? [r.left, r.top, r.width, r.height / 2]
+            ? [rect.left, rect.top, rect.width, rect.height / 2]
             : edge === 'bottom'
-              ? [r.left, r.top + r.height / 2, r.width, r.height / 2]
-              : [r.left, r.top, r.width, r.height];
+              ? [rect.left, rect.top + rect.height / 2, rect.width, rect.height / 2]
+              : [rect.left, rect.top, rect.width, rect.height];
 
-    return { t, side: edge || 'into', next, box };
+    return { t: target, side: edge || 'into', next, box };
   };
 
   // the two intentions drawn as a tab's drag draws them (2026-11-26): a tile moved, the solid half it would take
   // (#tdrop); its tabs into a group, the tile's own dashed outline (.grp.drop)
-  const show = z => {
+  const show = zone => {
     const el = zoneEl();
-    const into = z?.side === 'into';
+    const into = zone?.side === 'into';
 
-    el.hidden = !z || into;
+    el.hidden = !zone || into;
 
-    for (const x of document.querySelectorAll('#groups > .grp.drop')) {
-      x.classList.toggle('drop', into && +x.dataset.g === z.t);
+    for (const tile of document.querySelectorAll('#groups > .grp.drop')) {
+      tile.classList.toggle('drop', into && +tile.dataset.g === zone.t);
     }
 
-    if (into && GEL[z.t]) $(GEL[z.t].grp).classList.add('drop');
-    if (!z || into) return;
+    if (into && GEL[zone.t]) $(GEL[zone.t].grp).classList.add('drop');
+    if (!zone || into) return;
 
     Object.assign(el.style, {
-      left: `${z.box[0]}px`,
-      top: `${z.box[1]}px`,
-      width: `${z.box[2]}px`,
-      height: `${z.box[3]}px`,
+      left: `${zone.box[0]}px`,
+      top: `${zone.box[1]}px`,
+      width: `${zone.box[2]}px`,
+      height: `${zone.box[3]}px`,
     });
 
-    el.dataset.side = z.side;
+    el.dataset.side = zone.side;
   };
 
   const end = () => {
@@ -754,14 +776,14 @@ function tileDropTree(tree, g, t, side) {
   // capture: before a terminal's own mousedown, which would start a selection
   $('#groups').addEventListener(
     'pointerdown',
-    e => {
-      if (e.button !== 0 || !grabbing(e) || e.target.closest('.tdiv')) return;
-      const grp = e.target.closest('#groups > .grp');
+    event => {
+      if (event.button !== 0 || !grabbing(event) || event.target.closest('.tdiv')) return;
+      const grp = event.target.closest('#groups > .grp');
 
       if (!grp) return;
-      e.preventDefault();
-      e.stopPropagation();
-      lift = { g: +grp.dataset.g, x: e.clientX, y: e.clientY, moved: false, zone: null };
+      event.preventDefault();
+      event.stopPropagation();
+      lift = { g: +grp.dataset.g, x: event.clientX, y: event.clientY, moved: false, zone: null };
       focusGroup(lift.g);
     },
     true,
@@ -769,44 +791,44 @@ function tileDropTree(tree, g, t, side) {
 
   $('#groups').addEventListener(
     'mousedown',
-    e => {
-      if (!lift && !grabbing(e)) return;
-      e.preventDefault();
-      e.stopPropagation();
+    event => {
+      if (!lift && !grabbing(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
     },
     true,
   );
 
-  window.addEventListener('pointermove', e => {
-    if (!lift) return grabSync(e);
+  window.addEventListener('pointermove', event => {
+    if (!lift) return grabSync(event);
 
     if (!lift.moved) {
-      if (Math.hypot(e.clientX - lift.x, e.clientY - lift.y) < 5) return;
+      if (Math.hypot(event.clientX - lift.x, event.clientY - lift.y) < 5) return;
       lift.moved = true;
       $(GEL[lift.g].grp).classList.add('lifted');
       document.body.classList.add('tiledrag');
     }
 
-    lift.zone = dropAt(e.clientX, e.clientY);
+    lift.zone = dropAt(event.clientX, event.clientY);
     show(lift.zone);
   });
 
   window.addEventListener('pointerup', () => {
     if (!lift) return;
 
-    const { g, zone: z } = lift;
-    const s = state.sessions.get(state.current);
+    const { g: group, zone: dropZone } = lift;
+    const session = state.sessions.get(state.current);
 
     end();
-    if (!z || !s) return;
+    if (!dropZone || !session) return;
     haptic('generic');
-    zoomed.delete(s.id);
-    if (z.next) {
-      trees.set(s.id, z.next);
-      focusG = g;
-    } else tileInto(s, g, z.t);
+    zoomed.delete(session.id);
+    if (dropZone.next) {
+      trees.set(session.id, dropZone.next);
+      focusG = group;
+    } else tileInto(session, group, dropZone.t);
     applySplit();
-    syncTerm(s);
+    syncTerm(session);
     fitTerm();
     focusBoard();
     focusTerm();
@@ -818,15 +840,15 @@ function tileDropTree(tree, g, t, side) {
 
 /** Tile g's tabs into tile t's strip (2026-11-26), its front tab in front there, and g folded — down to one tile, the
  *  column one half. */
-function tileInto(s, g, t) {
-  if (!homes.has(s.id)) homes.set(s.id, new Map());
-  const front = placeOf(s)[g];
+function tileInto(session, group, target) {
+  if (!homes.has(session.id)) homes.set(session.id, new Map());
+  const front = placeOf(session)[group];
 
-  for (const k of keysIn(s, g)) homes.get(s.id).set(k, t);
-  if (!isTiled(s)) trees.set(s.id, halvesTree(s));
-  focusG = t;
-  dropLeaf(s, g);
-  if (front) setTab(s, front);
+  for (const key of keysIn(session, group)) homes.get(session.id).set(key, target);
+  if (!isTiled(session)) trees.set(session.id, halvesTree(session));
+  focusG = target;
+  dropLeaf(session, group);
+  if (front) setTab(session, front);
 }
 
 applySplit();
@@ -835,22 +857,25 @@ applySplit();
   const bar = $('#gsplit');
   let dragging = false;
 
-  bar.addEventListener('mousedown', e => {
+  bar.addEventListener('mousedown', event => {
     dragging = true;
     bar.classList.add('drag');
     document.body.style.userSelect = 'none';
-    e.preventDefault();
+    event.preventDefault();
   });
 
-  window.addEventListener('mousemove', e => {
+  window.addEventListener('mousemove', event => {
     if (!dragging) return;
 
-    const r = $('#groups').getBoundingClientRect();
+    const rect = $('#groups').getBoundingClientRect();
     const stack = stackNow();
 
-    const raw = Math.max(0.15, Math.min(0.85, stack ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width));
+    const raw = Math.max(
+      0.15,
+      Math.min(0.85, stack ? (event.clientY - rect.top) / rect.height : (event.clientX - rect.left) / rect.width),
+    );
 
-    const near = Math.abs(raw - 0.5) * (stack ? r.height : r.width) <= SNAP_PX;
+    const near = Math.abs(raw - 0.5) * (stack ? rect.height : rect.width) <= SNAP_PX;
     const at = near ? 0.5 : raw; // even halves pull (2026-10-11)
 
     if (near && !bar.snapped) haptic('alignment');
@@ -874,80 +899,80 @@ applySplit();
 // lingers in the shell until it needs the room. The tab in front closed, the one beside it comes forward, as in a
 // browser (2026-10-13; the half's first did before): the one to its right, else its left — a zsh's at once, while the
 // server is still ending it.
-function closeTab(s, k) {
+function closeTab(session, key) {
   // vim is asked to quit (2026-10-21): its tab goes when it does — and stays in front, saying why, over unsaved work
-  if (isVimTab(s, k)) {
-    api('DELETE', `/api/terminals/${shellOfTab(s, k).id}`).catch(e =>
-      note(seen($('#ptabs')), `Could not quit vim: ${e.message}`, true),
+  if (isVimTab(session, key)) {
+    api('DELETE', `/api/terminals/${shellOfTab(session, key).id}`).catch(error =>
+      note(seen($('#ptabs')), `Could not quit vim: ${error.message}`, true),
     );
 
     return false;
   }
 
-  const p = placeOf(s);
-  const g = p.indexOf(k);
+  const place = placeOf(session);
+  const half = place.indexOf(key);
 
-  if (g >= 0) {
-    const ks = keysIn(s, g);
-    const i = ks.indexOf(k);
+  if (half >= 0) {
+    const ks = keysIn(session, half);
+    const index = ks.indexOf(key);
 
-    p[g] = ks[i + 1] || ks[i - 1] || null;
-    tabs.set(s.id, p);
+    place[half] = ks[index + 1] || ks[index - 1] || null;
+    tabs.set(session.id, place);
   }
 
-  if (isShellTab(k)) {
-    const t = shellOfTab(s, k);
+  if (isShellTab(key)) {
+    const shell = shellOfTab(session, key);
 
-    if (t) {
-      api('DELETE', `/api/terminals/${t.id}`).catch(e =>
-        note(seen($('#ptabs')), `Could not end the zsh: ${e.message}`, true),
+    if (shell) {
+      api('DELETE', `/api/terminals/${shell.id}`).catch(error =>
+        note(seen($('#ptabs')), `Could not end the zsh: ${error.message}`, true),
       );
     }
 
-    syncTerm(s);
+    syncTerm(session);
     return;
   }
 
-  if (k === 'changes') changesOpen.delete(s.id);
-  else if (k === 'timeline') timelineOpen.delete(s.id);
-  else if (isAgentTab(k)) {
-    const l = (agentTabs.get(s.id) || []).filter(a => `agent:${a.id}` !== k);
+  if (key === 'changes') changesOpen.delete(session.id);
+  else if (key === 'timeline') timelineOpen.delete(session.id);
+  else if (isAgentTab(key)) {
+    const remaining = (agentTabs.get(session.id) || []).filter(tab => `agent:${tab.id}` !== key);
 
-    if (l.length) agentTabs.set(s.id, l);
-    else agentTabs.delete(s.id);
-  } else if (isPageTab(k)) {
+    if (remaining.length) agentTabs.set(session.id, remaining);
+    else agentTabs.delete(session.id);
+  } else if (isPageTab(key)) {
     state.paneGh.set(
-      s.id,
-      (state.paneGh.get(s.id) || []).filter(x => x !== k),
+      session.id,
+      (state.paneGh.get(session.id) || []).filter(other => other !== key),
     );
-  } else if (isBlankTab(k)) {
+  } else if (isBlankTab(key)) {
     blanks.set(
-      s.id,
-      (blanks.get(s.id) || []).filter(b => `new:${b.n}` !== k),
+      session.id,
+      (blanks.get(session.id) || []).filter(blank => `new:${blank.n}` !== key),
     );
-  } else if ((state.paneWt.get(s.id) || []).includes(pageUrl(k))) {
+  } else if ((state.paneWt.get(session.id) || []).includes(pageUrl(key))) {
     state.paneWt.set(
-      s.id,
-      state.paneWt.get(s.id).filter(u => u !== pageUrl(k)),
+      session.id,
+      state.paneWt.get(session.id).filter(url => url !== pageUrl(key)),
     );
-  } else if (s.cwd) state.paneIde.delete(s.cwd);
-  homes.get(s.id)?.delete(k);
-  syncTerm(s);
+  } else if (session.cwd) state.paneIde.delete(session.cwd);
+  homes.get(session.id)?.delete(key);
+  syncTerm(session);
 }
 
 /** A tab closed from anywhere but its own × — ⌥⌘W, the ··· menu (2026-09-28): the × is gone from a half the tab
       has to itself, which is exactly the half that empties. When the keys are in that half they go back to the chat,
       rather than stay in an empty half or on a zsh on its way out (a zsh ends when the server says so, a moment on). */
-function dropTab(s, k) {
-  const g = isSplit(s) ? homeOf(s, k) : 0;
-  const last = keysIn(s, g).length === 1;
+function dropTab(session, key) {
+  const half = isSplit(session) ? homeOf(session, key) : 0;
+  const last = keysIn(session, half).length === 1;
 
-  if (closeTab(s, k) === false) return; // vim, asked to quit
+  if (closeTab(session, key) === false) return; // vim, asked to quit
 
-  if (last && g === focusG) {
-    if (isTiled(s) && groupsOf(s).length > 2) focusG = backOf(trees.get(s.id), g) ?? 0;
-    else showChat(s);
-    syncTerm(s);
+  if (last && half === focusG) {
+    if (isTiled(session) && groupsOf(session).length > 2) focusG = backOf(trees.get(session.id), half) ?? 0;
+    else showChat(session);
+    syncTerm(session);
   } // tiles: back to the one it was cut from
 
   focusBoard();
@@ -957,50 +982,52 @@ function dropTab(s, k) {
 // ⌥⌘W: the tab the keys are in, closed — the zsh ended, a page or the editor let go. The split the board made for it
 // folds with it; one asked for by hand keeps its half, empty. The chat's own tab has no ×, and no ⌥⌘W either.
 function hotCloseTab() {
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (!s) return noChat();
-  const k = tabOf(s);
+  if (!session) return noChat();
+  const key = tabOf(session);
 
-  if (!k || k === 'chat') return note($('#shead'), 'The chat tab stays — ⌘W closes a half, ✓ ends the chat');
-  dropTab(s, k);
+  if (!key || key === 'chat') return note($('#shead'), 'The chat tab stays — ⌘W closes a half, ✓ ends the chat');
+  dropTab(session, key);
 }
 
 // The take-over tooltip is the warning: for a VS Code chat it spells out what the tab there loses.
 const VSC_COST =
   ' Its tab in VS Code goes dead and will not follow the chat — close it there; opening the chat in VS Code again starts another claude on it, and a bar here will say so.';
 
-const takeTip = s => {
-  const vs = inVsCode(s);
+const takeTip = session => {
+  const vs = inVsCode(session);
 
   const what = vs
-    ? `the claude VS Code runs on this chat (pid ${s.live.pid})`
-    : `claude (pid ${s.live.pid}) in its terminal`;
+    ? `the claude VS Code runs on this chat (pid ${session.live.pid})`
+    : `claude (pid ${session.live.pid}) in its terminal`;
 
   return (
-    (drawer.arm === s.id
-      ? `Click again to end ${what} and resume the chat here${s.status === 'working' ? ' — Claude is mid-reply, and that reply will be lost' : ''}.`
+    (drawer.arm === session.id
+      ? `Click again to end ${what} and resume the chat here${session.status === 'working' ? ' — Claude is mid-reply, and that reply will be lost' : ''}.`
       : `Take over: end ${what} and resume the chat here.`) + (vs ? VSC_COST : '')
   );
 };
 
-const sureWord = s => (s.status === 'working' ? 'sure? mid-reply' : inVsCode(s) ? 'sure? ends VS Code’s' : 'sure?');
+const sureWord = session =>
+  session.status === 'working' ? 'sure? mid-reply' : inVsCode(session) ? 'sure? ends VS Code’s' : 'sure?';
+
 const KEY_C = ' · ⌥⌘C'; // on every tip the button acts on; the disabled and failed ones say why instead
 
-const termTip = s =>
+const termTip = session =>
   drawer.err
     ? drawer.err
-    : termLive(s)
-      ? (termFor(s.terminal.id)
+    : termLive(session)
+      ? (termFor(session.terminal.id)
           ? 'This chat runs here — the terminal is the pane'
           : "Show this chat's claude session") + KEY_C
-      : takeable(s)
-        ? takeTip(s) + KEY_C
-        : attachable(s)
+      : takeable(session)
+        ? takeTip(session) + KEY_C
+        : attachable(session)
           ? ATTACH_TIP + KEY_C
-          : s.alive
-            ? `Live in ${entryLabel(s)} — it cannot be attached from here`
-            : inVsCode(s)
+          : session.alive
+            ? `Live in ${entryLabel(session)} — it cannot be attached from here`
+            : inVsCode(session)
               ? `Open a terminal on this chat (claude --resume). It was last continued in VS Code: from here on it is a CLI chat, and the tab there, if still open, will not follow it${
                   KEY_C
                 }`
@@ -1010,47 +1037,47 @@ const termTip = s =>
 // extension does not respawn its own either (it launches one when a tab opens a chat, never after a
 // death — measured 2026-09-20), so ending it and resuming here leaves one writer.
 // A background session is not: `claude attach` opens it in a drawer, the one running, and closing the drawer leaves it so (2026-11-04).
-const attachable = s => !!(s?.alive && inBackground(s) && s.live?.jobId && !termLive(s));
-const takeable = s => !!(s?.alive && s.live?.pid && !termLive(s) && !attachable(s));
+const attachable = session => !!(session?.alive && inBackground(session) && session.live?.jobId && !termLive(session));
+const takeable = session => !!(session?.alive && session.live?.pid && !termLive(session) && !attachable(session));
 const ATTACH_TIP = 'Open this background session here (claude attach): it keeps running when the drawer closes';
 
 // Two clicks, six seconds apart at most: the first arms the button (it turns red and says so), the
 // second ends the other claude. renderHead re-runs on every update and reads the armed state back.
-function armTakeOver(s) {
-  drawer.arm = s.id;
+function armTakeOver(session) {
+  drawer.arm = session.id;
   clearTimeout(drawer.armTimer);
 
   drawer.armTimer = setTimeout(() => {
-    if (drawer.arm === s.id) {
+    if (drawer.arm === session.id) {
       drawer.arm = null;
-      renderHead(state.sessions.get(s.id) || s);
+      renderHead(state.sessions.get(session.id) || session);
     }
   }, 6000);
 
-  renderHead(s);
+  renderHead(session);
 }
 
-async function takeOver(s) {
+async function takeOver(session) {
   drawer.arm = null;
   clearTimeout(drawer.armTimer);
-  renderResume(s);
+  renderResume(session);
   const tb = $('#termBtn');
 
   if (tb) {
     tb.disabled = true;
-    const l = tb.querySelector('.lbl');
+    const label = tb.querySelector('.lbl');
 
-    if (l) l.textContent = 'ending…';
+    if (label) label.textContent = 'ending…';
   }
 
-  let d = null;
+  let result = null;
 
   try {
-    d = await api('POST', `/api/sessions/${s.id}/takeover`, termSize());
-  } catch (e) {
-    drawer.err = e.message;
+    result = await api('POST', `/api/sessions/${session.id}/takeover`, termSize());
+  } catch (error) {
+    drawer.err = error.message;
   }
 
-  if (d) showTerminal(s, d.terminal);
-  renderHead(state.sessions.get(s.id) || s);
+  if (result) showTerminal(session, result.terminal);
+  renderHead(state.sessions.get(session.id) || session);
 }

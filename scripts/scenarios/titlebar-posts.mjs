@@ -19,8 +19,8 @@ export default async function (ctx) {
 
   const click = sel => ctx.evaluate(`document.querySelector(${JSON.stringify(sel)}).click()`);
 
-  const said = async (n, what) => {
-    await ctx.waitFor(`window.__posts.filter(m => m.type === 'titlebar').length === ${n}`, { what });
+  const said = async (count, what) => {
+    await ctx.waitFor(`window.__posts.filter(m => m.type === 'titlebar').length === ${count}`, { what });
     return (await bars()).at(-1);
   };
 

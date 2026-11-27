@@ -132,11 +132,11 @@ export default async function (ctx) {
     readFileSync(other.file, 'utf8')
       .split('\n')
       .filter(Boolean)
-      .map(l => {
-        const j = JSON.parse(l);
+      .map(line => {
+        const entry = JSON.parse(line);
 
-        if ('sessionId' in j) j.sessionId = copy;
-        return `${JSON.stringify(j)}\n`;
+        if ('sessionId' in entry) entry.sessionId = copy;
+        return `${JSON.stringify(entry)}\n`;
       })
       .join(''),
   );

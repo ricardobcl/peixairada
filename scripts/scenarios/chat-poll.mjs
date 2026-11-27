@@ -29,12 +29,12 @@ export default async function (ctx) {
   const out = {};
 
   try {
-    const q = sel => `document.querySelector(${JSON.stringify(sel)})`;
-    const click = sel => ctx.evaluate(`${q(sel)}.click()`);
+    const query = sel => `document.querySelector(${JSON.stringify(sel)})`;
+    const click = sel => ctx.evaluate(`${query(sel)}.click()`);
 
     const enter = (sel, meta = false) =>
       ctx.evaluate(
-        `${q(sel)}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', metaKey: ${meta}, bubbles: true, cancelable: true }))`,
+        `${query(sel)}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', metaKey: ${meta}, bubbles: true, cancelable: true }))`,
       );
 
     const esc = () =>
@@ -45,7 +45,7 @@ export default async function (ctx) {
     const form = () =>
       ctx
         .evaluate(
-          `JSON.stringify({ shown: !${q('#rmform')}.hidden, box: !${q('#rmrow')}.hidden, q: ${q('#rmform [data-pf="q"]')}?.value ?? null,
+          `JSON.stringify({ shown: !${query('#rmform')}.hidden, box: !${query('#rmrow')}.hidden, q: ${query('#rmform [data-pf="q"]')}?.value ?? null,
       answers: [...document.querySelectorAll('#rmform [data-pf="a"]')].map(i => i.value), focus: document.activeElement.dataset.pf ?? document.activeElement.id })`,
         )
         .then(JSON.parse);
@@ -61,14 +61,14 @@ export default async function (ctx) {
 
     const rect = sel =>
       ctx.evaluate(
-        `(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${q(sel)}.getBoundingClientRect())`,
+        `(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${query(sel)}.getBoundingClientRect())`,
       );
 
     const reactions = () =>
       gh
         .repo('acme-chat/room')
         .issues[0].comments.at(-1)
-        .reactions.map(x => `${x.user.login}:${x.content}`)
+        .reactions.map(reaction => `${reaction.user.login}:${reaction.content}`)
         .sort();
 
     await ctx.server.api('api/config', {
@@ -85,9 +85,9 @@ export default async function (ctx) {
     });
 
     await waitFor(async () => (await ctx.server.api('api/chat')).body.ready, { what: 'the chat read' });
-    await ctx.waitFor(`!!${q('#sbChat')}`, { what: 'the chat in the bar' });
+    await ctx.waitFor(`!!${query('#sbChat')}`, { what: 'the chat in the bar' });
     await click('#sbChat');
-    await ctx.waitFor(`${q('#room')}.open && /hungry/.test(${q('#rmlog')}.textContent)`, { what: 'the panel' });
+    await ctx.waitFor(`${query('#room')}.open && /hungry/.test(${query('#rmlog')}.textContent)`, { what: 'the panel' });
 
     // the form, in the box's place; Esc lets it go before the panel
     await click('#rmPollBtn');
@@ -115,7 +115,7 @@ export default async function (ctx) {
     out.gone = await form();
 
     ctx.assert.deepEqual(
-      [out.gone.shown, out.gone.box, await ctx.evaluate(`${q('#room')}.open`)],
+      [out.gone.shown, out.gone.box, await ctx.evaluate(`${query('#room')}.open`)],
       [false, true, true],
       'Esc: the form first, the panel stays',
     );
@@ -133,7 +133,7 @@ export default async function (ctx) {
     await ctx.settle();
     await ctx.shot('1-form', await rect('#room'));
     await click('#rmform [data-pf="post"]');
-    await ctx.waitFor(`!!${q('#rmlog .rmpoll')} && ${q('#rmform')}.hidden`, { what: 'the poll, posted' });
+    await ctx.waitFor(`!!${query('#rmlog .rmpoll')} && ${query('#rmform')}.hidden`, { what: 'the poll, posted' });
     out.body = gh.repo('acme-chat/room').issues[0].comments.at(-1).body;
 
     ctx.assert.match(
@@ -155,7 +155,7 @@ export default async function (ctx) {
     out.posted = (await poll())[0];
 
     ctx.assert.deepEqual(
-      out.posted.opts.map(o => [o.label, o.n, o.mine]),
+      out.posted.opts.map(option => [option.label, option.n, option.mine]),
       [
         ['Ramen Break', 0, false],
         ['Casa do Professor', 0, false],
@@ -169,7 +169,7 @@ export default async function (ctx) {
     await click('#rmlog .rmopt[data-r="+1"]');
     await waitFor(() => reactions().join() === 'me:+1', { what: 'your vote, a reaction' });
 
-    await ctx.waitFor(`${q('#rmlog .rmopt[data-r="+1"]')}.getAttribute('aria-pressed') === 'true'`, {
+    await ctx.waitFor(`${query('#rmlog .rmopt[data-r="+1"]')}.getAttribute('aria-pressed') === 'true'`, {
       what: 'your vote drawn',
     });
 
@@ -177,14 +177,14 @@ export default async function (ctx) {
     await waitFor(() => reactions().join() === 'me:-1', { what: 'your vote moved on GitHub' });
     gh.react(gh.repo('acme-chat/room').issues[0].comments.at(-1).id, 'ana', '+1');
 
-    await ctx.waitFor(`/ana/.test(${q('#rmlog .rmopt[data-r="+1"] .rmvs')}?.textContent || '')`, {
+    await ctx.waitFor(`/ana/.test(${query('#rmlog .rmopt[data-r="+1"] .rmvs')}?.textContent || '')`, {
       what: "ana's vote, given on GitHub",
     });
 
     out.voted = (await poll())[0];
 
     ctx.assert.deepEqual(
-      out.voted.opts.map(o => [o.n, o.mine, o.who]),
+      out.voted.opts.map(option => [option.n, option.mine, option.who]),
       [
         [1, false, 'ana'],
         [0, false, ''],
@@ -199,7 +199,7 @@ export default async function (ctx) {
     await waitFor(() => reactions().join() === 'ana:+1', { what: 'yours taken back' });
 
     await ctx.waitFor(
-      `${q('#rmlog .rmopt[data-r="-1"]')}.getAttribute('aria-pressed') === 'false' && ${q('#rmlog .rmopt[data-r="-1"] b')}.textContent === '0'`,
+      `${query('#rmlog .rmopt[data-r="-1"]')}.getAttribute('aria-pressed') === 'false' && ${query('#rmlog .rmopt[data-r="-1"] b')}.textContent === '0'`,
       { what: 'drawn taken back' },
     );
 
@@ -207,22 +207,27 @@ export default async function (ctx) {
     await click('#rmClose');
     await ctx.key('KeyM');
 
-    await ctx.waitFor(`${q('#lunchd')}?.open && !!${q('#lunchd [data-lunch="poll"]')}`, {
+    await ctx.waitFor(`${query('#lunchd')}?.open && !!${query('#lunchd [data-lunch="poll"]')}`, {
       what: 'the chalkboard, with Ask the chat',
     });
 
     await click('#lunchd [data-lunch="poll"]');
-    await ctx.waitFor(`${q('#room')}.open && !${q('#rmform')}.hidden`, { what: 'the panel, its form filled' });
+    await ctx.waitFor(`${query('#room')}.open && !${query('#rmform')}.hidden`, { what: 'the panel, its form filled' });
     out.fromLunch = await form();
 
     ctx.assert.deepEqual(
-      [out.fromLunch.q, out.fromLunch.answers.length, out.fromLunch.focus, await ctx.evaluate(`${q('#lunchd')}.open`)],
+      [
+        out.fromLunch.q,
+        out.fromLunch.answers.length,
+        out.fromLunch.focus,
+        await ctx.evaluate(`${query('#lunchd')}.open`),
+      ],
       ['Lunch at 12:30?', 3, 'post', false],
     );
 
     await esc();
     await esc();
-    ctx.assert.equal(await ctx.evaluate(`${q('#room')}.open`), false, 'Esc: the form, then the panel');
+    ctx.assert.equal(await ctx.evaluate(`${query('#room')}.open`), false, 'Esc: the form, then the panel');
     return out;
   } finally {
     await gh.close();

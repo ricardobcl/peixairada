@@ -31,26 +31,26 @@ for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel']) {
 }
 
 // the fish's cells for this moment of a leap: FISH at .85 scale, mirrored when it swims right, turned along its path
-function seaFish(lvl, col, u, lp) {
-  const x = lp.x0 + lp.dir * 44 * u;
-  const y = lp.y0 - 24 * 4 * u * (1 - u);
+function seaFish(lvl, col, progress, lp) {
+  const centerX = lp.x0 + lp.dir * 44 * progress;
+  const centerY = lp.y0 - 24 * 4 * progress * (1 - progress);
   const vx = lp.dir * 44;
-  const vy = -24 * 4 * (1 - 2 * u);
+  const vy = -24 * 4 * (1 - 2 * progress);
 
   const th = Math.max(-0.75, Math.min(0.75, lp.dir > 0 ? Math.atan2(vy, vx) : Math.atan2(-vy, -vx)));
-  const c = Math.cos(th);
+  const cosine = Math.cos(th);
   const sn = Math.sin(th);
   const SC = 0.85;
   const dark = lp.dark; // tilted along its path, never past ~43°
 
-  for (let sy = Math.floor(y - 12); sy <= y + 12; sy++) {
-    for (let sx = Math.floor(x - 15); sx <= x + 15; sx++) {
+  for (let sy = Math.floor(centerY - 12); sy <= centerY + 12; sy++) {
+    for (let sx = Math.floor(centerX - 15); sx <= centerX + 15; sx++) {
       if (sx < 0 || sx >= SEA_W || sy < 0 || sy >= SEA_H || sy > lp.y0 + 1) continue; // under the water line, unseen
 
-      const dx = sx + 0.5 - x;
-      const dy = sy + 0.5 - y;
-      const pu = (dx * c + dy * sn) / SC;
-      const pv = (-dx * sn + dy * c) / SC;
+      const dx = sx + 0.5 - centerX;
+      const dy = sy + 0.5 - centerY;
+      const pu = (dx * cosine + dy * sn) / SC;
+      const pv = (-dx * sn + dy * cosine) / SC;
 
       let px = Math.floor(pu + 13);
       const py = Math.floor(pv + 5.5);
@@ -59,26 +59,26 @@ function seaFish(lvl, col, u, lp) {
       const ch = FISH[py]?.[px];
 
       if (!ch || ch === '.') continue;
-      const k = sy * SEA_W + sx;
+      const index = sy * SEA_W + sx;
 
-      lvl[k] = ch === 'o' ? 1 : 3;
-      col[k] = ch === 'o' ? lp.eye : dark;
+      lvl[index] = ch === 'o' ? 1 : 3;
+      col[index] = ch === 'o' ? lp.eye : dark;
     }
   }
 
   // spray where it leaves the water and where it goes back in
-  for (const [p, xe] of [
-    [u / 0.14, lp.x0],
-    [(u - 0.86) / 0.2, lp.x0 + lp.dir * 44],
+  for (const [splash, xe] of [
+    [progress / 0.14, lp.x0],
+    [(progress - 0.86) / 0.2, lp.x0 + lp.dir * 44],
   ]) {
-    if (p < 0 || p > 1) continue;
+    if (splash < 0 || splash > 1) continue;
 
-    for (let i = 0; i < 9; i++) {
-      const sx = Math.round(xe + (((i * 37) % 9) - 4) * (0.6 + p));
-      const sy = Math.round(lp.y0 - 1 - ((i * 53) % 5) * Math.sin(p * Math.PI));
+    for (let drop = 0; drop < 9; drop++) {
+      const sx = Math.round(xe + (((drop * 37) % 9) - 4) * (0.6 + splash));
+      const sy = Math.round(lp.y0 - 1 - ((drop * 53) % 5) * Math.sin(splash * Math.PI));
 
       if (sx >= 0 && sx < SEA_W && sy >= 0 && sy < SEA_H) {
-        lvl[sy * SEA_W + sx] = 1 + (i % 2);
+        lvl[sy * SEA_W + sx] = 1 + (drop % 2);
         col[sy * SEA_W + sx] = lp.foam;
       }
     }
@@ -101,35 +101,35 @@ function seaLeap(now) {
   sea.next = now + LEAP_MS + 16_000 + Math.random() * 24_000;
 }
 
-function seaPaint(t, now) {
-  const { s, img, lut, masks, cell } = sea;
+function seaPaint(seconds, now) {
+  const { s: scene, img, lut, masks, cell } = sea;
   const d32 = new Uint32Array(img.data.buffer);
   const n2 = cell * cell;
   const row = SEA_W * cell;
 
-  s.frame(t);
+  scene.frame(seconds);
 
   if (sea.leap) {
-    const u = (now - sea.leap.at) / LEAP_MS;
+    const progress = (now - sea.leap.at) / LEAP_MS;
 
-    if (u >= 1.25) sea.leap = null;
-    else seaFish(s.lvl, s.col, Math.min(1, u), sea.leap);
+    if (progress >= 1.25) sea.leap = null;
+    else seaFish(scene.lvl, scene.col, Math.min(1, progress), sea.leap);
   }
 
   d32.fill(lut.ground);
 
-  for (let r = 0; r < SEA_H; r++) {
-    for (let x = 0; x < SEA_W; x++) {
-      const k = r * SEA_W + x;
-      const l = s.lvl[k];
+  for (let gridRow = 0; gridRow < SEA_H; gridRow++) {
+    for (let gridColumn = 0; gridColumn < SEA_W; gridColumn++) {
+      const index = gridRow * SEA_W + gridColumn;
+      const level = scene.lvl[index];
 
-      if (!l) continue;
+      if (!level) continue;
 
-      const base = r * cell * row + x * cell;
-      const off = (s.col[k] * 3 + l - 1) * n2;
-      const m = masks[l - 1];
+      const base = gridRow * cell * row + gridColumn * cell;
+      const off = (scene.col[index] * 3 + level - 1) * n2;
+      const mask = masks[level - 1];
 
-      for (let i = 0; i < m.length; i++) d32[base + m[i].o] = lut.px[off + m[i].p];
+      for (let dot = 0; dot < mask.length; dot++) d32[base + mask[dot].o] = lut.px[off + mask[dot].p];
     }
   }
 
@@ -153,10 +153,10 @@ function seaMount(cv) {
   cv.style.width = `${(SEA_W * cell) / (devicePixelRatio || 1)}px`;
   sea.img = new ImageData(cv.width, cv.height);
   // each glyph once, as the pixels it covers and how much of each
-  const g = document.createElement('canvas');
+  const glyph = document.createElement('canvas');
 
-  g.width = g.height = cell;
-  const gx = g.getContext('2d', { willReadFrequently: true });
+  glyph.width = glyph.height = cell;
+  const gx = glyph.getContext('2d', { willReadFrequently: true });
 
   gx.textAlign = 'center';
   gx.textBaseline = 'middle';
@@ -168,33 +168,37 @@ function seaMount(cv) {
     gx.clearRect(0, 0, cell, cell);
     gx.fillText(ch, cell / 2, cell / 2 + cell * 0.05);
 
-    const a = gx.getImageData(0, 0, cell, cell).data;
-    const m = [];
+    const pixels = gx.getImageData(0, 0, cell, cell).data;
+    const mask = [];
 
-    for (let p = 0; p < cell * cell; p++) {
-      if (a[p * 4 + 3] > 8) m.push({ p, o: Math.floor(p / cell) * SEA_W * cell + (p % cell) });
+    for (let pixel = 0; pixel < cell * cell; pixel++) {
+      if (pixels[pixel * 4 + 3] > 8) {
+        mask.push({ p: pixel, o: Math.floor(pixel / cell) * SEA_W * cell + (pixel % cell) });
+      }
     }
 
-    alpha.push(Float32Array.from({ length: cell * cell }, (_, p) => a[p * 4 + 3] / 255));
-    return m;
+    alpha.push(Float32Array.from({ length: cell * cell }, (_, pixel) => pixels[pixel * 4 + 3] / 255));
+    return mask;
   });
 
-  const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const hexRgb = hex => [1, 3, 5].map(offset => parseInt(hex.slice(offset, offset + 2), 16));
   const gr = hexRgb(SEA_GROUND);
 
-  const pack = ([r, g2, b]) => ((255 << 24) | (b << 16) | (g2 << 8) | r) >>> 0;
+  const pack = ([red, g2, blue]) => ((255 << 24) | (blue << 16) | (g2 << 8) | red) >>> 0;
   const n2 = cell * cell;
 
   const px = new Uint32Array(SEA_PALETTE.length * 3 * n2);
 
-  SEA_PALETTE.forEach((c, ci) => {
-    const rgb = hexRgb(c);
+  SEA_PALETTE.forEach((color, ci) => {
+    const rgb = hexRgb(color);
 
-    for (let l = 0; l < 3; l++) {
-      for (let p = 0; p < n2; p++) {
-        const a = alpha[l][p];
+    for (let level = 0; level < 3; level++) {
+      for (let pixel = 0; pixel < n2; pixel++) {
+        const coverage = alpha[level][pixel];
 
-        px[(ci * 3 + l) * n2 + p] = pack(rgb.map((v, i) => Math.round(gr[i] + (v - gr[i]) * a)));
+        px[(ci * 3 + level) * n2 + pixel] = pack(
+          rgb.map((channel, index) => Math.round(gr[index] + (channel - gr[index]) * coverage)),
+        );
       }
     }
   });

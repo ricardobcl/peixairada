@@ -20,7 +20,7 @@ export default async function (ctx) {
     let got = await fn();
 
     while (JSON.stringify(got) !== JSON.stringify(want) && Date.now() - t0 < 10_000) {
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(resolve => setTimeout(resolve, 100));
       got = await fn();
     }
 

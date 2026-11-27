@@ -67,17 +67,17 @@ test('/clear ticks the chat it left done; a move into another chat does not', { 
   mkdirSync(join(dir, 'sessions'), { recursive: true });
 
   const write = (id, lines) =>
-    writeFileSync(join(proj, `${id}.jsonl`), `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
+    writeFileSync(join(proj, `${id}.jsonl`), `${lines.map(line => JSON.stringify(line)).join('\n')}\n`);
 
   const ago = ms => new Date(Date.now() - ms);
-  const [a, b, c, d] = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+  const [firstId, olderId, clearedId, registeredId] = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
 
-  write(a, chatLines({ id: a, cwd, prompt: 'the first chat', reply: 'done with it', at: ago(600_000) }));
+  write(firstId, chatLines({ id: firstId, cwd, prompt: 'the first chat', reply: 'done with it', at: ago(600_000) }));
 
-  // b: a chat a /clear began a day ago, worked in since — resumed into, it is no fresh clear
-  write(b, [
-    ...clearLines(b, cwd, ago(86_400_000)),
-    ...chatLines({ id: b, cwd, prompt: 'an older chat', reply: 'sure', at: ago(3_600_000) }),
+  // olderId: a chat a /clear began a day ago, worked in since — resumed into, it is no fresh clear
+  write(olderId, [
+    ...clearLines(olderId, cwd, ago(86_400_000)),
+    ...chatLines({ id: olderId, cwd, prompt: 'an older chat', reply: 'sure', at: ago(3_600_000) }),
   ]);
 
   const sleeper = spawn('sleep', ['60'], { stdio: 'ignore' });
@@ -104,34 +104,41 @@ test('/clear ticks the chat it left done; a move into another chat does not', { 
       }),
     );
 
-  on(a);
+  on(firstId);
   const srv = await startTestServer({ claudeDir: dir });
-  const chat = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+  const chat = async id => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
 
   try {
-    await waitFor(async () => (await chat(a))?.alive, { what: 'the first chat alive' });
+    await waitFor(async () => (await chat(firstId))?.alive, { what: 'the first chat alive' });
 
-    on(b); // the process into another chat with history: an in-app /resume
+    on(olderId); // the process into another chat with history: an in-app /resume
 
-    await waitFor(async () => (await chat(b))?.alive && !(await chat(a)).alive, {
+    await waitFor(async () => (await chat(olderId))?.alive && !(await chat(firstId)).alive, {
       what: 'the process on the older chat',
     });
 
-    assert.equal((await chat(a)).done, false, 'a chat left for another one is not finished');
+    assert.equal((await chat(firstId)).done, false, 'a chat left for another one is not finished');
 
-    write(c, clearLines(c, cwd)); // /clear: the transcript first, then the registry — the order the fake writes them
-    on(c);
-    await waitFor(async () => (await chat(b))?.done, { what: 'the chat /clear left, ticked done' });
-    assert.equal((await chat(a)).done, false, 'and nothing else');
-    assert.ok((await chat(b)).doneAt, 'a tick as the ✓ makes');
-    assert.match(srv.logText(), new RegExp(`chat ${b}: cleared into ${c} — done`));
-    assert.equal((await chat(c)).alive, true, "the process goes on, the new chat's now");
+    write(clearedId, clearLines(clearedId, cwd)); // /clear: the transcript first, then the registry — the order the fake writes them
+    on(clearedId);
+    await waitFor(async () => (await chat(olderId))?.done, { what: 'the chat /clear left, ticked done' });
+    assert.equal((await chat(firstId)).done, false, 'and nothing else');
+    assert.ok((await chat(olderId)).doneAt, 'a tick as the ✓ makes');
+    assert.match(srv.logText(), new RegExp(`chat ${olderId}: cleared into ${clearedId} — done`));
+    assert.equal((await chat(clearedId)).alive, true, "the process goes on, the new chat's now");
 
-    on(d); // and the other order: the registry names the new chat before its transcript is there
-    await waitFor(async () => (await chat(d))?.alive, { what: 'the process on a chat with no transcript yet' });
-    assert.equal((await chat(c)).done, false, 'not until the transcript says it was a /clear');
-    write(d, clearLines(d, cwd));
-    await waitFor(async () => (await chat(c))?.done, { what: 'the chat left, done once the transcript is read' });
+    on(registeredId); // and the other order: the registry names the new chat before its transcript is there
+
+    await waitFor(async () => (await chat(registeredId))?.alive, {
+      what: 'the process on a chat with no transcript yet',
+    });
+
+    assert.equal((await chat(clearedId)).done, false, 'not until the transcript says it was a /clear');
+    write(registeredId, clearLines(registeredId, cwd));
+
+    await waitFor(async () => (await chat(clearedId))?.done, {
+      what: 'the chat left, done once the transcript is read',
+    });
   } finally {
     sleeper.kill();
     await srv.stop();

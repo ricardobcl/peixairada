@@ -76,17 +76,17 @@ export default async function (ctx) {
     await ctx.settle();
   };
 
-  const appearance = async m => {
-    await click(`#lookPick [data-look="${m}"]`);
-    await ctx.waitFor(`document.documentElement.dataset.theme === '${m}'`, { what: `Appearance › ${m}` });
+  const appearance = async mode => {
+    await click(`#lookPick [data-look="${mode}"]`);
+    await ctx.waitFor(`document.documentElement.dataset.theme === '${mode}'`, { what: `Appearance › ${mode}` });
     await ctx.settle();
   };
 
-  const theme = async (f, skin) => {
-    await click(`#themePick [data-fam="${f}"]`);
+  const theme = async (family, skin) => {
+    await click(`#themePick [data-fam="${family}"]`);
 
     await ctx.waitFor(`(document.documentElement.dataset.skin || null) === ${JSON.stringify(skin)}`, {
-      what: `${f} worn`,
+      what: `${family} worn`,
     });
 
     await ctx.settle();
@@ -101,22 +101,22 @@ export default async function (ctx) {
     'the board’s own light',
   );
 
-  let l = await look();
+  let seen = await look();
 
   ctx.assert.deepEqual(
-    [l.body, l.list, l.bar],
+    [seen.body, seen.list, seen.bar],
     ['rgb(222, 220, 214)', 'rgb(222, 220, 214)', 'rgb(222, 220, 214)'],
     'the frame round the chat',
   );
 
   ctx.assert.deepEqual(
-    [l.chat, l.sheet],
+    [seen.chat, seen.sheet],
     ['rgb(241, 240, 236)', '8px 8px 12px'],
     'the chat a sheet 8 px in, rounded, a step lighter',
   );
 
   ctx.assert.deepEqual(
-    [l.on, l.can, l.off, l.say],
+    [seen.on, seen.can, seen.off, seen.say],
     [false, true, false, 'A graphite frame round the light chat: the list and the status bar in the theme’s dark half'],
     'Settings › Dark frame: off, to be switched on',
   );
@@ -132,10 +132,10 @@ export default async function (ctx) {
     'the frame dark, the chat light',
   );
 
-  l = await look();
+  seen = await look();
 
   ctx.assert.deepEqual(
-    [l.body, l.list, l.bar, l.chat, l.lift],
+    [seen.body, seen.list, seen.bar, seen.chat, seen.lift],
     ['rgb(30, 30, 28)', 'rgb(30, 30, 28)', 'rgb(30, 30, 28)', 'rgb(241, 240, 236)', 'dark'],
     'graphite round the light chat, the card lifted as on dark',
   );
@@ -178,10 +178,10 @@ export default async function (ctx) {
   // list's inks that fell under 4.5:1 on it lifted
   await appearance('dark');
   ctx.assert.deepEqual(await attrs(), { theme: 'dark', frame: 'dark', skin: null, layout: 'sidebar' });
-  l = await look();
+  seen = await look();
 
   ctx.assert.deepEqual(
-    [l.body, l.list, l.bar, l.chat],
+    [seen.body, seen.list, seen.bar, seen.chat],
     ['rgb(40, 40, 37)', 'rgb(40, 40, 37)', 'rgb(40, 40, 37)', 'rgb(28, 28, 26)'],
     'dark: the frame Settings’ grey, the chat a step darker',
   );
@@ -195,17 +195,17 @@ export default async function (ctx) {
   );
 
   ctx.assert.deepEqual(
-    [l.on, l.can, l.off, l.say],
+    [seen.on, seen.can, seen.off, seen.say],
     [true, false, true, 'Only in light: in dark the frame is dark already'],
     'the switch kept, off in dark, with why',
   );
 
   // a theme framed in its crust: Gruvbox
   await theme('gruvbox', 'gruvbox');
-  l = await look();
+  seen = await look();
 
   ctx.assert.deepEqual(
-    [l.body, l.list, l.bar, l.chat, l.sheet],
+    [seen.body, seen.list, seen.bar, seen.chat, seen.sheet],
     ['rgb(29, 32, 33)', 'rgb(29, 32, 33)', 'rgb(29, 32, 33)', 'rgb(40, 40, 40)', '8px 8px 12px'],
     'Gruvbox: its crust the frame, the chat a sheet in it',
   );
@@ -223,20 +223,20 @@ export default async function (ctx) {
     'Tokyo Night Day in the dark frame',
   );
 
-  l = await look();
+  seen = await look();
 
   ctx.assert.deepEqual(
-    [l.body, l.list, l.bar, l.chat, l.ink, l.lift],
+    [seen.body, seen.list, seen.bar, seen.chat, seen.ink, seen.lift],
     ['rgb(26, 27, 38)', 'rgb(26, 27, 38)', 'rgb(26, 27, 38)', 'rgb(225, 226, 231)', '#c0caf5', 'dark'],
     'the frame Tokyo Night’s ground, the list in its ink, round the Day’s chat',
   );
 
   out.tokyo = await ctx.shot('tokyo-day-dark-frame');
   await darkFrame(false);
-  l = await look();
+  seen = await look();
 
   ctx.assert.deepEqual(
-    [l.body, l.list, l.chat, l.ink],
+    [seen.body, seen.list, seen.chat, seen.ink],
     ['rgb(208, 213, 227)', 'rgb(208, 213, 227)', 'rgb(225, 226, 231)', '#3760bf'],
     'off: the Day’s own crust round its chat',
   );
@@ -250,20 +250,20 @@ export default async function (ctx) {
     'Softened',
   );
 
-  l = await look();
+  seen = await look();
 
   ctx.assert.deepEqual(
-    [l.body, l.list, l.chat, l.sheet],
+    [seen.body, seen.list, seen.chat, seen.sheet],
     ['rgb(227, 226, 220)', 'rgb(227, 226, 220)', 'rgb(239, 238, 233)', '8px 8px 12px'],
     'Softened: the whites gone, framed in its crust',
   );
 
   out.softened = await ctx.shot('softened-light');
   await darkFrame(true);
-  l = await look();
+  seen = await look();
 
   ctx.assert.deepEqual(
-    [l.body, l.list, l.chat, l.lift],
+    [seen.body, seen.list, seen.chat, seen.lift],
     ['rgb(30, 30, 28)', 'rgb(30, 30, 28)', 'rgb(239, 238, 233)', 'dark'],
     'Softened in the dark frame: the board’s graphite',
   );
@@ -274,8 +274,8 @@ export default async function (ctx) {
   ctx.assert.ok(
     inks.worst[0].ratio >= 4.5,
     `inks under 4.5: ${inks.worst
-      .filter(w => w.ratio < 4.5)
-      .map(w => `${w.look} · ${w.ink} on ${w.on} ${w.ratio}`)
+      .filter(contrast => contrast.ratio < 4.5)
+      .map(contrast => `${contrast.look} · ${contrast.ink} on ${contrast.on} ${contrast.ratio}`)
       .join('; ')}`,
   );
 

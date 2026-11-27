@@ -77,8 +77,8 @@ const buildBin =
 
 export let lastTouchAt = 0; // the last key sent to a drawer, or anything the board was asked to do (the HTTP handler)
 
-export function setLastTouchAt(v) {
-  lastTouchAt = v;
+export function setLastTouchAt(at) {
+  lastTouchAt = at;
 } // for the modules that write it: an import is read-only
 
 // `steps`/`step`: what the update under way does and where it is (the status bar's progress); `failed`: its error, when the
@@ -111,27 +111,27 @@ function codeStamp(dir = UPDATE_DIR) {
   const out = {};
 
   for (const [part, files] of Object.entries(CODE_PARTS)) {
-    const h = createHash('sha1');
+    const hash = createHash('sha1');
 
-    for (const f of files) {
-      let names = [f];
+    for (const file of files) {
+      let names = [file];
 
       try {
-        if (statSync(join(dir, f)).isDirectory()) {
-          names = readdirSync(join(dir, f), { recursive: true })
-            .map(n => join(f, n))
+        if (statSync(join(dir, file)).isDirectory()) {
+          names = readdirSync(join(dir, file), { recursive: true })
+            .map(name => join(file, name))
             .sort();
         }
       } catch {}
 
-      for (const n of names) {
+      for (const name of names) {
         try {
-          h.update(`${n}\0`).update(readFileSync(join(dir, n)));
+          hash.update(`${name}\0`).update(readFileSync(join(dir, name)));
         } catch {}
       } // a folder in lib/, a file gone: its name alone
     }
 
-    out[part] = h.digest('hex');
+    out[part] = hash.digest('hex');
   }
 
   return out;
@@ -144,7 +144,7 @@ export function staleParts() {
   if (upd.restarting || !upd.checkout) return [];
 
   const now = codeStamp();
-  const moved = Object.keys(CODE_PARTS).filter(k => now[k] !== RAN_CODE[k]);
+  const moved = Object.keys(CODE_PARTS).filter(part => now[part] !== RAN_CODE[part]);
 
   return moved.includes('deps') ? ['deps', 'server'] : moved;
 }
@@ -154,28 +154,28 @@ export function staleParts() {
 export function updateParts(files) {
   const has = new Set();
 
-  for (const f of files) {
-    if (/^package(-lock)?\.json$/.test(f)) has.add('deps').add('server');
-    else if (f === 'server.mjs' || f.startsWith('server/') || f.startsWith('lib/')) has.add('server');
-    else if (f.startsWith('public/')) has.add('page');
-    else if (f.startsWith('mac/') && !f.endsWith('.md')) has.add('app'); // mac/'s notes are no part of the app (2026-10-28)
+  for (const file of files) {
+    if (/^package(-lock)?\.json$/.test(file)) has.add('deps').add('server');
+    else if (file === 'server.mjs' || file.startsWith('server/') || file.startsWith('lib/')) has.add('server');
+    else if (file.startsWith('public/')) has.add('page');
+    else if (file.startsWith('mac/') && !file.endsWith('.md')) has.add('app'); // mac/'s notes are no part of the app (2026-10-28)
   }
 
-  return ['deps', 'server', 'page', 'app'].filter(k => has.has(k));
+  return ['deps', 'server', 'page', 'app'].filter(part => has.has(part));
 }
 
 export const updateState = () => {
-  const { remote, merge, ...u } = upd;
+  const { remote, merge, ...shown } = upd;
 
   return {
     on: autoUpdate,
     channel: channelNow(),
-    running: u.checkout ? u.written : PKG.version, // the release this board's code is on: HEAD's package.json as written; else its own
+    running: shown.checkout ? shown.written : PKG.version, // the release this board's code is on: HEAD's package.json as written; else its own
     every: UPDATE_EVERY_MS,
     quiet: UPDATE_QUIET_MS,
     dir: tildePath(UPDATE_DIR),
     restart: !!restartBin,
-    ...u,
+    ...shown,
     last: updateLast,
     held: updateHeld,
     build: appBuild,
@@ -197,13 +197,13 @@ function updateEnv() {
   return env;
 }
 
-export const errText = e =>
+export const errText = error =>
   (
-    String(e?.stderr || '')
+    String(error?.stderr || '')
       .trim()
       .split('\n')
       .filter(Boolean)
-      .pop() || (e?.killed ? 'it took too long' : String(e?.message || e).split('\n')[0])
+      .pop() || (error?.killed ? 'it took too long' : String(error?.message || error).split('\n')[0])
   )
     .replace(/^(fatal|error): /, '')
     .slice(0, 300);
@@ -216,7 +216,7 @@ function gitIn(args, timeout = 30_000, env = {}) {
     env: { ...updateEnv(), ...env },
     timeout,
     maxBuffer: 8 << 20,
-  }).then(r => r.stdout.trim());
+  }).then(result => result.stdout.trim());
 }
 
 /** Where the checkout stands, read locally: its branch and upstream, how far each is past the other, the tracked files
@@ -331,7 +331,7 @@ export async function readCheckout() {
   if (changed.length && co.behind && (!co.ahead || co.rewritten)) {
     const theirs = new Set(await names('HEAD', to));
 
-    co.clash = changed.filter(f => theirs.has(f));
+    co.clash = changed.filter(file => theirs.has(file));
   }
 
   if (co.rewritten) {
@@ -356,10 +356,10 @@ export async function readCheckout() {
     )
       .split('\n')
       .filter(Boolean)
-      .map(l => {
-        const [h, a, s] = l.split('\x1f');
+      .map(line => {
+        const [hash, author, subject] = line.split('\x1f');
 
-        return { h, a, s };
+        return { h: hash, a: author, s: subject };
       });
   }
 
@@ -378,22 +378,22 @@ async function rewrittenHere(ref = '@{u}') {
   const list = new Set(
     (await gitIn(['show', `${ref}:${REWRITTEN}`]).catch(() => ''))
       .split('\n')
-      .map(l => l.trim())
-      .filter(l => /^[0-9a-f]{40}$/.test(l)),
+      .map(line => line.trim())
+      .filter(line => /^[0-9a-f]{40}$/.test(line)),
   );
 
   if (!list.size) return false;
   const mine = (await gitIn(['rev-list', '@{u}..HEAD']).catch(() => '')).split('\n').filter(Boolean);
 
-  return mine.length > 0 && mine.every(c => list.has(c));
+  return mine.length > 0 && mine.every(commit => list.has(commit));
 }
 
 /** package.json's version as a commit has it written (`0.2.0`), or null. */
 async function writtenAt(ref) {
   try {
-    const v = JSON.parse(await gitIn(['show', `${ref}:package.json`])).version;
+    const version = JSON.parse(await gitIn(['show', `${ref}:package.json`])).version;
 
-    return typeof v === 'string' ? v : null;
+    return typeof version === 'string' ? version : null;
   } catch {
     return null;
   }
@@ -425,9 +425,9 @@ async function newestRelease(co) {
 /** The notes of the releases after `since` up to the one on disk (2026-11-27; `GET /api/update/notes`): What's new reads
  *  them once a board is on a release its page has not shown — whoever moved it there, the board, `make update` or a pull. */
 export function releaseNotes(since) {
-  const read = f => {
+  const read = file => {
     try {
-      return readFileSync(join(UPDATE_DIR, f), 'utf8');
+      return readFileSync(join(UPDATE_DIR, file), 'utf8');
     } catch {
       return '';
     }
@@ -475,7 +475,7 @@ async function signedBy(sha) {
   try {
     writeFileSync(file, `${list}\n`, { mode: 0o600, flag: 'wx' });
 
-    const r = await execFileP(
+    const result = await execFileP(
       git,
       [
         '--no-optional-locks',
@@ -493,22 +493,22 @@ async function signedBy(sha) {
       { env: updateEnv(), timeout: 30_000 },
     );
 
-    const by = /Good "git" signature for (\S+)/.exec(String(r.stderr))?.[1] || null;
+    const by = /Good "git" signature for (\S+)/.exec(String(result.stderr))?.[1] || null;
 
     return by ? { sha, ok: true, by } : { sha, ok: false, why: 'is not signed by a key this board trusts' };
-  } catch (e) {
-    const err = String(e?.stderr || '');
+  } catch (error) {
+    const err = String(error?.stderr || '');
 
     // git says nothing at all of a commit with no signature
     return {
       sha,
       ok: false,
       why:
-        (e?.code === 1 && !err.trim()) || /no signature found/i.test(err)
+        (error?.code === 1 && !err.trim()) || /no signature found/i.test(err)
           ? 'is not signed'
           : /principal|not trusted|allowed signers|could not verify|bad signature/i.test(err)
             ? 'is not signed by a key this board trusts'
-            : errText(e),
+            : errText(error),
     };
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -521,7 +521,7 @@ async function macSource() {
   const tree = await gitIn(['rev-parse', '--verify', '--quiet', 'HEAD:mac']).catch(() => '');
 
   const notes = tree
-    ? (await gitIn(['ls-tree', '-r', '-z', '--name-only', tree])).split('\0').filter(f => f.endsWith('.md'))
+    ? (await gitIn(['ls-tree', '-r', '-z', '--name-only', tree])).split('\0').filter(file => file.endsWith('.md'))
     : [];
 
   if (!notes.length) return tree;
@@ -596,16 +596,16 @@ function whyNot(asked, apply) {
  *  committed), waits for a commit or the button. Never over uncommitted work in mac/ (`changes`). `manual`: this server
  *  does not rebuild it (not the login agent) — `mac/build.sh install` does. */
 export function appWhyNot(asked, apply, pull) {
-  const a = upd.app;
+  const app = upd.app;
 
-  if (!a?.behind) return 'none';
+  if (!app?.behind) return 'none';
   if (!buildBin) return 'manual';
   if (upd.building) return 'building';
   if (pull) return 'pull';
-  if (a.changes) return 'changes';
+  if (app.changes) return 'changes';
   if (apply) return null;
   if (!autoUpdate) return 'off';
-  if (appBuild?.source === a.source) return 'tried';
+  if (appBuild?.source === app.source) return 'tried';
   return !asked && quietLeft() > 0 ? 'busy' : null;
 }
 
@@ -648,8 +648,8 @@ export async function checkUpdate({ asked = false, apply = false } = {}) {
 
       if (apply && restartBin && upd.pending.length) await restartStale(); // nothing to pull, and this server older than its checkout (2026-11-25)
     }
-  } catch (e) {
-    upd.error = errText(e);
+  } catch (error) {
+    upd.error = errText(error);
     if (upd.busy === 'updating') upd.failed = upd.error;
     console.error(`[peixairada] update: ${upd.error}`);
   } finally {
@@ -668,7 +668,7 @@ async function applyUpdate() {
 
   const parts = updateParts((await gitIn(['diff', '--name-only', from, to])).split('\n').filter(Boolean));
 
-  const has = k => parts.includes(k);
+  const has = part => parts.includes(part);
   const checkPage = has('page') && existsSync(join(UPDATE_DIR, 'scripts', 'check-page.mjs'));
 
   upd.steps = [
@@ -680,8 +680,8 @@ async function applyUpdate() {
     ...(has('server') && restartBin ? ['restart'] : []),
   ];
 
-  const step = k => {
-    upd.step = upd.steps.indexOf(k);
+  const step = name => {
+    upd.step = upd.steps.indexOf(name);
     sayUpdate();
   };
 
@@ -692,13 +692,13 @@ async function applyUpdate() {
   } // the one checked, and no other
 
   if (rewritten) {
-    await gitIn(['reset', '--quiet', '--keep', to], 60_000).catch(e => {
-      throw new Error(`not followed: ${errText(e)}`);
+    await gitIn(['reset', '--quiet', '--keep', to], 60_000).catch(error => {
+      throw new Error(`not followed: ${errText(error)}`);
     });
   } // onto the rewritten history, the changes here kept
   else {
-    await gitIn(['merge', '--ff-only', '--quiet', to], 60_000).catch(e => {
-      throw new Error(mergeRefused(e) || errText(e));
+    await gitIn(['merge', '--ff-only', '--quiet', to], 60_000).catch(error => {
+      throw new Error(mergeRefused(error) || errText(error));
     });
   }
 
@@ -709,7 +709,7 @@ async function applyUpdate() {
     }
 
     await preflight(parts, to, step);
-  } catch (e) {
+  } catch (error) {
     // undone only while the branch is where the pull left it (2026-10-14): a commit made here meanwhile — a session's,
     // during npm install and the pre-flight — is never reset away; the checkout is then left as it is, and said
     const at = await gitIn(['rev-parse', 'HEAD']).catch(() => null);
@@ -730,11 +730,11 @@ async function applyUpdate() {
               );
 
     if (!undo && parts.includes('deps')) await npmInstall().catch(() => {});
-    setUpdateHeld({ to, why: e.message, at: new Date().toISOString() });
+    setUpdateHeld({ to, why: error.message, at: new Date().toISOString() });
     saveState();
     Object.assign(upd, await readCheckout().catch(() => ({})));
     upd.why = 'held';
-    throw new Error(`${to.slice(0, 7)} was not kept: ${e.message}${undo}`, { cause: e });
+    throw new Error(`${to.slice(0, 7)} was not kept: ${error.message}${undo}`, { cause: error });
   }
 
   setUpdateHeld(null);
@@ -782,8 +782,8 @@ async function restartStale() {
   upd.failed = null;
   upd.steps = [...(deps ? ['deps'] : []), 'server', 'restart'];
 
-  const step = k => {
-    upd.step = upd.steps.indexOf(k);
+  const step = name => {
+    upd.step = upd.steps.indexOf(name);
     sayUpdate();
   };
 
@@ -807,24 +807,24 @@ async function restartStale() {
 
 /** git's refusal to fast-forward over files here, said as the settings say a clash (2026-10-15): which files, and what
  *  to do about them — a change made since the look, or a file not in git that the commits add. Null for any other failure. */
-function mergeRefused(e) {
-  const m =
+function mergeRefused(error) {
+  const match =
     /(local changes to the following files|untracked working tree files) would be (?:overwritten|removed) by merge:\n((?:\t.*\n?)+)/.exec(
-      String(e?.stderr || ''),
+      String(error?.stderr || ''),
     );
 
-  if (!m) return null;
+  if (!match) return null;
 
-  const files = m[2]
+  const files = match[2]
     .split('\n')
-    .map(f => f.trim())
+    .map(file => file.trim())
     .filter(Boolean);
 
   const it = files.length === 1 ? 'it' : 'them';
 
   const list = files.slice(0, 3).join(', ') + (files.length > 3 ? ` and ${files.length - 3} more` : '');
 
-  return m[1].startsWith('untracked')
+  return match[1].startsWith('untracked')
     ? `not pulled: ${list}, not in git here, would be written over by the new commits — move ${it} away, then check now`
     : `not pulled: ${list} changed here, and the new commits change ${it} too — commit or discard ${it}, then check now`;
 }
@@ -842,26 +842,26 @@ function startBuild() {
     writeFileSync(BUILD_LOG, '');
   } catch {}
 
-  const p = detach(buildBin, ['install', '--detached'], BUILD_LOG);
+  const child = detach(buildBin, ['install', '--detached'], BUILD_LOG);
 
-  if (!p?.pid) {
+  if (!child?.pid) {
     setAppBuild({ at, source, done: at, ok: false, why: `${basename(buildBin)} did not start` });
     saveState();
     return;
   }
 
   console.log('[peixairada] update: rebuilding the app — it quits and opens again');
-  setAppBuild({ pid: p.pid, at, source });
+  setAppBuild({ pid: child.pid, at, source });
   saveState();
   upd.building = true;
   upd.appWhy = 'building';
-  p.once('exit', code => buildEnded(code));
+  child.once('exit', code => buildEnded(code));
 }
 
 function buildEnded(code = null) {
-  const b = appBuild;
+  const build = appBuild;
 
-  if (!b || b.done) return;
+  if (!build || build.done) return;
   let tail = '';
 
   try {
@@ -871,7 +871,7 @@ function buildEnded(code = null) {
   const ok = code === 0 || (code === null && /installed → /.test(tail));
 
   setAppBuild({
-    ...b,
+    ...build,
     done: new Date().toISOString(),
     ok,
     ...(ok ? {} : { why: (tail.split('\n').pop() || `it exited ${code}`).slice(0, 200) }),
@@ -889,7 +889,7 @@ function buildEnded(code = null) {
  *  by checkUpdate, once the board rests. */
 export async function lookApp() {
   if (upd.busy || !upd.checkout) return;
-  const a = await readApp().catch(() => upd.app);
+  const app = await readApp().catch(() => upd.app);
   // a pull by hand (2026-11-25): the checkout read again once HEAD moves, and the code a restart would take in
   const head = await gitIn(['rev-parse', 'HEAD']).catch(() => upd.head);
   const co = head !== upd.head ? await readCheckout().catch(() => null) : null;
@@ -903,7 +903,7 @@ export async function lookApp() {
   }
 
   upd.pending = staleParts();
-  upd.app = a;
+  upd.app = app;
   upd.appWhy = appWhyNot(false, false, upd.why === 'busy');
 
   if (UPDATE_EVERY_MS > 0 && !updRetry && (upd.appWhy === null || upd.appWhy === 'busy')) {
@@ -915,10 +915,10 @@ export async function lookApp() {
 }
 
 export function watchBuild() {
-  const b = appBuild;
+  const build = appBuild;
 
-  if (!b || b.done) return;
-  if (b.pid && pidAlive(b.pid)) {
+  if (!build || build.done) return;
+  if (build.pid && pidAlive(build.pid)) {
     if (!upd.building) {
       upd.building = true;
       sayUpdate();
@@ -945,17 +945,17 @@ async function npmInstall() {
     env: updateEnv(),
     timeout: 10 * 60_000,
     maxBuffer: 16 << 20,
-  }).catch(e => {
-    throw new Error(`npm ci failed: ${errText(e)}`);
+  }).catch(error => {
+    throw new Error(`npm ci failed: ${errText(error)}`);
   });
 
   const pre = join(UPDATE_DIR, 'node_modules', 'node-pty', 'prebuilds');
 
   try {
-    for (const d of readdirSync(pre)) {
-      const f = join(pre, d, 'spawn-helper');
+    for (const platform of readdirSync(pre)) {
+      const helper = join(pre, platform, 'spawn-helper');
 
-      if (existsSync(f) && !(statSync(f).mode & 0o100)) chmodSync(f, 0o755);
+      if (existsSync(helper) && !(statSync(helper).mode & 0o100)) chmodSync(helper, 0o755);
     }
   } catch {}
 }
@@ -972,12 +972,12 @@ async function preflight(parts, to, step = () => {}) {
       cwd: UPDATE_DIR,
       env: updateEnv(),
       timeout: 60_000,
-    }).catch(e => {
+    }).catch(error => {
       throw new Error(
         `its page does not compile (${(
-          String(e.stderr || '')
+          String(error.stderr || '')
             .trim()
-            .split('\n')[0] || errText(e)
+            .split('\n')[0] || errText(error)
         )
           .replace(`${UPDATE_DIR}/`, '')
           .slice(0, 200)})`,
@@ -992,18 +992,18 @@ async function preflight(parts, to, step = () => {}) {
 
   try {
     srv = await startTestServer({ env: { UPDATE_EVERY_MS: '0' } });
-  } catch (e) {
-    console.error(`[peixairada] update: ${to.slice(0, 7)}'s server did not start —\n${e.message}`);
+  } catch (error) {
+    console.error(`[peixairada] update: ${to.slice(0, 7)}'s server did not start —\n${error.message}`);
     throw new Error(
-      `its server did not start (${(e.message.match(/^.*(Error|error).*$/gm) || [e.message.split('\n')[0]]).pop().trim().slice(0, 200)})`,
-      { cause: e },
+      `its server did not start (${(error.message.match(/^.*(Error|error).*$/gm) || [error.message.split('\n')[0]]).pop().trim().slice(0, 200)})`,
+      { cause: error },
     );
   }
 
   try {
-    const r = await srv.api('/');
+    const response = await srv.api('/');
 
-    if (!r.ok) throw new Error(`its server answered ${r.status} for the page`);
+    if (!response.ok) throw new Error(`its server answered ${response.status} for the page`);
   } finally {
     await srv.stop();
   }
@@ -1017,16 +1017,19 @@ function detach(bin, args, log = join(dirname(STATE_FILE), 'update.log')) {
     const fd = openSync(log, 'a');
 
     try {
-      const p = spawn(bin, args, { cwd: UPDATE_DIR, env: updateEnv(), detached: true, stdio: ['ignore', fd, fd] });
+      const child = spawn(bin, args, { cwd: UPDATE_DIR, env: updateEnv(), detached: true, stdio: ['ignore', fd, fd] });
 
-      p.on('error', e => console.error(`[peixairada] update: ${basename(bin)} did not start — ${e.message}`));
-      p.unref();
-      return p;
+      child.on('error', error =>
+        console.error(`[peixairada] update: ${basename(bin)} did not start — ${error.message}`),
+      );
+
+      child.unref();
+      return child;
     } finally {
       closeSync(fd);
     }
-  } catch (e) {
-    console.error(`[peixairada] update: could not run ${basename(bin)} — ${e.message}`);
+  } catch (error) {
+    console.error(`[peixairada] update: could not run ${basename(bin)} — ${error.message}`);
     return null;
   }
 }

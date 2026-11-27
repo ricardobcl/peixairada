@@ -137,229 +137,232 @@ const ZE_RIGS = [
   },
 ];
 
-const zgRng = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
+const zgRng = seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
-const zgCanvas = S => {
-  const c = document.createElement('canvas');
+const zgCanvas = scale => {
+  const canvas = document.createElement('canvas');
 
-  c.width = Math.round(ZE_W * S);
-  c.height = Math.round(ZE_H * S);
-  const x = c.getContext('2d');
+  canvas.width = Math.round(ZE_W * scale);
+  canvas.height = Math.round(ZE_H * scale);
+  const cx = canvas.getContext('2d');
 
-  x.scale(S, S);
-  return [c, x];
+  cx.scale(scale, scale);
+  return [canvas, cx];
 };
 
 /** The sky, as zeScene paints it, down to the water — its sun risen to stand on the town, and what burns in a canvas of its own. */
-function zgPaintSky(P) {
-  const [c, x] = zgCanvas(1);
-  const [e, y] = zgCanvas(1);
+function zgPaintSky(look) {
+  const [canvas, cx] = zgCanvas(1);
+  const [glow, glowCx] = zgCanvas(1);
   const bot = ZE_WATER + 16;
 
-  const sky = x.createLinearGradient(0, 0, 0, bot);
+  const sky = cx.createLinearGradient(0, 0, 0, bot);
 
-  P.stops.forEach((col, i) => sky.addColorStop([0, 0.32, 0.7, 1][i], col));
-  x.fillStyle = sky;
-  x.fillRect(0, 0, ZE_W, ZE_H);
+  look.stops.forEach((col, index) => sky.addColorStop([0, 0.32, 0.7, 1][index], col));
+  cx.fillStyle = sky;
+  cx.fillRect(0, 0, ZE_W, ZE_H);
 
-  if (P.glow) {
-    const r = x.createRadialGradient(360, ZE_WATER, 20, 360, ZE_WATER, 460);
+  if (look.glow) {
+    const gradient = cx.createRadialGradient(360, ZE_WATER, 20, 360, ZE_WATER, 460);
 
-    r.addColorStop(0, `${P.glow}99`);
-    r.addColorStop(1, `${P.glow}00`);
-    x.fillStyle = r;
-    x.fillRect(0, 0, ZE_W, ZE_H);
+    gradient.addColorStop(0, `${look.glow}99`);
+    gradient.addColorStop(1, `${look.glow}00`);
+    cx.fillStyle = gradient;
+    cx.fillRect(0, 0, ZE_W, ZE_H);
   }
 
   let seed = 7;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
-  for (let i = 0; i < P.stars; i++) {
+  for (let star = 0; star < look.stars; star++) {
     const sy = rnd() ** 1.6 * 420;
 
-    x.globalAlpha = 0.25 + 0.75 * (1 - sy / 420) * rnd();
-    x.fillStyle = '#fff6e0';
-    x.fillRect(rnd() * ZE_W, sy, rnd() < 0.15 ? 2 : 1.2, rnd() < 0.15 ? 2 : 1.2);
+    cx.globalAlpha = 0.25 + 0.75 * (1 - sy / 420) * rnd();
+    cx.fillStyle = '#fff6e0';
+    cx.fillRect(rnd() * ZE_W, sy, rnd() < 0.15 ? 2 : 1.2, rnd() < 0.15 ? 2 : 1.2);
   }
 
-  x.globalAlpha = 1;
+  cx.globalAlpha = 1;
 
-  if (P.moon === 'crescent' || P.moon === 'faint') {
-    x.globalAlpha = P.moon === 'faint' ? 0.45 : 1;
-    x.fillStyle = '#fff3c4';
-    x.beginPath();
-    x.arc(118, 132, 26, 0, Math.PI * 2);
-    x.fill();
-    x.globalAlpha = 1;
-    x.fillStyle = sky;
-    x.beginPath();
-    x.arc(130, 124, 24, 0, Math.PI * 2);
-    x.fill();
+  if (look.moon === 'crescent' || look.moon === 'faint') {
+    cx.globalAlpha = look.moon === 'faint' ? 0.45 : 1;
+    cx.fillStyle = '#fff3c4';
+    cx.beginPath();
+    cx.arc(118, 132, 26, 0, Math.PI * 2);
+    cx.fill();
+    cx.globalAlpha = 1;
+    cx.fillStyle = sky;
+    cx.beginPath();
+    cx.arc(130, 124, 24, 0, Math.PI * 2);
+    cx.fill();
   }
 
-  if (P.moon === 'full') {
-    const r = x.createRadialGradient(590, 150, 10, 590, 150, 90);
+  if (look.moon === 'full') {
+    const halo = cx.createRadialGradient(590, 150, 10, 590, 150, 90);
 
-    r.addColorStop(0, 'rgba(220, 230, 255, .35)');
-    r.addColorStop(1, 'rgba(220, 230, 255, 0)');
-    x.fillStyle = r;
-    x.fillRect(490, 50, 200, 200);
-    x.fillStyle = '#e8eeff';
-    x.beginPath();
-    x.arc(590, 150, 24, 0, Math.PI * 2);
-    x.fill();
-    x.fillStyle = '#c9d2ee';
+    halo.addColorStop(0, 'rgba(220, 230, 255, .35)');
+    halo.addColorStop(1, 'rgba(220, 230, 255, 0)');
+    cx.fillStyle = halo;
+    cx.fillRect(490, 50, 200, 200);
+    cx.fillStyle = '#e8eeff';
+    cx.beginPath();
+    cx.arc(590, 150, 24, 0, Math.PI * 2);
+    cx.fill();
+    cx.fillStyle = '#c9d2ee';
 
     for (const [mx, my, mr] of [
       [583, 145, 5],
       [597, 158, 3.5],
       [594, 141, 2.5],
     ]) {
-      x.beginPath();
-      x.arc(mx, my, mr, 0, Math.PI * 2);
-      x.fill();
+      cx.beginPath();
+      cx.arc(mx, my, mr, 0, Math.PI * 2);
+      cx.fill();
     }
   }
 
-  if (P.sun) {
-    const S = P.sun;
-    const sy0 = S.y > 860 ? S.y : S.y - 74;
-    const sun = x.createLinearGradient(0, sy0 - S.r, 0, sy0 + S.r);
+  if (look.sun) {
+    const sunLook = look.sun;
+    const sy0 = sunLook.y > 860 ? sunLook.y : sunLook.y - 74;
+    const sun = cx.createLinearGradient(0, sy0 - sunLook.r, 0, sy0 + sunLook.r);
 
-    sun.addColorStop(0, S.a);
-    sun.addColorStop(1, S.b);
-    x.save();
-    x.beginPath();
-    x.arc(S.x, sy0, S.r, 0, Math.PI * 2);
-    x.clip();
-    x.fillStyle = sun;
-    x.fillRect(S.x - S.r, sy0 - S.r, S.r * 2, S.r * 2);
+    sun.addColorStop(0, sunLook.a);
+    sun.addColorStop(1, sunLook.b);
+    cx.save();
+    cx.beginPath();
+    cx.arc(sunLook.x, sy0, sunLook.r, 0, Math.PI * 2);
+    cx.clip();
+    cx.fillStyle = sun;
+    cx.fillRect(sunLook.x - sunLook.r, sy0 - sunLook.r, sunLook.r * 2, sunLook.r * 2);
 
-    if (S.bands) {
-      x.fillStyle = sky;
-      for (let i = 0; i < 6; i++) x.fillRect(S.x - S.r, sy0 - 60 + i * 18, S.r * 2, 2 + i * 2);
+    if (sunLook.bands) {
+      cx.fillStyle = sky;
+
+      for (let band = 0; band < 6; band++) {
+        cx.fillRect(sunLook.x - sunLook.r, sy0 - 60 + band * 18, sunLook.r * 2, 2 + band * 2);
+      }
     }
 
-    x.restore();
-    y.drawImage(c, 0, 0);
-    y.globalCompositeOperation = 'destination-in';
-    y.fillStyle = '#000';
-    y.beginPath();
-    y.arc(S.x, sy0, S.r, 0, Math.PI * 2);
-    y.fill();
-    y.globalCompositeOperation = 'source-over';
+    cx.restore();
+    glowCx.drawImage(canvas, 0, 0);
+    glowCx.globalCompositeOperation = 'destination-in';
+    glowCx.fillStyle = '#000';
+    glowCx.beginPath();
+    glowCx.arc(sunLook.x, sy0, sunLook.r, 0, Math.PI * 2);
+    glowCx.fill();
+    glowCx.globalCompositeOperation = 'source-over';
   }
 
-  return [c, e];
+  return [canvas, glow];
 }
 
 /** The town: rows of houses on the far bank, and zeTown's landmarks in stone. Its lit windows in a canvas of their own. */
 function zgPaintTown() {
-  const S = 1.5;
-  const [c, x] = zgCanvas(S);
-  const [e, y] = zgCanvas(S);
-  const r = zgRng(11);
-  const B = ZE_WATER;
+  const SCALE = 1.5;
+  const [canvas, cx] = zgCanvas(SCALE);
+  const [glow, glowCx] = zgCanvas(SCALE);
+  const random = zgRng(11);
+  const WATER = ZE_WATER;
 
-  const R = (col, a, b, w, h) => {
-    x.fillStyle = col;
-    x.fillRect(a, b, w, h);
+  const rect = (col, left, top, width, height) => {
+    cx.fillStyle = col;
+    cx.fillRect(left, top, width, height);
   };
 
-  const lit = (a, b, w, h, col = '#ffd27a') => {
-    y.fillStyle = col;
-    y.fillRect(a, b, w, h);
+  const lit = (left, top, width, height, col = '#ffd27a') => {
+    glowCx.fillStyle = col;
+    glowCx.fillRect(left, top, width, height);
   };
 
   const WALL = ['#e6dcca', '#d9ccb5', '#cdc2b2', '#e8d7b6', '#cbc4c0', '#dfc9ae', '#c9bba4'];
   const ROOF = ['#a8553a', '#97492f', '#b4623e', '#8e4530'];
 
-  const house = (hx, w, h) => {
-    const top = B - h;
-    const wall = WALL[(r() * WALL.length) | 0];
-    const roof = ROOF[(r() * ROOF.length) | 0];
-    const rh = 5 + r() * 7;
+  const house = (hx, width, height) => {
+    const top = WATER - height;
+    const wall = WALL[(random() * WALL.length) | 0];
+    const roof = ROOF[(random() * ROOF.length) | 0];
+    const rh = 5 + random() * 7;
 
-    R(wall, hx, top, w, h);
-    R('rgba(40, 25, 40, .28)', hx + w - Math.max(3, w * 0.3), top, Math.max(3, w * 0.3), h);
-    x.fillStyle = roof;
-    x.beginPath();
-    x.moveTo(hx - 2, top + 1);
-    x.lineTo(hx + w * 0.3, top - rh);
-    x.lineTo(hx + w * 0.72, top - rh);
-    x.lineTo(hx + w + 2, top + 1);
-    x.fill();
-    R('rgba(30, 15, 30, .3)', hx + w * 0.55, top - rh, w * 0.45 + 2, rh + 1);
+    rect(wall, hx, top, width, height);
+    rect('rgba(40, 25, 40, .28)', hx + width - Math.max(3, width * 0.3), top, Math.max(3, width * 0.3), height);
+    cx.fillStyle = roof;
+    cx.beginPath();
+    cx.moveTo(hx - 2, top + 1);
+    cx.lineTo(hx + width * 0.3, top - rh);
+    cx.lineTo(hx + width * 0.72, top - rh);
+    cx.lineTo(hx + width + 2, top + 1);
+    cx.fill();
+    rect('rgba(30, 15, 30, .3)', hx + width * 0.55, top - rh, width * 0.45 + 2, rh + 1);
 
-    for (let wy = top + 4; wy < B - 6; wy += 9) {
-      for (let wx = hx + 3; wx < hx + w - 4; wx += 7) {
-        if (r() < 0.12) continue;
-        const on = r() < 0.3;
+    for (let wy = top + 4; wy < WATER - 6; wy += 9) {
+      for (let wx = hx + 3; wx < hx + width - 4; wx += 7) {
+        if (random() < 0.12) continue;
+        const on = random() < 0.3;
 
-        R(on ? '#5a4632' : '#2a2a38', wx, wy, 3, 5);
+        rect(on ? '#5a4632' : '#2a2a38', wx, wy, 3, 5);
         if (on) lit(wx, wy, 3, 5);
       }
     }
 
-    if (r() < 0.4) R('#6f4a3a', hx + w * 0.7, top - rh - 5, 3, 7);
+    if (random() < 0.4) rect('#6f4a3a', hx + width * 0.7, top - rh - 5, 3, 7);
   };
 
   for (let hx = -14; hx < 740;) {
-    const w = 18 + r() * 24;
+    const width = 18 + random() * 24;
 
-    house(hx, w, 34 + r() * 44);
-    hx += w - 2;
+    house(hx, width, 34 + random() * 44);
+    hx += width - 2;
   }
 
   const G1 = '#9d9182';
   const G2 = '#7e7366';
   const G3 = '#b5a998';
   const OFF = 30;
-  const T = (a, b, w, h, col = G1) => R(col, a, b - OFF, w, h);
+  const stone = (left, top, width, height, col = G1) => rect(col, left, top - OFF, width, height);
 
-  T(206, 642, 36, 150);
-  T(232, 642, 10, 150, G2);
-  T(202, 636, 44, 7, G3);
-  for (let i = 0; i < 4; i++) T(202 + i * 12.3, 626, 7, 11, G3); // the Torre da Porta Nova
+  stone(206, 642, 36, 150);
+  stone(232, 642, 10, 150, G2);
+  stone(202, 636, 44, 7, G3);
+  for (let merlon = 0; merlon < 4; merlon++) stone(202 + merlon * 12.3, 626, 7, 11, G3); // the Torre da Porta Nova
 
-  for (const [a, b] of [
+  for (const [windowX, windowY] of [
     [220, 662],
     [229, 704],
     [216, 744],
   ]) {
-    T(a, b, 4, 8, '#3a3440');
-    lit(a, b - OFF, 4, 8);
+    stone(windowX, windowY, 4, 8, '#3a3440');
+    lit(windowX, windowY - OFF, 4, 8);
   }
 
-  T(262, 712, 58, 80, G3);
-  T(306, 712, 14, 80, G1);
-  x.fillStyle = '#94553d';
-  x.beginPath();
-  x.moveTo(258, 713 - OFF);
-  x.lineTo(291, 688 - OFF);
-  x.lineTo(324, 713 - OFF);
-  x.fill(); // the Igreja Matriz…
-  x.fillStyle = '#3a3440';
-  x.beginPath();
-  x.arc(291, 728 - OFF, 5, 0, 7);
-  x.fill();
-  y.fillStyle = '#ffcf7a';
-  y.beginPath();
-  y.arc(291, 728 - OFF, 5, 0, 7);
-  y.fill();
-  T(322, 662, 22, 130);
-  T(336, 662, 8, 130, G2);
-  x.fillStyle = '#7f4a38';
-  x.beginPath();
-  x.moveTo(319, 663 - OFF);
-  x.lineTo(333, 644 - OFF);
-  x.lineTo(347, 663 - OFF);
-  x.fill();
-  T(330, 676, 6, 10, '#2c2832'); // …and its tower
-  x.fillStyle = G2;
-  x.beginPath();
+  stone(262, 712, 58, 80, G3);
+  stone(306, 712, 14, 80, G1);
+  cx.fillStyle = '#94553d';
+  cx.beginPath();
+  cx.moveTo(258, 713 - OFF);
+  cx.lineTo(291, 688 - OFF);
+  cx.lineTo(324, 713 - OFF);
+  cx.fill(); // the Igreja Matriz…
+  cx.fillStyle = '#3a3440';
+  cx.beginPath();
+  cx.arc(291, 728 - OFF, 5, 0, 7);
+  cx.fill();
+  glowCx.fillStyle = '#ffcf7a';
+  glowCx.beginPath();
+  glowCx.arc(291, 728 - OFF, 5, 0, 7);
+  glowCx.fill();
+  stone(322, 662, 22, 130);
+  stone(336, 662, 8, 130, G2);
+  cx.fillStyle = '#7f4a38';
+  cx.beginPath();
+  cx.moveTo(319, 663 - OFF);
+  cx.lineTo(333, 644 - OFF);
+  cx.lineTo(347, 663 - OFF);
+  cx.fill();
+  stone(330, 676, 6, 10, '#2c2832'); // …and its tower
+  cx.fillStyle = G2;
+  cx.beginPath();
 
-  for (const [a, b] of [
+  for (const [pointX, pointY] of [
     [352, 792],
     [352, 718],
     [361, 718],
@@ -373,139 +376,139 @@ function zgPaintTown() {
     [410, 720],
     [410, 792],
   ]) {
-    x.lineTo(a, b - OFF);
+    cx.lineTo(pointX, pointY - OFF);
   }
 
-  x.fill(); // the Paço dos Condes
-  T(364, 674, 7, 36, G2);
-  T(362, 670, 11, 5);
-  T(391, 668, 7, 38, G2);
-  T(389, 664, 11, 5);
-  for (const a of [358, 378, 396]) T(a, 734, 7, 12, '#2c2832');
-  T(422, 702, 46, 90, G3);
-  T(456, 702, 12, 90);
-  x.fillStyle = '#b8ad9b';
-  x.beginPath();
-  x.arc(445, 703 - OFF, 23, Math.PI, 0);
-  x.fill();
-  x.fillStyle = '#8f8473';
-  x.beginPath();
-  x.arc(445, 703 - OFF, 23, Math.PI * 1.55, 0);
-  x.lineTo(445, 703 - OFF);
-  x.fill(); // Bom Jesus da Cruz
-  T(441, 670, 8, 14, G3);
-  x.fillStyle = G3;
-  x.beginPath();
-  x.arc(445, 671 - OFF, 5, Math.PI, 0);
-  x.fill();
-  T(444, 654, 2, 12, G2);
-  T(441, 658, 8, 2, G2);
+  cx.fill(); // the Paço dos Condes
+  stone(364, 674, 7, 36, G2);
+  stone(362, 670, 11, 5);
+  stone(391, 668, 7, 38, G2);
+  stone(389, 664, 11, 5);
+  for (const windowX of [358, 378, 396]) stone(windowX, 734, 7, 12, '#2c2832');
+  stone(422, 702, 46, 90, G3);
+  stone(456, 702, 12, 90);
+  cx.fillStyle = '#b8ad9b';
+  cx.beginPath();
+  cx.arc(445, 703 - OFF, 23, Math.PI, 0);
+  cx.fill();
+  cx.fillStyle = '#8f8473';
+  cx.beginPath();
+  cx.arc(445, 703 - OFF, 23, Math.PI * 1.55, 0);
+  cx.lineTo(445, 703 - OFF);
+  cx.fill(); // Bom Jesus da Cruz
+  stone(441, 670, 8, 14, G3);
+  cx.fillStyle = G3;
+  cx.beginPath();
+  cx.arc(445, 671 - OFF, 5, Math.PI, 0);
+  cx.fill();
+  stone(444, 654, 2, 12, G2);
+  stone(441, 658, 8, 2, G2);
 
-  for (const a of [432, 456]) {
-    T(a, 732, 4, 10, '#3a3440');
-    lit(a, 732 - OFF, 4, 10);
+  for (const windowX of [432, 456]) {
+    stone(windowX, 732, 4, 10, '#3a3440');
+    lit(windowX, 732 - OFF, 4, 10);
   }
 
   for (let hx = -8; hx < 740;) {
-    const w = 14 + r() * 18;
+    const width = 14 + random() * 18;
 
-    if (hx < 196 || hx > 470) house(hx, w, 12 + r() * 20);
-    hx += w + (r() < 0.25 ? 6 : -1);
+    if (hx < 196 || hx > 470) house(hx, width, 12 + random() * 20);
+    hx += width + (random() < 0.25 ? 6 : -1);
   } // a low row on the water
 
-  x.fillStyle = 'rgba(20, 12, 24, .55)';
-  x.fillRect(-2, B - 3, 724, 3);
-  return { c, e };
+  cx.fillStyle = 'rgba(20, 12, 24, .55)';
+  cx.fillRect(-2, WATER - 3, 724, 3);
+  return { c: canvas, e: glow };
 }
 
 /** The medieval bridge: six arches in stone, their cutwaters, three lamps. */
 function zgPaintBridge() {
-  const S = 1.5;
-  const [c, x] = zgCanvas(S);
-  const [e, y] = zgCanvas(S);
-  const B = ZE_WATER;
+  const SCALE = 1.5;
+  const [canvas, cx] = zgCanvas(SCALE);
+  const [glow, glowCx] = zgCanvas(SCALE);
+  const WATER = ZE_WATER;
   const stone = '#ab9e8b';
   const dark = '#6e6355';
 
-  x.fillStyle = stone;
-  x.fillRect(-4, B - 26, 296, 26);
-  x.fillStyle = '#c1b5a2';
-  x.fillRect(-4, B - 30, 296, 5);
-  x.fillStyle = dark;
-  x.fillRect(-4, B - 25, 296, 1.5);
-  x.globalCompositeOperation = 'destination-out';
+  cx.fillStyle = stone;
+  cx.fillRect(-4, WATER - 26, 296, 26);
+  cx.fillStyle = '#c1b5a2';
+  cx.fillRect(-4, WATER - 30, 296, 5);
+  cx.fillStyle = dark;
+  cx.fillRect(-4, WATER - 25, 296, 1.5);
+  cx.globalCompositeOperation = 'destination-out';
 
-  for (let i = 0; i < 6; i++) {
-    const a = -6 + i * 50;
+  for (let arch = 0; arch < 6; arch++) {
+    const archX = -6 + arch * 50;
 
-    x.beginPath();
-    x.moveTo(a + 6, B + 1);
-    x.lineTo(a + 6, B - 10);
-    x.quadraticCurveTo(a + 12, B - 21, a + 25, B - 22);
-    x.quadraticCurveTo(a + 38, B - 21, a + 44, B - 10);
-    x.lineTo(a + 44, B + 1);
-    x.fill();
+    cx.beginPath();
+    cx.moveTo(archX + 6, WATER + 1);
+    cx.lineTo(archX + 6, WATER - 10);
+    cx.quadraticCurveTo(archX + 12, WATER - 21, archX + 25, WATER - 22);
+    cx.quadraticCurveTo(archX + 38, WATER - 21, archX + 44, WATER - 10);
+    cx.lineTo(archX + 44, WATER + 1);
+    cx.fill();
   }
 
-  x.globalCompositeOperation = 'source-over';
+  cx.globalCompositeOperation = 'source-over';
 
-  for (let i = 0; i < 7; i++) {
-    const a = -6 + i * 50;
+  for (let pier = 0; pier < 7; pier++) {
+    const pierX = -6 + pier * 50;
 
-    x.fillStyle = '#c1b5a2';
-    x.fillRect(a - 2, B - 7, 8, 7);
-    x.fillStyle = dark;
-    x.fillRect(a + 3, B - 7, 3, 7);
+    cx.fillStyle = '#c1b5a2';
+    cx.fillRect(pierX - 2, WATER - 7, 8, 7);
+    cx.fillStyle = dark;
+    cx.fillRect(pierX + 3, WATER - 7, 3, 7);
   }
 
-  const r = zgRng(5);
+  const random = zgRng(5);
 
-  for (let i = 0; i < 90; i++) {
-    x.fillStyle = r() < 0.5 ? 'rgba(60, 50, 40, .22)' : 'rgba(240, 230, 210, .14)';
-    x.fillRect(-4 + r() * 296, B - 25 + r() * 18, 5, 1.5);
+  for (let mark = 0; mark < 90; mark++) {
+    cx.fillStyle = random() < 0.5 ? 'rgba(60, 50, 40, .22)' : 'rgba(240, 230, 210, .14)';
+    cx.fillRect(-4 + random() * 296, WATER - 25 + random() * 18, 5, 1.5);
   }
 
-  for (const a of [40, 142, 244]) {
-    x.fillStyle = '#20242e';
-    x.fillRect(a, B - 45, 2, 16);
-    x.fillRect(a - 2, B - 50, 6, 5);
-    y.fillStyle = '#ffd98a';
-    y.fillRect(a - 1.5, B - 49.5, 5, 4);
+  for (const lampX of [40, 142, 244]) {
+    cx.fillStyle = '#20242e';
+    cx.fillRect(lampX, WATER - 45, 2, 16);
+    cx.fillRect(lampX - 2, WATER - 50, 6, 5);
+    glowCx.fillStyle = '#ffd98a';
+    glowCx.fillRect(lampX - 1.5, WATER - 49.5, 5, 4);
   }
 
-  return { c, e };
+  return { c: canvas, e: glow };
 }
 
-function zgPaintHills(P) {
-  const [c, x] = zgCanvas(1);
-  const r = zgRng(3);
-  const B = ZE_WATER;
+function zgPaintHills(look) {
+  const [canvas, cx] = zgCanvas(1);
+  const random = zgRng(3);
+  const WATER = ZE_WATER;
 
   const hill = (col, base, amp, step, ph, clump) => {
-    const top = i => base - amp * (Math.sin(i / step + ph) * 0.6 + Math.sin(i / (step * 0.37) + ph * 2) * 0.4);
+    const top = atX => base - amp * (Math.sin(atX / step + ph) * 0.6 + Math.sin(atX / (step * 0.37) + ph * 2) * 0.4);
 
-    x.fillStyle = col;
-    x.beginPath();
-    x.moveTo(-2, B + 2);
-    for (let i = -2; i <= ZE_W + 2; i += 6) x.lineTo(i, top(i));
-    x.lineTo(ZE_W + 2, B + 2);
-    x.fill();
+    cx.fillStyle = col;
+    cx.beginPath();
+    cx.moveTo(-2, WATER + 2);
+    for (let atX = -2; atX <= ZE_W + 2; atX += 6) cx.lineTo(atX, top(atX));
+    cx.lineTo(ZE_W + 2, WATER + 2);
+    cx.fill();
 
-    for (let i = 0; i < clump; i++) {
-      const a = r() * ZE_W;
-      const b = top(a) + 2 + r() * 40;
-      const s = 2 + r() * 5;
+    for (let tuft = 0; tuft < clump; tuft++) {
+      const tuftX = random() * ZE_W;
+      const tuftY = top(tuftX) + 2 + random() * 40;
+      const radius = 2 + random() * 5;
 
-      x.fillStyle = r() < 0.5 ? 'rgba(0, 0, 0, .16)' : 'rgba(255, 255, 255, .06)';
-      x.beginPath();
-      x.arc(a, b, s, 0, 7);
-      x.fill();
+      cx.fillStyle = random() < 0.5 ? 'rgba(0, 0, 0, .16)' : 'rgba(255, 255, 255, .06)';
+      cx.beginPath();
+      cx.arc(tuftX, tuftY, radius, 0, 7);
+      cx.fill();
     }
   };
 
-  hill(P.hills[0], 712, 34, 90, 1, 240);
-  hill(P.hills[1], 742, 22, 60, 4, 200);
-  return c;
+  hill(look.hills[0], 712, 34, 90, 1, 240);
+  hill(look.hills[1], 742, 22, 60, 4, 200);
+  return canvas;
 }
 
 const ZE_LAMPS = [
@@ -520,12 +523,15 @@ const ZE_WIRES = [
   [[406, 716], [490, 672], 18],
 ];
 
-const zgWire = ([a, b, s], t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t + Math.sin(t * Math.PI) * s];
+const zgWire = ([from, to, sag], progress) => [
+  from[0] + (to[0] - from[0]) * progress,
+  from[1] + (to[1] - from[1]) * progress + Math.sin(progress * Math.PI) * sag,
+];
 
 const ZE_FESTA = (() => {
-  const o = [];
+  const bulbs = [];
 
-  const C = [
+  const COLORS = [
     [1, 0.22, 0.18],
     [1, 0.72, 0.2],
     [0.3, 0.85, 0.35],
@@ -533,122 +539,122 @@ const ZE_FESTA = (() => {
     [0.35, 0.55, 1],
   ];
 
-  let n = 0;
+  let count = 0;
 
-  for (const w of ZE_WIRES) {
-    const L = Math.hypot(w[1][0] - w[0][0], w[1][1] - w[0][1]);
-    const m = Math.round(L / 15);
+  for (const wire of ZE_WIRES) {
+    const length = Math.hypot(wire[1][0] - wire[0][0], wire[1][1] - wire[0][1]);
+    const segments = Math.round(length / 15);
 
-    for (let i = 1; i < m; i++) {
-      const [x, y] = zgWire(w, i / m);
+    for (let index = 1; index < segments; index++) {
+      const [bulbX, bulbY] = zgWire(wire, index / segments);
 
-      o.push({ x, y, c: C[n++ % C.length], ph: n * 1.7 });
+      bulbs.push({ x: bulbX, y: bulbY, c: COLORS[count++ % COLORS.length], ph: count * 1.7 });
     }
   }
 
-  return o;
+  return bulbs;
 })();
 
 /** The terrace he runs on: its iron rail and granite kerb, two lamps, Trota's with its side and roof, the galo on granite; what shines by itself apart. */
-function zgPaintSet(k) {
-  const [c, x] = zgCanvas(k);
-  const [e, y] = zgCanvas(k);
+function zgPaintSet(scale) {
+  const [canvas, cx] = zgCanvas(scale);
+  const [glow, glowCx] = zgCanvas(scale);
   const { x: RX, w: RW, top: RT } = ZE_REST;
   const AY = RT + 18;
-  const F = ZE_FLOOR;
+  const FLOOR = ZE_FLOOR;
   const iron = '#161a24';
   const end = RX - 30;
 
-  for (let i = 8; i < end; i += 30) {
-    x.fillStyle = iron;
-    x.fillRect(i, 804, 3, 22);
-    x.fillRect(i - 1, 802, 5, 3);
+  for (let postX = 8; postX < end; postX += 30) {
+    cx.fillStyle = iron;
+    cx.fillRect(postX, 804, 3, 22);
+    cx.fillRect(postX - 1, 802, 5, 3);
   }
 
-  x.fillStyle = iron;
-  x.fillRect(0, 803, end, 2.5);
-  x.fillRect(0, 815, end, 1.5);
+  cx.fillStyle = iron;
+  cx.fillRect(0, 803, end, 2.5);
+  cx.fillRect(0, 815, end, 1.5);
 
-  for (let i = 0; i < end; i += 6) {
-    x.fillStyle = 'rgba(22, 26, 36, .65)';
-    x.fillRect(i + 1, 805, 1.2, 19);
+  for (let barX = 0; barX < end; barX += 6) {
+    cx.fillStyle = 'rgba(22, 26, 36, .65)';
+    cx.fillRect(barX + 1, 805, 1.2, 19);
   }
 
-  x.fillStyle = '#8c8a88';
-  x.fillRect(0, 824, end + 2, 8);
-  x.fillStyle = '#b4b1ac';
-  x.fillRect(0, 824, end + 2, 2);
-  const r = zgRng(9);
+  cx.fillStyle = '#8c8a88';
+  cx.fillRect(0, 824, end + 2, 8);
+  cx.fillStyle = '#b4b1ac';
+  cx.fillRect(0, 824, end + 2, 2);
+  const random = zgRng(9);
 
-  for (let i = 0; i < end; i += 26 + r() * 10) {
-    x.fillStyle = 'rgba(30, 25, 30, .4)';
-    x.fillRect(i, 826, 1.2, 6);
+  for (let jointX = 0; jointX < end; jointX += 26 + random() * 10) {
+    cx.fillStyle = 'rgba(30, 25, 30, .4)';
+    cx.fillRect(jointX, 826, 1.2, 6);
   }
 
-  x.strokeStyle = 'rgba(14, 14, 22, .85)';
-  x.lineWidth = 1;
+  cx.strokeStyle = 'rgba(14, 14, 22, .85)';
+  cx.lineWidth = 1;
 
-  for (const w of ZE_WIRES) {
-    x.beginPath();
+  for (const wire of ZE_WIRES) {
+    cx.beginPath();
 
-    for (let i = 0; i <= 24; i++) {
-      const [a, b] = zgWire(w, i / 24);
+    for (let index = 0; index <= 24; index++) {
+      const [pointX, pointY] = zgWire(wire, index / 24);
 
-      x.lineTo(a, b);
+      cx.lineTo(pointX, pointY);
     }
 
-    x.stroke();
+    cx.stroke();
   }
 
-  for (const L of ZE_LAMPS) {
-    x.fillStyle = iron;
-    x.fillRect(L.x - 2, L.y + 2, 4, 830 - L.y);
-    x.fillRect(L.x - 6, 822, 12, 10);
-    x.fillRect(L.x - 4, 812, 8, 4);
-    x.fillRect(L.x - 9, L.y - 15, 18, 3);
-    x.beginPath();
-    x.moveTo(L.x - 7, L.y - 15);
-    x.lineTo(L.x, L.y - 23);
-    x.lineTo(L.x + 7, L.y - 15);
-    x.fill();
-    x.fillRect(L.x - 7, L.y + 1, 14, 3);
-    x.fillStyle = '#e8d9a0';
-    x.fillRect(L.x - 6, L.y - 12, 12, 13);
-    x.fillStyle = iron;
-    x.fillRect(L.x - 0.8, L.y - 12, 1.6, 13);
-    y.fillStyle = '#fff0b8';
-    y.fillRect(L.x - 6, L.y - 12, 12, 13);
+  for (const lamp of ZE_LAMPS) {
+    cx.fillStyle = iron;
+    cx.fillRect(lamp.x - 2, lamp.y + 2, 4, 830 - lamp.y);
+    cx.fillRect(lamp.x - 6, 822, 12, 10);
+    cx.fillRect(lamp.x - 4, 812, 8, 4);
+    cx.fillRect(lamp.x - 9, lamp.y - 15, 18, 3);
+    cx.beginPath();
+    cx.moveTo(lamp.x - 7, lamp.y - 15);
+    cx.lineTo(lamp.x, lamp.y - 23);
+    cx.lineTo(lamp.x + 7, lamp.y - 15);
+    cx.fill();
+    cx.fillRect(lamp.x - 7, lamp.y + 1, 14, 3);
+    cx.fillStyle = '#e8d9a0';
+    cx.fillRect(lamp.x - 6, lamp.y - 12, 12, 13);
+    cx.fillStyle = iron;
+    cx.fillRect(lamp.x - 0.8, lamp.y - 12, 1.6, 13);
+    glowCx.fillStyle = '#fff0b8';
+    glowCx.fillRect(lamp.x - 6, lamp.y - 12, 12, 13);
   }
 
-  x.fillStyle = '#6f5442';
-  x.beginPath();
-  x.moveTo(RX - 5, RT - 7);
-  x.lineTo(RX - 30, RT - 1);
-  x.lineTo(RX - 30, 832);
-  x.lineTo(RX - 5, F);
-  x.fill(); // Trota's side, going off towards the river
-  x.fillStyle = 'rgba(20, 10, 30, .32)';
-  x.fillRect(RX - 30, RT - 1, 25, F - RT);
-  x.fillStyle = '#2a2230';
-  x.fillRect(RX - 24, AY + 26, 12, 30);
-  y.fillStyle = '#e8b45a';
-  y.fillRect(RX - 24, AY + 26, 12, 30);
+  cx.fillStyle = '#6f5442';
+  cx.beginPath();
+  cx.moveTo(RX - 5, RT - 7);
+  cx.lineTo(RX - 30, RT - 1);
+  cx.lineTo(RX - 30, 832);
+  cx.lineTo(RX - 5, FLOOR);
+  cx.fill(); // Trota's side, going off towards the river
+  cx.fillStyle = 'rgba(20, 10, 30, .32)';
+  cx.fillRect(RX - 30, RT - 1, 25, FLOOR - RT);
+  cx.fillStyle = '#2a2230';
+  cx.fillRect(RX - 24, AY + 26, 12, 30);
+  glowCx.fillStyle = '#e8b45a';
+  glowCx.fillRect(RX - 24, AY + 26, 12, 30);
 
-  const roof = (col, a, b) => {
-    x.fillStyle = col;
-    x.beginPath();
-    x.moveTo(RX - 5 + a, RT - 8 - b);
-    x.lineTo(RX + RW + 5 - a, RT - 8 - b);
-    x.lineTo(RX + RW + 5 - a - 2, RT - 8 - b - 3);
-    x.lineTo(RX - 5 + a + 2, RT - 8 - b - 3);
-    x.fill();
+  const roof = (col, inset, lift) => {
+    cx.fillStyle = col;
+    cx.beginPath();
+    cx.moveTo(RX - 5 + inset, RT - 8 - lift);
+    cx.lineTo(RX + RW + 5 - inset, RT - 8 - lift);
+    cx.lineTo(RX + RW + 5 - inset - 2, RT - 8 - lift - 3);
+    cx.lineTo(RX - 5 + inset + 2, RT - 8 - lift - 3);
+    cx.fill();
   };
 
-  for (let i = 0; i < 5; i++) roof(i % 2 ? '#a14e30' : '#b65c38', i * 2, i * 3);
-  zeRestaurant(x);
-  x.fillStyle = 'rgba(24, 10, 28, .32)';
-  x.fillRect(RX, AY + 16, RW, 9); // the awning's shade on the wall
-  zeGaloArt(x, 110, F, 1.35);
+  for (let tier = 0; tier < 5; tier++) roof(tier % 2 ? '#a14e30' : '#b65c38', tier * 2, tier * 3);
+  zeRestaurant(cx);
+  cx.fillStyle = 'rgba(24, 10, 28, .32)';
+  cx.fillRect(RX, AY + 16, RW, 9); // the awning's shade on the wall
+  zeGaloArt(cx, 110, FLOOR, 1.35);
 
   {
     const px = 110 - 36 * 1.35;
@@ -658,86 +664,86 @@ function zgPaintSet(k) {
     const tw = 60 * 1.35;
     const th = 6 * 1.35; // his plinth in granite, its side showing
 
-    x.fillStyle = '#6a6562';
-    x.beginPath();
-    x.moveTo(px + pw, F - ph);
-    x.lineTo(px + pw + 10, F - ph + 3);
-    x.lineTo(px + pw + 10, F - 8);
-    x.lineTo(px + pw, F);
-    x.fill();
-    x.fillStyle = '#1b0b2e';
-    x.fillRect(px - 1.5, F - ph - 1.5, pw + 3, ph + 1.5);
-    x.fillRect(tx - 1.5, F - ph - th - 1.5, tw + 3, th + 2);
-    x.fillStyle = '#8f8a86';
-    x.fillRect(px, F - ph, pw, ph);
-    x.fillStyle = '#aaa59f';
-    x.fillRect(px, F - ph, pw, 2.5);
-    x.fillStyle = 'rgba(40, 30, 40, .28)';
-    x.fillRect(px + pw * 0.72, F - ph, pw * 0.28, ph);
-    x.fillStyle = '#9c9791';
-    x.fillRect(tx, F - ph - th, tw, th);
-    x.fillStyle = '#bcb7af';
-    x.fillRect(tx, F - ph - th, tw, 1.8);
+    cx.fillStyle = '#6a6562';
+    cx.beginPath();
+    cx.moveTo(px + pw, FLOOR - ph);
+    cx.lineTo(px + pw + 10, FLOOR - ph + 3);
+    cx.lineTo(px + pw + 10, FLOOR - 8);
+    cx.lineTo(px + pw, FLOOR);
+    cx.fill();
+    cx.fillStyle = '#1b0b2e';
+    cx.fillRect(px - 1.5, FLOOR - ph - 1.5, pw + 3, ph + 1.5);
+    cx.fillRect(tx - 1.5, FLOOR - ph - th - 1.5, tw + 3, th + 2);
+    cx.fillStyle = '#8f8a86';
+    cx.fillRect(px, FLOOR - ph, pw, ph);
+    cx.fillStyle = '#aaa59f';
+    cx.fillRect(px, FLOOR - ph, pw, 2.5);
+    cx.fillStyle = 'rgba(40, 30, 40, .28)';
+    cx.fillRect(px + pw * 0.72, FLOOR - ph, pw * 0.28, ph);
+    cx.fillStyle = '#9c9791';
+    cx.fillRect(tx, FLOOR - ph - th, tw, th);
+    cx.fillStyle = '#bcb7af';
+    cx.fillRect(tx, FLOOR - ph - th, tw, 1.8);
 
-    for (let i = 0; i < 9; i++) {
-      x.fillStyle = 'rgba(40, 30, 40, .16)';
-      x.fillRect(px + 4 + i * 11, F - ph + 7 + (i % 3) * 6, 7, 1.2);
+    for (let mark = 0; mark < 9; mark++) {
+      cx.fillStyle = 'rgba(40, 30, 40, .16)';
+      cx.fillRect(px + 4 + mark * 11, FLOOR - ph + 7 + (mark % 3) * 6, 7, 1.2);
     }
   }
 
   for (const wx of [RX + 12, RX + RW - 72]) {
-    y.fillStyle = '#ffdb70';
-    y.fillRect(wx + 2, AY + 31, 26, 42);
-    y.fillRect(wx + 31, AY + 31, 27, 42);
+    glowCx.fillStyle = '#ffdb70';
+    glowCx.fillRect(wx + 2, AY + 31, 26, 42);
+    glowCx.fillRect(wx + 31, AY + 31, 27, 42);
   }
 
   for (const lx of [RX + 28, RX + RW - 36]) {
-    y.fillStyle = '#fff0a0';
-    y.fillRect(lx, RT + 5, 8, 8);
+    glowCx.fillStyle = '#fff0a0';
+    glowCx.fillRect(lx, RT + 5, 8, 8);
   }
 
   const DX = RX + RW / 2 - 18;
   const DY = AY + 22;
 
-  y.fillStyle = '#ffd868';
-  y.fillRect(DX + 5, DY + 6, 8, 16);
-  y.fillRect(DX + 23, DY + 6, 8, 16);
-  return { c, e };
+  glowCx.fillStyle = '#ffd868';
+  glowCx.fillRect(DX + 5, DY + 6, 8, 16);
+  glowCx.fillRect(DX + 23, DY + 6, 8, 16);
+  return { c: canvas, e: glow };
 }
 
 /** A sky's set, baked: each layer lit by that sky. */
-function zgScene(i) {
-  if (zg.scenes.has(i)) return zg.scenes.get(i);
+function zgScene(skyIndex) {
+  if (zg.scenes.has(skyIndex)) return zg.scenes.get(skyIndex);
 
   const gl = zg.gl;
-  const P = ZE_SKIES[i];
-  const R = ZE_RIGS[i];
+  const look = ZE_SKIES[skyIndex];
+  const rig = ZE_RIGS[skyIndex];
 
   zg.town ||= zgPaintTown();
   zg.bridge ||= zgPaintBridge();
 
-  const sun = P.sun
-    ? [R.sunX, P.sun.y > 860 ? ZE_WATER : P.sun.y - 74]
-    : P.moon === 'full'
+  const sun = look.sun
+    ? [rig.sunX, look.sun.y > 860 ? ZE_WATER : look.sun.y - 74]
+    : look.moon === 'full'
       ? [590, 150]
-      : [R.sunX, 600];
+      : [rig.sunX, 600];
 
   const rimD = (() => {
-    const a = sun[0] - 360;
-    const b = sun[1] - 720;
-    const l = Math.hypot(a, b) || 1;
+    const deltaX = sun[0] - 360;
+    const deltaY = sun[1] - 720;
+    const length = Math.hypot(deltaX, deltaY) || 1;
 
-    return [a / l, b / l];
+    return [deltaX / length, deltaY / length];
   })();
 
   gl.disable(gl.BLEND);
 
-  const bake = (alb, em, { amb = [1, 1, 1], rim = 0, s = 1, emB = 1, blur = 0, haze = 0 }) => {
+  const bake = (alb, em, { amb = [1, 1, 1], rim = 0, s: scale = 1, emB = 1, blur = 0, haze = 0 }) => {
     const ta = zgUp(gl, alb);
     const te = em ? zgUp(gl, em) : null;
-    const A = zgFbo(gl, Math.round(ZE_W * s), Math.round(ZE_H * s));
+    const target = zgFbo(gl, Math.round(ZE_W * scale), Math.round(ZE_H * scale));
 
-    zgBind(A);
+    zgBind(target);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -745,10 +751,10 @@ function zgScene(i) {
       zg.P.bake,
       ZG_FULL,
       {
-        uHaze: R.haze,
+        uHaze: rig.haze,
         uHazeA: haze,
         uAmb: amb,
-        uRimC: R.keyC.map(v => v * rim),
+        uRimC: rig.keyC.map(value => value * rim),
         uRimD: rimD,
         uEm: emB,
         uUseE: em ? 1 : 0,
@@ -758,64 +764,71 @@ function zgScene(i) {
 
     gl.deleteTexture(ta);
     if (te) gl.deleteTexture(te);
-    if (!blur) return A;
-    const B = zgFbo(gl, A.w, A.h);
+    if (!blur) return target;
+    const blurred = zgFbo(gl, target.w, target.h);
 
-    zgBind(B);
-    zgUse(zg.P.disc, ZG_FULL, { uR: blur, uB: 1.4 }, { uT: A.t });
-    zgDrop(gl, A);
-    return B; // out of focus by its distance: what shines opens into a disc
+    zgBind(blurred);
+    zgUse(zg.P.disc, ZG_FULL, { uR: blur, uB: 1.4 }, { uT: target.t });
+    zgDrop(gl, target);
+    return blurred; // out of focus by its distance: what shines opens into a disc
   };
 
-  const S = { i, R, sun };
-  const [sc, se] = zgPaintSky(P.sun ? { ...P, sun: { ...P.sun, x: R.sunX } } : P);
-  const hc = zgPaintHills(P);
+  const scene = { i: skyIndex, R: rig, sun };
+  const [sc, se] = zgPaintSky(look.sun ? { ...look, sun: { ...look.sun, x: rig.sunX } } : look);
+  const hc = zgPaintHills(look);
 
-  S.sky = bake(sc, se, { s: 0.75, emB: 1.5, blur: 0.9 });
-  S.hills = bake(hc, null, { s: 0.5, blur: 3.2, haze: R.hz[0] * 0.55 });
+  scene.sky = bake(sc, se, { s: 0.75, emB: 1.5, blur: 0.9 });
+  scene.hills = bake(hc, null, { s: 0.5, blur: 3.2, haze: rig.hz[0] * 0.55 });
   zgLetGo(sc, se, hc);
-  S.town = bake(zg.town.c, zg.town.e, { amb: R.tAmb, rim: R.rim * 0.9, emB: R.win * 2.6, blur: 2.4, haze: R.hz[1] });
 
-  S.bridge = bake(zg.bridge.c, zg.bridge.e, {
-    amb: R.tAmb.map(v => v * 1.1),
-    rim: R.rim,
-    emB: Math.max(R.lamp, R.win * 0.6) * 3.6,
+  scene.town = bake(zg.town.c, zg.town.e, {
+    amb: rig.tAmb,
+    rim: rig.rim * 0.9,
+    emB: rig.win * 2.6,
+    blur: 2.4,
+    haze: rig.hz[1],
+  });
+
+  scene.bridge = bake(zg.bridge.c, zg.bridge.e, {
+    amb: rig.tAmb.map(value => value * 1.1),
+    rim: rig.rim,
+    emB: Math.max(rig.lamp, rig.win * 0.6) * 3.6,
     blur: 1.1,
-    haze: R.hz[2],
+    haze: rig.hz[2],
   });
 
   // the picture the river sees
-  S.comp = zgFbo(gl, 360, 450, zg.fmt, true);
-  zgBind(S.comp);
+  scene.comp = zgFbo(gl, 360, 450, zg.fmt, true);
+  zgBind(scene.comp);
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
-  for (const L of [S.sky, S.hills, S.town, S.bridge]) {
-    zgUse(zg.P.layer, ZG_FULL, { uA: 1, uShift: [0, 0] }, { uT: L.t });
+  for (const layer of [scene.sky, scene.hills, scene.town, scene.bridge]) {
+    zgUse(zg.P.layer, ZG_FULL, { uA: 1, uShift: [0, 0] }, { uT: layer.t });
   }
 
-  gl.bindTexture(gl.TEXTURE_2D, S.comp.t);
+  gl.bindTexture(gl.TEXTURE_2D, scene.comp.t);
   gl.generateMipmap(gl.TEXTURE_2D);
 
-  if (R.rays > 0) {
+  if (rig.rays > 0) {
     gl.disable(gl.BLEND);
-    S.rays = zgFbo(gl, 180, 225);
-    zgBind(S.rays);
-    zgUse(zg.P.rays, ZG_FULL, { uC: sun, uThr: P.sun ? 0.55 : 0.25 }, { uT: S.comp.t });
+    scene.rays = zgFbo(gl, 180, 225);
+    zgBind(scene.rays);
+    zgUse(zg.P.rays, ZG_FULL, { uC: sun, uThr: look.sun ? 0.55 : 0.25 }, { uT: scene.comp.t });
     gl.enable(gl.BLEND);
   } // the light through the town, baked from it
 
-  zg.scenes.set(i, S);
-  return S;
+  zg.scenes.set(skyIndex, scene);
+  return scene;
 }
 
 /** Every sky baked ahead, one a frame, so a level-up never waits for its own. */
 function zgBakeAhead() {
-  for (let i = 0; i < ZE_SKIES.length; i++) {
-    if (!zg.scenes.has(i)) {
-      zgScene(i);
+  for (let skyIndex = 0; skyIndex < ZE_SKIES.length; skyIndex++) {
+    if (!zg.scenes.has(skyIndex)) {
+      zgScene(skyIndex);
       return;
     }
   }
@@ -825,11 +838,11 @@ function zgBakeAhead() {
   zg.town = zg.bridge = null;
 }
 
-function zgSet(k) {
-  if (zg.set?.k === k) return zg.set;
+function zgSet(scale) {
+  if (zg.set?.k === scale) return zg.set;
 
   const gl = zg.gl;
-  const { c, e } = zgPaintSet(k);
+  const { c: canvas, e: glow } = zgPaintSet(scale);
 
   if (zg.set) {
     gl.deleteTexture(zg.set.a);
@@ -837,39 +850,39 @@ function zgSet(k) {
     zgDrop(gl, zg.set.h);
   }
 
-  const a = zgUp(gl, c);
-  const h = zgFbo(gl, gl.canvas.width >> 2, gl.canvas.height >> 2, [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE]);
+  const albedo = zgUp(gl, canvas);
+  const heightMap = zgFbo(gl, gl.canvas.width >> 2, gl.canvas.height >> 2, [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE]);
 
   gl.disable(gl.BLEND);
-  zgBind(h);
-  zgUse(zg.P.alpha, ZG_FULL, {}, { uT: a });
+  zgBind(heightMap);
+  zgUse(zg.P.alpha, ZG_FULL, {}, { uT: albedo });
   gl.enable(gl.BLEND);
-  const ta = zgUp(gl, e);
+  const ta = zgUp(gl, glow);
 
-  zgLetGo(c, e);
-  return (zg.set = { k, a, e: ta, h });
+  zgLetGo(canvas, glow);
+  return (zg.set = { k: scale, a: albedo, e: ta, h: heightMap });
 }
 
-function zgSize(w, h) {
+function zgSize(width, height) {
   const gl = zg.gl;
   const cv = gl.canvas;
 
-  if (cv.width !== w || cv.height !== h) {
-    cv.width = w;
-    cv.height = h;
+  if (cv.width !== width || cv.height !== height) {
+    cv.width = width;
+    cv.height = height;
   }
 
-  if (zg.fS?.w === w && zg.fS.h === h) return;
-  for (const b of [zg.fS, zg.fA, zg.fC]) zgDrop(gl, b);
+  if (zg.fS?.w === width && zg.fS.h === height) return;
+  for (const framebuffer of [zg.fS, zg.fA, zg.fC]) zgDrop(gl, framebuffer);
   const b8 = [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE];
 
-  zg.fA = zgFbo(gl, w, h, b8);
-  zg.fC = zgFbo(gl, w, h, b8);
-  zg.fS = zgFbo(gl, w, h);
+  zg.fA = zgFbo(gl, width, height, b8);
+  zg.fC = zgFbo(gl, width, height, b8);
+  zg.fS = zgFbo(gl, width, height);
   zgDrop(gl, zg.fM);
-  zg.fM = zgFbo(gl, w >> 1, h >> 1, zg.fmt, true);
+  zg.fM = zgFbo(gl, width >> 1, height >> 1, zg.fmt, true);
   zgDrop(gl, zg.fH);
-  zg.fH = zgFbo(gl, w >> 2, h >> 2, b8);
-  for (const b of zg.fB || []) zgDrop(gl, b);
-  zg.fB = [2, 3, 4, 5].map(s => zgFbo(gl, Math.max(2, w >> s), Math.max(2, h >> s)));
+  zg.fH = zgFbo(gl, width >> 2, height >> 2, b8);
+  for (const framebuffer of zg.fB || []) zgDrop(gl, framebuffer);
+  zg.fB = [2, 3, 4, 5].map(shift => zgFbo(gl, Math.max(2, width >> shift), Math.max(2, height >> shift)));
 }

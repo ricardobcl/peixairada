@@ -106,7 +106,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#prToggle').click()`);
 
   ctx.assert.deepEqual(
-    await head().then(h => [h.shown, h.expanded, h.pref]),
+    await head().then(header => [header.shown, header.expanded, header.pref]),
     [true, 'true', true],
     'and the mark unfolds it again',
   );
@@ -167,7 +167,7 @@ export default async function (ctx) {
     .then(JSON.parse);
 
   await ctx.evaluate(`(real => { Date.now = () => real() + 2 * 86_400_000; })(Date.now)`);
-  for (let i = 0; i < 2; i++) await ctx.evaluate(`document.querySelector('#prToggle').click()`); // two draws of the header
+  for (let draw = 0; draw < 2; draw++) await ctx.evaluate(`document.querySelector('#prToggle').click()`); // two draws of the header
 
   out.aged = await ctx
     .evaluate(
@@ -178,12 +178,12 @@ export default async function (ctx) {
   ctx.assert.ok(out.aged.kept, 'every row kept its node');
 
   ctx.assert.ok(
-    out.age.every(([m, t]) => m && m === t),
+    out.age.every(([rowAge, tipAge]) => rowAge && rowAge === tipAge),
     `the age in the row and its tooltip: ${JSON.stringify(out.age)}`,
   );
 
   ctx.assert.ok(
-    out.aged.ages.every(([m, t], i) => m === t && m !== out.age[i][0]),
+    out.aged.ages.every(([rowAge, tipAge], index) => rowAge === tipAge && rowAge !== out.age[index][0]),
     `…both two days on: ${JSON.stringify(out.aged.ages)}`,
   );
 
@@ -265,32 +265,32 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-  const x = sel =>
+  const cross = sel =>
     ctx
       .evaluate(
         `(el => JSON.stringify({ alt: document.documentElement.hasAttribute('data-alt'), x: getComputedStyle(el, '::before').content !== 'none' && getComputedStyle(el).color === 'rgba(0, 0, 0, 0)', w: el.getBoundingClientRect().width }))(document.querySelector('${sel}'))`,
       )
       .then(JSON.parse);
 
-  const mouse = (type, p, alt) =>
+  const mouse = (type, point, alt) =>
     ctx.send('Input.dispatchMouseEvent', {
       type,
-      x: p.x,
-      y: p.y,
+      x: point.x,
+      y: point.y,
       modifiers: alt ? 1 : 0,
       ...(type === 'mouseMoved' ? {} : { button: 'left', clickCount: 1 }),
     });
 
   const prsOf = async id =>
-    (await ctx.server.api('/api/sessions')).body.sessions.find(c => c.id === id).prs.map(p => p.url);
+    (await ctx.server.api('/api/sessions')).body.sessions.find(session => session.id === id).prs.map(pr => pr.url);
 
   // a square opens its PR (2026-10-16) — a real click, the rows left folded — and the git mark unfolds them
   await ctx.settle();
 
   const caret = '#prToggle';
 
-  const click = async p => {
-    for (const t of ['mouseMoved', 'mousePressed', 'mouseReleased']) await mouse(t, p, false);
+  const click = async point => {
+    for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await mouse(type, point, false);
   };
 
   await click(await mid(on(pr13)));
@@ -299,22 +299,22 @@ export default async function (ctx) {
   await click(await mid(caret));
 
   ctx.assert.deepEqual(
-    await head().then(h => [h.shown, h.pref, h.expanded]),
+    await head().then(header => [header.shown, header.pref, header.expanded]),
     [true, true, 'true'],
     'the mark unfolds them',
   );
 
   await ctx.shot('2b-mark-open', { x: 400, y: 0, width: 1300, height: 160 });
   await click(await mid(caret));
-  ctx.assert.deepEqual(await head().then(h => [h.shown, h.pref]), [false, false], 'and folds them');
+  ctx.assert.deepEqual(await head().then(header => [header.shown, header.pref]), [false, false], 'and folds them');
   await mouse('mouseMoved', { x: 5, y: 500 }, false);
   await ctx.settle();
   const c13 = await mid(on(pr13));
 
   await mouse('mouseMoved', c13, false);
-  ctx.assert.equal((await x(on(pr13))).x, false, 'no ✕ without ⌥');
+  ctx.assert.equal((await cross(on(pr13))).x, false, 'no ✕ without ⌥');
   await mouse('mouseMoved', { ...c13, x: c13.x + 1 }, true);
-  out.altChip = await x(on(pr13));
+  out.altChip = await cross(on(pr13));
 
   ctx.assert.deepEqual(
     [out.altChip.alt, out.altChip.x],
@@ -322,10 +322,10 @@ export default async function (ctx) {
     `⌥ over the square: its ✕ — ${JSON.stringify(out.altChip)}`,
   );
 
-  ctx.assert.equal((await x(on(pr12))).x, false, '…that square only');
+  ctx.assert.equal((await cross(on(pr12))).x, false, '…that square only');
   await ctx.shot('3-alt-chip', { x: 400, y: 0, width: 1300, height: 60 });
   await mouse('mouseMoved', c13, false);
-  ctx.assert.equal((await x(on(pr13))).x, false, 'let go, the square again');
+  ctx.assert.equal((await cross(on(pr13))).x, false, 'let go, the square again');
   await mouse('mousePressed', c13, true);
   await mouse('mouseReleased', c13, true);
 
@@ -341,7 +341,7 @@ export default async function (ctx) {
   appendFileSync(
     two.file,
     `${replyLines({ id: two.id, cwd: two.cwd, text: `About ${pr13}: it still depends on #12.` })
-      .map(l => JSON.stringify(l))
+      .map(line => JSON.stringify(line))
       .join('\n')}\n`,
   );
 
@@ -359,7 +359,7 @@ export default async function (ctx) {
   const opened = await ctx.evaluate(`window.peix.state().pr || null`);
 
   await mouse('mouseMoved', r12, true);
-  out.altRow = await x(`${row(pr12)} .num`);
+  out.altRow = await cross(`${row(pr12)} .num`);
 
   ctx.assert.deepEqual(
     [out.altRow.x, out.altRow.w],
@@ -391,7 +391,7 @@ export default async function (ctx) {
       reply: 'On it.',
       at: new Date(Date.now() + 61_000),
     })
-      .map(l => JSON.stringify(l))
+      .map(line => JSON.stringify(line))
       .join('\n')}\n`,
   );
 

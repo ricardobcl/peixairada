@@ -106,7 +106,7 @@ export async function ghRest(method, path, body, etag, { text = false } = {}) {
 
     if (!token) throw Object.assign(chatErr(401, 'gh is not signed in here — gh auth login'), { quiet: true });
 
-    const r = await fetch(GITHUB_API + path, {
+    const response = await fetch(GITHUB_API + path, {
       method,
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(20_000),
@@ -120,23 +120,30 @@ export async function ghRest(method, path, body, etag, { text = false } = {}) {
       },
     });
 
-    if (r.status === 401 && !again) continue;
+    if (response.status === 401 && !again) continue;
 
     const data =
-      r.status === 204 || r.status === 304 ? null : text && r.ok ? await r.text() : await r.json().catch(() => null);
+      response.status === 204 || response.status === 304
+        ? null
+        : text && response.ok
+          ? await response.text()
+          : await response.json().catch(() => null);
 
-    if (r.status >= 400) {
-      throw chatErr(r.status, `GitHub: ${data?.errors?.[0]?.message || data?.message || `HTTP ${r.status}`}`);
+    if (response.status >= 400) {
+      throw chatErr(
+        response.status,
+        `GitHub: ${data?.errors?.[0]?.message || data?.message || `HTTP ${response.status}`}`,
+      );
     }
 
-    return { status: r.status, data, etag: r.headers.get('etag') };
+    return { status: response.status, data, etag: response.headers.get('etag') };
   }
 }
 
 export async function ghToken(fresh = false) {
-  const c = ghToken.cache;
+  const cached = ghToken.cache;
 
-  if (!fresh && c && (c.token || Date.now() - c.at < 60_000)) return c.token;
+  if (!fresh && cached && (cached.token || Date.now() - cached.at < 60_000)) return cached.token;
   const bin = ghBin();
   let token = null;
 
@@ -153,30 +160,32 @@ export async function ghToken(fresh = false) {
 /** A comment as the page gets it: whose (login, face), the room's number, the words (capped, the unsaid characters out);
  *  a poll's question and answers (`poll`), and its counts as the list has them (`rx`) — another message's reactions,
  *  counted (`rc`, those given; `rx` their word, '' for none). */
-function chatMsg(c) {
-  const body = String(c.body || '')
+function chatMsg(comment) {
+  const body = String(comment.body || '')
     .replace(UNSAID, '')
     .slice(0, CHAT_BODY_MAX);
 
   const poll = pollOf(body);
 
   return {
-    id: c.id,
+    id: comment.id,
     n:
       Number(
-        String(c.issue_url || '')
+        String(comment.issue_url || '')
           .split('/')
           .pop(),
       ) || 0,
-    who: c.user?.login || 'ghost',
-    face: c.user?.avatar_url || null,
+    who: comment.user?.login || 'ghost',
+    face: comment.user?.avatar_url || null,
     body,
-    at: c.created_at,
-    edited: c.updated_at && c.updated_at !== c.created_at ? c.updated_at : null,
-    url: c.html_url || null,
+    at: comment.created_at,
+    edited: comment.updated_at && comment.updated_at !== comment.created_at ? comment.updated_at : null,
+    url: comment.html_url || null,
     ...(poll
-      ? { poll, rx: poll.opts.map(o => c.reactions?.[o.r] ?? 0).join(' ') }
-      : reactCounts(REACTIONS.flatMap(r => Array(c.reactions?.[r] ?? 0).fill({ content: r })))),
+      ? { poll, rx: poll.opts.map(option => comment.reactions?.[option.r] ?? 0).join(' ') }
+      : reactCounts(
+          REACTIONS.flatMap(reaction => Array(comment.reactions?.[reaction] ?? 0).fill({ content: reaction })),
+        )),
   };
 }
 
@@ -187,19 +196,27 @@ const REACT_SPAN = 100;
 function reactCounts(list) {
   const rc = {};
 
-  for (const x of list) if (REACTIONS.includes(x.content)) rc[x.content] = (rc[x.content] || 0) + 1;
+  for (const reaction of list) {
+    if (REACTIONS.includes(reaction.content)) rc[reaction.content] = (rc[reaction.content] || 0) + 1;
+  }
+
   return {
     rc,
-    rx: REACTIONS.filter(r => rc[r])
-      .map(r => `${r}:${rc[r]}`)
+    rx: REACTIONS.filter(reaction => rc[reaction])
+      .map(reaction => `${reaction}:${rc[reaction]}`)
       .join(' '),
   };
 }
 
 const reactsOf = list =>
   (list || [])
-    .filter(x => REACTIONS.includes(x.content) && x.user?.login)
-    .map(x => ({ id: x.id, r: x.content, who: x.user.login, face: x.user.avatar_url || null }));
+    .filter(reaction => REACTIONS.includes(reaction.content) && reaction.user?.login)
+    .map(reaction => ({
+      id: reaction.id,
+      r: reaction.content,
+      who: reaction.user.login,
+      face: reaction.user.avatar_url || null,
+    }));
 
 // A poll's body, as GitHub shows it too: a mark it hides, the question, a line per answer — the reaction that votes for
 // it, then its words —, and how to vote there. The reactions in the order answers take them; an answer that says no
@@ -222,20 +239,20 @@ const POLL_MAX = 8;
 const POLL_Q_MAX = 200;
 const POLL_A_MAX = 80;
 
-const pollLine = (v, max) =>
-  String(v ?? '')
+const pollLine = (text, max) =>
+  String(text ?? '')
     .replace(UNSAID, '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max);
 
-export function pollBody(q, answers, many) {
-  const free = Object.keys(POLL_RX).filter(r => r !== '-1');
-  const no = answers.findIndex(a => POLL_NO.test(a));
+export function pollBody(question, answers, many) {
+  const free = Object.keys(POLL_RX).filter(reaction => reaction !== '-1');
+  const no = answers.findIndex(answer => POLL_NO.test(answer));
 
-  const lines = answers.map((a, i) => `${POLL_RX[i === no ? '-1' : (free.shift() ?? '-1')]} ${a}`);
+  const lines = answers.map((answer, index) => `${POLL_RX[index === no ? '-1' : (free.shift() ?? '-1')]} ${answer}`);
 
-  return `[//]: # (peixAIrada poll${many ? ': several' : ''})\n📊 **${q}**\n\n${lines.join('\n')}\n\n*A poll: vote with the reaction beside your answer — ${many ? 'as many as you like' : 'one each'}.*`;
+  return `[//]: # (peixAIrada poll${many ? ': several' : ''})\n📊 **${question}**\n\n${lines.join('\n')}\n\n*A poll: vote with the reaction beside your answer — ${many ? 'as many as you like' : 'one each'}.*`;
 }
 
 /** A poll from a message's words: {q, opts: [{r, label}], many} — or null, for a message that is none. */
@@ -243,15 +260,15 @@ export function pollOf(body) {
   const head = POLL_MARK.exec(body);
 
   if (!head) return null;
-  let q = null;
+  let question = null;
   const opts = [];
 
   for (const raw of body.slice(head[0].length).split('\n')) {
-    const l = raw.trim();
+    const line = raw.trim();
 
-    if (q === null) {
-      if (l.startsWith('📊')) {
-        q = l
+    if (question === null) {
+      if (line.startsWith('📊')) {
+        question = line
           .slice(2)
           .trim()
           .replace(/^\*\*(.*)\*\*$/, '$1')
@@ -261,20 +278,20 @@ export function pollOf(body) {
       continue;
     }
 
-    const r = Object.keys(POLL_RX).find(k => l.startsWith(POLL_RX[k].replace('\ufe0f', '')));
+    const reaction = Object.keys(POLL_RX).find(name => line.startsWith(POLL_RX[name].replace('\ufe0f', '')));
 
-    if (r && !opts.some(o => o.r === r) && opts.length < POLL_MAX) {
+    if (reaction && !opts.some(option => option.r === reaction) && opts.length < POLL_MAX) {
       opts.push({
-        r,
-        label: l
-          .slice(POLL_RX[r].replace('\ufe0f', '').length)
+        r: reaction,
+        label: line
+          .slice(POLL_RX[reaction].replace('\ufe0f', '').length)
           .replace(/^\ufe0f/, '')
           .trim(),
       });
     }
   }
 
-  return q && opts.length >= 2 ? { q, opts, many: !!head[1] } : null;
+  return question && opts.length >= 2 ? { q: question, opts, many: !!head[1] } : null;
 }
 
 const seenKey = () => `${chat.repo}#${chat.room?.n}`;
@@ -282,7 +299,7 @@ const seenKey = () => `${chat.repo}#${chat.room?.n}`;
 const chatUnread = () => {
   const seen = chatSeen[seenKey()] ?? Infinity;
 
-  return chat.msgs.filter(m => m.id > seen && m.who !== chat.me?.login).length;
+  return chat.msgs.filter(message => message.id > seen && message.who !== chat.me?.login).length;
 };
 
 /** What every page knows of the chat: the repo, who you are in it, its issue with what you have not read and who said
@@ -307,11 +324,11 @@ export function chatSummary() {
 }
 
 function chatSay() {
-  const s = JSON.stringify(chatSummary());
+  const summary = JSON.stringify(chatSummary());
 
-  if (s !== chat.said) {
-    chat.said = s;
-    broadcast('chat', JSON.parse(s));
+  if (summary !== chat.said) {
+    chat.said = summary;
+    broadcast('chat', JSON.parse(summary));
   }
 }
 
@@ -320,56 +337,66 @@ function chatSay() {
  *  newer than the window are not its to judge (one sent while it was asked); another issue's are not the chat's. What
  *  changed: {add, gone, fresh}. */
 function chatTake(list, span = null) {
-  const c = { add: [], gone: [], fresh: [] };
+  const changed = { add: [], gone: [], fresh: [] };
 
-  if (!chat.room) return c;
+  if (!chat.room) return changed;
 
   const held = chat.msgs;
-  const got = list.filter(m => m.n === chat.room.n);
-  const at = new Map(held.map((m, i) => [m.id, i]));
+  const got = list.filter(message => message.n === chat.room.n);
+  const at = new Map(held.map((message, index) => [message.id, index]));
 
-  for (const m of got) {
-    const i = at.get(m.id);
+  for (const message of got) {
+    const index = at.get(message.id);
 
-    if (i === undefined) {
-      held.push(m);
-      c.add.push(m);
-      c.fresh.push(m);
-    } else if (held[i].body !== m.body || held[i].edited !== m.edited || held[i].rx !== m.rx) {
-      const { votes, votesRx, votesAt, reacts, reactsRx } = held[i];
+    if (index === undefined) {
+      held.push(message);
+      changed.add.push(message);
+      changed.fresh.push(message);
+    } else if (
+      held[index].body !== message.body ||
+      held[index].edited !== message.edited ||
+      held[index].rx !== message.rx
+    ) {
+      const { votes, votesRx, votesAt, reacts, reactsRx } = held[index];
 
-      held[i] = { ...m, votes, votesRx, votesAt, reacts, reactsRx };
-      c.add.push(held[i]);
+      held[index] = { ...message, votes, votesRx, votesAt, reacts, reactsRx };
+      changed.add.push(held[index]);
     }
   }
 
   if (span) {
-    const keep = new Set(got.map(m => m.id));
+    const keep = new Set(got.map(message => message.id));
 
-    for (let i = held.length - 1; i >= 0; i--) {
-      if (held[i].id >= span.floor && held[i].id <= span.top && !keep.has(held[i].id)) {
-        c.gone.push(held[i].id);
-        held.splice(i, 1);
+    for (let index = held.length - 1; index >= 0; index--) {
+      if (held[index].id >= span.floor && held[index].id <= span.top && !keep.has(held[index].id)) {
+        changed.gone.push(held[index].id);
+        held.splice(index, 1);
       }
     }
   }
 
-  held.sort((a, b) => a.id - b.id);
+  held.sort((left, right) => left.id - right.id);
   if (held.length > CHAT_KEEP) held.splice(0, held.length - CHAT_KEEP);
-  return c;
+  return changed;
 }
 
 /** What changed, to every page — and, unless `silent` (the first read), an alert for what someone else said since you
  *  last saw it: never the words of a message you sent, never a Reply…. */
-function chatTell(c, silent) {
+function chatTell(changed, silent) {
   if (!chat.room) return;
-  if (c.add.length || c.gone.length) broadcast('chatmsgs', { n: chat.room.n, add: c.add, gone: c.gone });
-  const news = silent ? [] : c.fresh.filter(m => m.who !== chat.me?.login && m.id > (chatSeen[seenKey()] ?? Infinity));
+
+  if (changed.add.length || changed.gone.length) {
+    broadcast('chatmsgs', { n: chat.room.n, add: changed.add, gone: changed.gone });
+  }
+
+  const news = silent
+    ? []
+    : changed.fresh.filter(message => message.who !== chat.me?.login && message.id > (chatSeen[seenKey()] ?? Infinity));
 
   if (!news.length) return;
 
   const last = news.at(-1);
-  const who = [...new Set(news.map(m => m.who))];
+  const who = [...new Set(news.map(message => message.who))];
 
   const evt = {
     kind: 'chat',
@@ -396,10 +423,10 @@ const emojis = { map: null, at: 0, asking: null };
 /** An emoji's character from GitHub's address for it: its code points, with the presentation selector a lone symbol
  *  of the older planes wants (❤ is text without it) and a keycap's; null for one of GitHub's own pictures. */
 export function emojiChar(url) {
-  const m = /\/unicode\/([0-9a-f]+(?:-[0-9a-f]+)*)\.png/i.exec(String(url || ''));
+  const match = /\/unicode\/([0-9a-f]+(?:-[0-9a-f]+)*)\.png/i.exec(String(url || ''));
 
-  if (!m) return null;
-  const cps = m[1].split('-').map(h => parseInt(h, 16));
+  if (!match) return null;
+  const cps = match[1].split('-').map(hex => parseInt(hex, 16));
 
   if (cps.length === 1 && cps[0] < 0x1f000) cps.push(0xfe0f);
   if (cps.length === 2 && cps[1] === 0x20e3) cps.splice(1, 0, 0xfe0f);
@@ -415,19 +442,21 @@ export function emojiChar(url) {
 export async function chatEmojis() {
   if (!emojis.map) {
     try {
-      const f = JSON.parse(readFileSync(EMOJI_FILE, 'utf8'));
+      const saved = JSON.parse(readFileSync(EMOJI_FILE, 'utf8'));
 
-      if (f?.map && typeof f.map === 'object') Object.assign(emojis, { map: f.map, at: Number(f.at) || 0 });
+      if (saved?.map && typeof saved.map === 'object') {
+        Object.assign(emojis, { map: saved.map, at: Number(saved.at) || 0 });
+      }
     } catch {}
   }
 
   if (emojis.map && Date.now() - emojis.at < EMOJI_MS) return emojis.map;
 
   emojis.asking ??= ghRest('GET', '/emojis')
-    .then(r => {
+    .then(response => {
       const map = {};
 
-      for (const [name, url] of Object.entries(r.data || {})) {
+      for (const [name, url] of Object.entries(response.data || {})) {
         const ch = emojiChar(url);
 
         if (ch && /^[\w+-]{1,40}$/.test(name)) map[name] = ch;
@@ -444,9 +473,9 @@ export async function chatEmojis() {
 
       return map;
     })
-    .catch(e => {
+    .catch(error => {
       if (emojis.map) return emojis.map; // the old names, while GitHub is away
-      throw e;
+      throw error;
     })
     .finally(() => {
       emojis.asking = null;
@@ -456,7 +485,8 @@ export async function chatEmojis() {
 }
 
 /** `:name:` in words, as the emoji GitHub would draw — with the names this board knows, none asked for. */
-const emojiText = s => (!emojis.map ? s : String(s).replace(/:([\w+-]+):/g, (all, n) => emojis.map[n] ?? all));
+const emojiText = text =>
+  !emojis.map ? text : String(text).replace(/:([\w+-]+):/g, (all, name) => emojis.map[name] ?? all);
 
 /** A message that is pictures alone, in words for an alert: *a picture*, *3 pictures* — else null (said as it is). */
 export function picSnippet(body) {
@@ -478,16 +508,16 @@ export function picSnippet(body) {
  *  be. Its last messages are read as it is first seen; another since (that one closed on GitHub) starts over. */
 async function chatFind(gen) {
   const url = `/repos/${chat.repo}/issues?labels=${ROOM_LABEL}&state=open&sort=created&direction=asc&per_page=1`;
-  const r = await ghRest('GET', url, undefined, chat.tags.get(url));
+  const response = await ghRest('GET', url, undefined, chat.tags.get(url));
 
   chat.foundAt = Date.now();
-  if (gen !== chat.gen || r.status === 304) return;
-  chat.tags.set(url, r.etag);
+  if (gen !== chat.gen || response.status === 304) return;
+  chat.tags.set(url, response.etag);
 
-  const i = (r.data || []).find(x => !x.pull_request);
+  const issue = (response.data || []).find(entry => !entry.pull_request);
   const was = chat.room?.n;
 
-  chat.room = i ? { n: i.number, count: i.comments || 0 } : null;
+  chat.room = issue ? { n: issue.number, count: issue.comments || 0 } : null;
 
   if (chat.room?.n !== was) {
     chat.msgs = [];
@@ -505,17 +535,17 @@ async function chatBackfill(gen) {
   let got = [];
 
   for (const page of room.count > per && room.count % per < 20 ? [last - 1, last] : [last]) {
-    const r = await ghRest('GET', `/repos/${chat.repo}/issues/${room.n}/comments?per_page=${per}&page=${page}`);
+    const response = await ghRest('GET', `/repos/${chat.repo}/issues/${room.n}/comments?per_page=${per}&page=${page}`);
 
     if (gen !== chat.gen || chat.room !== room) return;
-    got = got.concat((r.data || []).map(chatMsg).map(m => ({ ...m, n: room.n })));
+    got = got.concat((response.data || []).map(chatMsg).map(message => ({ ...message, n: room.n })));
   }
 
   await chatVotes(gen, chatTake(got));
   if (gen !== chat.gen) return;
 
   if (!(seenKey() in chatSeen)) {
-    chatSeen[seenKey()] = got.reduce((a, m) => Math.max(a, m.id), 0);
+    chatSeen[seenKey()] = got.reduce((highest, message) => Math.max(highest, message.id), 0);
     saveState();
   }
 }
@@ -525,99 +555,106 @@ const lookUrl = () => `/repos/${chat.repo}/issues/comments?sort=created&directio
 
 async function chatLook(gen, silent = false) {
   const url = lookUrl();
-  const r = await ghRest('GET', url, undefined, chat.tags.get(url));
+  const response = await ghRest('GET', url, undefined, chat.tags.get(url));
 
-  if (gen !== chat.gen || r.status === 304) return;
-  chat.tags.set(url, r.etag);
+  if (gen !== chat.gen || response.status === 304) return;
+  chat.tags.set(url, response.etag);
 
-  const got = (r.data || []).map(chatMsg);
-  const ids = got.map(m => m.id);
+  const got = (response.data || []).map(chatMsg);
+  const ids = got.map(message => message.id);
 
-  const c = chatTake(
+  const changed = chatTake(
     got,
     ids.length ? { floor: got.length >= CHAT_WINDOW ? Math.min(...ids) : 0, top: Math.max(...ids) } : null,
   );
 
-  await chatVotes(gen, c);
+  await chatVotes(gen, changed);
   if (gen !== chat.gen) return;
-  chatTell(c, silent);
+  chatTell(changed, silent);
 }
 
 /** The votes of each poll whose counts moved since its votes were asked (`rx`, the comments' list's) — and of one a day
  *  old at most once a minute, a 304 when nothing moved: two people trading answers leave the counts as they were. Who
  *  gave which of its answers; on a poll of one answer each, a person's newest. A poll changed joins what changed. And
  *  who reacted to the newest REACT_SPAN other messages, asked when their counts moved (2026-11-25): none, nothing asked. */
-async function chatVotes(gen, c) {
+async function chatVotes(gen, changed) {
   const now = Date.now();
 
-  for (const m of chat.msgs.slice(-REACT_SPAN)) {
-    if (m.poll || m.reactsRx === m.rx) continue;
-    const rx = m.rx;
+  for (const message of chat.msgs.slice(-REACT_SPAN)) {
+    if (message.poll || message.reactsRx === message.rx) continue;
+    const rx = message.rx;
 
     if (!rx) {
-      if (m.reacts?.length && !c.add.includes(m)) c.add.push(m);
-      Object.assign(m, { reacts: [], reactsRx: rx });
+      if (message.reacts?.length && !changed.add.includes(message)) changed.add.push(message);
+      Object.assign(message, { reacts: [], reactsRx: rx });
       continue;
     }
 
-    const url = `/repos/${chat.repo}/issues/comments/${m.id}/reactions?per_page=100`;
+    const url = `/repos/${chat.repo}/issues/comments/${message.id}/reactions?per_page=100`;
 
-    const r = await ghRest('GET', url, undefined, chat.tags.get(url)).catch(e => {
-      if (e.status === 404) return null;
-      throw e;
+    const response = await ghRest('GET', url, undefined, chat.tags.get(url)).catch(error => {
+      if (error.status === 404) return null;
+      throw error;
     }); // 404: deleted since
 
     if (gen !== chat.gen) return;
-    m.reactsRx = rx;
-    if (!r || r.status === 304) continue;
-    chat.tags.set(url, r.etag);
-    m.reacts = reactsOf(r.data);
-    if (!c.add.includes(m)) c.add.push(m);
+    message.reactsRx = rx;
+    if (!response || response.status === 304) continue;
+    chat.tags.set(url, response.etag);
+    message.reacts = reactsOf(response.data);
+    if (!changed.add.includes(message)) changed.add.push(message);
   }
 
-  for (const m of chat.msgs) {
+  for (const message of chat.msgs) {
     if (
-      !m.poll ||
-      (m.votesRx === m.rx && (now - (m.votesAt || 0) < CHAT_FIND_MS || now - Date.parse(m.at) > 86_400_000))
+      !message.poll ||
+      (message.votesRx === message.rx &&
+        (now - (message.votesAt || 0) < CHAT_FIND_MS || now - Date.parse(message.at) > 86_400_000))
     ) {
       continue;
     }
 
-    const url = `/repos/${chat.repo}/issues/comments/${m.id}/reactions?per_page=100`;
-    const rx = m.rx;
+    const url = `/repos/${chat.repo}/issues/comments/${message.id}/reactions?per_page=100`;
+    const rx = message.rx;
 
-    const r = await ghRest('GET', url, undefined, chat.tags.get(url)).catch(e => {
-      if (e.status === 404) return null;
-      throw e;
+    const response = await ghRest('GET', url, undefined, chat.tags.get(url)).catch(error => {
+      if (error.status === 404) return null;
+      throw error;
     }); // 404: deleted since
 
     if (gen !== chat.gen) return;
-    m.votesRx = rx;
-    m.votesAt = Date.now();
-    if (!r || r.status === 304) continue;
-    chat.tags.set(url, r.etag);
-    m.votes = votesOf(m.poll, r.data);
-    if (!c.add.includes(m)) c.add.push(m);
+    message.votesRx = rx;
+    message.votesAt = Date.now();
+    if (!response || response.status === 304) continue;
+    chat.tags.set(url, response.etag);
+    message.votes = votesOf(message.poll, response.data);
+    if (!changed.add.includes(message)) changed.add.push(message);
   }
 }
 
 function votesOf(poll, list) {
-  const ok = new Set(poll.opts.map(o => o.r));
+  const ok = new Set(poll.opts.map(option => option.r));
   const newest = new Map();
 
   const all = (list || [])
-    .filter(x => ok.has(x.content) && x.user?.login)
-    .map(x => ({ id: x.id, r: x.content, who: x.user.login, face: x.user.avatar_url || null, at: x.created_at || '' }));
+    .filter(reaction => ok.has(reaction.content) && reaction.user?.login)
+    .map(reaction => ({
+      id: reaction.id,
+      r: reaction.content,
+      who: reaction.user.login,
+      face: reaction.user.avatar_url || null,
+      at: reaction.created_at || '',
+    }));
 
   if (poll.many) return all;
 
-  for (const v of all) {
-    const was = newest.get(v.who);
+  for (const vote of all) {
+    const was = newest.get(vote.who);
 
-    if (!was || v.at > was.at || (v.at === was.at && v.id > was.id)) newest.set(v.who, v);
+    if (!was || vote.at > was.at || (vote.at === was.at && vote.id > was.id)) newest.set(vote.who, vote);
   }
 
-  return all.filter(v => newest.get(v.who) === v);
+  return all.filter(vote => newest.get(vote.who) === vote);
 }
 
 /** The chat's issue, made and labelled: with the repo, and on its admin's board when none is open (a repo made by hand,
@@ -636,12 +673,12 @@ async function chatBoot(gen) {
   const want = setup.chat.repo;
   const me = (await ghRest('GET', '/user')).data;
 
-  let r;
+  let repo;
 
   try {
-    r = (await ghRest('GET', `/repos/${want}`)).data;
-  } catch (e) {
-    if (e.status !== 404) throw e;
+    repo = (await ghRest('GET', `/repos/${want}`)).data;
+  } catch (error) {
+    if (error.status !== 404) throw error;
     await chatInvites(gen).catch(() => {});
     if (gen === chat.gen) chat.missing = true; // Settings › Chat offers what it does with none (2026-10-18)
     throw Object.assign(chatNotThere(want), { quiet: true });
@@ -650,11 +687,11 @@ async function chatBoot(gen) {
   if (gen !== chat.gen) return;
 
   Object.assign(chat, {
-    repo: r.full_name,
-    repoId: r.id ?? null,
+    repo: repo.full_name,
+    repoId: repo.id ?? null,
     me: { login: me.login, face: me.avatar_url || null },
-    role: r.permissions?.admin ? 'admin' : r.permissions?.push ? 'write' : 'read',
-    org: r.owner?.type === 'Organization',
+    role: repo.permissions?.admin ? 'admin' : repo.permissions?.push ? 'write' : 'read',
+    org: repo.owner?.type === 'Organization',
   });
 
   if (!chatQuiet.includes(chat.repo)) {
@@ -691,8 +728,8 @@ async function chatPicsFind(gen) {
       chat.pics = { repo: chat.repo, id: chat.repoId };
 
       if (chat.role === 'admin' && chat.org) {
-        await filesKeep(gen).catch(e =>
-          console.error(`[peixairada] chat: the files repo, ${filesOf(chat.repo)}:`, e.message),
+        await filesKeep(gen).catch(error =>
+          console.error(`[peixairada] chat: the files repo, ${filesOf(chat.repo)}:`, error.message),
         );
       } // the members' pictures' place: their own go on without it
 
@@ -703,30 +740,30 @@ async function chatPicsFind(gen) {
 
     const look = () =>
       ghRest('GET', `/repos/${files}`).then(
-        r => r.data,
-        e => {
-          if (e.status === 404) return null;
-          throw e;
+        response => response.data,
+        error => {
+          if (error.status === 404) return null;
+          throw error;
         },
       );
 
-    let r = await look();
+    let repo = await look();
 
-    if (!r?.permissions?.push && chat.org) {
+    if (!repo?.permissions?.push && chat.org) {
       const inv = ((await ghRest('GET', '/user/repository_invitations?per_page=100')).data || []).find(
-        i => i.repository?.full_name?.toLowerCase() === files.toLowerCase() && !i.expired,
+        invitation => invitation.repository?.full_name?.toLowerCase() === files.toLowerCase() && !invitation.expired,
       );
 
       if (inv) {
         await ghRest('PATCH', `/user/repository_invitations/${inv.id}`);
-        r = await look();
+        repo = await look();
       }
     }
 
     if (gen !== chat.gen) return;
 
-    chat.pics = r?.permissions?.push
-      ? { repo: r.full_name, id: r.id }
+    chat.pics = repo?.permissions?.push
+      ? { repo: repo.full_name, id: repo.id }
       : {
           repo: files,
           id: null,
@@ -734,8 +771,8 @@ async function chatPicsFind(gen) {
             ? `your pictures go to ${files}, which the chat's admin has not shared with you yet — their board does it once it runs`
             : `you can only read ${chat.repo}: GitHub takes pictures from those who can write there`,
         };
-  } catch (e) {
-    if (gen === chat.gen) chat.pics = { repo: null, id: null, why: e.message };
+  } catch (error) {
+    if (gen === chat.gen) chat.pics = { repo: null, id: null, why: error.message };
   }
 }
 
@@ -754,9 +791,9 @@ async function filesKeep(gen) {
 
   const there = await ghRest('GET', `/repos/${files}`).then(
     () => true,
-    e => {
-      if (e.status === 404) return false;
-      throw e;
+    error => {
+      if (error.status === 404) return false;
+      throw error;
     },
   );
 
@@ -787,7 +824,7 @@ async function filesKeep(gen) {
 async function filesPeople(gen) {
   const files = filesOf(chat.repo);
   const me = chat.me?.login?.toLowerCase();
-  const lc = l => String(l || '').toLowerCase();
+  const lc = login => String(login || '').toLowerCase();
 
   const [cm, ci, fm, fi] = await Promise.all(
     [
@@ -795,28 +832,37 @@ async function filesPeople(gen) {
       `/repos/${chat.repo}/invitations?per_page=100`,
       `/repos/${files}/collaborators?affiliation=direct&per_page=100`,
       `/repos/${files}/invitations?per_page=100`,
-    ].map(u => ghRest('GET', u).then(r => r.data || [])),
+    ].map(path => ghRest('GET', path).then(response => response.data || [])),
   );
 
   if (gen !== chat.gen) return;
-  const want = new Set([...cm.map(c => lc(c.login)), ...ci.map(i => lc(i.invitee?.login))].filter(l => l && l !== me));
-  const have = new Set([...fm.map(c => lc(c.login)), ...fi.filter(i => !i.expired).map(i => lc(i.invitee?.login))]);
 
-  for (const i of fi) {
-    if (i.expired || !want.has(lc(i.invitee?.login))) {
-      await chatWrite(() => ghRest('DELETE', `/repos/${files}/invitations/${i.id}`));
+  const want = new Set(
+    [...cm.map(collaborator => lc(collaborator.login)), ...ci.map(invitation => lc(invitation.invitee?.login))].filter(
+      login => login && login !== me,
+    ),
+  );
+
+  const have = new Set([
+    ...fm.map(collaborator => lc(collaborator.login)),
+    ...fi.filter(invitation => !invitation.expired).map(invitation => lc(invitation.invitee?.login)),
+  ]);
+
+  for (const invitation of fi) {
+    if (invitation.expired || !want.has(lc(invitation.invitee?.login))) {
+      await chatWrite(() => ghRest('DELETE', `/repos/${files}/invitations/${invitation.id}`));
     }
   }
 
-  for (const l of want) {
-    if (!have.has(l)) {
-      await chatWrite(() => ghRest('PUT', `/repos/${files}/collaborators/${l}`, { permission: 'push' }));
+  for (const login of want) {
+    if (!have.has(login)) {
+      await chatWrite(() => ghRest('PUT', `/repos/${files}/collaborators/${login}`, { permission: 'push' }));
     }
   }
 
-  for (const c of fm) {
-    if (lc(c.login) !== me && !want.has(lc(c.login))) {
-      await chatWrite(() => ghRest('DELETE', `/repos/${files}/collaborators/${c.login}`));
+  for (const collaborator of fm) {
+    if (lc(collaborator.login) !== me && !want.has(lc(collaborator.login))) {
+      await chatWrite(() => ghRest('DELETE', `/repos/${files}/collaborators/${collaborator.login}`));
     }
   }
 }
@@ -824,13 +870,13 @@ async function filesPeople(gen) {
 /** After the admin's change to the people: the files repo's put back to them, never failing the change itself. */
 const filesFollow = () =>
   chat.role === 'admin' && chat.org
-    ? filesPeople(chat.gen).catch(e => console.error("[peixairada] chat: the files repo's people:", e.message))
+    ? filesPeople(chat.gen).catch(error => console.error("[peixairada] chat: the files repo's people:", error.message))
     : null;
 
 const chatNotThere = want =>
   chatErr(
     404,
-    chat.invites.some(i => i.repo.toLowerCase() === want.toLowerCase())
+    chat.invites.some(invitation => invitation.repo.toLowerCase() === want.toLowerCase())
       ? `you are invited to ${want} — join it in Settings › Chat`
       : `${want} is not a repo you can read — not made yet, or not shared with you`,
   );
@@ -839,37 +885,37 @@ const chatNotThere = want =>
 async function chatInvites(gen) {
   chat.invitesAt = chat.askedAt = Date.now();
   const url = '/user/repository_invitations?per_page=100';
-  const r = await ghRest('GET', url, undefined, chat.tags.get(url));
+  const response = await ghRest('GET', url, undefined, chat.tags.get(url));
 
-  if (gen !== chat.gen || r.status === 304) return;
-  chat.tags.set(url, r.etag);
+  if (gen !== chat.gen || response.status === 304) return;
+  chat.tags.set(url, response.etag);
   const want = setup.chat?.repo?.toLowerCase();
 
-  chat.invites = (r.data || [])
+  chat.invites = (response.data || [])
     .filter(
-      i =>
-        i.repository &&
-        (String(i.repository.description || '').startsWith(ROOM_MARK) ||
-          i.repository.full_name?.toLowerCase() === want),
+      invitation =>
+        invitation.repository &&
+        (String(invitation.repository.description || '').startsWith(ROOM_MARK) ||
+          invitation.repository.full_name?.toLowerCase() === want),
     )
-    .map(i => ({
-      id: i.id,
-      repo: i.repository.full_name,
-      by: i.inviter?.login || null,
-      face: i.inviter?.avatar_url || null,
-      at: i.created_at || null,
-      expired: !!i.expired,
+    .map(invitation => ({
+      id: invitation.id,
+      repo: invitation.repository.full_name,
+      by: invitation.inviter?.login || null,
+      face: invitation.inviter?.avatar_url || null,
+      at: invitation.created_at || null,
+      expired: !!invitation.expired,
     }));
 }
 
-function chatFailed(e) {
+function chatFailed(error) {
   const was = chat.error;
 
-  if (setup.chat) chat.error = e.message;
-  if (!e.quiet && was !== e.message && setup.chat) console.error('[peixairada] chat:', e.message);
+  if (setup.chat) chat.error = error.message;
+  if (!error.quiet && was !== error.message && setup.chat) console.error('[peixairada] chat:', error.message);
 
   chat.pause = Math.min(
-    chat.pause ? chat.pause * 2 : e.status === 403 || e.status === 429 ? 60_000 : 15_000,
+    chat.pause ? chat.pause * 2 : error.status === 403 || error.status === 429 ? 60_000 : 15_000,
     10 * 60_000,
   );
 
@@ -899,8 +945,8 @@ async function chatTick() {
       chat.pauseUntil = 0;
       chat.error = null;
     }
-  } catch (e) {
-    if (gen === chat.gen) chatFailed(e);
+  } catch (error) {
+    if (gen === chat.gen) chatFailed(error);
   } finally {
     chat.busy = false;
     chatSay();
@@ -966,7 +1012,7 @@ function chatWrite(fn) {
   const run = chat.writes.then(async () => {
     const wait = chat.lastWrite + CHAT_GAP_MS - Date.now();
 
-    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
 
     try {
       return await fn();
@@ -984,8 +1030,8 @@ const chatLabel = repo =>
     name: ROOM_LABEL,
     color: '1f6feb',
     description: 'The issue that is the peixAIrada chat',
-  }).catch(e => {
-    if (e.status !== 422) throw e;
+  }).catch(error => {
+    if (error.status !== 422) throw error;
   }); // 422: it is there
 
 /** The people of your chats' PRs — prPeople's: authors, reviewers, commenters, pushers, no bots —, whom you might
@@ -993,24 +1039,30 @@ const chatLabel = repo =>
 function chatSuggest(skip) {
   const by = new Map();
 
-  for (const s of sessions.values()) {
-    for (const pr of s.prs) {
-      for (const p of prStatus.get(pr.url)?.people || []) {
-        if (!p?.login || skip.has(p.login.toLowerCase())) continue;
-        const e = by.get(p.login) || { login: p.login, face: p.avatar || null, prs: new Set(), at: '' };
+  for (const session of sessions.values()) {
+    for (const pr of session.prs) {
+      for (const person of prStatus.get(pr.url)?.people || []) {
+        if (!person?.login || skip.has(person.login.toLowerCase())) continue;
 
-        e.prs.add(pr.url);
-        if ((p.at || '') > e.at) e.at = p.at;
-        e.face ||= p.avatar || null;
-        by.set(p.login, e);
+        const entry = by.get(person.login) || {
+          login: person.login,
+          face: person.avatar || null,
+          prs: new Set(),
+          at: '',
+        };
+
+        entry.prs.add(pr.url);
+        if ((person.at || '') > entry.at) entry.at = person.at;
+        entry.face ||= person.avatar || null;
+        by.set(person.login, entry);
       }
     }
   }
 
   return [...by.values()]
-    .sort((a, b) => b.prs.size - a.prs.size || b.at.localeCompare(a.at))
+    .sort((left, right) => right.prs.size - left.prs.size || right.at.localeCompare(left.at))
     .slice(0, CHAT_SUGGEST)
-    .map(e => ({ login: e.login, face: e.face, prs: e.prs.size, at: e.at || null }));
+    .map(entry => ({ login: entry.login, face: entry.face, prs: entry.prs.size, at: entry.at || null }));
 }
 
 async function chatPeople() {
@@ -1020,23 +1072,27 @@ async function chatPeople() {
   ]);
 
   const members = (mem.data || [])
-    .filter(c => c.login !== chat.me?.login)
-    .map(c => ({ login: c.login, face: c.avatar_url || null, role: c.role_name || null }));
+    .filter(collaborator => collaborator.login !== chat.me?.login)
+    .map(collaborator => ({
+      login: collaborator.login,
+      face: collaborator.avatar_url || null,
+      role: collaborator.role_name || null,
+    }));
 
   const invites = (inv.data || [])
-    .filter(i => i.invitee?.login)
-    .map(i => ({
-      id: i.id,
-      login: i.invitee.login,
-      face: i.invitee.avatar_url || null,
-      at: i.created_at || null,
-      expired: !!i.expired,
+    .filter(invitation => invitation.invitee?.login)
+    .map(invitation => ({
+      id: invitation.id,
+      login: invitation.invitee.login,
+      face: invitation.invitee.avatar_url || null,
+      at: invitation.created_at || null,
+      expired: !!invitation.expired,
     }));
 
   const skip = new Set(
-    [chat.me?.login, ...members.map(m => m.login), ...invites.map(i => i.login)]
+    [chat.me?.login, ...members.map(member => member.login), ...invites.map(invitation => invitation.login)]
       .filter(Boolean)
-      .map(l => l.toLowerCase()),
+      .map(login => login.toLowerCase()),
   );
 
   return { members, invites, suggest: chatSuggest(skip) };
@@ -1048,9 +1104,9 @@ async function chatPeople() {
  *  only a member of: an employer's repos are no chat's, and listing them is pages of calls. Kept CHAT_PLACES_MS; a make,
  *  a join or a leave forgets it. */
 async function chatPlaces() {
-  const c = chatPlaces.cache;
+  const cached = chatPlaces.cache;
 
-  if (c && Date.now() - c.at < CHAT_PLACES_MS) return c.data;
+  if (cached && Date.now() - cached.at < CHAT_PLACES_MS) return cached.data;
 
   const [me, mine] = await Promise.all([
     ghRest('GET', '/user'),
@@ -1058,30 +1114,30 @@ async function chatPlaces() {
   ]);
 
   const owned = (mine.data || [])
-    .filter(m => m.role === 'admin' && m.organization?.login)
-    .map(m => m.organization.login);
+    .filter(membership => membership.role === 'admin' && membership.organization?.login)
+    .map(membership => membership.organization.login);
 
   const orgs = (
     await Promise.all(
-      owned.map(o =>
-        ghRest('GET', `/orgs/${o}`).then(
-          r => r.data,
+      owned.map(org =>
+        ghRest('GET', `/orgs/${org}`).then(
+          response => response.data,
           () => null,
         ),
       ),
     )
   )
     .filter(Boolean) // one SSO keeps from the token: left out
-    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
-    .map(o => ({ login: o.login, face: o.avatar_url || null }));
+    .sort((left, right) => String(right.created_at || '').localeCompare(String(left.created_at || '')))
+    .map(org => ({ login: org.login, face: org.avatar_url || null }));
 
   const lists = await Promise.all(
     [
-      ...orgs.map(o => `/orgs/${o.login}/repos?type=all&per_page=100`),
+      ...orgs.map(org => `/orgs/${org.login}/repos?type=all&per_page=100`),
       '/user/repos?affiliation=owner,collaborator&sort=created&direction=desc&per_page=100',
-    ].map(u =>
-      ghRest('GET', u).then(
-        r => r.data || [],
+    ].map(path =>
+      ghRest('GET', path).then(
+        response => response.data || [],
         () => [],
       ),
     ),
@@ -1089,9 +1145,9 @@ async function chatPlaces() {
 
   const chats = new Map();
 
-  for (const r of lists.flat()) {
-    if (String(r.description || '').startsWith(ROOM_MARK) && r.full_name) {
-      chats.set(r.full_name.toLowerCase(), { repo: r.full_name, admin: !!r.permissions?.admin });
+  for (const repo of lists.flat()) {
+    if (String(repo.description || '').startsWith(ROOM_MARK) && repo.full_name) {
+      chats.set(repo.full_name.toLowerCase(), { repo: repo.full_name, admin: !!repo.permissions?.admin });
     }
   }
 
@@ -1103,8 +1159,8 @@ async function chatPlaces() {
 
 /** /api/chat and what is under it — every route keyed as the board's others. The admin's are GitHub's to refuse too. */
 export async function chatRoute(req, res, what, url) {
-  const M = req.method;
-  const body = M === 'GET' ? {} : await jsonBody(req);
+  const method = req.method;
+  const body = method === 'GET' ? {} : await jsonBody(req);
 
   const ready = () => {
     if (!setup.chat) throw chatErr(409, 'no chat repo in the setup');
@@ -1121,49 +1177,49 @@ export async function chatRoute(req, res, what, url) {
     return chat.room.n;
   };
 
-  const login = v => {
-    const l = String(v ?? '')
+  const login = raw => {
+    const handle = String(raw ?? '')
       .trim()
       .replace(/^@/, '');
 
-    if (!ORG_NAME.test(l)) throw chatErr(400, `"${l}" is not a GitHub login`);
-    return l;
+    if (!ORG_NAME.test(handle)) throw chatErr(400, `"${handle}" is not a GitHub login`);
+    return handle;
   };
 
-  const sent = async (n, r) => {
+  const sent = async (roomNumber, response) => {
     // a message of yours, sent: held, said to every page, read
-    const m = { ...chatMsg(r.data), n };
+    const message = { ...chatMsg(response.data), n: roomNumber };
 
-    if (m.poll) Object.assign(m, { votes: [], votesRx: m.rx, votesAt: Date.now() }); // new: nobody has voted
-    const c = chatTake([m]);
+    if (message.poll) Object.assign(message, { votes: [], votesRx: message.rx, votesAt: Date.now() }); // new: nobody has voted
+    const changed = chatTake([message]);
 
-    await chatVotes(chat.gen, c);
-    chatTell(c, true);
+    await chatVotes(chat.gen, changed);
+    chatTell(changed, true);
 
-    if (m.id > (chatSeen[seenKey()] ?? 0)) {
-      chatSeen[seenKey()] = m.id;
+    if (message.id > (chatSeen[seenKey()] ?? 0)) {
+      chatSeen[seenKey()] = message.id;
       saveState();
     }
 
     chatSay();
-    return chat.msgs.find(x => x.id === m.id) || m;
+    return chat.msgs.find(kept => kept.id === message.id) || message;
   };
 
   try {
-    if (M === 'GET' && !what) {
+    if (method === 'GET' && !what) {
       if (url.searchParams.has('invites') && Date.now() - chat.askedAt > 1000) {
-        await chatInvites(chat.gen).catch(e => chatFailed(e));
+        await chatInvites(chat.gen).catch(error => chatFailed(error));
       } // Settings › Chat open: asked now (a 304 when nothing changed), not in ten minutes — at boot too: invitesAt is the timer's, put off then
 
       if (url.searchParams.has('pics')) await chatPicsAgain(); // the panel open with no place for your pictures: asked again (CHAT_PICS_AGAIN_MS)
       return json(res, 200, chatSummary());
     }
 
-    if (M === 'GET' && what === 'messages') {
+    if (method === 'GET' && what === 'messages') {
       return json(res, 200, { room: chat.room?.n ?? null, msgs: chat.msgs, seen: chatSeen[seenKey()] ?? 0 });
     }
 
-    if (M === 'POST' && what === 'watch') {
+    if (method === 'POST' && what === 'watch') {
       // a page shows the chat: looked at often while it does
       const was = Date.now() < chat.watchUntil;
 
@@ -1172,7 +1228,7 @@ export async function chatRoute(req, res, what, url) {
       return json(res, 200, { ok: true });
     }
 
-    if (M === 'POST' && what === 'seen') {
+    if (method === 'POST' && what === 'seen') {
       there();
       const id = Number(body.id) || 0;
 
@@ -1185,10 +1241,10 @@ export async function chatRoute(req, res, what, url) {
       return json(res, 200, { ok: true });
     }
 
-    if (M === 'POST' && what === 'send') {
+    if (method === 'POST' && what === 'send') {
       ready();
 
-      const n = there();
+      const roomNumber = there();
 
       const text = String(body.body ?? '')
         .replace(/\r\n?/g, '\n')
@@ -1199,137 +1255,151 @@ export async function chatRoute(req, res, what, url) {
       if (text.length > CHAT_BODY_MAX) throw chatErr(400, `a message is ${CHAT_BODY_MAX} characters at most`);
       return json(res, 200, {
         msg: await sent(
-          n,
-          await chatWrite(() => ghRest('POST', `/repos/${chat.repo}/issues/${n}/comments`, { body: text })),
+          roomNumber,
+          await chatWrite(() => ghRest('POST', `/repos/${chat.repo}/issues/${roomNumber}/comments`, { body: text })),
         ),
       });
     }
 
-    if (M === 'POST' && what === 'poll') {
+    if (method === 'POST' && what === 'poll') {
       // a question and its answers, as a message (2026-10-20)
       ready();
 
-      const n = there();
-      const q = pollLine(body.q, POLL_Q_MAX);
+      const roomNumber = there();
+      const question = pollLine(body.q, POLL_Q_MAX);
 
       const answers = (Array.isArray(body.answers) ? body.answers : [])
-        .map(a => pollLine(a, POLL_A_MAX))
+        .map(answer => pollLine(answer, POLL_A_MAX))
         .filter(Boolean);
 
-      if (!q) throw chatErr(400, 'a poll asks something');
+      if (!question) throw chatErr(400, 'a poll asks something');
       if (answers.length < 2) throw chatErr(400, 'a poll has two answers at least');
 
       if (answers.length > POLL_MAX) {
         throw chatErr(400, `${POLL_MAX} answers at most — one for each reaction GitHub has`);
       }
 
-      if (new Set(answers.map(a => a.toLowerCase())).size < answers.length) {
+      if (new Set(answers.map(answer => answer.toLowerCase())).size < answers.length) {
         throw chatErr(400, 'two answers say the same');
       }
 
       return json(res, 200, {
         msg: await sent(
-          n,
+          roomNumber,
           await chatWrite(() =>
-            ghRest('POST', `/repos/${chat.repo}/issues/${n}/comments`, { body: pollBody(q, answers, !!body.many) }),
+            ghRest('POST', `/repos/${chat.repo}/issues/${roomNumber}/comments`, {
+              body: pollBody(question, answers, !!body.many),
+            }),
           ),
         ),
       });
     }
 
-    if (M === 'POST' && what === 'vote') {
+    if (method === 'POST' && what === 'vote') {
       // your answer to a poll, given or taken back; on a poll of one answer each, the one before taken back
       ready();
 
       const id = Number(body.id);
-      const m = chat.msgs.find(x => x.id === id);
-      const r = String(body.r ?? '');
+      const message = chat.msgs.find(kept => kept.id === id);
+      const wanted = String(body.r ?? '');
 
-      if (!m?.poll) throw chatErr(404, 'no such poll');
-      if (!m.poll.opts.some(o => o.r === r)) throw chatErr(400, 'not one of its answers');
+      if (!message?.poll) throw chatErr(404, 'no such poll');
+      if (!message.poll.opts.some(option => option.r === wanted)) throw chatErr(400, 'not one of its answers');
       const url = `/repos/${chat.repo}/issues/comments/${id}/reactions`;
       let list = (await ghRest('GET', `${url}?per_page=100`)).data || [];
 
-      const had = list.filter(x => x.user?.login === chat.me.login && m.poll.opts.some(o => o.r === x.content));
-      const again = had.find(x => x.content === r);
+      const had = list.filter(
+        reaction =>
+          reaction.user?.login === chat.me.login && message.poll.opts.some(option => option.r === reaction.content),
+      );
 
-      const drop = async x => {
-        await chatWrite(() => ghRest('DELETE', `${url}/${x.id}`));
-        list = list.filter(y => y.id !== x.id);
+      const again = had.find(reaction => reaction.content === wanted);
+
+      const drop = async reaction => {
+        await chatWrite(() => ghRest('DELETE', `${url}/${reaction.id}`));
+        list = list.filter(entry => entry.id !== reaction.id);
       };
 
       if (again) await drop(again);
       else {
-        const made = (await chatWrite(() => ghRest('POST', url, { content: r }))).data;
+        const made = (await chatWrite(() => ghRest('POST', url, { content: wanted }))).data;
 
-        if (made?.id && !list.some(y => y.id === made.id)) list.push(made);
-        if (!m.poll.many) for (const x of had) await drop(x);
+        if (made?.id && !list.some(entry => entry.id === made.id)) list.push(made);
+        if (!message.poll.many) for (const reaction of had) await drop(reaction);
       }
 
       // the votes as written, not asked again (GitHub's list may lag its writes), and the counts they make: a look that
       // finds others' votes making the same counts as yours did would see nothing moved
-      const held = chat.msgs.find(x => x.id === id) || m;
+      const held = chat.msgs.find(kept => kept.id === id) || message;
 
       held.votes = votesOf(held.poll, list);
       // the list's ETag let go (2026-11-25): a look while this was written kept a list whose counts someone else's vote
       // can bring back exactly, which GitHub then answers with a 304 — and that vote went unseen for a minute
       chat.tags.delete(lookUrl());
-      held.rx = held.votesRx = held.poll.opts.map(o => list.filter(x => x.content === o.r).length).join(' ');
+
+      held.rx = held.votesRx = held.poll.opts
+        .map(option => list.filter(reaction => reaction.content === option.r).length)
+        .join(' ');
+
       broadcast('chatmsgs', { n: held.n, add: [held], gone: [] });
       return json(res, 200, { msg: held });
     }
 
-    if (M === 'POST' && what === 'edit') {
+    if (method === 'POST' && what === 'edit') {
       // your own message's words, edited (2026-11-25): never someone else's — the admin deletes — nor a poll
       ready();
 
       const id = Number(body.id);
-      const m = chat.msgs.find(x => x.id === id);
+      const message = chat.msgs.find(kept => kept.id === id);
 
       const text = String(body.body ?? '')
         .replace(/\r\n?/g, '\n')
         .replace(UNSAID, '')
         .trim();
 
-      if (!m) throw chatErr(404, 'no such message');
-      if (m.who !== chat.me?.login) throw chatErr(403, 'only your own messages are yours to edit');
-      if (m.poll || pollOf(text)) throw chatErr(400, 'a poll is not edited — ask another');
+      if (!message) throw chatErr(404, 'no such message');
+      if (message.who !== chat.me?.login) throw chatErr(403, 'only your own messages are yours to edit');
+      if (message.poll || pollOf(text)) throw chatErr(400, 'a poll is not edited — ask another');
       if (!text) throw chatErr(400, 'nothing left — delete it instead');
       if (text.length > CHAT_BODY_MAX) throw chatErr(400, `a message is ${CHAT_BODY_MAX} characters at most`);
-      if (text === m.body) return json(res, 200, { msg: m });
-      const r = await chatWrite(() => ghRest('PATCH', `/repos/${chat.repo}/issues/comments/${id}`, { body: text }));
-      const c = chatTake([{ ...chatMsg(r.data), n: m.n }]);
+      if (text === message.body) return json(res, 200, { msg: message });
 
-      chatTell(c, true);
-      return json(res, 200, { msg: chat.msgs.find(x => x.id === id) || m });
+      const response = await chatWrite(() =>
+        ghRest('PATCH', `/repos/${chat.repo}/issues/comments/${id}`, { body: text }),
+      );
+
+      const changed = chatTake([{ ...chatMsg(response.data), n: message.n }]);
+
+      chatTell(changed, true);
+      return json(res, 200, { msg: chat.msgs.find(kept => kept.id === id) || message });
     }
 
-    if (M === 'POST' && what === 'react') {
+    if (method === 'POST' && what === 'react') {
       // your reaction on a message, given or taken back (2026-11-25); a poll's are its votes
       ready();
 
       const id = Number(body.id);
-      const m = chat.msgs.find(x => x.id === id);
-      const r = String(body.r ?? '');
+      const message = chat.msgs.find(kept => kept.id === id);
+      const wanted = String(body.r ?? '');
 
-      if (!m) throw chatErr(404, 'no such message');
-      if (m.poll) throw chatErr(400, "a poll's reactions are its votes");
-      if (!REACTIONS.includes(r)) throw chatErr(400, `not one of GitHub's reactions: ${REACTIONS.join(' ')}`);
+      if (!message) throw chatErr(404, 'no such message');
+      if (message.poll) throw chatErr(400, "a poll's reactions are its votes");
+      if (!REACTIONS.includes(wanted)) throw chatErr(400, `not one of GitHub's reactions: ${REACTIONS.join(' ')}`);
       const url = `/repos/${chat.repo}/issues/comments/${id}/reactions`;
       let list = (await ghRest('GET', `${url}?per_page=100`)).data || [];
-      const mine = list.find(x => x.user?.login === chat.me.login && x.content === r);
+      const mine = list.find(reaction => reaction.user?.login === chat.me.login && reaction.content === wanted);
 
       if (mine) {
         await chatWrite(() => ghRest('DELETE', `${url}/${mine.id}`));
-        list = list.filter(x => x.id !== mine.id);
+        list = list.filter(reaction => reaction.id !== mine.id);
       } else {
-        const made = (await chatWrite(() => ghRest('POST', url, { content: r }))).data;
+        const made = (await chatWrite(() => ghRest('POST', url, { content: wanted }))).data;
 
-        if (made?.id && !list.some(x => x.id === made.id)) list.push(made);
+        if (made?.id && !list.some(reaction => reaction.id === made.id)) list.push(made);
       }
 
       // as written, not asked again (GitHub's list may lag its writes)
-      const held = chat.msgs.find(x => x.id === id) || m;
+      const held = chat.msgs.find(kept => kept.id === id) || message;
 
       Object.assign(held, reactCounts(list), { reacts: reactsOf(list) });
       chat.tags.delete(lookUrl()); // as a vote's: the next look sees another's that brings the counts back
@@ -1338,69 +1408,69 @@ export async function chatRoute(req, res, what, url) {
       return json(res, 200, { msg: held });
     }
 
-    if (M === 'GET' && what === 'emojis') return json(res, 200, { emojis: await chatEmojis() });
+    if (method === 'GET' && what === 'emojis') return json(res, 200, { emojis: await chatEmojis() });
 
-    if (M === 'POST' && what === 'delete') {
+    if (method === 'POST' && what === 'delete') {
       // yours, or anyone's for the admin
       ready();
 
       const id = Number(body.id);
-      const m = chat.msgs.find(x => x.id === id);
+      const message = chat.msgs.find(kept => kept.id === id);
 
-      if (!m) throw chatErr(404, 'no such message');
-      if (m.who !== chat.me?.login && chat.role !== 'admin') throw chatErr(403, 'not your message');
+      if (!message) throw chatErr(404, 'no such message');
+      if (message.who !== chat.me?.login && chat.role !== 'admin') throw chatErr(403, 'not your message');
       await chatWrite(() => ghRest('DELETE', `/repos/${chat.repo}/issues/comments/${id}`));
-      chat.msgs = chat.msgs.filter(x => x.id !== id);
-      broadcast('chatmsgs', { n: m.n, add: [], gone: [id] });
+      chat.msgs = chat.msgs.filter(kept => kept.id !== id);
+      broadcast('chatmsgs', { n: message.n, add: [], gone: [id] });
       chatSay();
       return json(res, 200, { ok: true });
     }
 
-    if (M === 'GET' && what === 'people') {
+    if (method === 'GET' && what === 'people') {
       admin();
       return json(res, 200, await chatPeople());
     }
 
-    if (M === 'GET' && what === 'places') return json(res, 200, await chatPlaces());
+    if (method === 'GET' && what === 'places') return json(res, 200, await chatPlaces());
 
-    if (M === 'POST' && what === 'invite') {
+    if (method === 'POST' && what === 'invite') {
       // Read on an organization's repo; a personal account's collaborators are all writers
       admin();
 
-      const u = (
-        await ghRest('GET', `/users/${login(body.login)}`).catch(e => {
-          throw e.status === 404 ? chatErr(404, `no GitHub user ${body.login}`) : e;
+      const user = (
+        await ghRest('GET', `/users/${login(body.login)}`).catch(error => {
+          throw error.status === 404 ? chatErr(404, `no GitHub user ${body.login}`) : error;
         })
       ).data;
 
-      if (u.type !== 'User') throw chatErr(400, `${u.login} is not a person's account`);
+      if (user.type !== 'User') throw chatErr(400, `${user.login} is not a person's account`);
 
-      const r = await chatWrite(() =>
-        ghRest('PUT', `/repos/${chat.repo}/collaborators/${u.login}`, chat.org ? { permission: 'pull' } : {}),
+      const response = await chatWrite(() =>
+        ghRest('PUT', `/repos/${chat.repo}/collaborators/${user.login}`, chat.org ? { permission: 'pull' } : {}),
       );
 
       await filesFollow(); // a writer on the files repo too, for their pictures
-      return json(res, 200, { login: u.login, invited: r.status === 201, ...(await chatPeople()) });
+      return json(res, 200, { login: user.login, invited: response.status === 201, ...(await chatPeople()) });
     }
 
-    if (M === 'POST' && what === 'remove') {
+    if (method === 'POST' && what === 'remove') {
       admin();
-      const l = login(body.login);
+      const handle = login(body.login);
 
-      await chatWrite(() => ghRest('DELETE', `/repos/${chat.repo}/collaborators/${l}`));
+      await chatWrite(() => ghRest('DELETE', `/repos/${chat.repo}/collaborators/${handle}`));
       await filesFollow();
       return json(res, 200, await chatPeople());
     }
 
-    if (M === 'POST' && what === 'cancel') {
+    if (method === 'POST' && what === 'cancel') {
       admin();
       await chatWrite(() => ghRest('DELETE', `/repos/${chat.repo}/invitations/${Number(body.id)}`));
       await filesFollow();
       return json(res, 200, await chatPeople());
     }
 
-    if (M === 'POST' && what === 'join') {
-      const inv = chat.invites.find(i => i.id === Number(body.id));
+    if (method === 'POST' && what === 'join') {
+      const inv = chat.invites.find(invitation => invitation.id === Number(body.id));
 
       if (!inv) throw chatErr(404, 'no such invitation — it may have expired');
       await ghRest('PATCH', `/user/repository_invitations/${inv.id}`);
@@ -1412,11 +1482,11 @@ export async function chatRoute(req, res, what, url) {
         : json(res, 200, chatSummary());
     }
 
-    if (M === 'POST' && what === 'leave') {
+    if (method === 'POST' && what === 'leave') {
       // a member leaves the repo; its admin only stops using it here
       if (setup.chat && chat.ready && chat.role !== 'admin') {
-        await ghRest('DELETE', `/repos/${chat.repo}/collaborators/${chat.me.login}`).catch(e => {
-          if (e.status !== 404) throw e;
+        await ghRest('DELETE', `/repos/${chat.repo}/collaborators/${chat.me.login}`).catch(error => {
+          if (error.status !== 404) throw error;
         });
 
         if (chat.org) {
@@ -1432,26 +1502,26 @@ export async function chatRoute(req, res, what, url) {
         : json(res, 200, chatSummary());
     }
 
-    if (M === 'POST' && what === 'use') {
+    if (method === 'POST' && what === 'use') {
       // a chat by its repo — one GitHub lets you read, never a name it does not know (2026-10-18)
-      const { setup: s, error } = cleanSetup({ chat: { repo: body.repo } }, true);
+      const { setup: cleaned, error } = cleanSetup({ chat: { repo: body.repo } }, true);
 
-      if (error || !s?.chat) throw chatErr(400, error || 'which repo?');
+      if (error || !cleaned?.chat) throw chatErr(400, error || 'which repo?');
 
-      const r = await ghRest('GET', `/repos/${s.chat.repo}`).catch(async e => {
-        if (e.status !== 404) throw e;
+      const response = await ghRest('GET', `/repos/${cleaned.chat.repo}`).catch(async failure => {
+        if (failure.status !== 404) throw failure;
         await chatInvites(chat.gen).catch(() => {});
-        throw chatNotThere(s.chat.repo);
+        throw chatNotThere(cleaned.chat.repo);
       });
 
-      const failed = setChatRepo(r.data.full_name);
+      const failed = setChatRepo(response.data.full_name);
 
       return failed
         ? json(res, 500, { error: `not saved to ${tildePath(CONFIG_FILE)}: ${failed}` })
         : json(res, 200, chatSummary());
     }
 
-    if (M === 'POST' && what === 'make') {
+    if (method === 'POST' && what === 'make') {
       // a new private repo for the chat, its first room, and the setup naming it
       const full = String(body.repo ?? '').trim();
 
@@ -1460,7 +1530,7 @@ export async function chatRoute(req, res, what, url) {
       const [owner, name] = full.split('/');
       const me = (await ghRest('GET', '/user')).data;
 
-      const r = await ghRest(
+      const response = await ghRest(
         'POST',
         owner.toLowerCase() === me.login.toLowerCase() ? '/user/repos' : `/orgs/${owner}/repos`,
         {
@@ -1474,7 +1544,7 @@ export async function chatRoute(req, res, what, url) {
         },
       );
 
-      const repo = r.data.full_name;
+      const repo = response.data.full_name;
 
       chatPlaces.cache = null;
       await ghRest('PUT', `/repos/${repo}/subscription`, { subscribed: false, ignored: true });
@@ -1488,11 +1558,17 @@ export async function chatRoute(req, res, what, url) {
     }
 
     return json(res, 404, { error: 'not found' });
-  } catch (e) {
+  } catch (error) {
     return json(
       res,
-      [400, 403, 404, 409, 422].includes(e.status) ? (e.status === 422 ? 400 : e.status) : e.status === 401 ? 401 : 502,
-      { error: e.message },
+      [400, 403, 404, 409, 422].includes(error.status)
+        ? error.status === 422
+          ? 400
+          : error.status
+        : error.status === 401
+          ? 401
+          : 502,
+      { error: error.message },
     );
   }
 }

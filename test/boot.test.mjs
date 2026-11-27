@@ -12,26 +12,28 @@ import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { slugOf } from '../scripts/fixture.mjs';
 
 const cwd = '/Users/test/acme-widgets';
-const at = s => new Date(Date.now() - 3_600_000 + s * 1000).toISOString();
-const line = (id, o) => `${JSON.stringify({ isSidechain: false, cwd, sessionId: id, entrypoint: 'cli', ...o })}\n`;
+const at = seconds => new Date(Date.now() - 3_600_000 + seconds * 1000).toISOString();
 
-const prompt = (id, s, text) =>
-  line(id, { type: 'user', timestamp: at(s), uuid: randomUUID(), message: { role: 'user', content: text } });
+const line = (id, fields) =>
+  `${JSON.stringify({ isSidechain: false, cwd, sessionId: id, entrypoint: 'cli', ...fields })}\n`;
 
-const reply = (id, s, text) =>
+const prompt = (id, seconds, text) =>
+  line(id, { type: 'user', timestamp: at(seconds), uuid: randomUUID(), message: { role: 'user', content: text } });
+
+const reply = (id, seconds, text) =>
   line(id, {
     type: 'assistant',
-    timestamp: at(s),
-    message: { id: `m${s}`, role: 'assistant', stop_reason: 'end_turn', content: [{ type: 'text', text }] },
+    timestamp: at(seconds),
+    message: { id: `m${seconds}`, role: 'assistant', stop_reason: 'end_turn', content: [{ type: 'text', text }] },
   });
 
 /** A question whose options came as a string — a model's own input, not the list Claude Code's schema says. */
-const badAsk = (id, s, tu) =>
+const badAsk = (id, seconds, tu) =>
   line(id, {
     type: 'assistant',
-    timestamp: at(s),
+    timestamp: at(seconds),
     message: {
-      id: `m${s}`,
+      id: `m${seconds}`,
       role: 'assistant',
       stop_reason: 'tool_use',
       content: [
@@ -46,17 +48,17 @@ const badAsk = (id, s, tu) =>
   });
 
 /** A text block whose text is no string: fold's `.trim()` throws on it. */
-const badText = (id, s) =>
+const badText = (id, seconds) =>
   line(id, {
     type: 'assistant',
-    timestamp: at(s),
-    message: { id: `m${s}`, role: 'assistant', stop_reason: 'tool_use', content: [{ type: 'text', text: 5 }] },
+    timestamp: at(seconds),
+    message: { id: `m${seconds}`, role: 'assistant', stop_reason: 'tool_use', content: [{ type: 'text', text: 5 }] },
   });
 
-const answer = (id, s, tu) =>
+const answer = (id, seconds, tu) =>
   line(id, {
     type: 'user',
-    timestamp: at(s),
+    timestamp: at(seconds),
     message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: tu, content: 'a' }] },
   });
 
@@ -83,7 +85,7 @@ test(
     );
 
     const srv = await startTestServer({ claudeDir: dir });
-    const chat = async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+    const chat = async () => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
 
     try {
       assert.equal(
@@ -105,12 +107,12 @@ test(
         what: 'the reply after the bad line in the same chunk',
       });
 
-      const m = await srv.api(`api/sessions/${id}/messages`);
+      const messages = await srv.api(`api/sessions/${id}/messages`);
 
-      assert.equal(m.status, 200, JSON.stringify(m.body).slice(0, 300));
+      assert.equal(messages.status, 200, JSON.stringify(messages.body).slice(0, 300));
 
       assert.equal(
-        m.body.entries.findLast(e => e.role === 'assistant' && e.kind === 'text')?.text,
+        messages.body.entries.findLast(entry => entry.role === 'assistant' && entry.kind === 'text')?.text,
         'and past this one',
       );
 
@@ -177,12 +179,13 @@ test(
 
       await waitFor(
         async () =>
-          (await srv.api('api/sessions')).body.sessions.find(s => s.id === id)?.lastReply === 'written mid-boot',
+          (await srv.api('api/sessions')).body.sessions.find(session => session.id === id)?.lastReply ===
+          'written mid-boot',
         { timeout: 5000, what: 'the reply written while the boot ran' },
       );
     } finally {
       mute.close();
-      for (const f of ['t1-boot.json', 't1-boot.sock']) rmSync(join(terms, f), { force: true });
+      for (const name of ['t1-boot.json', 't1-boot.sock']) rmSync(join(terms, name), { force: true });
       holder.kill();
       await srv.stop();
     }

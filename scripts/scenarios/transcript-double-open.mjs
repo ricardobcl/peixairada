@@ -11,16 +11,16 @@ export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
   const out = {};
-  const [a, b] = ctx.fixture.chats;
+  const [chatA, chatB] = ctx.fixture.chats;
 
-  await ctx.openChat(b.id);
+  await ctx.openChat(chatB.id);
 
   // the page's second /messages ask for chat a: its answer held until the scenario lets it go
   await ctx.evaluate(`(() => {
     const real = window.fetch; window.__asks = 0; window.__first = false;
     window.__hold = new Promise(r => { window.__release = r; });
     window.fetch = async (url, o) => {
-      const mine = String(url).includes(${JSON.stringify(`/api/sessions/${a.id}/messages`)}), n = mine ? ++window.__asks : 0;
+      const mine = String(url).includes(${JSON.stringify(`/api/sessions/${chatA.id}/messages`)}), n = mine ? ++window.__asks : 0;
       const r = await real(url, o);
       if (n === 1) window.__first = true;
       if (n === 2) { const body = await r.text(); await window.__hold; return new Response(body, { status: r.status, headers: r.headers }); }
@@ -32,7 +32,7 @@ export default async function (ctx) {
   await ctx.settle();
 
   const at0 = await ctx.evaluate(
-    `(r => ({ x: r.left + r.width / 2, y: r.top + 14 }))(document.querySelector('#slist > .card[data-id="${a.id}"] .title').getBoundingClientRect())`,
+    `(r => ({ x: r.left + r.width / 2, y: r.top + 14 }))(document.querySelector('#slist > .card[data-id="${chatA.id}"] .title').getBoundingClientRect())`,
   );
 
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at0.x, y: at0.y });
@@ -58,13 +58,13 @@ export default async function (ctx) {
   const at = new Date(Date.now() + 1000);
 
   appendFileSync(
-    a.file,
-    `${replyLines({ id: a.id, cwd: a.cwd, text, at })
-      .map(l => JSON.stringify(l))
+    chatA.file,
+    `${replyLines({ id: chatA.id, cwd: chatA.cwd, text, at })
+      .map(line => JSON.stringify(line))
       .join('\n')}\n`,
   );
 
-  await ctx.waitFor(`window.peix.session('${a.id}')?.lastReplyAt === '${at.toISOString()}'`, {
+  await ctx.waitFor(`window.peix.session('${chatA.id}')?.lastReplyAt === '${at.toISOString()}'`, {
     what: 'the reply pushed',
   });
 

@@ -7,24 +7,32 @@
 function peopleOf(chats) {
   const by = new Map();
 
-  for (const s of chats) {
-    for (const pr of s.prs || []) {
-      for (const p of pr.people || []) {
-        const had = by.get(p.login) || { login: p.login, avatar: p.avatar, at: '', did: new Set(), chats: new Set() };
+  for (const session of chats) {
+    for (const pr of session.prs || []) {
+      for (const person of pr.people || []) {
+        const had = by.get(person.login) || {
+          login: person.login,
+          avatar: person.avatar,
+          at: '',
+          did: new Set(),
+          chats: new Set(),
+        };
 
-        had.avatar ||= p.avatar;
-        if (String(p.at) > had.at) had.at = String(p.at);
-        for (const d of p.did) had.did.add(d);
-        had.chats.add(s.id);
-        by.set(p.login, had);
+        had.avatar ||= person.avatar;
+        if (String(person.at) > had.at) had.at = String(person.at);
+        for (const role of person.did) had.did.add(role);
+        had.chats.add(session.id);
+        by.set(person.login, had);
       }
     }
   }
 
-  return [...by.values()].sort((a, b) => b.at.localeCompare(a.at));
+  return [...by.values()].sort((left, right) => right.at.localeCompare(left.at));
 }
 
-const hasPerson = (s, login) => (s.prs || []).some(pr => (pr.people || []).some(x => x.login === login));
+const hasPerson = (session, login) =>
+  (session.prs || []).some(pr => (pr.people || []).some(person => person.login === login));
+
 let peopleDrawn = '';
 
 function renderPeople(chats) {
@@ -33,9 +41,9 @@ function renderPeople(chats) {
 
   // Let go only when GitHub has answered for every PR in view (2026-10-03): after a server restart no PR has its faces
   // until gh answers, and the person you had narrowed to was cleared — and saved cleared — on the first snapshot.
-  const known = chats.every(s => (s.prs || []).every(pr => pr.people != null));
+  const known = chats.every(session => (session.prs || []).every(pr => pr.people != null));
 
-  if (prefs.person && known && !people.some(x => x.login === prefs.person)) {
+  if (prefs.person && known && !people.some(person => person.login === prefs.person)) {
     prefs.person = null;
     savePrefs();
   }
@@ -51,10 +59,10 @@ function renderPeople(chats) {
     ? ''
     : head +
       people
-        .map(x => {
-          const on = x.login === prefs.person;
+        .map(person => {
+          const on = person.login === prefs.person;
 
-          return `<button type="button" data-login="${esc(x.login)}"${on ? ' class="on"' : ''} title="${esc(`${x.login} — ${[...x.did].join(', ')} · in ${x.chats.size} chat${x.chats.size === 1 ? '' : 's'} — click to ${on ? 'show every chat again' : 'show only those'}`)}">${faceHtml(x)}</button>`;
+          return `<button type="button" data-login="${esc(person.login)}"${on ? ' class="on"' : ''} title="${esc(`${person.login} — ${[...person.did].join(', ')} · in ${person.chats.size} chat${person.chats.size === 1 ? '' : 's'} — click to ${on ? 'show every chat again' : 'show only those'}`)}">${faceHtml(person)}</button>`;
         })
         .join('');
 
@@ -71,24 +79,24 @@ function renderPeople(chats) {
     mark.title = `${people.length} ${people.length === 1 ? 'person' : 'people'} on the PRs of the chats in view — click to ${compact ? 'show' : 'fold'} their faces`;
   }
 
-  const here = !!prefs.person && people.some(x => x.login === prefs.person);
+  const here = !!prefs.person && people.some(person => person.login === prefs.person);
 
   box.classList.toggle('on', here);
   return here; // narrowed to them only while they are in view: until the faces come back, every chat shows
 }
 
-$('#people').addEventListener('click', e => {
-  if (e.target.closest('.pgh')) {
+$('#people').addEventListener('click', event => {
+  if (event.target.closest('.pgh')) {
     prefs.peopleCompact = prefs.peopleCompact === false;
     savePrefs();
     renderBoard();
     return;
   }
 
-  const b = e.target.closest('button[data-login]');
+  const button = event.target.closest('button[data-login]');
 
-  if (!b) return;
-  prefs.person = prefs.person === b.dataset.login ? null : b.dataset.login;
+  if (!button) return;
+  prefs.person = prefs.person === button.dataset.login ? null : button.dataset.login;
   savePrefs();
   renderBoard();
   if (prefs.person) showList();

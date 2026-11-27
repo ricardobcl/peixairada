@@ -17,14 +17,16 @@ test(
     const was = readFileSync(chat.file, 'utf8');
 
     const srv = await startTestServer({ claudeDir: fx.dir });
-    const favOf = async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id)?.fav;
+
+    const favOf = async () =>
+      (await srv.api('api/sessions')).body.sessions.find(session => session.id === chat.id)?.fav;
 
     try {
       assert.equal(await favOf(), false, 'none starred at first');
-      const r = await srv.post(`api/sessions/${chat.id}/favorite`, { on: true });
+      const response = await srv.post(`api/sessions/${chat.id}/favorite`, { on: true });
 
-      assert.equal(r.status, 200, JSON.stringify(r.body));
-      assert.equal(r.body.fav, true);
+      assert.equal(response.status, 200, JSON.stringify(response.body));
+      assert.equal(response.body.fav, true);
       assert.equal(await favOf(), true, 'the summary says so');
 
       await waitFor(

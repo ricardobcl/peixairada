@@ -91,7 +91,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.one.halves[0], 'chat', '…and the chat keeps the left one');
 
   ctx.assert.deepEqual(
-    await ctx.peix('state().strips').then(s => s.map(l => l.map(k => k.split(':')[0]))),
+    await ctx.peix('state().strips').then(stripKeys => stripKeys.map(keys => keys.map(key => key.split(':')[0]))),
     [['chat'], ['gh']],
     'each half holds its own tabs',
   );
@@ -195,7 +195,7 @@ export default async function (ctx) {
   appendFileSync(
     two.file,
     replyLines({ id: two.id, cwd: two.cwd, text: 'the strip drawn again' })
-      .map(l => `${JSON.stringify(l)}\n`)
+      .map(line => `${JSON.stringify(line)}\n`)
       .join(''),
   );
 
@@ -336,7 +336,7 @@ export default async function (ctx) {
   // …the keys on claude, beside a page, are the board's (2026-10-14): the shell is told no page has them — the first
   // page stood in for them, so the shell gave it the keys on its next change, and the walk back to it, the same message,
   // was never posted. A dialog closed over them leaves them there.
-  const paneFocus = () => lastPane().then(m => m.focus);
+  const paneFocus = () => lastPane().then(message => message.focus);
 
   ctx.assert.equal(await paneFocus(), null, '⌘1 onto claude: no page has the keys');
   await ctx.key('ArrowRight');
@@ -359,7 +359,7 @@ export default async function (ctx) {
   });
 
   ctx.assert.deepEqual(
-    await lastPane().then(m => [m.panes.length, m.focus]),
+    await lastPane().then(message => [message.panes.length, message.focus]),
     [1, null],
     "the page back up, the keys still the board's",
   );
@@ -558,7 +558,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.closed.tabs.length, 3);
 
   ctx.assert.equal(
-    out.closed.tabs.find(t => t.on)?.k,
+    out.closed.tabs.find(tab => tab.on)?.k,
     out.two.tabs[1].k,
     'the tab beside it comes forward, as in a browser — the other PR, to its right (2026-10-13)',
   );
@@ -647,7 +647,7 @@ export default async function (ctx) {
   ctx.assert.ok(both.panes[0].left + both.panes[0].width <= both.panes[1].left, 'side by side, not overlapping');
 
   ctx.assert.ok(
-    both.panes.every(p => p.width > 50 && p.height > 50),
+    both.panes.every(pane => pane.width > 50 && pane.height > 50),
     'both have room',
   );
 
@@ -699,7 +699,7 @@ export default async function (ctx) {
   const opened = await lastPane();
   const under = await ctx.evaluate(`Math.round(document.querySelector('#ptabsB').getBoundingClientRect().bottom)`);
 
-  ctx.assert.equal(opened.panes.find(p => p.key === `gh:${away}`)?.top, under, 'the page placed under the strip');
+  ctx.assert.equal(opened.panes.find(pane => pane.key === `gh:${away}`)?.top, under, 'the page placed under the strip');
 
   ctx.assert.equal(
     await ctx.evaluate(`window.peixPaneOpen('gh:https://nowhere.example/', ${JSON.stringify(away)})`),

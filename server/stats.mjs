@@ -13,22 +13,22 @@ import { sessions } from './state.mjs';
 let cpuLast = null;
 
 export function cpuBusy() {
-  const t = cpus().reduce(
-    (a, c) => {
-      const x = c.times;
+  const totals = cpus().reduce(
+    (sum, core) => {
+      const times = core.times;
 
-      a.idle += x.idle;
-      a.all += x.user + x.nice + x.sys + x.idle + x.irq;
-      return a;
+      sum.idle += times.idle;
+      sum.all += times.user + times.nice + times.sys + times.idle + times.irq;
+      return sum;
     },
     { idle: 0, all: 0 },
   );
 
   const last = cpuLast;
 
-  cpuLast = t;
-  return last && t.all > last.all
-    ? Math.max(0, Math.min(100, Math.round(100 * (1 - (t.idle - last.idle) / (t.all - last.all)))))
+  cpuLast = totals;
+  return last && totals.all > last.all
+    ? Math.max(0, Math.min(100, Math.round(100 * (1 - (totals.idle - last.idle) / (totals.all - last.all)))))
     : null;
 }
 
@@ -40,10 +40,13 @@ async function memUsed() {
       const out = (await execFileP('/usr/bin/vm_stat', [], { timeout: 3000 })).stdout;
 
       const page = Number(/page size of (\d+)/.exec(out)?.[1]) || 16384;
-      const n = k => Number(new RegExp(`${k}:\\s+(\\d+)`).exec(out)?.[1]) || 0;
+      const count = label => Number(new RegExp(`${label}:\\s+(\\d+)`).exec(out)?.[1]) || 0;
 
       const used =
-        (n('Anonymous pages') - n('Pages purgeable') + n('Pages wired down') + n('Pages occupied by compressor')) *
+        (count('Anonymous pages') -
+          count('Pages purgeable') +
+          count('Pages wired down') +
+          count('Pages occupied by compressor')) *
         page;
 
       if (used > 0 && used <= total) return { used, total };
@@ -57,9 +60,9 @@ async function claudeMem() {
   const pids = [
     ...new Set(
       [...sessions.values()]
-        .filter(s => s.alive)
-        .flatMap(s => [s.live, ...s.rivals])
-        .map(p => p?.pid)
+        .filter(session => session.alive)
+        .flatMap(session => [session.live, ...session.rivals])
+        .map(entry => entry?.pid)
         .filter(Number.isInteger),
     ),
   ];
@@ -75,9 +78,9 @@ async function claudeMem() {
       .map(Number)
       .filter(Number.isFinite);
 
-    return { rss: out.reduce((a, b) => a + b, 0) * 1024, n: out.length };
-  } catch (e) {
-    return e.code === 1 ? { rss: 0, n: 0 } : { rss: null, n: pids.length };
+    return { rss: out.reduce((sum, size) => sum + size, 0) * 1024, n: out.length };
+  } catch (error) {
+    return error.code === 1 ? { rss: 0, n: 0 } : { rss: null, n: pids.length };
   } // 1: none of them alive any more
 }
 
@@ -87,13 +90,13 @@ const MEM_EVERY_MS = 15_000;
 const memRead = new Map(); // 'mem' · 'claude' → { at, p }, the reading's promise
 
 function memOnce(kind, read) {
-  const r = memRead.get(kind);
+  const reading = memRead.get(kind);
 
-  if (r && Date.now() - r.at < MEM_EVERY_MS) return r.p;
-  const p = read();
+  if (reading && Date.now() - reading.at < MEM_EVERY_MS) return reading.p;
+  const promise = read();
 
-  memRead.set(kind, { at: Date.now(), p });
-  return p;
+  memRead.set(kind, { at: Date.now(), p: promise });
+  return promise;
 }
 
 /** What the status bar asks for: `want` is a set of cpu · mem · claude. */

@@ -33,15 +33,17 @@ const COUNTED =
 const REF_AGE_MS = 90 * 24 * 60 * 60_000;
 
 export const noPr = new Set(); // where GitHub had no PR: not taken up again from a short reference until a restart
-const sameName = (a, b) => a.toLowerCase() === b.toLowerCase();
+const sameName = (nameA, nameB) => nameA.toLowerCase() === nameB.toLowerCase();
 
 /** The org a repo named alone is under, from a chat in `cwd`: the root's the folder is in, else the one root's with an org. */
 function orgFor(cwd) {
-  const roots = boardConfig().roots.filter(r => r.org);
+  const roots = boardConfig().roots.filter(root => root.org);
 
   return (
-    (roots.find(r => cwd && (cwd === r.dir || cwd.startsWith(`${r.dir}/`))) || (roots.length === 1 ? roots[0] : null))
-      ?.org || null
+    (
+      roots.find(root => cwd && (cwd === root.dir || cwd.startsWith(`${root.dir}/`))) ||
+      (roots.length === 1 ? roots[0] : null)
+    )?.org || null
   );
 }
 
@@ -49,27 +51,33 @@ function orgFor(cwd) {
 const rootNames = new WeakMap(); // foldersIn's list (kept while the root's mtime is) -> its checkouts by lower-case name
 
 function checkoutNamed(name) {
-  for (const r of boardConfig().roots) {
-    const list = foldersIn(r.dir);
+  for (const root of boardConfig().roots) {
+    const list = foldersIn(root.dir);
     let by = rootNames.get(list);
 
-    if (!by) rootNames.set(list, (by = new Map(list.filter(f => f.git).map(f => [f.name.toLowerCase(), f.name]))));
+    if (!by) {
+      rootNames.set(
+        list,
+        (by = new Map(list.filter(folder => folder.git).map(folder => [folder.name.toLowerCase(), folder.name]))),
+      );
+    }
+
     const hit = by.get(name.toLowerCase());
 
-    if (hit) return { name: hit, org: r.org };
+    if (hit) return { name: hit, org: root.org };
   }
 
   return null;
 }
 
 /** Every short reference in one message, each as the PR it comes to from this chat and where it stands in the text. */
-export function refsIn(s, text) {
+export function refsIn(session, text) {
   // what is not prose blanked out, every character where it was: a newline breaks a list and parts a name from its #
-  const prose = text.replace(NOT_PROSE, c =>
-    c[0] !== '`' || c[1] === '`' ? '\n'.repeat(c.length) : ` ${c.slice(1, -1).replace(/#/g, ' ')} `,
+  const prose = text.replace(NOT_PROSE, span =>
+    span[0] !== '`' || span[1] === '`' ? '\n'.repeat(span.length) : ` ${span.slice(1, -1).replace(/#/g, ' ')} `,
   );
 
-  const cwd = s.live?.cwd || s.cwd;
+  const cwd = session.live?.cwd || session.cwd;
   const own = ghRepoOf(cwd);
   const out = [];
 
@@ -77,37 +85,37 @@ export function refsIn(s, text) {
     if (owner) return { owner, name };
     if (!name || (own && sameName(own.name, name))) return own;
 
-    const c = checkoutNamed(name);
-    const org = c?.org || orgFor(cwd) || own?.owner;
+    const checkout = checkoutNamed(name);
+    const org = checkout?.org || orgFor(cwd) || own?.owner;
 
-    return org ? { owner: org, name: c?.name || name } : null;
+    return org ? { owner: org, name: checkout?.name || name } : null;
   };
 
   let prev = null; // the reference before, and where it ended
 
-  for (const m of prose.matchAll(REF_RE)) {
-    let [, owner, name] = m;
+  for (const match of prose.matchAll(REF_RE)) {
+    let [, owner, name] = match;
     let kind = 'repo';
 
     if (!owner && name && NOT_REPO.test(name)) name = undefined;
 
     if (!name) {
-      const w = NAME_BEFORE.exec(prose.slice(Math.max(0, m.index - 80), m.index))?.[1];
+      const word = NAME_BEFORE.exec(prose.slice(Math.max(0, match.index - 80), match.index))?.[1];
 
-      if (w && ((own && sameName(own.name, w)) || checkoutNamed(w))) name = w;
-      else if (prev && LIST_GAP.test(prose.slice(prev.end, m.index))) ({ owner, name, kind } = prev);
-      else kind = COUNTED.test(prose.slice(Math.max(0, m.index - 24), m.index)) ? 'counted' : 'bare';
+      if (word && ((own && sameName(own.name, word)) || checkoutNamed(word))) name = word;
+      else if (prev && LIST_GAP.test(prose.slice(prev.end, match.index))) ({ owner, name, kind } = prev);
+      else kind = COUNTED.test(prose.slice(Math.max(0, match.index - 24), match.index)) ? 'counted' : 'bare';
     }
 
-    prev = { owner, name, kind, end: m.index + m[0].length };
+    prev = { owner, name, kind, end: match.index + match[0].length };
     if (kind === 'counted') continue;
-    const r = repoOf(owner, name);
+    const repo = repoOf(owner, name);
 
-    if (r) {
+    if (repo) {
       out.push({
-        at: m.index,
-        url: `https://github.com/${r.owner}/${r.name}/pull/${m[3]}`,
-        key: prKey(r.owner, r.name, m[3]),
+        at: match.index,
+        url: `https://github.com/${repo.owner}/${repo.name}/pull/${match[3]}`,
+        key: prKey(repo.owner, repo.name, match[3]),
         ref: kind,
       });
     }
@@ -118,26 +126,26 @@ export function refsIn(s, text) {
 
 /** A short reference to a PR merged or closed, and opened over REF_AGE_MS before it was said: a reference to the past,
  *  never the chat's own work — a bare one is not shown, and none titles the card. */
-function pastRef(p) {
-  if (!p.ref || p.state === 'open' || p.state === 'draft') return false;
-  const made = Date.parse(prStatus.get(p.url)?.created);
+function pastRef(pr) {
+  if (!pr.ref || pr.state === 'open' || pr.state === 'draft') return false;
+  const made = Date.parse(prStatus.get(pr.url)?.created);
 
-  return !!made && made < (Date.parse(p.firstAt) || Date.now()) - REF_AGE_MS;
+  return !!made && made < (Date.parse(pr.firstAt) || Date.now()) - REF_AGE_MS;
 }
 
 /** Whether the chat shows a PR: one said in full always; a short reference once GitHub has found a PR there. */
-export const shownPr = p => !p.ref || (!!p.state && (p.ref === 'repo' || !pastRef(p)));
+export const shownPr = pr => !pr.ref || (!!pr.state && (pr.ref === 'repo' || !pastRef(pr)));
 
 /** GitHub has no PR there: every chat that had it only from a short reference lets it go, and none takes it up again. */
 export function forgetRef(url) {
   noPr.add(url);
 
-  for (const s of sessions.values()) {
-    const at = s.prs.findIndex(p => p.url === url && p.ref);
+  for (const session of sessions.values()) {
+    const at = session.prs.findIndex(pr => pr.url === url && pr.ref);
 
     if (at >= 0) {
-      s.prs.splice(at, 1);
-      schedulePush(s);
+      session.prs.splice(at, 1);
+      schedulePush(session);
     }
   }
 }
@@ -149,9 +157,12 @@ export function forgetRef(url) {
  * one it had brought up, and one that listed your open PRs the title of whichever came first. Titles arrive from `gh`
  * with the state, so this is null until that lands — for that PR, not the next.
  */
-export function prTitle(s) {
-  const first = k =>
-    s.prs.reduce((a, p) => (p[k] != null && shownPr(p) && !pastRef(p) && !(a?.[k] < p[k]) ? p : a), null);
+export function prTitle(session) {
+  const first = field =>
+    session.prs.reduce(
+      (best, pr) => (pr[field] != null && shownPr(pr) && !pastRef(pr) && !(best?.[field] < pr[field]) ? pr : best),
+      null,
+    );
 
   return (first('linked') || first('named'))?.title ?? null;
 }

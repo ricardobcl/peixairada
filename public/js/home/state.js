@@ -8,7 +8,7 @@
 const home = { day: null, asking: false, timer: 0, soon: 0 };
 
 const dur = ms => {
-  const m = Math.round((ms || 0) / 60_000);
+  const minutes = Math.round((ms || 0) / 60_000);
 
-  return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
+  return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`;
 };

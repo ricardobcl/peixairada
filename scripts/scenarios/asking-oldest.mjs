@@ -20,7 +20,7 @@ export default async function (ctx) {
   const sleeps = Array.from({ length: 3 }, () => spawn('sleep', ['120'], { stdio: 'ignore' }));
 
   try {
-    const ago = m => Date.now() - m * 60_000;
+    const ago = minutes => Date.now() - minutes * 60_000;
 
     // the newest word is on the chat waiting longest, so neither the list's order nor the word's can pass for the wait's
     const asks = [
@@ -31,14 +31,14 @@ export default async function (ctx) {
 
     makeFixture(
       ctx.fixture.dir,
-      asks.map(([title, wait, word], i) => ({
+      asks.map(([title, wait, word], index) => ({
         cwd,
         title,
         prompt: 'go',
         reply: 'one question',
         at: new Date(ago(word)),
         live: {
-          pid: sleeps[i].pid,
+          pid: sleeps[index].pid,
           startedAt: ago(120),
           status: 'waiting',
           waitingFor: 'input needed',
@@ -57,7 +57,7 @@ export default async function (ctx) {
     ctx.assert.equal(said, '3 asking · 1h', 'the count and the longest wait');
     const walk = [];
 
-    for (let i = 0; i < 4; i++) {
+    for (let press = 0; press < 4; press++) {
       await ctx.evaluate(`document.querySelector('#sbar .seg.ask').click()`);
       await ctx.sleep(250);
       walk.push(await ctx.evaluate(`window.peix.session(window.peix.state().current)?.title`));
@@ -87,6 +87,6 @@ export default async function (ctx) {
 
     return { said, walk };
   } finally {
-    for (const s of sleeps) s.kill();
+    for (const child of sleeps) child.kill();
   }
 }

@@ -1,4 +1,4 @@
-const $ = s => document.querySelector(s);
+const $ = selector => document.querySelector(selector);
 
 // A script animation is let go of once it is done (2026-10-15). WebKit keeps every animation `animate()` made after it
 // ends on the document timeline, which walks the finished ones on every frame (removeReplacedAnimations, the
@@ -15,34 +15,36 @@ let endTimer = 0;
 function letGoEnded() {
   endTimer = 0;
 
-  for (const a of ended) {
+  for (const animation of ended) {
     const fills =
-      /forwards|both/.test(a.effect?.getTiming().fill) && a.effect.target?.isConnected && a.replaceState !== 'removed';
+      /forwards|both/.test(animation.effect?.getTiming().fill) &&
+      animation.effect.target?.isConnected &&
+      animation.replaceState !== 'removed';
 
-    if (a.playState === 'idle' || (a.playState === 'finished' && !fills)) {
-      ended.delete(a);
-      a.cancel();
-      a.timeline = null;
-    } else if (a.playState !== 'finished') ended.delete(a); // played again
+    if (animation.playState === 'idle' || (animation.playState === 'finished' && !fills)) {
+      ended.delete(animation);
+      animation.cancel();
+      animation.timeline = null;
+    } else if (animation.playState !== 'finished') ended.delete(animation); // played again
   }
 
   if (ended.size) endTimer = setTimeout(letGoEnded, 5000); // one holding its last frame in the page: looked at again
 }
 
-const endSoon = a => {
-  ended.add(a);
+const endSoon = animation => {
+  ended.add(animation);
   endTimer ||= setTimeout(letGoEnded, 2000);
 };
 
 Element.prototype.animate = function (...args) {
-  const a = animate0.apply(this, args);
+  const animation = animate0.apply(this, args);
 
-  a.finished.then(
-    () => endSoon(a),
-    () => endSoon(a),
+  animation.finished.then(
+    () => endSoon(animation),
+    () => endSoon(animation),
   );
 
-  return a;
+  return animation;
 };
 
 const state = {
@@ -199,7 +201,7 @@ if (!prefs.lanesIdle) {
 }
 
 // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
-for (const k of [
+for (const key of [
   'groupByRepo',
   'compact',
   'chatVisible',
@@ -210,14 +212,14 @@ for (const k of [
   'tight',
   'showTools',
 ]) {
-  delete prefs[k];
+  delete prefs[key];
 }
 
 delete prefs.projectsCompact; // the projects column's strip or full width — there is no column since 2026-09-24
 // the switches nothing set since the cog was pared down (2026-09-21): a saved value was the only way to flip them;
 // and the code's fold, the settings' and each chat's, since long code is always folded, and how a date is written,
 // day first again (both 2026-09-28)
-for (const k of ['sound', 'showAll', 'toolsMode', 'foldCode', 'foldBy', 'dates']) delete prefs[k];
+for (const key of ['sound', 'showAll', 'toolsMode', 'foldCode', 'foldBy', 'dates']) delete prefs[key];
 // the one-of-four filter (before 2026-09-20) becomes the set of states shown; 'all' was every state
 // the state chips went (2026-10-11, later) — the lanes fold instead (lanesShut, Done shut to begin with); a filter
 // saved before is dropped, or a state switched off then would be hidden with nothing left to bring it back
@@ -233,7 +235,7 @@ if ('sessionsCompact' in prefs) {
 delete prefs.peopleFold; // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
 
 // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
-for (const k of [
+for (const key of [
   'simpleColors',
   'simpleColor',
   'skinExact',
@@ -249,11 +251,11 @@ for (const k of [
   'layout',
   'sidebarStyle',
 ]) {
-  delete prefs[k];
+  delete prefs[key];
 } // layout: Tiles · Sidebar, sidebarStyle: Ring · Glass, until 2026-11-01
 
 if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
-prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied'); // lanes for a morning (2026-10-12), filters since
+prefs.lanesShut = prefs.lanesShut.filter(lane => lane !== 'move' && lane !== 'replied'); // lanes for a morning (2026-10-12), filters since
 if (!['replied', 'prio'].includes(prefs.listFilter)) prefs.listFilter = null; // 'move' till 2026-11-25
 
 // the Snoozed lane folded to begin with (2026-11-24, round XXX's W1), as Idle and Done are, on a board that had prefs before it

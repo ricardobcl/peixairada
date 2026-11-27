@@ -30,10 +30,16 @@ const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 export function parseNumstat(text) {
   const out = {};
 
-  for (const l of String(text).split('\0')) {
-    const m = /^(-|\d+)\t(-|\d+)\t([\s\S]+)$/.exec(l);
+  for (const record of String(text).split('\0')) {
+    const match = /^(-|\d+)\t(-|\d+)\t([\s\S]+)$/.exec(record);
 
-    if (m) out[m[3]] = { add: m[1] === '-' ? 0 : +m[1], del: m[2] === '-' ? 0 : +m[2], binary: m[1] === '-' };
+    if (match) {
+      out[match[3]] = {
+        add: match[1] === '-' ? 0 : +match[1],
+        del: match[2] === '-' ? 0 : +match[2],
+        binary: match[1] === '-',
+      };
+    }
   }
 
   return out;
@@ -42,62 +48,65 @@ export function parseNumstat(text) {
 /** `git diff --name-status -z` → {path: 'M' | 'A' | 'D' | …} */
 export function parseNameStatus(text) {
   const out = {};
-  const p = String(text).split('\0');
+  const fields = String(text).split('\0');
 
-  for (let i = 0; i + 1 < p.length; i += 2) if (/^[A-Z]\d*$/.test(p[i])) out[p[i + 1]] = p[i][0];
+  for (let index = 0; index + 1 < fields.length; index += 2) {
+    if (/^[A-Z]\d*$/.test(fields[index])) out[fields[index + 1]] = fields[index][0];
+  }
+
   return out;
 }
 
 /** A name git quoted, from the `"` at `i`: its text and the index past the closing quote. */
-function unquoteGit(s, i = 0) {
+function unquoteGit(text, index = 0) {
   const bytes = [];
   const esc = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13 };
   const enc = new TextEncoder();
 
-  for (i++; i < s.length && s[i] !== '"';) {
-    if (s[i] !== '\\') {
-      const ch = String.fromCodePoint(s.codePointAt(i));
+  for (index++; index < text.length && text[index] !== '"';) {
+    if (text[index] !== '\\') {
+      const ch = String.fromCodePoint(text.codePointAt(index));
 
       bytes.push(...enc.encode(ch));
-      i += ch.length;
-    } else if (/[0-7]/.test(s[i + 1])) {
-      bytes.push(parseInt(s.slice(i + 1, i + 4), 8));
-      i += 4;
+      index += ch.length;
+    } else if (/[0-7]/.test(text[index + 1])) {
+      bytes.push(parseInt(text.slice(index + 1, index + 4), 8));
+      index += 4;
     } else {
-      bytes.push(esc[s[i + 1]] ?? s.charCodeAt(i + 1));
-      i += 2;
+      bytes.push(esc[text[index + 1]] ?? text.charCodeAt(index + 1));
+      index += 2;
     }
   }
 
-  return [new TextDecoder().decode(new Uint8Array(bytes)), i + 1];
+  return [new TextDecoder().decode(new Uint8Array(bytes)), index + 1];
 }
 
 /** The b/ side's path of a `diff --git` line, quoted or not — `a/P b/P` read by its length, so a space or " b/" in the
  *  name is no matter; null for a head that is not a/ b/. */
 function diffPath(line) {
   const rest = String(line).slice(11);
-  let b;
+  let bSide;
 
-  if (rest[0] === '"') b = rest.slice(unquoteGit(rest)[1] + 1);
+  if (rest[0] === '"') bSide = rest.slice(unquoteGit(rest)[1] + 1);
   else {
-    const n = (rest.length - 5) / 2;
+    const nameLength = (rest.length - 5) / 2;
 
     if (
-      Number.isInteger(n) &&
+      Number.isInteger(nameLength) &&
       rest.startsWith('a/') &&
-      rest.slice(n + 2, n + 5) === ' b/' &&
-      rest.slice(2, n + 2) === rest.slice(n + 5)
+      rest.slice(nameLength + 2, nameLength + 5) === ' b/' &&
+      rest.slice(2, nameLength + 2) === rest.slice(nameLength + 5)
     ) {
-      return rest.slice(n + 5);
+      return rest.slice(nameLength + 5);
     }
 
-    const q = rest.indexOf(' "b/');
+    const quotedAt = rest.indexOf(' "b/');
 
-    b = rest.slice((q >= 0 ? q : rest.indexOf(' b/')) + 1);
+    bSide = rest.slice((quotedAt >= 0 ? quotedAt : rest.indexOf(' b/')) + 1);
   }
 
-  if (b[0] === '"') b = unquoteGit(b)[0];
-  return b.startsWith('b/') ? b.slice(2) : null;
+  if (bSide[0] === '"') bSide = unquoteGit(bSide)[0];
+  return bSide.startsWith('b/') ? bSide.slice(2) : null;
 }
 
 /** A patch cut at each file's `diff --git` line: [{path, text}], the path the b/ side's. */
@@ -118,7 +127,7 @@ export function addedPatch(path, body, max = 400) {
   const lines = body.replace(/\n$/, '').split('\n');
   const shown = lines.slice(0, max);
 
-  return `diff --git a/${path} b/${path}\nnew file\n--- /dev/null\n+++ b/${path}\n@@ -0,0 +1,${shown.length} @@\n${shown.map(l => `+${l}`).join('\n')}\n${lines.length > max ? `\\ ${lines.length - max} more lines\n` : ''}`;
+  return `diff --git a/${path} b/${path}\nnew file\n--- /dev/null\n+++ b/${path}\n@@ -0,0 +1,${shown.length} @@\n${shown.map(line => `+${line}`).join('\n')}\n${lines.length > max ? `\\ ${lines.length - max} more lines\n` : ''}`;
 }
 
 export const gitOut = async (cwd, args, opts = {}) => {
@@ -132,7 +141,7 @@ export const gitOut = async (cwd, args, opts = {}) => {
 
 export const gitOr = (cwd, args, dflt = null) =>
   gitOut(cwd, args).then(
-    o => o.trim(),
+    stdout => stdout.trim(),
     () => dflt,
   );
 
@@ -150,9 +159,9 @@ async function indexCopy(root) {
 
   try {
     cpSync(idx, copy, { preserveTimestamps: true });
-  } catch (e) {
+  } catch (error) {
     rmSync(dir, { recursive: true, force: true });
-    throw e;
+    throw error;
   }
 
   return {
@@ -176,20 +185,20 @@ export const originDefault = async root =>
 /** Which PR `pr=` names — a number (the checkout's repo) or a URL — and whether it is the checkout's repo's. */
 export function prAsked(ask, root) {
   const said = String(ask || '');
-  const m = PR_ONE.exec(said);
-  const n = Number(m?.[3] || /^#?(\d+)$/.exec(said)?.[1]);
+  const match = PR_ONE.exec(said);
+  const number = Number(match?.[3] || /^#?(\d+)$/.exec(said)?.[1]);
 
-  if (!n) return null;
+  if (!number) return null;
   const own = root && ghRepoOf(root);
 
   return {
-    n,
-    url: m ? prKey(m[1], m[2], n) : own ? prKey(own.owner, own.name, n) : null,
-    mine: !m || (!!own && `${m[1]}/${m[2]}`.toLowerCase() === `${own.owner}/${own.name}`.toLowerCase()),
+    n: number,
+    url: match ? prKey(match[1], match[2], number) : own ? prKey(own.owner, own.name, number) : null,
+    mine: !match || (!!own && `${match[1]}/${match[2]}`.toLowerCase() === `${own.owner}/${own.name}`.toLowerCase()),
   };
 }
 
-async function prRange(root, n, base) {
+async function prRange(root, number, base) {
   base ||=
     (await gitOr(root, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']))?.replace(/^origin\//, '') ||
     /^ref: refs\/heads\/(\S+)\tHEAD$/m.exec(
@@ -197,15 +206,15 @@ async function prRange(root, n, base) {
     )?.[1] ||
     'main';
 
-  const want = [`refs/pull/${n}/head`, `refs/heads/${base}`];
+  const want = [`refs/pull/${number}/head`, `refs/heads/${base}`];
   let ls;
 
   try {
     ls = await gitOut(root, ['ls-remote', 'origin', ...want], GIT_NET);
-  } catch (e) {
+  } catch (error) {
     return {
       error: `origin did not answer: ${
-        String(e.stderr || e.message)
+        String(error.stderr || error.message)
           .trim()
           .split('\n')[0]
       }`,
@@ -217,15 +226,15 @@ async function prRange(root, n, base) {
     ls
       .split('\n')
       .filter(Boolean)
-      .map(l => l.split('\t').reverse()),
+      .map(line => line.split('\t').reverse()),
   );
 
-  if (!oid[want[0]]) return { error: `origin has no PR #${n}`, gh: true };
+  if (!oid[want[0]]) return { error: `origin has no PR #${number}`, gh: true };
   if (!oid[want[1]]) return { error: `origin has no branch ${base}`, gh: true };
   const missing = [];
 
-  for (const r of want) {
-    if ((await gitOr(root, ['cat-file', '-e', `${oid[r]}^{commit}`], false)) === false) missing.push(r);
+  for (const ref of want) {
+    if ((await gitOr(root, ['cat-file', '-e', `${oid[ref]}^{commit}`], false)) === false) missing.push(ref);
   }
 
   if (missing.length) {
@@ -235,10 +244,10 @@ async function prRange(root, n, base) {
         ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', '--refmap=', 'origin', ...missing],
         GIT_NET,
       );
-    } catch (e) {
+    } catch (error) {
       return {
-        error: `could not fetch PR #${n}: ${
-          String(e.stderr || e.message)
+        error: `could not fetch PR #${number}: ${
+          String(error.stderr || error.message)
             .trim()
             .split('\n')[0]
         }`,
@@ -249,8 +258,8 @@ async function prRange(root, n, base) {
 
   const from = await gitOr(root, ['merge-base', oid[want[1]], oid[want[0]]]);
 
-  if (!from) return { error: `PR #${n} shares no history with ${base}`, gh: true };
-  return { n, head: oid[want[0]], base, baseOid: oid[want[1]], from, fetched: missing.length > 0 };
+  if (!from) return { error: `PR #${number} shares no history with ${base}`, gh: true };
+  return { n: number, head: oid[want[0]], base, baseOid: oid[want[1]], from, fetched: missing.length > 0 };
 }
 
 /** One file's patch counted as numstat would: its status, the lines added and removed after its first hunk. */
@@ -259,14 +268,14 @@ export function patchStat(text) {
   let del = 0;
   let inHunk = false;
 
-  for (const l of String(text).split('\n')) {
-    if (l.startsWith('@@')) {
+  for (const line of String(text).split('\n')) {
+    if (line.startsWith('@@')) {
       inHunk = true;
       continue;
     }
 
-    if (inHunk && l.startsWith('+')) add++;
-    else if (inHunk && l.startsWith('-')) del++;
+    if (inHunk && line.startsWith('+')) add++;
+    else if (inHunk && line.startsWith('-')) del++;
   }
 
   return {
@@ -283,9 +292,9 @@ function capPatch(patch, left = []) {
   if (patch.length <= CHANGES_MAX) return { patch, truncated: left.length > 0, left };
   let kept = '';
 
-  for (const c of splitPatch(patch)) {
-    if (kept.length + c.text.length > CHANGES_MAX) left.push(c.path);
-    else kept += c.text;
+  for (const filePatch of splitPatch(patch)) {
+    if (kept.length + filePatch.text.length > CHANGES_MAX) left.push(filePatch.path);
+    else kept += filePatch.text;
   }
 
   return { patch: kept, truncated: true, left };
@@ -298,7 +307,7 @@ function gitPatch(cwd, args, opts = {}) {
     const bin = findBin('git', "a chat's changes go unread");
 
     if (!bin) return fail(new Error('git is not installed'));
-    const p = spawn(bin, ['-C', cwd, ...args], { env: opts.env || process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(bin, ['-C', cwd, ...args], { env: opts.env || process.env, stdio: ['ignore', 'pipe', 'pipe'] });
     const left = [];
 
     let kept = '';
@@ -320,35 +329,35 @@ function gitPatch(cwd, args, opts = {}) {
       }
     };
 
-    const line = l => {
-      if (l.startsWith('diff --git ')) {
+    const line = text => {
+      if (text.startsWith('diff --git ')) {
         close();
-        cur = { path: diffPath(l), text: '', over: false };
+        cur = { path: diffPath(text), text: '', over: false };
       }
 
       if (cur && !cur.over) {
-        cur.text += `${l}\n`;
+        cur.text += `${text}\n`;
         if (kept.length + cur.text.length > CHANGES_MAX) over();
       }
     };
 
-    p.stdout.setEncoding('utf8');
-    p.stderr.setEncoding('utf8');
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
 
-    p.stdout.on('data', d => {
+    child.stdout.on('data', chunk => {
       // by lines; one longer than the whole cap is dropped as it comes, never held
-      let i = 0;
-      let j;
+      let start = 0;
+      let newline;
 
-      while ((j = d.indexOf('\n', i)) >= 0) {
-        if (!skip) line(rest + d.slice(i, j));
+      while ((newline = chunk.indexOf('\n', start)) >= 0) {
+        if (!skip) line(rest + chunk.slice(start, newline));
         skip = false;
         rest = '';
-        i = j + 1;
+        start = newline + 1;
       }
 
       if (!skip) {
-        rest += d.slice(i);
+        rest += chunk.slice(start);
 
         if (rest.length > CHANGES_MAX) {
           over();
@@ -358,18 +367,18 @@ function gitPatch(cwd, args, opts = {}) {
       }
     });
 
-    p.stderr.on('data', d => {
-      err += d;
+    child.stderr.on('data', chunk => {
+      err += chunk;
     });
 
-    const timer = setTimeout(() => p.kill(), opts.timeout || 20_000);
+    const timer = setTimeout(() => child.kill(), opts.timeout || 20_000);
 
-    p.on('error', e => {
+    child.on('error', error => {
       clearTimeout(timer);
-      fail(e);
+      fail(error);
     });
 
-    p.on('close', (code, signal) => {
+    child.on('close', (code, signal) => {
       clearTimeout(timer);
 
       if (code !== 0) {
@@ -398,10 +407,10 @@ async function prFromGh(want, why, cwd) {
   try {
     out = (await execFileP(bin, ['pr', 'diff', want.url, '--color', 'never'], { timeout: 30_000, maxBuffer: 32e6 }))
       .stdout;
-  } catch (e) {
+  } catch (error) {
     return {
       error: `${why} — and gh pr diff: ${
-        String(e.stderr || e.message)
+        String(error.stderr || error.message)
           .trim()
           .split('\n')[0]
       }`,
@@ -409,8 +418,8 @@ async function prFromGh(want, why, cwd) {
   }
 
   const files = splitPatch(out)
-    .map(c => ({ path: c.path, ...patchStat(c.text) }))
-    .sort((a, b) => a.path.localeCompare(b.path));
+    .map(filePatch => ({ path: filePatch.path, ...patchStat(filePatch.text) }))
+    .sort((first, second) => first.path.localeCompare(second.path));
 
   const refs = prStatus.get(want.url)?.refs;
   const { patch, truncated, left } = capPatch(out);
@@ -423,8 +432,8 @@ async function prFromGh(want, why, cwd) {
     scope: 'pr',
     upstream: null,
     files,
-    add: files.reduce((n, f) => n + f.add, 0),
-    del: files.reduce((n, f) => n + f.del, 0),
+    add: files.reduce((sum, file) => sum + file.add, 0),
+    del: files.reduce((sum, file) => sum + file.del, 0),
     patch,
     truncated,
     left,
@@ -442,8 +451,8 @@ async function prFromGh(want, why, cwd) {
 
 /** The changes of a chat's folder in one scope — or `{stat}` alone (the header's chip): the counts, no patch. `ask` is
  *  scope `pr`'s: `{pr, base}`. */
-export async function changesOf(s, scope = 'uncommitted', statOnly = false, ask = {}) {
-  const cwd = s.live?.cwd || s.cwd;
+export async function changesOf(session, scope = 'uncommitted', statOnly = false, ask = {}) {
+  const cwd = session.live?.cwd || session.cwd;
   const root = cwd && existsSync(cwd) ? await gitOr(cwd, ['rev-parse', '--show-toplevel']) : null;
   const want = scope === 'pr' && prAsked(ask.pr, root);
 
@@ -464,9 +473,9 @@ export async function changesOf(s, scope = 'uncommitted', statOnly = false, ask 
   if (scope === 'branch' && head) {
     base = await gitOr(root, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']);
 
-    for (const b of base ? [] : ['origin/main', 'origin/master', 'main', 'master']) {
-      if (b !== branch && (await gitOr(root, ['rev-parse', '--verify', '--quiet', b]))) {
-        base = b;
+    for (const candidate of base ? [] : ['origin/main', 'origin/master', 'main', 'master']) {
+      if (candidate !== branch && (await gitOr(root, ['rev-parse', '--verify', '--quiet', candidate]))) {
+        base = candidate;
         break;
       }
     }
@@ -494,21 +503,21 @@ export async function changesOf(s, scope = 'uncommitted', statOnly = false, ask 
 
   if (scope === 'turn') {
     // git names the root by its real path (/private/var/… for a /var/… folder): the files are made real to match
-    const real = f => {
+    const real = file => {
       try {
-        return realpathSync(f);
+        return realpathSync(file);
       } catch {
         try {
-          return join(realpathSync(dirname(f)), basename(f));
+          return join(realpathSync(dirname(file)), basename(file));
         } catch {
-          return f;
+          return file;
         }
       }
     };
 
-    paths = [...(s.turnFiles || [])]
-      .map(f => relative(root, real(resolve(cwd, f))))
-      .filter(f => f && !f.startsWith('..') && !isAbsolute(f));
+    paths = [...(session.turnFiles || [])]
+      .map(file => relative(root, real(resolve(cwd, file))))
+      .filter(file => file && !file.startsWith('..') && !isAbsolute(file));
 
     if (!paths.length) {
       return {
@@ -528,7 +537,7 @@ export async function changesOf(s, scope = 'uncommitted', statOnly = false, ask 
     }
   }
 
-  const only = paths.length ? ['--', ...paths.map(f => `:(literal)${f}`)] : []; // a name, never a glob: src/[id].tsx is not src/i.tsx (2026-10-14)
+  const only = paths.length ? ['--', ...paths.map(path => `:(literal)${path}`)] : []; // a name, never a glob: src/[id].tsx is not src/i.tsx (2026-10-14)
   const ix = pr ? null : await indexCopy(root); // a PR is two commits: no index read
 
   try {
@@ -541,16 +550,16 @@ export async function changesOf(s, scope = 'uncommitted', statOnly = false, ask 
     const stat = parseNumstat(num);
     const status = parseNameStatus(names);
 
-    const files = Object.entries(stat).map(([path, n]) => ({ path, status: status[path] || 'M', ...n }));
+    const files = Object.entries(stat).map(([path, numstat]) => ({ path, status: status[path] || 'M', ...numstat }));
     const bodies = new Map();
 
     for (const path of untracked.split('\0').filter(Boolean).slice(0, 200)) {
       let body = '';
 
       try {
-        const f = join(root, path);
+        const file = join(root, path);
 
-        if (statSync(f).size < 1e6) body = readFileSync(f, 'utf8');
+        if (statSync(file).size < 1e6) body = readFileSync(file, 'utf8');
       } catch {}
 
       const binary = body.includes('\0');
@@ -567,10 +576,10 @@ export async function changesOf(s, scope = 'uncommitted', statOnly = false, ask 
       });
     }
 
-    files.sort((a, b) => a.path.localeCompare(b.path));
+    files.sort((first, second) => first.path.localeCompare(second.path));
 
-    const add = files.reduce((n, f) => n + f.add, 0);
-    const del = files.reduce((n, f) => n + f.del, 0);
+    const add = files.reduce((sum, file) => sum + file.add, 0);
+    const del = files.reduce((sum, file) => sum + file.del, 0);
 
     if (statOnly) return { root, branch, add, del, files: files.length };
     const upName = head && !pr && (await gitOr(root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']));
@@ -638,15 +647,15 @@ export async function changesOf(s, scope = 'uncommitted', statOnly = false, ask 
 // The header's chip asks often (each open, each turn's end): the counts are kept a few seconds per folder.
 const changeStats = new Map();
 
-export async function changeStat(s) {
-  const key = s.live?.cwd || s.cwd;
+export async function changeStat(session) {
+  const key = session.live?.cwd || session.cwd;
   const hit = changeStats.get(key);
 
   if (hit && Date.now() - hit.at < 4000) return hit.v;
-  const v = await changesOf(s, 'uncommitted', true).catch(e => ({ error: e.message }));
+  const stat = await changesOf(session, 'uncommitted', true).catch(error => ({ error: error.message }));
 
-  changeStats.set(key, { at: Date.now(), v });
-  return v;
+  changeStats.set(key, { at: Date.now(), v: stat });
+  return stat;
 }
 
 // A checkout's working trees (2026-10-13), as `git worktree list --porcelain` says them: which branch each holds — the
@@ -655,23 +664,23 @@ export function parseWorktrees(text) {
   const out = [];
 
   for (const block of String(text).split(/\n\n+/)) {
-    const w = {};
+    const tree = {};
 
-    for (const l of block.split('\n')) {
-      const i = l.indexOf(' ');
+    for (const line of block.split('\n')) {
+      const space = line.indexOf(' ');
 
-      if (l) w[i < 0 ? l : l.slice(0, i)] = i < 0 ? true : l.slice(i + 1);
+      if (line) tree[space < 0 ? line : line.slice(0, space)] = space < 0 ? true : line.slice(space + 1);
     }
 
-    if (typeof w.worktree !== 'string') continue;
+    if (typeof tree.worktree !== 'string') continue;
 
     out.push({
-      path: w.worktree,
-      head: typeof w.HEAD === 'string' ? w.HEAD : null,
-      branch: typeof w.branch === 'string' ? w.branch.replace(/^refs\/heads\//, '') : null,
-      detached: !!w.detached,
-      bare: !!w.bare,
-      prunable: !!w.prunable,
+      path: tree.worktree,
+      head: typeof tree.HEAD === 'string' ? tree.HEAD : null,
+      branch: typeof tree.branch === 'string' ? tree.branch.replace(/^refs\/heads\//, '') : null,
+      detached: !!tree.detached,
+      bare: !!tree.bare,
+      prunable: !!tree.prunable,
     });
   }
 
@@ -689,20 +698,24 @@ export async function worktreesFor(cwd) {
 
   if (!here) return { error: 'its folder is not in a git repository' };
 
-  const all = parseWorktrees(await gitOut(here, ['worktree', 'list', '--porcelain'])).filter(w => !w.bare);
-  const list = all.filter(w => !w.prunable);
+  const all = parseWorktrees(await gitOut(here, ['worktree', 'list', '--porcelain'])).filter(tree => !tree.bare);
+  const list = all.filter(tree => !tree.prunable);
 
   const own = ghRepoOf(here);
   const main = list[0]?.path || here;
 
-  const lock = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'].find(f => existsSync(join(main, f)));
+  const lock = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'].find(file => existsSync(join(main, file)));
   const mainLock = lock && existsSync(join(main, 'node_modules')) && (await gitOr(main, ['rev-parse', `HEAD:${lock}`]));
 
-  for (const w of list) {
-    if (w.path === main || !existsSync(join(w.path, 'package.json'))) w.modules = null;
-    else if (existsSync(join(w.path, 'node_modules'))) w.modules = 'here';
-    else w.modules = mainLock && (await gitOr(w.path, ['rev-parse', `HEAD:${lock}`])) === mainLock ? 'same' : 'differ';
-    if (worktreesMade[w.path]) w.made = true;
+  for (const tree of list) {
+    if (tree.path === main || !existsSync(join(tree.path, 'package.json'))) tree.modules = null;
+    else if (existsSync(join(tree.path, 'node_modules'))) tree.modules = 'here';
+    else {
+      tree.modules =
+        mainLock && (await gitOr(tree.path, ['rev-parse', `HEAD:${lock}`])) === mainLock ? 'same' : 'differ';
+    }
+
+    if (worktreesMade[tree.path]) tree.made = true;
   }
 
   return {
@@ -711,47 +724,53 @@ export async function worktreesFor(cwd) {
     repo: own ? `${own.owner}/${own.name}` : null,
     dflt: await originDefault(main),
     worktrees: list,
-    gone: all.filter(w => w.prunable),
+    gone: all.filter(tree => tree.prunable),
   };
 }
 
 /** What stops a branch whose tree was deleted by hand — git still holds it out there, and refuses it anywhere else. */
-export const goneSay = (branch, w) => {
-  const g = w.gone?.find(x => x.branch === branch);
+export const goneSay = (branch, trees) => {
+  const gone = trees.gone?.find(worktree => worktree.branch === branch);
 
-  return g && `${branch} is out in ${tildePath(g.path)}, a folder deleted by hand — git worktree prune lets it go`;
+  return (
+    gone && `${branch} is out in ${tildePath(gone.path)}, a folder deleted by hand — git worktree prune lets it go`
+  );
 };
 
 /** Where a branch named for a new chat already is (2026-10-13; ⌥⌘N's worktree switch, as its name is typed): `ok` false
  *  for a name git would refuse; else `local` / `origin` (as this checkout last heard it — no network), and the tree that
  *  has it out (`tree`; `main` when that is the repo's own folder) with how many live chats work there. */
 export async function branchWhere(cwd, name) {
-  const w = await worktreesFor(cwd);
+  const trees = await worktreesFor(cwd);
 
-  if (w.error) return w;
-  if (!(await branchNameOk(w.main, name))) return { name, ok: false, dflt: w.dflt };
+  if (trees.error) return trees;
+  if (!(await branchNameOk(trees.main, name))) return { name, ok: false, dflt: trees.dflt };
 
   const [local, origin] = await Promise.all(
-    [`refs/heads/${name}`, `refs/remotes/origin/${name}`].map(r =>
-      gitOr(w.main, ['rev-parse', '--verify', '--quiet', r]),
+    [`refs/heads/${name}`, `refs/remotes/origin/${name}`].map(ref =>
+      gitOr(trees.main, ['rev-parse', '--verify', '--quiet', ref]),
     ),
   );
 
-  const t = w.worktrees.find(x => x.branch === name);
-  const gone = !t && goneSay(name, w);
+  const tree = trees.worktrees.find(worktree => worktree.branch === name);
+  const gone = !tree && goneSay(name, trees);
 
   if (gone) return { error: gone };
-  const live = t ? [...sessions.values()].filter(s => s.alive && treeOf(s.live?.cwd || s.cwd) === t.path).length : 0;
+
+  const live = tree
+    ? [...sessions.values()].filter(session => session.alive && treeOf(session.live?.cwd || session.cwd) === tree.path)
+        .length
+    : 0;
 
   return {
     name,
     ok: true,
     local: !!local,
     origin: !!origin,
-    tree: t?.path ?? null,
-    main: !!t && t.path === w.main,
+    tree: tree?.path ?? null,
+    main: !!tree && tree.path === trees.main,
     live,
-    dflt: w.dflt,
+    dflt: trees.dflt,
   };
 }
 
@@ -760,11 +779,11 @@ export async function branchWhere(cwd, name) {
  *  row ⏎ takes: origin's default branch, or this checkout's when it is ahead of origin's (its own commits not pushed
  *  yet); the default branch's rows lead, that one first. Only names a base may be (baseOk). */
 export async function worktreeBases(cwd) {
-  const w = await worktreesFor(cwd);
+  const trees = await worktreesFor(cwd);
 
-  if (w.error) return w;
+  if (trees.error) return trees;
 
-  const out = await gitOut(w.main, [
+  const out = await gitOut(trees.main, [
     'for-each-ref',
     '--sort=-committerdate',
     '--count=400',
@@ -773,33 +792,43 @@ export async function worktreeBases(cwd) {
     'refs/remotes/origin',
   ]);
 
-  const remotes = (await gitOr(w.main, ['remote'], '')).split('\n').filter(Boolean);
+  const remotes = (await gitOr(trees.main, ['remote'], '')).split('\n').filter(Boolean);
   const all = [];
 
-  for (const l of out.split('\n')) {
-    const [ref, oid, at] = l.split('\t');
-    const m = /^refs\/(heads|remotes\/origin)\/(.+)$/.exec(ref || '');
+  for (const line of out.split('\n')) {
+    const [ref, oid, at] = line.split('\t');
+    const match = /^refs\/(heads|remotes\/origin)\/(.+)$/.exec(ref || '');
 
-    if (!m || m[2] === 'HEAD' || !baseName(m[2], remotes)) continue;
-    const where = m[1] === 'heads' ? 'local' : 'origin';
+    if (!match || match[2] === 'HEAD' || !baseName(match[2], remotes)) continue;
+    const where = match[1] === 'heads' ? 'local' : 'origin';
 
-    all.push({ name: where === 'local' ? m[2] : `origin/${m[2]}`, branch: m[2], ref, where, at: at || null, oid });
+    all.push({
+      name: where === 'local' ? match[2] : `origin/${match[2]}`,
+      branch: match[2],
+      ref,
+      where,
+      at: at || null,
+      oid,
+    });
   }
 
-  const theirs = new Map(all.filter(b => b.where === 'origin').map(b => [b.branch, b.oid]));
-  const list = all.filter(b => b.where === 'origin' || theirs.get(b.branch) !== b.oid);
+  const theirs = new Map(all.filter(entry => entry.where === 'origin').map(entry => [entry.branch, entry.oid]));
+  const list = all.filter(entry => entry.where === 'origin' || theirs.get(entry.branch) !== entry.oid);
 
-  const here = list.find(b => b.where === 'local' && b.branch === w.dflt);
-  const there = list.find(b => b.where === 'origin' && b.branch === w.dflt);
+  const here = list.find(entry => entry.where === 'local' && entry.branch === trees.dflt);
+  const there = list.find(entry => entry.where === 'origin' && entry.branch === trees.dflt);
 
   const ahead =
-    here && there && (await gitOr(w.main, ['merge-base', '--is-ancestor', there.ref, here.ref], false)) !== false;
+    here && there && (await gitOr(trees.main, ['merge-base', '--is-ancestor', there.ref, here.ref], false)) !== false;
 
   const first = here && (!there || ahead) ? here : there || list[0] || null;
-  const lead = [first, here, there].filter((b, i, a) => b && a.indexOf(b) === i);
-  const branches = [...lead, ...list.filter(b => !lead.includes(b))].slice(0, 200).map(({ branch, ...b }) => b);
+  const lead = [first, here, there].filter((entry, index, entries) => entry && entries.indexOf(entry) === index);
 
-  return { dflt: w.dflt, prefer: first?.ref ?? null, branches };
+  const branches = [...lead, ...list.filter(entry => !lead.includes(entry))]
+    .slice(0, 200)
+    .map(({ branch, ...rest }) => rest);
+
+  return { dflt: trees.dflt, prefer: first?.ref ?? null, branches };
 }
 
 /** A branch's name as a base may be one: the board's rule for a branch it makes, without asking git (baseOk does). */
@@ -807,16 +836,16 @@ const baseName = (name, remotes) =>
   BRANCH_NAME.test(name) &&
   !/^(refs|heads|remotes|tags)\//.test(name) &&
   !/^[A-Z_]*HEAD$/.test(name) &&
-  !remotes.some(r => name.startsWith(`${r}/`));
+  !remotes.some(remote => name.startsWith(`${remote}/`));
 
 /** A base asked for (2026-10-28): a full ref, this checkout's branch or origin's, that names a commit here. */
 export async function baseOk(main, ref) {
-  const m = /^refs\/(heads|remotes\/origin)\/(.+)$/.exec(String(ref));
+  const match = /^refs\/(heads|remotes\/origin)\/(.+)$/.exec(String(ref));
 
   return (
-    !!m &&
-    m[2] !== 'HEAD' &&
-    (await branchNameOk(main, m[2])) &&
+    !!match &&
+    match[2] !== 'HEAD' &&
+    (await branchNameOk(main, match[2])) &&
     !!(await gitOr(main, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]))
   );
 }
@@ -827,5 +856,5 @@ export async function baseOk(main, ref) {
 export async function branchNameOk(main, name) {
   if (!BRANCH_NAME.test(name) || /^(refs|heads|remotes|tags)\//.test(name) || /^[A-Z_]*HEAD$/.test(name)) return false;
   if ((await gitOr(main, ['check-ref-format', '--branch', name])) === null) return false;
-  return !(await gitOr(main, ['remote'], '')).split('\n').some(r => r && name.startsWith(`${r}/`));
+  return !(await gitOr(main, ['remote'], '')).split('\n').some(remote => remote && name.startsWith(`${remote}/`));
 }

@@ -30,8 +30,8 @@ function send(srv, method, path, { chunks = [], headers = {}, none = false } = {
 
       res.setEncoding('utf8');
 
-      res.on('data', c => {
-        body += c;
+      res.on('data', chunk => {
+        body += chunk;
       });
 
       res.on('end', () => {
@@ -40,9 +40,9 @@ function send(srv, method, path, { chunks = [], headers = {}, none = false } = {
       });
     });
 
-    req.on('error', e => {
-      if (!answer) return reject(e);
-      sent ||= e.code || e.message;
+    req.on('error', error => {
+      if (!answer) return reject(error);
+      sent ||= error.code || error.message;
       settle();
     });
 
@@ -54,8 +54,8 @@ function send(srv, method, path, { chunks = [], headers = {}, none = false } = {
     if (none) return req.flushHeaders();
 
     (async () => {
-      for (const c of chunks) {
-        if (!req.write(c)) await new Promise(r => req.once('drain', r));
+      for (const chunk of chunks) {
+        if (!req.write(chunk)) await new Promise(drained => req.once('drain', drained));
       }
 
       req.end();
@@ -77,17 +77,18 @@ test(
     const dir = join(srv.dir, 'attachments');
 
     try {
-      const a = await put(srv, { session: 'chat-1', name: 'notes.txt' }, Buffer.from('hello'));
+      const first = await put(srv, { session: 'chat-1', name: 'notes.txt' }, Buffer.from('hello'));
 
-      assert.equal(a.status, 200);
-      assert.deepEqual(a.body, { ok: true, path: join(dir, 'chat-1', 'notes.txt'), bytes: 5 });
-      assert.equal(readFileSync(a.body.path, 'utf8'), 'hello');
+      assert.equal(first.status, 200);
+      assert.deepEqual(first.body, { ok: true, path: join(dir, 'chat-1', 'notes.txt'), bytes: 5 });
+      assert.equal(readFileSync(first.body.path, 'utf8'), 'hello');
       const again = await put(srv, { session: 'chat-1', name: 'notes.txt' }, Buffer.from('second'));
 
       assert.equal(again.body.path, join(dir, 'chat-1', 'notes-2.txt'), 'the same name again is another file');
       assert.equal(readFileSync(join(dir, 'chat-1', 'notes.txt'), 'utf8'), 'hello', 'and the first stands');
 
-      const name = async (n, session = 'chat-1') => (await put(srv, { session, name: n }, Buffer.from('x'))).body.path;
+      const name = async (fileName, session = 'chat-1') =>
+        (await put(srv, { session, name: fileName }, Buffer.from('x'))).body.path;
 
       assert.equal(
         await name('../../escape me?.txt'),
@@ -132,7 +133,7 @@ test(
     try {
       // said up front: read to its end all the same, kept nowhere, then refused — refused at once, the close after the
       // answer met the body still coming, and its reset beat the answer to the page (2026-10-14, 1 run in 9 under load)
-      for (let i = 0; i < 3; i++) {
+      for (let attempt = 0; attempt < 3; attempt++) {
         const said = await send(srv, 'PUT', 'api/attach?session=chat-1&name=big.bin', {
           headers: { 'content-length': MAX + 1 },
           chunks: [Buffer.alloc(MAX + 1, 0x61)],

@@ -20,13 +20,13 @@ import { sseClients } from '../sse.mjs';
 import { terms } from '../terminals/terms.mjs';
 
 /** The app's probe, and the board's key: a ticket claimed, a tab opened with one, the key required, a new one. */
-export async function keyRoutes(req, res, url, p) {
-  if (req.method === 'GET' && p === '/api/alive') {
+export async function keyRoutes(req, res, url, path) {
+  if (req.method === 'GET' && path === '/api/alive') {
     res.writeHead(204, aliveProof(req));
     return res.end();
   } // up and booted: the app's probe, launchd.sh
 
-  if (req.method === 'POST' && p === '/api/key/claim') {
+  if (req.method === 'POST' && path === '/api/key/claim') {
     // a ticket for the key (see keyWant), once
     const { ticket } = await jsonBody(req);
     const at = typeof ticket === 'string' ? tickets.get(ticket) : null;
@@ -40,7 +40,7 @@ export async function keyRoutes(req, res, url, p) {
     return json(res, 200, { key: boardKey });
   }
 
-  if (req.method === 'POST' && p === '/api/key/open') {
+  if (req.method === 'POST' && path === '/api/key/open') {
     // a tab with a ticket, in this Mac's default browser: the key goes to its screen
     if (Date.now() - keyOpenAt < 10_000) return json(res, 429, { error: 'a tab with the key was opened a moment ago' });
     // the ticket on osascript's stdin, never an argument (2026-11-06): `ps` is setuid root on macOS and shows every
@@ -50,8 +50,8 @@ export async function keyRoutes(req, res, url, p) {
     if (!bin) return json(res, 501, { error: 'no osascript on this Mac' });
     setKeyOpenAt(Date.now());
 
-    const child = execFile(bin, ['-'], e => {
-      if (e) console.error(`[peixairada] open a tab with the key: ${e.message}`);
+    const child = execFile(bin, ['-'], error => {
+      if (error) console.error(`[peixairada] open a tab with the key: ${error.message}`);
     });
 
     child.stdin.on('error', () => {});
@@ -59,19 +59,19 @@ export async function keyRoutes(req, res, url, p) {
     return json(res, 202, { opening: true });
   }
 
-  if (req.method === 'GET' && p === '/api/key') return json(res, 200, keyState());
+  if (req.method === 'GET' && path === '/api/key') return json(res, 200, keyState());
 
-  if (req.method === 'PUT' && p === '/api/key') {
+  if (req.method === 'PUT' && path === '/api/key') {
     requireKey('asked on the board');
     return json(res, 200, keyState());
   }
 
-  if (req.method === 'POST' && p === '/api/key/new') {
+  if (req.method === 'POST' && path === '/api/key/new') {
     // a new key: every other page and drawer socket asks for it again
     setBoardKey(writeKey(KEY_FILE));
     tickets.clear();
-    for (const c of sseClients) c.end();
-    for (const t of terms.values()) for (const ws of t.clients) ws.close(4401, 'a new key');
+    for (const client of sseClients) client.end();
+    for (const term of terms.values()) for (const ws of term.clients) ws.close(4401, 'a new key');
     console.log('[peixairada] a new key — every page asks for it again');
     return json(res, 200, { key: boardKey });
   }

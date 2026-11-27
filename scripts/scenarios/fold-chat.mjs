@@ -16,7 +16,8 @@ export default async function (ctx) {
       `(el => { const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 8, clientY: r.top + 8 })); })(${sel})`,
     );
 
-  const row = t => `[...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith(${sid(t)}))`;
+  const row = label =>
+    `[...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith(${sid(label)}))`;
 
   const enter = (sel, more = '') =>
     ctx.evaluate(
@@ -80,7 +81,7 @@ export default async function (ctx) {
   out.into = await ctx.evaluate(`window.peix.session(${sid(plain.id)}).links`);
 
   ctx.assert.deepEqual(
-    out.into.map(l => [l.k, l.dir, l.id]),
+    out.into.map(link => [link.k, link.dir, link.id]),
     [['fold', 'in', twoPrs.id]],
   );
 
@@ -107,8 +108,8 @@ export default async function (ctx) {
   out.busy = await ctx.evaluate(`(b => b && { off: b.disabled, text: b.textContent })(${row('Fold into…')})`);
   ctx.assert.deepEqual(out.busy, { off: true, text: 'Fold into…it is at work — fold it once it is idle' });
   await ctx.evaluate(`document.querySelector('#ctxm').close()`);
-  const t = (await ctx.peix(`session(${sid(plain.id)})`)).terminal;
+  const term = (await ctx.peix(`session(${sid(plain.id)})`)).terminal;
 
-  if (t) await ctx.server.api(`/api/terminals/${t.id}`, { method: 'DELETE' });
+  if (term) await ctx.server.api(`/api/terminals/${term.id}`, { method: 'DELETE' });
   return out;
 }

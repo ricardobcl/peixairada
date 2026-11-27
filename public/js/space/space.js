@@ -54,46 +54,50 @@ const SP_OF = { asking: 'ask', working: 'work', watching: 'watch', ready: 'ready
 const SP_HUE = { red: 25, orange: 55, yellow: 95, green: 150, cyan: 200, blue: 255, purple: 300, pink: 350 }; // Claude Code's names, as .asdot's
 const spWin = () => (SP_WINS.includes(prefs.spWin) ? prefs.spWin : 30);
 const spOff = () => (Array.isArray(prefs.spOff) ? prefs.spOff : ['idle', 'done']);
-const spSt = r => (agQuiet(r) ? 'quiet' : r.st);
-const spState = s => SP_OF[s.done ? 'done' : rankOf(s)] || 'ready';
+const spSt = agent => (agQuiet(agent) ? 'quiet' : agent.st);
+const spState = session => SP_OF[session.done ? 'done' : rankOf(session)] || 'ready';
 // every agent the chat has run, not the last round alone (2026-11-18, v9) — nor its claude's alone: a resume's claude starts
 // its rows over, its past agents stay in the pods, and a chat with no claude has them too (2026-11-24, `past`)
-const spRows = s => (s?.alive ? s.agentAll || s.agentRows || [] : s?.agentAll || []);
-const spCount = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const spRows = session => (session?.alive ? session.agentAll || session.agentRows || [] : session?.agentAll || []);
+const spCount = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
-const spCut = t => {
-  t = String(t || '');
-  return t.length > 60 ? `${t.slice(0, 60).trimEnd()}…` : t;
+const spCut = text => {
+  text = String(text || '');
+  return text.length > 60 ? `${text.slice(0, 60).trimEnd()}…` : text;
 };
 
 // an agent by its type, a teammate by the category it was spawned as (the server's mateType) — never "teammate": its name is
 // its card's, never Space's (2026-11-18, later; v6); capitalised where it is a word
-const spKind = r => r.type || (r.mate ? 'general-purpose' : 'agent');
-const spCap = t => String(t).charAt(0).toUpperCase() + String(t).slice(1);
-const spHue = (name, color) => SP_HUE[color] ?? [...String(name)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+const spKind = agent => agent.type || (agent.mate ? 'general-purpose' : 'agent');
+const spCap = text => String(text).charAt(0).toUpperCase() + String(text).slice(1);
+
+const spHue = (name, color) =>
+  SP_HUE[color] ?? [...String(name)].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) % 360, 7);
 
 const spTwo = name => {
-  const p = String(name)
+  const parts = String(name)
     .split(/[^A-Za-z0-9]+/)
     .filter(Boolean);
 
-  return p.length ? (p.length > 1 ? p.map(x => x[0]).join('') : p[0].slice(0, 2)).toUpperCase().slice(0, 2) : '·';
+  return parts.length
+    ? (parts.length > 1 ? parts.map(part => part[0]).join('') : parts[0].slice(0, 2)).toUpperCase().slice(0, 2)
+    : '·';
 };
 
 const spTally = rows =>
-  SP_ORDER.map(k => [k, rows.filter(r => spSt(r) === k).length])
-    .filter(([, n]) => n)
-    .map(([k, n]) => `${n} ${SP_WORD[k]}`)
+  SP_ORDER.map(status => [status, rows.filter(agent => spSt(agent) === status).length])
+    .filter(([, count]) => count)
+    .map(([status, count]) => `${count} ${SP_WORD[status]}`)
     .join(' · ');
 
-const spFolder = s =>
-  !s.cwd || s.cwd === state.about?.scratch ? '' : s.cwd.replace(/\/+$/, '').split('/').pop() || '/'; // its last name only (2026-11-18, v7); the whole path its tooltip
+const spFolder = session =>
+  !session.cwd || session.cwd === state.about?.scratch ? '' : session.cwd.replace(/\/+$/, '').split('/').pop() || '/'; // its last name only (2026-11-18, v7); the whole path its tooltip
 
 /** An agent's mark: its type's letters and colour, its state for a screen reader too. */
-const spAgent = (r, kind, hue, s) => {
-  const st = spSt(r);
+const spAgent = (agent, kind, hue, session) => {
+  const st = spSt(agent);
 
-  return `<span class="spa${r.past ? ' past' : ''}" data-st="${st}" data-ag="${esc(r.id)}" data-sid="${esc(s.id)}" style="--h:${hue}" role="img" aria-label="${esc(`${spCap(kind)}${r.mate ? ' teammate' : ''}: ${SP_WORD[st]}${r.past ? ', an earlier run' : ''}`)}">${esc(spTwo(kind))}${['done', 'fail', 'wait', 'stop'].includes(st) ? '<i></i>' : ''}</span>`;
+  return `<span class="spa${agent.past ? ' past' : ''}" data-st="${st}" data-ag="${esc(agent.id)}" data-sid="${esc(session.id)}" style="--h:${hue}" role="img" aria-label="${esc(`${spCap(kind)}${agent.mate ? ' teammate' : ''}: ${SP_WORD[st]}${agent.past ? ', an earlier run' : ''}`)}">${esc(spTwo(kind))}${['done', 'fail', 'wait', 'stop'].includes(st) ? '<i></i>' : ''}</span>`;
 };
 
 /** An agent pointed at in Space (2026-11-18, later): #mxtip's card in Space's words — its type in its colour and letters
@@ -103,23 +107,25 @@ const spAgent = (r, kind, hue, s) => {
 /** A chat's card, its node's title pointed at (2026-11-24): its state and the age of its last word, its folder and
  *  branch, the whole title, then your last word, Claude's, what it does now, its open PRs where their review stands,
  *  its tickets. Read from the summary alone. */
-function spChatHtml(s) {
-  const st = spState(s);
-  const at = wordAt(s);
-  const branch = s.worktree || s.headNow || s.gitBranch || '';
-  const live = liveOf(s).html;
+function spChatHtml(session) {
+  const st = spState(session);
+  const at = wordAt(session);
+  const branch = session.worktree || session.headNow || session.gitBranch || '';
+  const live = liveOf(session).html;
 
-  const prs = spOpenPrs(s)
-    .map(p => `${esc((prRepo(p).split('/')[1] || '') + prNum(p))}${spStageText(p) ? ` ${esc(spStageText(p))}` : ''}`)
+  const prs = spOpenPrs(session)
+    .map(
+      pr => `${esc((prRepo(pr).split('/')[1] || '') + prNum(pr))}${spStageText(pr) ? ` ${esc(spStageText(pr))}` : ''}`,
+    )
     .join(' · ');
 
   const kv = [
-    ['You', s.lastPrompt && esc(s.lastPrompt)],
-    ['Claude', s.lastReply && ticks(esc(s.lastReply))],
+    ['You', session.lastPrompt && esc(session.lastPrompt)],
+    ['Claude', session.lastReply && ticks(esc(session.lastReply))],
     ['Now', live],
     ['PRs', prs],
-    ['Ticket', (s.tickets || []).map(t => `${esc(t.key)} · ${esc(t.status || '')}`).join(' — ')],
-  ].filter(([, v]) => v);
+    ['Ticket', (session.tickets || []).map(ticket => `${esc(ticket.key)} · ${esc(ticket.status || '')}`).join(' — ')],
+  ].filter(([, value]) => value);
 
   const ink = {
     ask: '--needs',
@@ -131,70 +137,74 @@ function spChatHtml(s) {
   }[st];
 
   return (
-    `<div class="spcs" style="--c:var(${ink})"><b>${SP_ST[st]}${at ? ` · <span data-at="${esc(at)}"></span>` : ''}</b><span>${esc(spFolder(s) || 'no folder')}${branch ? ` · <code>${esc(branch)}</code>` : ''}</span></div>` +
-    `<div class="mtt">${ticks(esc(s.title || ''))}</div>${
-      kv.length ? `<dl class="spcc">${kv.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : ''
+    `<div class="spcs" style="--c:var(${ink})"><b>${SP_ST[st]}${at ? ` · <span data-at="${esc(at)}"></span>` : ''}</b><span>${esc(spFolder(session) || 'no folder')}${branch ? ` · <code>${esc(branch)}</code>` : ''}</span></div>` +
+    `<div class="mtt">${ticks(esc(session.title || ''))}</div>${
+      kv.length
+        ? `<dl class="spcc">${kv.map(([label, value]) => `<dt>${label}</dt><dd>${value}</dd>`).join('')}</dl>`
+        : ''
     }`
   );
 }
 
-function spCardHtml(r, s) {
-  const d = agInfo.get(`${s.id}:${r.id}`)?.d;
-  const st = spSt(r);
-  const kind = spKind(r);
-  const hue = spHue(kind, r.color);
-  const ended = !!r.end;
+function spCardHtml(agent, session) {
+  const detail = agInfo.get(`${session.id}:${agent.id}`)?.d;
+  const st = spSt(agent);
+  const kind = spKind(agent);
+  const hue = spHue(kind, agent.color);
+  const ended = !!agent.end;
 
-  const since = t => agDur(Date.now() - Date.parse(t));
+  const since = time => agDur(Date.now() - Date.parse(time));
 
   const said =
     st === 'run'
-      ? `at work ${since(r.at)}`
+      ? `at work ${since(agent.at)}`
       : st === 'quiet'
-        ? `quiet ${since(r.lastAt)}`
+        ? `quiet ${since(agent.lastAt)}`
         : st === 'wait'
-          ? `waiting ${since(r.at)}`
+          ? `waiting ${since(agent.at)}`
           : st === 'done'
-            ? `done in ${agDur(Date.parse(r.end) - Date.parse(r.at))}`
+            ? `done in ${agDur(Date.parse(agent.end) - Date.parse(agent.at))}`
             : st === 'stop'
-              ? `stopped after ${agDur(Date.parse(r.end) - Date.parse(r.at))}`
+              ? `stopped after ${agDur(Date.parse(agent.end) - Date.parse(agent.at))}`
               : AG_SAID[st] || '';
 
-  const asked = String(d?.prompt || r.asked || '').trim();
+  const asked = String(detail?.prompt || agent.asked || '').trim();
   const nl = asked.indexOf('\n');
   const first = nl < 0 ? asked : asked.slice(0, nl);
   const rest = nl < 0 ? '' : asked.slice(nl + 1).trim();
 
   const now =
     st === 'fail'
-      ? ['Error', `<span class="spce">${esc(r.why || 'It ended on an error')}</span>`]
+      ? ['Error', `<span class="spce">${esc(agent.why || 'It ended on an error')}</span>`]
       : st === 'joined'
         ? null
-        : [ended ? 'Last' : 'Now', agNow(r, s)];
+        : [ended ? 'Last' : 'Now', agNow(agent, session)];
 
   const reading = '<span class="spcr">reading…</span>';
-  const tree = r.branch || r.tree;
+  const tree = agent.branch || agent.tree;
 
   const kv = [
-    ['Model', d ? esc(d.model || '—') : reading],
+    ['Model', detail ? esc(detail.model || '—') : reading],
     [
       ended ? 'In all' : 'So far',
-      d
-        ? d.tools || d.tokens
-          ? esc(`${d.tools} tool call${d.tools === 1 ? '' : 's'}${d.tokens ? ` · ${agTok(d.tokens)} tokens` : ''}`)
+      detail
+        ? detail.tools || detail.tokens
+          ? esc(
+              `${detail.tools} tool call${detail.tools === 1 ? '' : 's'}${detail.tokens ? ` · ${agTok(detail.tokens)} tokens` : ''}`,
+            )
           : 'nothing yet'
         : reading,
     ],
     tree && ['Worktree', esc(tree)],
   ].filter(Boolean);
 
-  return `<div class="mth spch" style="--h:${hue}"><span class="spct">${esc(spTwo(kind))}</span><b class="spck">${esc(spCap(kind))}</b>${r.mate ? '<span class="spcm">teammate</span>' : ''}<span class="mts" data-state="${esc(st)}">${esc(said)}</span></div>${
-    r.name && r.name !== kind ? `<div class="spcn">${esc(r.name)}</div>` : ''
+  return `<div class="mth spch" style="--h:${hue}"><span class="spct">${esc(spTwo(kind))}</span><b class="spck">${esc(spCap(kind))}</b>${agent.mate ? '<span class="spcm">teammate</span>' : ''}<span class="mts" data-state="${esc(st)}">${esc(said)}</span></div>${
+    agent.name && agent.name !== kind ? `<div class="spcn">${esc(agent.name)}</div>` : ''
   }<div class="mtt">${first ? esc(first) : '<i>What it was asked is on its way…</i>'}</div>${
     rest ? `<p class="agp spcp">${esc(rest.slice(0, 400))}</p>` : ''
   }${
     now?.[1] ? `<dl class="agi spcw"><dt>${now[0]}</dt><dd>${now[1]}</dd></dl>` : ''
-  }<dl class="agi spcv">${kv.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  }<dl class="agi spcv">${kv.map(([label, value]) => `<dt>${label}</dt><dd>${value}</dd>`).join('')}</dl>`;
 }
 
 // a node's box in its tile (#space's --spw × --sph, .spbox's place): its centre and half sizes, a pod's thickness, a wire's length (2026-11-18, v9)
@@ -202,68 +212,72 @@ const SP_GEO = { cx: 152, cy: 108, hw: 80, hh: 50, pt: 34, w: 8 };
 const SP_TILE = [304, 216];
 
 /** A chat's agents by type, the most first, each docked to its node on a side of its own: top, bottom, right, left. */
-function spPods(s) {
+function spPods(session) {
   const groups = [];
 
-  for (const r of spRows(s)) {
-    if (prefs.spBusy && !SP_BUSY.includes(r.st)) continue;
-    const k = spKind(r);
-    let g = groups.find(x => x.k === k);
+  for (const agent of spRows(session)) {
+    if (prefs.spBusy && !SP_BUSY.includes(agent.st)) continue;
+    const kind = spKind(agent);
+    let group = groups.find(other => other.k === kind);
 
-    if (!g) groups.push((g = { k, rows: [], color: r.color }));
-    g.rows.push(r);
-    g.color ||= r.color;
+    if (!group) groups.push((group = { k: kind, rows: [], color: agent.color }));
+    group.rows.push(agent);
+    group.color ||= agent.color;
   }
 
-  groups.sort((a, b) => b.rows.length - a.rows.length);
+  groups.sort((first, second) => second.rows.length - first.rows.length);
 
   const shown = groups.slice(0, SP_PODS);
-  const left = groups.slice(SP_PODS).reduce((n, g) => n + g.rows.length, 0);
+  const left = groups.slice(SP_PODS).reduce((total, group) => total + group.rows.length, 0);
 
   return shown
-    .map((g, i) => {
+    .map((group, index) => {
       // folded, a pod is its agents at work, else its newest; +N the rest, opened for SP_OPEN_MS (2026-11-18, v10)
-      const busy = g.rows.filter(r => SP_BUSY.includes(r.st));
-      const last = g.rows.reduce((a, r) => ((r.lastAt || r.at || 0) > (a.lastAt || a.at || 0) ? r : a), g.rows[0]);
+      const busy = group.rows.filter(agent => SP_BUSY.includes(agent.st));
 
-      const key = `${s.id}:${g.k}`;
+      const last = group.rows.reduce(
+        (latest, agent) => ((agent.lastAt || agent.at || 0) > (latest.lastAt || latest.at || 0) ? agent : latest),
+        group.rows[0],
+      );
+
+      const key = `${session.id}:${group.k}`;
       const base = busy.length ? busy : [last];
-      const hid = g.rows.length - base.length;
+      const hid = group.rows.length - base.length;
       const open = hid > 0 && sp.open.has(key);
-      const all = open ? g.rows : base;
+      const all = open ? group.rows : base;
 
-      const hue = spHue(g.k, g.color);
+      const hue = spHue(group.k, group.color);
       const more = all.length > SP_POD ? all.length - (SP_POD - 1) : 0;
       const rows = more ? all.slice(0, SP_POD - 1) : all;
 
       const tog =
         hid > 0
-          ? `<span class="spx" role="button" tabindex="-1" data-pod="${esc(g.k)}" aria-expanded="${open}" aria-label="${open ? `Fold ${esc(spCap(g.k))}` : `${hid} more ${esc(spCap(g.k))}, done or idle`}">${open ? '−' : `+${hid}`}</span>`
+          ? `<span class="spx" role="button" tabindex="-1" data-pod="${esc(group.k)}" aria-expanded="${open}" aria-label="${open ? `Fold ${esc(spCap(group.k))}` : `${hid} more ${esc(spCap(group.k))}, done or idle`}">${open ? '−' : `+${hid}`}</span>`
           : '';
 
       // top and bottom a row, the sides a column: x, y, width, height of the pod; of its wire; where its label is
-      const n = rows.length + (more ? 1 : 0) + (tog ? 1 : 0);
-      const len = n * 26 + (n - 1) * 5 + 12;
-      const side = ['top', 'bottom', 'right', 'left'][i];
+      const count = rows.length + (more ? 1 : 0) + (tog ? 1 : 0);
+      const len = count * 26 + (count - 1) * 5 + 12;
+      const side = ['top', 'bottom', 'right', 'left'][index];
 
-      const { cx, cy, hw, hh, pt, w } = SP_GEO;
-      const top = cy - hh - w - pt;
-      const bot = cy + hh + w;
-      const lft = cx - hw - w - pt;
-      const rgt = cx + hw + w;
+      const { cx, cy, hw, hh, pt, w: wire } = SP_GEO;
+      const top = cy - hh - wire - pt;
+      const bot = cy + hh + wire;
+      const lft = cx - hw - wire - pt;
+      const rgt = cx + hw + wire;
 
       const at = {
-        top: [cx - len / 2, top, len, pt, cx - 1, cy - hh - w, 2, w, cx, top - 14],
-        bottom: [cx - len / 2, bot, len, pt, cx - 1, cy + hh, 2, w, cx, bot + pt + 2],
-        right: [rgt, cy - len / 2, pt, len, cx + hw, cy - 1, w, 2, rgt + pt / 2, cy + len / 2 + 3],
-        left: [lft, cy - len / 2, pt, len, lft + pt, cy - 1, w, 2, lft + pt / 2, cy + len / 2 + 3],
+        top: [cx - len / 2, top, len, pt, cx - 1, cy - hh - wire, 2, wire, cx, top - 14],
+        bottom: [cx - len / 2, bot, len, pt, cx - 1, cy + hh, 2, wire, cx, bot + pt + 2],
+        right: [rgt, cy - len / 2, pt, len, cx + hw, cy - 1, wire, 2, rgt + pt / 2, cy + len / 2 + 3],
+        left: [lft, cy - len / 2, pt, len, lft + pt, cy - 1, wire, 2, lft + pt / 2, cy + len / 2 + 3],
       }[side];
 
-      const label = `${spCap(g.k)}${i === SP_PODS - 1 && left ? ` · +${left} more` : ''}`;
+      const label = `${spCap(group.k)}${index === SP_PODS - 1 && left ? ` · +${left} more` : ''}`;
 
       return (
         `<span class="spwire" style="--h:${hue};left:${at[4]}px;top:${at[5]}px;width:${at[6]}px;height:${at[7]}px"></span>` +
-        `<span class="sppod${side === 'right' || side === 'left' ? ' col' : ''}" style="--h:${hue};left:${at[0]}px;top:${at[1]}px;width:${at[2]}px;height:${at[3]}px">${rows.map(r => spAgent(r, g.k, hue, s)).join('')}${more ? `<span class="spmore">+${more}</span>` : ''}${tog}</span>` +
+        `<span class="sppod${side === 'right' || side === 'left' ? ' col' : ''}" style="--h:${hue};left:${at[0]}px;top:${at[1]}px;width:${at[2]}px;height:${at[3]}px">${rows.map(agent => spAgent(agent, group.k, hue, session)).join('')}${more ? `<span class="spmore">+${more}</span>` : ''}${tog}</span>` +
         `<span class="spl" style="--h:${hue};left:${at[8]}px;top:${at[9]}px">${esc(label)}</span>`
       );
     })
@@ -292,30 +306,37 @@ const SP_STAGE = {
 };
 
 const spStageText = pr => {
-  const r = pr.review;
+  const review = pr.review;
 
-  if (!r || pr.state === 'draft') return '';
-  const d = r.decision === 'required' || (!r.decision && r.asked) ? 'required' : r.decision;
+  if (!review || pr.state === 'draft') return '';
+  const decision = review.decision === 'required' || (!review.decision && review.asked) ? 'required' : review.decision;
 
-  return [SP_STAGE[d] && !(d === 'required' && r.open) ? SP_STAGE[d][0] : '', r.open ? `${r.open} unresolved` : '']
+  return [
+    SP_STAGE[decision] && !(decision === 'required' && review.open) ? SP_STAGE[decision][0] : '',
+    review.open ? `${review.open} unresolved` : '',
+  ]
     .filter(Boolean)
     .join(', ');
 };
 
 function spStage(pr) {
-  const r = pr.review;
+  const review = pr.review;
 
-  if (!r || pr.state === 'draft') return '';
+  if (!review || pr.state === 'draft') return '';
 
-  const d = r.decision === 'required' || (!r.decision && r.asked) ? 'required' : r.decision;
-  const w = SP_STAGE[d];
+  const decision = review.decision === 'required' || (!review.decision && review.asked) ? 'required' : review.decision;
+  const stage = SP_STAGE[decision];
 
-  const open = r.open ? `<span class="rv" data-rv="open">${r.open} unresolved</span>` : '';
+  const open = review.open ? `<span class="rv" data-rv="open">${review.open} unresolved</span>` : '';
 
-  return (w && !(d === 'required' && r.open) ? `<span class="rv" data-rv="${w[1]}">${w[0]}</span>` : '') + open;
+  return (
+    (stage && !(decision === 'required' && review.open)
+      ? `<span class="rv" data-rv="${stage[1]}">${stage[0]}</span>`
+      : '') + open
+  );
 }
 
-const spOpenPrs = s => (s.prs || []).filter(p => p.state === 'open' || p.state === 'draft');
+const spOpenPrs = session => (session.prs || []).filter(pr => pr.state === 'open' || pr.state === 'draft');
 
 const spPrRow = pr =>
   `<span class="spprr" role="link" data-url="${esc(pr.url)}" data-state="${esc(pr.state)}" title="${esc(`${pr.title || ''}\nOpens on a tab beside the chat`)}"><i class="sq"></i>` +
@@ -325,50 +346,50 @@ const spPrRow = pr =>
 // its Jira tickets (2026-11-24): a pill beside the PRs', in the first one's status colour; a click its page beside the chat
 const SP_TK = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 .8 9.2 5 5 9.2.8 5z"/></svg>';
 
-function spTkPill(s) {
-  const tks = s.tickets || [];
+function spTkPill(session) {
+  const tks = session.tickets || [];
 
   if (!tks.length) return '';
   return `<span class="sptk" role="link" data-cat="${esc(tks[0].cat || '')}" data-url="${esc(tks[0].url || '')}" title="${esc(tks.map(ticketTip).join('\n\n'))}">${SP_TK}${tks.length}<span class="vh"> Jira ticket${tks.length === 1 ? '' : 's'}</span></span>`;
 }
 
-const spPills = s => {
-  const h = spTkPill(s) + spPrPill(s);
+const spPills = session => {
+  const html = spTkPill(session) + spPrPill(session);
 
-  return h ? `<span class="sppills">${h}</span>` : '';
+  return html ? `<span class="sppills">${html}</span>` : '';
 };
 
-function spPrPill(s) {
-  const open = spOpenPrs(s).sort((a, b) => !!b.turn?.you - !!a.turn?.you);
-  const n = open.length;
+function spPrPill(session) {
+  const open = spOpenPrs(session).sort((left, right) => !!right.turn?.you - !!left.turn?.you);
+  const count = open.length;
 
-  if (!n) return ''; // your move's first, else the chat's order
+  if (!count) return ''; // your move's first, else the chat's order
 
-  const gone = (s.prs || []).length - n;
-  const you = open.some(p => p.turn?.you);
-  const fail = open.some(p => prCk(p) === 'fail');
+  const gone = (session.prs || []).length - count;
+  const you = open.some(pr => pr.turn?.you);
+  const fail = open.some(pr => prCk(pr) === 'fail');
 
   return (
-    `<span class="sppr${you ? ' you' : ''}"><span class="sppn">${SP_PR}${n}${fail ? '<i></i>' : ''}<span class="vh"> open PR${n === 1 ? '' : 's'}${you ? ', one at your move' : ''}</span></span>` +
-    `<span class="sppop"><span class="sppl"><span class="spph">${n} open PR${n === 1 ? '' : 's'}${gone ? ` · ${gone} merged or closed` : ''}</span>${open.map(spPrRow).join('')}</span></span></span>`
+    `<span class="sppr${you ? ' you' : ''}"><span class="sppn">${SP_PR}${count}${fail ? '<i></i>' : ''}<span class="vh"> open PR${count === 1 ? '' : 's'}${you ? ', one at your move' : ''}</span></span>` +
+    `<span class="sppop"><span class="sppl"><span class="spph">${count} open PR${count === 1 ? '' : 's'}${gone ? ` · ${gone} merged or closed` : ''}</span>${open.map(spPrRow).join('')}</span></span></span>`
   );
 }
 
 /** A chat's node — what is open is a class set after, so opening a chat redraws no node and stops no arc turning. */
-function spNode(s) {
-  const st = spState(s);
-  const rows = spRows(s);
-  const color = repoColor(s.cwd);
-  const folder = spFolder(s);
-  const q = spQuery();
-  const armed = st !== 'done' && armedOn(s.id);
+function spNode(session) {
+  const st = spState(session);
+  const rows = spRows(session);
+  const color = repoColor(session.cwd);
+  const folder = spFolder(session);
+  const query = spQuery();
+  const armed = st !== 'done' && armedOn(session.id);
 
-  const said = `${s.fav ? 'Starred: ' : ''}${s.title}${s.agent ? `, as @${agentShort(s.agent)}` : ''} — ${folder || 'no folder'}, ${SP_ST[st]}${rows.length ? `, ${spTally(rows)}` : ''}`;
+  const said = `${session.fav ? 'Starred: ' : ''}${session.title}${session.agent ? `, as @${agentShort(session.agent)}` : ''} — ${folder || 'no folder'}, ${SP_ST[st]}${rows.length ? `, ${spTally(rows)}` : ''}`;
 
   // quiet for days (2026-11-24): faded by its days since the last word, a ready, idle or done one — never one at work or asking
   const quiet = ['ready', 'idle', 'done'].includes(st);
-  const days = quiet ? (Date.now() - Date.parse(wordAt(s))) / 86_400_000 : 0;
-  const age = quiet && prefs.spFade !== false && days >= 1 ? wordAt(s) : '';
+  const days = quiet ? (Date.now() - Date.parse(wordAt(session))) / 86_400_000 : 0;
+  const age = quiet && prefs.spFade !== false && days >= 1 ? wordAt(session) : '';
 
   const fade = age ? Math.max(0.5, Math.round((1 - 0.06 * Math.min(days, 9)) * 20) / 20) : 1;
 
@@ -376,20 +397,20 @@ function spNode(s) {
   const tick =
     st === 'done'
       ? ['Back to its lane (D)', SP_BACK]
-      : !canTick(s)
+      : !canTick(session)
         ? null
         : armed
-          ? [`Done ends its watch — ${watchEnds(s)}. Tick it again to end it`, SP_TICK]
+          ? [`Done ends its watch — ${watchEnds(session)}. Tick it again to end it`, SP_TICK]
           : ['Mark as done (D)', SP_TICK];
 
   const lit = st === 'work' || st === 'watch'; // a light that turns round it (2026-11-24): its bloom under the box, its arc on the edge
 
   return (
-    `<button type="button" class="spt" data-id="${esc(s.id)}" aria-label="${esc(said)}" style="${color ? `--repo:${color};` : ''}${fade < 1 ? `--fade:${fade}` : ''}"><span class="spo">${spPods(s)}` +
-    `${lit ? `<i class="sphl" data-st="${st}" aria-hidden="true"></i>` : ''}<span class="spbox" data-st="${st}">${lit ? '<i class="sprg" aria-hidden="true"></i>' : ''}<span class="spstar" role="button" tabindex="-1" aria-pressed="${!!s.fav}" aria-label="${s.fav ? 'Unstar it' : 'Star it'} (F)" title="${s.fav ? 'Unstar' : 'Star'} (F)">${SP_STAR}</span>${
+    `<button type="button" class="spt" data-id="${esc(session.id)}" aria-label="${esc(said)}" style="${color ? `--repo:${color};` : ''}${fade < 1 ? `--fade:${fade}` : ''}"><span class="spo">${spPods(session)}` +
+    `${lit ? `<i class="sphl" data-st="${st}" aria-hidden="true"></i>` : ''}<span class="spbox" data-st="${st}">${lit ? '<i class="sprg" aria-hidden="true"></i>' : ''}<span class="spstar" role="button" tabindex="-1" aria-pressed="${!!session.fav}" aria-label="${session.fav ? 'Unstar it' : 'Star it'} (F)" title="${session.fav ? 'Unstar' : 'Star'} (F)">${SP_STAR}</span>${
       tick
         ? `<span class="spdone${armed ? ' armed' : ''}" role="button" tabindex="-1" aria-label="${esc(tick[0])}" title="${esc(tick[0])}">${tick[1]}</span>`
         : ''
-    }${s.agent ? `<span class="spra" title="${esc(`Runs as the agent ${s.agent}`)}" style="--h:${spHue(agentShort(s.agent), s.agentColor)}">@${esc(agentShort(s.agent))}</span>` : ''}<span class="spbt">${q ? markHits(spCut(s.title), q) : ticks(esc(spCut(s.title)))}</span>${folder || age ? `<span class="spbf" title="${esc(s.cwd || '')}">${folder ? `<i></i>${q ? markHits(folder, q) : esc(folder)}` : ''}${age ? `<span class="spag">${folder ? ' · ' : ''}<span data-at="${esc(age)}"></span></span>` : ''}</span>` : ''}${spAskPill(s)}${spPills(s)}</span></span></button>`
+    }${session.agent ? `<span class="spra" title="${esc(`Runs as the agent ${session.agent}`)}" style="--h:${spHue(agentShort(session.agent), session.agentColor)}">@${esc(agentShort(session.agent))}</span>` : ''}<span class="spbt">${query ? markHits(spCut(session.title), query) : ticks(esc(spCut(session.title)))}</span>${folder || age ? `<span class="spbf" title="${esc(session.cwd || '')}">${folder ? `<i></i>${query ? markHits(folder, query) : esc(folder)}` : ''}${age ? `<span class="spag">${folder ? ' · ' : ''}<span data-at="${esc(age)}"></span></span>` : ''}</span>` : ''}${spAskPill(session)}${spPills(session)}</span></span></button>`
   );
 }

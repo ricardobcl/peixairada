@@ -5,11 +5,13 @@
 // settings' switch hides it, and the list's foot gets its usage back. Drawn when its markup changes (setHtml), from
 // renderBoard, the usage, the awake state, the stream's open and error, and each stats answer.
 const bar = { stats: {}, conn: true, lost: false, open: false, busy: false };
-const fmtBytes = b => (b >= 2 ** 30 ? `${(b / 2 ** 30).toFixed(1)} GB` : `${Math.round(b / 2 ** 20)} MB`);
+
+const fmtBytes = bytes =>
+  bytes >= 2 ** 30 ? `${(bytes / 2 ** 30).toFixed(1)} GB` : `${Math.round(bytes / 2 ** 20)} MB`;
 
 // A meter past 90 % (2026-11-01, round XIX's S3): the ink and a ! that reads without colour, never the red that means asking
-const hotInk = p => (p >= 90 ? 'var(--ink)' : 'var(--watch)');
-const hotMark = p => (p >= 90 ? '!' : '');
+const hotInk = percent => (percent >= 90 ? 'var(--ink)' : 'var(--watch)');
+const hotMark = percent => (percent >= 90 ? '!' : '');
 
 const sbMeter = (label, pct, text, color, tip = `${label}: ${text}`, html = null) =>
   `<span class="m" title="${esc(tip)}">${esc(label)}<i style="--p:${Math.max(0, Math.min(100, pct)).toFixed(1)}%;--u:${color}"></i><b>${html ?? esc(text)}</b></span>`;
@@ -43,14 +45,14 @@ const FISH = [
 // on the main thread (a style pass and a walk of every layer, each frame); an svg in an HTML box it does.
 const fishRuns = (from, to, ch, rows = FISH) =>
   rows
-    .flatMap((r, y) =>
-      [...r.slice(from, to).matchAll(new RegExp(`[${ch}]+`, 'g'))].map(
-        m => `M${m.index + from} ${y}h${m[0].length}v1h-${m[0].length}z`,
+    .flatMap((line, row) =>
+      [...line.slice(from, to).matchAll(new RegExp(`[${ch}]+`, 'g'))].map(
+        match => `M${match.index + from} ${row}h${match[0].length}v1h-${match[0].length}z`,
       ),
     )
     .join('');
 
-const SWIM_ROWS = FISH.map((r, y) => (y === 5 ? `.mmm${r.slice(4)}` : r));
+const SWIM_ROWS = FISH.map((line, row) => (row === 5 ? `.mmm${line.slice(4)}` : line));
 
 const FISH_BODY = `<path class="b" d="${fishRuns(0, 21, '#', SWIM_ROWS)}"/><path class="b m" d="${fishRuns(0, 21, 'm', SWIM_ROWS)}"/><path class="s" d="${fishRuns(0, 21, '=')}"/><path class="e" d="${fishRuns(0, 21, 'o')}"/>`;
 const FISH_TAIL = `<path class="b" d="${fishRuns(21, 26, '#')}"/>`;
@@ -67,44 +69,44 @@ const swim = { n: -1, anim: null, w: 0, h: 0, food: [], eaten: 0, dart: false, r
 // fish was. One iteration is a length each way: right to left head first, turned at the left (a mirror, at once — a
 // pixel fish has no frames between), left to right, turned at the right.
 const SWIM_PAD = 2;
-const swimEnd = w => Math.max(SWIM_PAD, w - 26 - SWIM_PAD);
+const swimEnd = width => Math.max(SWIM_PAD, width - 26 - SWIM_PAD);
 
-const swimFrames = w => [
-  { transform: `translateX(${swimEnd(w)}px) scaleX(1)` },
+const swimFrames = width => [
+  { transform: `translateX(${swimEnd(width)}px) scaleX(1)` },
   { transform: `translateX(${SWIM_PAD}px) scaleX(1)`, offset: 0.5 },
   { transform: `translateX(${SWIM_PAD}px) scaleX(-1)`, offset: 0.5 },
-  { transform: `translateX(${swimEnd(w)}px) scaleX(-1)` },
+  { transform: `translateX(${swimEnd(width)}px) scaleX(-1)` },
 ];
 
-const swimMs = w => Math.max(1000, (6000 * 2 * (swimEnd(w) - SWIM_PAD)) / 92);
-const swimRate = n => [0.5, 1, 1.35, 1.9, 2.3][Math.min(n, 4)] + Math.max(0, n - 4) * 0.45;
+const swimMs = width => Math.max(1000, (6000 * 2 * (swimEnd(width) - SWIM_PAD)) / 92);
+const swimRate = count => [0.5, 1, 1.35, 1.9, 2.3][Math.min(count, 4)] + Math.max(0, count - 4) * 0.45;
 // The pace is the swim's length, not its playback rate (2026-10-13): a rate other than 1 had WebKit resolve the swim on
 // the main thread every frame. A new pace or a new lane keeps where the fish is in its loop, at the new length.
 const swimLen = () => swim.anim.effect.getTiming().duration;
 
-function swimPaceTo(w = swim.w) {
-  const a = swim.anim;
-  const D = swimLen();
-  const p = (a.currentTime % D) / D;
-  const d = swimMs(w) / swimPace();
+function swimPaceTo(width = swim.w) {
+  const anim = swim.anim;
+  const oldLength = swimLen();
+  const progress = (anim.currentTime % oldLength) / oldLength;
+  const newLength = swimMs(width) / swimPace();
 
-  if (Math.abs(d - D) < 1) return;
-  a.effect.updateTiming({ duration: d });
-  a.currentTime = p * d;
+  if (Math.abs(newLength - oldLength) < 1) return;
+  anim.effect.updateTiming({ duration: newLength });
+  anim.currentTime = progress * newLength;
 }
 
 new ResizeObserver(() => {
   const lane = $('#sbSwim');
-  const a = swim.anim;
-  const w = lane.clientWidth;
+  const anim = swim.anim;
+  const width = lane.clientWidth;
 
-  if (!a || !w || w === swim.w) return;
-  a.effect.setKeyframes(swimFrames(w));
-  swimPaceTo(w);
-  swim.w = w;
+  if (!anim || !width || width === swim.w) return;
+  anim.effect.setKeyframes(swimFrames(width));
+  swimPaceTo(width);
+  swim.w = width;
 }).observe($('#sbSwim'));
 
-function swimAt(n) {
+function swimAt(count) {
   const lane = $('#sbSwim');
 
   if (!lane) return;
@@ -115,28 +117,28 @@ function swimAt(n) {
     lane.firstChild.addEventListener('pointerenter', pat);
   }
 
-  lane.title = n
-    ? `${n} at work — the fish swims at their pace · click for every agent (⌥⌘A)`
+  lane.title = count
+    ? `${count} at work — the fish swims at their pace · click for every agent (⌥⌘A)`
     : 'nothing at work — click for every agent (⌥⌘A)';
 
-  if (n === swim.n) return;
-  swim.n = n;
+  if (count === swim.n) return;
+  swim.n = count;
 
-  const f = lane.firstChild;
-  const w = lane.clientWidth || 64;
+  const fish = lane.firstChild;
+  const width = lane.clientWidth || 64;
 
-  lane.classList.toggle('rest', !n);
-  lane.style.setProperty('--wag', n ? `${Math.max(0.14, 0.5 / Math.sqrt(n))}s` : '1.6s');
+  lane.classList.toggle('rest', !count);
+  lane.style.setProperty('--wag', count ? `${Math.max(0.14, 0.5 / Math.sqrt(count))}s` : '1.6s');
   if (REDUCED.matches) return;
 
   if (!swim.anim) {
-    swim.anim = f.animate(swimFrames(w), { duration: swimMs(w), iterations: Infinity, id: 'swim' });
-    swim.anim.currentTime = swimMs(w) / 4;
-    swim.w = w;
+    swim.anim = fish.animate(swimFrames(width), { duration: swimMs(width), iterations: Infinity, id: 'swim' });
+    swim.anim.currentTime = swimMs(width) / 4;
+    swim.w = width;
   } // from the lane's middle, heading left
 
   swimPaceTo();
-  noteMotion(null, 'swim', n);
+  noteMotion(null, 'swim', count);
 }
 
 // The lane is the minimap (2026-11-01, round XIX's W1; a switch, off by default): a fish per live chat in its project's
@@ -146,14 +148,18 @@ function swimAt(n) {
 const LANE_MAX = 12;
 
 function schoolOf() {
-  const live = [...state.sessions.values()].filter(s => visible(s) && s.alive && !s.done);
-  const rank = s => (asking(s) ? 0 : s.status === 'working' ? 1 : inWatch(s) ? 2 : 3);
+  const live = [...state.sessions.values()].filter(session => visible(session) && session.alive && !session.done);
+  const rank = session => (asking(session) ? 0 : session.status === 'working' ? 1 : inWatch(session) ? 2 : 3);
 
   const kept =
-    live.length > LANE_MAX ? [...live].sort((a, b) => rank(a) - rank(b) || byWord(a, b)).slice(0, LANE_MAX - 1) : live;
+    live.length > LANE_MAX
+      ? [...live].sort((left, right) => rank(left) - rank(right) || byWord(left, right)).slice(0, LANE_MAX - 1)
+      : live;
 
   return {
-    kept: [...kept].sort((a, b) => String(a.startedAt).localeCompare(String(b.startedAt)) || a.id.localeCompare(b.id)),
+    kept: [...kept].sort(
+      (left, right) => String(left.startedAt).localeCompare(String(right.startedAt)) || left.id.localeCompare(right.id),
+    ),
     more: live.length - kept.length,
     rank,
   };
@@ -184,69 +190,69 @@ function schoolBar() {
     box.className = 'schoolbox';
     lane.append(box);
 
-    box.addEventListener('click', e => {
-      const b = e.target.closest('.sf');
+    box.addEventListener('click', event => {
+      const button = event.target.closest('.sf');
 
-      if (!b) return;
-      e.stopPropagation();
-      openSession(b.dataset.id, { locate: true });
+      if (!button) return;
+      event.stopPropagation();
+      openSession(button.dataset.id, { locate: true });
     });
   }
 
   const { kept, more, rank } = schoolOf();
   const slots = kept.length + (more ? 1 : 0);
-  const have = new Map([...box.querySelectorAll('.sf')].map(b => [b.dataset.id, b]));
+  const have = new Map([...box.querySelectorAll('.sf')].map(button => [button.dataset.id, button]));
 
   const STATE = ['s-ask', 's-work', 's-watch', 's-ready'];
   const SAID = ['asking you', 'at work', 'watching', 'ready'];
 
-  kept.forEach((s, i) => {
-    let b = have.get(s.id);
+  kept.forEach((session, index) => {
+    let button = have.get(session.id);
 
-    have.delete(s.id);
+    have.delete(session.id);
 
-    if (!b) {
-      b = document.createElement('button');
-      b.type = 'button';
-      b.dataset.id = s.id;
-      b.innerHTML = SWIM_FISH.replace('"swimmer"', '"sfw"');
-      box.append(b);
+    if (!button) {
+      button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.id = session.id;
+      button.innerHTML = SWIM_FISH.replace('"swimmer"', '"sfw"');
+      box.append(button);
     }
 
-    const r = rank(s);
-    const said = `${s.project} · ${s.title} · ${SAID[r]}`;
-    const left = `${((i + 0.5) / slots) * 100}%`;
-    const color = repoColor(s.cwd) || 'var(--muted)';
+    const tier = rank(session);
+    const said = `${session.project} · ${session.title} · ${SAID[tier]}`;
+    const left = `${((index + 0.5) / slots) * 100}%`;
+    const color = repoColor(session.cwd) || 'var(--muted)';
 
-    if (b.className !== `sf ${STATE[r]}`) b.className = `sf ${STATE[r]}`;
-    if (b.style.left !== left) b.style.left = left;
-    if (b.style.getPropertyValue('--c') !== color) b.style.setProperty('--c', color);
+    if (button.className !== `sf ${STATE[tier]}`) button.className = `sf ${STATE[tier]}`;
+    if (button.style.left !== left) button.style.left = left;
+    if (button.style.getPropertyValue('--c') !== color) button.style.setProperty('--c', color);
 
-    if (b.title !== said) {
-      b.title = said;
-      b.setAttribute('aria-label', said);
+    if (button.title !== said) {
+      button.title = said;
+      button.setAttribute('aria-label', said);
     }
   });
 
-  for (const b of have.values()) b.remove();
-  let m = box.querySelector('.sfmore');
+  for (const button of have.values()) button.remove();
+  let moreBadge = box.querySelector('.sfmore');
 
   if (more) {
-    if (!m) {
-      m = document.createElement('span');
-      m.className = 'sfmore';
-      box.append(m);
+    if (!moreBadge) {
+      moreBadge = document.createElement('span');
+      moreBadge.className = 'sfmore';
+      box.append(moreBadge);
     }
 
-    m.textContent = `+${more}`;
-    m.title = `${more} more, ready: a click on the lane shows every agent`;
-  } else m?.remove();
+    moreBadge.textContent = `+${more}`;
+    moreBadge.title = `${more} more, ready: a click on the lane shows every agent`;
+  } else moreBadge?.remove();
 }
 
 $('#laneSchool').checked = !!prefs.laneSchool;
 
-$('#laneSchool').addEventListener('change', e => {
-  prefs.laneSchool = e.target.checked;
+$('#laneSchool').addEventListener('change', event => {
+  prefs.laneSchool = event.target.checked;
   savePrefs();
   renderBar();
 });
@@ -282,56 +288,56 @@ async function bedLoad(force) {
 }
 
 function bedCols() {
-  const spans = (bed.day?.chats || []).flatMap(c => c.spans || []).filter(x => x.from);
+  const spans = (bed.day?.chats || []).flatMap(chat => chat.spans || []).filter(span => span.from);
   const now = Date.now();
 
   if (!spans.length) return null;
 
   const hour = 3600e3;
   const midnight = new Date().setHours(0, 0, 0, 0);
-  const first = Math.max(midnight, Math.min(...spans.map(x => Date.parse(x.from))));
+  const first = Math.max(midnight, Math.min(...spans.map(span => Date.parse(span.from))));
 
   const start = Math.floor(first / hour) * hour;
   const end = Math.max(start + BED_SPAN, now + hour / 2);
-  const n = Math.ceil((end - start) / BED_STEP);
+  const count = Math.ceil((end - start) / BED_STEP);
 
-  const cols = Array.from({ length: n }, () => ({ w: 0, a: 0 }));
+  const cols = Array.from({ length: count }, () => ({ w: 0, a: 0 }));
 
-  for (const c of bed.day.chats) {
-    for (const k of ['w', 'a']) {
+  for (const chat of bed.day.chats) {
+    for (const kind of ['w', 'a']) {
       // a chat counts once in a column, however many spans it had there
       const hit = new Set();
 
-      for (const x of c.spans || []) {
-        if (x.k === k && x.from) {
-          const a = Math.max(start, Date.parse(x.from));
-          const b = x.to ? Date.parse(x.to) : now;
+      for (const span of chat.spans || []) {
+        if (span.k === kind && span.from) {
+          const from = Math.max(start, Date.parse(span.from));
+          const to = span.to ? Date.parse(span.to) : now;
 
           for (
-            let i = Math.floor((a - start) / BED_STEP);
-            i <= Math.min(n - 1, Math.floor((b - 1 - start) / BED_STEP));
-            i++
+            let column = Math.floor((from - start) / BED_STEP);
+            column <= Math.min(count - 1, Math.floor((to - 1 - start) / BED_STEP));
+            column++
           ) {
-            if (i >= 0) hit.add(i);
+            if (column >= 0) hit.add(column);
           }
         }
       }
 
-      for (const i of hit) cols[i][k]++;
+      for (const column of hit) cols[column][kind]++;
     }
   }
 
-  return { start, end, n, cols };
+  return { start, end, n: count, cols };
 }
 
 function bedDraw() {
   const lane = $('#sbSwim');
 
   if (!lane?.firstChild) return;
-  let c = lane.querySelector('canvas.bed');
+  let canvas = lane.querySelector('canvas.bed');
 
   if (!prefs.laneBed) {
-    c?.remove();
+    canvas?.remove();
     bed.cols = null;
     lane.onpointermove = null;
     return;
@@ -339,52 +345,52 @@ function bedDraw() {
 
   bed.cols = bedCols();
 
-  if (!c) {
-    c = document.createElement('canvas');
-    c.className = 'bed';
-    c.setAttribute('aria-hidden', 'true');
-    lane.prepend(c);
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.className = 'bed';
+    canvas.setAttribute('aria-hidden', 'true');
+    lane.prepend(canvas);
 
-    lane.onpointermove = e => {
+    lane.onpointermove = event => {
       if (!bed.cols || !prefs.laneBed) return;
 
-      const i = Math.floor((e.offsetX / bed.w) * bed.cols.n);
-      const col = bed.cols.cols[i];
+      const index = Math.floor((event.offsetX / bed.w) * bed.cols.n);
+      const col = bed.cols.cols[index];
 
-      if (!col || (e.target !== lane && e.target !== c)) return;
-      lane.title = `${new Date(bed.cols.start + i * BED_STEP).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}: ${col.w} at work${col.a ? `, ${col.a} waiting on you` : ''}`;
+      if (!col || (event.target !== lane && event.target !== canvas)) return;
+      lane.title = `${new Date(bed.cols.start + index * BED_STEP).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}: ${col.w} at work${col.a ? `, ${col.a} waiting on you` : ''}`;
     };
   }
 
-  const w = (bed.w = lane.clientWidth);
-  const h = lane.clientHeight;
+  const width = (bed.w = lane.clientWidth);
+  const height = lane.clientHeight;
   const dpr = devicePixelRatio || 1;
 
-  c.width = Math.round(w * dpr);
-  c.height = Math.round(h * dpr);
-  const x = c.getContext('2d');
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(height * dpr);
+  const context = canvas.getContext('2d');
 
-  x.scale(dpr, dpr);
-  x.clearRect(0, 0, w, h);
+  context.scale(dpr, dpr);
+  context.clearRect(0, 0, width, height);
   if (!bed.cols) return;
 
   const css = getComputedStyle(lane);
-  const bw = w / bed.cols.n;
+  const bw = width / bed.cols.n;
 
-  x.fillStyle = css.getPropertyValue('--muted');
-  x.globalAlpha = 0.3;
+  context.fillStyle = css.getPropertyValue('--muted');
+  context.globalAlpha = 0.3;
 
-  bed.cols.cols.forEach((col, i) => {
-    const b = Math.min(h - 3, col.w * 3.2);
+  bed.cols.cols.forEach((col, index) => {
+    const barHeight = Math.min(height - 3, col.w * 3.2);
 
-    if (b) x.fillRect(i * bw, h - b, Math.max(1, bw - 0.5), b);
+    if (barHeight) context.fillRect(index * bw, height - barHeight, Math.max(1, bw - 0.5), barHeight);
   });
 
-  x.globalAlpha = 1;
-  x.fillStyle = css.getPropertyValue('--needs');
+  context.globalAlpha = 1;
+  context.fillStyle = css.getPropertyValue('--needs');
 
-  bed.cols.cols.forEach((col, i) => {
-    if (col.a) x.fillRect(i * bw, 0, Math.max(1.5, bw - 0.5), 2);
+  bed.cols.cols.forEach((col, index) => {
+    if (col.a) context.fillRect(index * bw, 0, Math.max(1.5, bw - 0.5), 2);
   });
 
   noteMotion(null, 'bed:draw', bed.cols.n);
@@ -392,8 +398,8 @@ function bedDraw() {
 
 $('#laneBed').checked = !!prefs.laneBed;
 
-$('#laneBed').addEventListener('change', e => {
-  prefs.laneBed = e.target.checked;
+$('#laneBed').addEventListener('change', event => {
+  prefs.laneBed = event.target.checked;
   savePrefs();
   bedDraw();
   bedLoad(true);
@@ -419,67 +425,67 @@ const FOOD_MS = 12_000;
 const SPIT_MS = 420;
 
 const fishAt = () => {
-  const D = swimLen();
-  const p = (swim.anim.currentTime % D) / D;
-  const e = swimEnd(swim.w);
+  const length = swimLen();
+  const progress = (swim.anim.currentTime % length) / length;
+  const end = swimEnd(swim.w);
 
-  return p < 0.5
-    ? { x: e + (SWIM_PAD - e) * p * 2, dir: -1 }
-    : { x: SWIM_PAD + (e - SWIM_PAD) * (p - 0.5) * 2, dir: 1 };
+  return progress < 0.5
+    ? { x: end + (SWIM_PAD - end) * progress * 2, dir: -1 }
+    : { x: SWIM_PAD + (end - SWIM_PAD) * (progress - 0.5) * 2, dir: 1 };
 };
 
-const mouthOf = f => f.x + (f.dir < 0 ? 1 : 25); // its lips' front pixel, whichever way it faces
+const mouthOf = fish => fish.x + (fish.dir < 0 ? 1 : 25); // its lips' front pixel, whichever way it faces
 const swimPace = () => swimRate(Math.max(0, swim.n)) * (swim.dart ? DART : 1);
 
-function blurp(n = 1 + (Math.random() < 0.35) + (Math.random() < 0.12)) {
+function blurp(count = 1 + (Math.random() < 0.35) + (Math.random() < 0.12)) {
   const lane = $('#sbSwim');
 
   if (!swim.anim || swim.food.length || !lane || swim.out || prefs.laneSchool) return false;
 
-  const f = fishAt();
-  const m = mouthOf(f);
-  const room = f.dir < 0 ? m - SWIM_PAD - 1 : swimEnd(swim.w) + 25 - m;
+  const fish = fishAt();
+  const mouth = mouthOf(fish);
+  const room = fish.dir < 0 ? mouth - SWIM_PAD - 1 : swimEnd(swim.w) + 25 - mouth;
   const d0 = 16 + Math.random() * 12;
 
   const at = [];
 
-  for (let i = 0; i < n; i++) {
-    const d = Math.min(d0 + i * 8, room - 4);
+  for (let index = 0; index < count; index++) {
+    const distance = Math.min(d0 + index * 8, room - 4);
 
-    if (d < 8 || at.includes(m + f.dir * d)) break;
-    at.push(m + f.dir * d);
+    if (distance < 8 || at.includes(mouth + fish.dir * distance)) break;
+    at.push(mouth + fish.dir * distance);
   }
 
   if (!at.length) return false;
   swim.h = lane.clientHeight;
-  at.forEach((x, i) => setTimeout(() => spit(lane, x), i * 150));
+  at.forEach((left, index) => setTimeout(() => spit(lane, left), index * 150));
   noteMotion(null, 'blurp', at.length);
   return true;
 }
 
-function spit(lane, x) {
-  // out of its mouth to x, where it bobs
+function spit(lane, left) {
+  // out of its mouth to `left`, where it bobs
   if (!swim.anim) return;
 
-  const m = mouthOf(fishAt());
-  const z = 3 + Math.round(Math.random() * 2);
-  const y = Math.round(swim.h / 2 + Math.random() * 3 - 2);
+  const mouth = mouthOf(fishAt());
+  const size = 3 + Math.round(Math.random() * 2);
+  const top = Math.round(swim.h / 2 + Math.random() * 3 - 2);
   const el = document.createElement('i');
 
   el.className = 'bub food';
-  el.style.cssText = `left: ${x - z / 2}px; top: ${y - z / 2}px; width: ${z}px; height: ${z}px`;
+  el.style.cssText = `left: ${left - size / 2}px; top: ${top - size / 2}px; width: ${size}px; height: ${size}px`;
   lane.append(el);
 
   el.animate(
     [
-      { transform: `translate(${m - x}px, ${swim.h / 2 - y}px) scale(.3)`, opacity: 0 },
+      { transform: `translate(${mouth - left}px, ${swim.h / 2 - top}px) scale(.3)`, opacity: 0 },
       { opacity: 0.95, offset: 0.2 },
       { transform: 'none', opacity: 0.95 },
     ],
     { duration: SPIT_MS, easing: EASE_OUT, fill: 'forwards' },
   );
 
-  swim.food.push({ el, x, y, born: performance.now() });
+  swim.food.push({ el, x: left, y: top, born: performance.now() });
   swim.raf ||= requestAnimationFrame(feed);
 }
 
@@ -489,17 +495,17 @@ function feed() {
 
   if (!swim.anim) return;
 
-  const f = fishAt();
-  const m = mouthOf(f);
+  const fish = fishAt();
+  const mouth = mouthOf(fish);
   const now = performance.now();
 
   let near = Infinity;
 
-  for (const b of [...swim.food]) {
-    const ahead = (b.x - m) * f.dir; // how far before its mouth
+  for (const bubble of [...swim.food]) {
+    const ahead = (bubble.x - mouth) * fish.dir; // how far before its mouth
 
-    if (ahead <= 1 && ahead > -10) gulp(b, m, lane);
-    else if (now - b.born > FOOD_MS) lose(b);
+    if (ahead <= 1 && ahead > -10) gulp(bubble, mouth, lane);
+    else if (now - bubble.born > FOOD_MS) lose(bubble);
     else if (ahead > 0) near = Math.min(near, ahead);
   }
 
@@ -514,19 +520,19 @@ function feed() {
   if (swim.food.length) swim.raf = requestAnimationFrame(feed);
 }
 
-function gulp(b, m, lane) {
-  swim.food.splice(swim.food.indexOf(b), 1);
-  const from = getComputedStyle(b.el).transform;
+function gulp(bubble, mouth, lane) {
+  swim.food.splice(swim.food.indexOf(bubble), 1);
+  const from = getComputedStyle(bubble.el).transform;
 
-  b.el.getAnimations().forEach(a => a.cancel());
+  bubble.el.getAnimations().forEach(anim => anim.cancel());
 
-  b.el.animate(
+  bubble.el.animate(
     [
       { transform: from, opacity: 0.95 },
-      { transform: `translate(${m - b.x}px, ${swim.h / 2 - b.y}px) scale(.2)`, opacity: 0 },
+      { transform: `translate(${mouth - bubble.x}px, ${swim.h / 2 - bubble.y}px) scale(.2)`, opacity: 0 },
     ],
     { duration: 110, easing: EASE_OUT, fill: 'forwards' },
-  ).onfinish = () => b.el.remove();
+  ).onfinish = () => bubble.el.remove();
 
   lane
     .querySelector('.fb')
@@ -539,16 +545,16 @@ function gulp(b, m, lane) {
   if (swim.eaten % 3 === 0) setTimeout(burp, 600);
 }
 
-function lose(b) {
-  swim.food.splice(swim.food.indexOf(b), 1);
+function lose(bubble) {
+  swim.food.splice(swim.food.indexOf(bubble), 1);
 
-  b.el.animate(
+  bubble.el.animate(
     [
       { transform: 'none', opacity: 0.95 },
       { transform: 'translateY(-9px) scale(1.4)', opacity: 0 },
     ],
     { duration: 700, easing: EASE_OUT, fill: 'forwards' },
-  ).onfinish = () => b.el.remove();
+  ).onfinish = () => bubble.el.remove();
 }
 
 function burp() {
@@ -557,22 +563,22 @@ function burp() {
 
   if (!swim.anim || document.hidden || swim.out) return;
 
-  const f = fishAt();
-  const b = document.createElement('i');
+  const fish = fishAt();
+  const bubble = document.createElement('i');
 
-  b.className = 'bub';
-  b.style.left = `${mouthOf(f) - 2}px`;
-  b.style.top = `${swim.h / 2 - 3}px`;
-  lane.append(b);
+  bubble.className = 'bub';
+  bubble.style.left = `${mouthOf(fish) - 2}px`;
+  bubble.style.top = `${swim.h / 2 - 3}px`;
+  lane.append(bubble);
 
-  b.animate(
+  bubble.animate(
     [
       { transform: 'translate(0, 0) scale(.5)', opacity: 0 },
       { opacity: 0.9, offset: 0.15 },
-      { transform: `translate(${f.dir * 4}px, -12px) scale(1)`, opacity: 0 },
+      { transform: `translate(${fish.dir * 4}px, -12px) scale(1)`, opacity: 0 },
     ],
     { duration: 1400, easing: 'ease-out', fill: 'forwards' },
-  ).onfinish = () => b.remove();
+  ).onfinish = () => bubble.remove();
 
   noteMotion(null, 'burp');
 }
@@ -592,13 +598,13 @@ function swimOff(seen = true) {
     return;
   }
 
-  const f = fishAt();
-  const d = f.dir < 0 ? f.x + 34 : swim.w - f.x + 8;
+  const fish = fishAt();
+  const distance = fish.dir < 0 ? fish.x + 34 : swim.w - fish.x + 8;
 
   swim.anim.pause();
 
-  lane.querySelector('.fw').animate([{ transform: 'none' }, { transform: `translateX(${-d}px)` }], {
-    duration: Math.max(500, d * 9),
+  lane.querySelector('.fw').animate([{ transform: 'none' }, { transform: `translateX(${-distance}px)` }], {
+    duration: Math.max(500, distance * 9),
     easing: 'ease-in',
   }).onfinish = () => {
     if (swim.out) lane.classList.add('out');
@@ -615,13 +621,13 @@ function swimBack(fed) {
   if (!swim.anim || REDUCED.matches) return;
   swim.anim.play();
 
-  const f = fishAt();
-  const d = f.dir < 0 ? swim.w - f.x + 8 : f.x + 34;
-  const ms = Math.max(600, d * 10);
+  const fish = fishAt();
+  const distance = fish.dir < 0 ? swim.w - fish.x + 8 : fish.x + 34;
+  const ms = Math.max(600, distance * 10);
 
   lane
     .querySelector('.fw')
-    .animate([{ transform: `translateX(${d}px)` }, { transform: 'none' }], { duration: ms, easing: EASE_OUT });
+    .animate([{ transform: `translateX(${distance}px)` }, { transform: 'none' }], { duration: ms, easing: EASE_OUT });
 
   if (!fed) return;
 
@@ -670,21 +676,21 @@ setInterval(() => {
   const nf = !document.hidden && !REDUCED.matches && document.querySelector('#slist > .none .nfish');
 
   if (nf && Math.random() < 0.5) {
-    const b = document.createElement('i');
+    const bubble = document.createElement('i');
 
-    b.className = 'bub';
-    b.style.left = '3px';
-    b.style.top = '8px';
-    nf.append(b);
+    bubble.className = 'bub';
+    bubble.style.left = '3px';
+    bubble.style.top = '8px';
+    nf.append(bubble);
 
-    b.animate(
+    bubble.animate(
       [
         { transform: 'translate(0, 0) scale(.5)', opacity: 0 },
         { opacity: 0.9, offset: 0.15 },
         { transform: 'translate(-6px, -18px) scale(1)', opacity: 0 },
       ],
       { duration: 1600, easing: 'ease-out', fill: 'forwards' },
-    ).onfinish = () => b.remove();
+    ).onfinish = () => bubble.remove();
   }
 
   const lane = $('#sbSwim');
@@ -712,11 +718,11 @@ function muteSeg() {
     savePrefs();
   }
 
-  const h = Math.floor((Date.now() - prefs.mutedAt) / 3600e3);
+  const hours = Math.floor((Date.now() - prefs.mutedAt) / 3600e3);
 
-  if (h > (muteSeg.h ?? h) && !REDUCED.matches) {
+  if (hours > (muteSeg.h ?? hours) && !REDUCED.matches) {
     requestAnimationFrame(() => {
-      noteMotion(null, 'mute:remind', h);
+      noteMotion(null, 'mute:remind', hours);
 
       $('#sbLeft .mute')?.animate([{ transform: 'none' }, { transform: 'translateY(-3px)' }, { transform: 'none' }], {
         duration: 420,
@@ -725,31 +731,31 @@ function muteSeg() {
     });
   }
 
-  muteSeg.h = h;
+  muteSeg.h = hours;
   return [
-    `<button class="seg mute" title="Notifications are off${h ? ` for ${h} h` : ''}: chats still count here, no banner comes. Click to turn them on">${ICON.bellOff}muted${h ? ` · ${h}h` : ''}</button>`,
+    `<button class="seg mute" title="Notifications are off${hours ? ` for ${hours} h` : ''}: chats still count here, no banner comes. Click to turn them on">${ICON.bellOff}muted${hours ? ` · ${hours}h` : ''}</button>`,
   ];
 }
 
 // The chats asking you, one after another from the one open, longest wait first (the bar's count, 2026-10-12)
 function nextAsking() {
-  const list = [...state.sessions.values()].filter(s => visible(s) && askingLoud(s)).sort(byWait);
+  const list = [...state.sessions.values()].filter(session => visible(session) && askingLoud(session)).sort(byWait);
 
   if (!list.length) return;
-  const i = list.findIndex(s => s.id === state.current);
+  const index = list.findIndex(session => session.id === state.current);
 
-  openSession(list[(i + 1) % list.length].id, { locate: true });
+  openSession(list[(index + 1) % list.length].id, { locate: true });
 }
 
 function renderBar() {
   if (!state.snapshots) return;
 
   const all = [...state.sessions.values()];
-  const n = f => all.filter(f).length;
+  const countOf = predicate => all.filter(predicate).length;
 
-  const ask = n(askingLoud);
+  const ask = countOf(askingLoud);
   const askWait = ask ? waitWord(Date.now() - Math.min(...all.filter(askingLoud).map(askedAt))) : ''; // the longest wait (2026-11-01, round XIX's S4)
-  const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
+  const mons = all.reduce((total, session) => total + (session.alive ? (session.tasks || []).length : 0), 0);
 
   // the connection is the fish alone (2026-10-27; *connected* beside it before), its colour the state: green on the
   // stream, amber belly-up while it tries again, red when the server turned it away (the lock's) — the words out of sight
@@ -778,9 +784,9 @@ function renderBar() {
       : []),
   ];
 
-  for (const c of state.clones.values()) {
+  for (const clone of state.clones.values()) {
     left.push(
-      `<span class="seg cl" title="gh repo clone ${esc(c.ref)} into ${esc(homePath(c.dir))} — ${esc(cloneSays(c))}">${ICON.download}cloning <b>${esc(c.ref)}</b><i style="--p:${(c.percent || 0) / 100}"></i>${c.percent || 0}%</span>`,
+      `<span class="seg cl" title="gh repo clone ${esc(clone.ref)} into ${esc(homePath(clone.dir))} — ${esc(cloneSays(clone))}">${ICON.download}cloning <b>${esc(clone.ref)}</b><i style="--p:${(clone.percent || 0) / 100}"></i>${clone.percent || 0}%</span>`,
     );
   }
 
@@ -833,10 +839,10 @@ function renderBar() {
   if (stat.length) right.push(`<span class="seg">${stat.join('')}</span>`);
 
   if (!usage.off) {
-    const ws = (usage.data?.windows || []).filter(w => !uGrant(w));
+    const ws = (usage.data?.windows || []).filter(win => !uGrant(win));
 
     right.push(
-      `<button class="seg us${bar.open ? ' on' : ''}${usage.err && usage.data ? ' stale' : ''}" title="Claude plan usage${usage.err ? ` — ${esc(usage.err)}` : ''} — click for the rows">${ws.length ? ws.map(w => sbMeter(uShort(w), w.percent, `${w.percent}%`, uColor(w.percent), uTip(w), `${hotMark(w.percent)}${rn(`bu:${uShort(w)}`, w.percent)}%`)).join('') : `<span class="unote">usage: ${esc(usage.err || (usage.data ? 'nothing reported' : 'asking…'))}</span>`}</button>`,
+      `<button class="seg us${bar.open ? ' on' : ''}${usage.err && usage.data ? ' stale' : ''}" title="Claude plan usage${usage.err ? ` — ${esc(usage.err)}` : ''} — click for the rows">${ws.length ? ws.map(win => sbMeter(uShort(win), win.percent, `${win.percent}%`, uColor(win.percent), uTip(win), `${hotMark(win.percent)}${rn(`bu:${uShort(win)}`, win.percent)}%`)).join('') : `<span class="unote">usage: ${esc(usage.err || (usage.data ? 'nothing reported' : 'asking…'))}</span>`}</button>`,
     );
   }
 
@@ -863,7 +869,12 @@ function renderBar() {
   setHtml($('#sbLeft'), left.join(''));
 
   swimAt(
-    fishing.until ? 0 : all.reduce((a, s) => a + (s.alive && s.status === 'working' ? 1 + (s.agents || 0) : 0), 0),
+    fishing.until
+      ? 0
+      : all.reduce(
+          (total, session) => total + (session.alive && session.status === 'working' ? 1 + (session.agents || 0) : 0),
+          0,
+        ),
   );
 
   lunchBar();
@@ -906,34 +917,34 @@ setInterval(loadStats, 3000);
   setTimeout(clockTick, 60_000 - (Date.now() % 60_000) + 50);
 })(); // on the minute, the bar's clock
 
-$('#sbar').addEventListener('click', e => {
-  if (e.target.closest('.us')) {
+$('#sbar').addEventListener('click', event => {
+  if (event.target.closest('.us')) {
     bar.open = !bar.open;
     renderBar();
     return;
   }
 
-  if (e.target.closest('.conn')) {
+  if (event.target.closest('.conn')) {
     aboutOpen();
     return;
   }
 
-  if (e.target.closest('#sbChat')) {
+  if (event.target.closest('#sbChat')) {
     chatSegClick();
     return;
   }
 
-  if (e.target.closest('.seg.mute')) {
+  if (event.target.closest('.seg.mute')) {
     setNotify(true);
     return;
   }
 
-  if (e.target.closest('.seg.ask')) {
+  if (event.target.closest('.seg.ask')) {
     nextAsking();
     return;
   } // (2026-10-12) the count opens the chats it counts, one after another
 
-  const upg = e.target.closest('.seg.upg');
+  const upg = event.target.closest('.seg.upg');
 
   if (upg) {
     if (reload.want && reload.why !== 'server') location.reload();
@@ -942,20 +953,20 @@ $('#sbar').addEventListener('click', e => {
     return;
   }
 
-  const aw = e.target.closest('#sbAwake');
+  const aw = event.target.closest('#sbAwake');
 
   if (aw) {
     setAwake({ awake: !state.awake.awake }, aw);
     return;
   }
 
-  const lid = e.target.closest('#sbLid');
+  const lid = event.target.closest('#sbLid');
 
   if (lid && !state.lidAsking) setAwake({ lid: !state.awake.lid }, lid);
 });
 
-document.addEventListener('click', e => {
-  if (bar.open && !e.composedPath().includes($('#sbar'))) {
+document.addEventListener('click', event => {
+  if (bar.open && !event.composedPath().includes($('#sbar'))) {
     bar.open = false;
     renderBar();
   }
@@ -970,19 +981,19 @@ const BAR_STATS = [
 ];
 
 function setBarStats(on) {
-  prefs.barStats = BAR_STATS.map(([k]) => k).filter(k => on.includes(k));
+  prefs.barStats = BAR_STATS.map(([key]) => key).filter(key => on.includes(key));
   savePrefs();
-  for (const c of $('#sbarStats').querySelectorAll('input')) c.checked = prefs.barStats.includes(c.dataset.stat);
+  for (const box of $('#sbarStats').querySelectorAll('input')) box.checked = prefs.barStats.includes(box.dataset.stat);
   bar.stats = {};
   renderBar();
   loadStats();
 }
 
-for (const c of $('#sbarStats').querySelectorAll('input')) {
-  c.checked = (prefs.barStats || []).includes(c.dataset.stat);
+for (const box of $('#sbarStats').querySelectorAll('input')) {
+  box.checked = (prefs.barStats || []).includes(box.dataset.stat);
 
-  c.addEventListener('change', () =>
-    setBarStats([...$('#sbarStats').querySelectorAll('input:checked')].map(x => x.dataset.stat)),
+  box.addEventListener('change', () =>
+    setBarStats([...$('#sbarStats').querySelectorAll('input:checked')].map(input => input.dataset.stat)),
   );
 }
 

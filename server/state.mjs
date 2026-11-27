@@ -13,8 +13,8 @@ export const sessions = new Map();
 export const fileToSession = new Map();
 export let indexing = true; // suppress notifications while doing the initial scan
 
-export function setIndexing(v) {
-  indexing = v;
+export function setIndexing(value) {
+  indexing = value;
 } // for the modules that write it: an import is read-only
 
 // "Done" marks: sessionId -> ISO time it was marked. A mark only counts while nothing newer has
@@ -38,8 +38,8 @@ export let unlinked = {};
 export let seen = {};
 export let seenSince = null;
 
-export function setSeenSince(v) {
-  seenSince = v;
+export function setSeenSince(value) {
+  seenSince = value;
 }
 
 // The branch moved under a chat, and you said you know (2026-10-13): sessionId -> the move (`from→to`) — the header's chip
@@ -55,8 +55,8 @@ export let favChats = {}; // starred in Space, first in its grid (2026-11-18, v1
 // slot to the chat it went on in (carryPriority), a chat deleted from the board leaves it.
 export let priority = [];
 
-export function setPriority(v) {
-  priority = v;
+export function setPriority(value) {
+  priority = value;
 }
 
 // Snoozed chats (2026-11-24, round XXX): sessionId -> { at, until?, on?, pr? } — put away until a time, or an event of its
@@ -80,8 +80,8 @@ export let titles = {};
 // `colors` key (board-set project colours, 2026-09-20 only) is ignored and dropped on the next save.
 export let pinned = [];
 
-export function setPinned(v) {
-  pinned = v;
+export function setPinned(value) {
+  pinned = value;
 }
 
 // Projects taken off the board: the same keys the pins use — a folder cwd, or `c:<id>` for a named project.
@@ -90,8 +90,8 @@ export function setPinned(v) {
 // is deleted and no chat is touched: the cog hands the row back.
 export let hiddenProjects = [];
 
-export function setHiddenProjects(v) {
-  hiddenProjects = v;
+export function setHiddenProjects(value) {
+  hiddenProjects = value;
 }
 
 // The environment a chat was started in: sessionId -> the launcher's name (`task production-workload`…). The
@@ -103,8 +103,8 @@ export let envs = {};
 // badges, the Dock's count) but goes out `quiet`: nothing posts a banner for it, the app, a browser or osascript here.
 export let notificationsOn = true;
 
-export function setNotificationsOn(v) {
-  notificationsOn = v;
+export function setNotificationsOn(value) {
+  notificationsOn = value;
 }
 
 // Whose move each PR you wrote or reviewed was at, and since when the board has known it: url -> { key, at }
@@ -118,8 +118,8 @@ export let prLogs = {}; // url -> { ev: [{ id, k, w, a, n?, s?, f?, x?, c? }], r
 // on, and on again after a restart. The lid's setting is the system's and is read from it, never kept here (keepAwake).
 export let awakeOn = false;
 
-export function setAwakeOn(v) {
-  awakeOn = v;
+export function setAwakeOn(value) {
+  awakeOn = value;
 }
 
 // The board's own code, kept up to date from its checkout (2026-10-12; see checkUpdate): the switch (off: the new commits
@@ -133,24 +133,24 @@ export let updateHeld = null;
 export let appBuild = null;
 export let updateChannel = null;
 
-export function setAutoUpdate(v) {
-  autoUpdate = v;
+export function setAutoUpdate(value) {
+  autoUpdate = value;
 }
 
-export function setUpdateChannel(v) {
-  updateChannel = v;
+export function setUpdateChannel(value) {
+  updateChannel = value;
 }
 
-export function setUpdateLast(v) {
-  updateLast = v;
+export function setUpdateLast(value) {
+  updateLast = value;
 }
 
-export function setUpdateHeld(v) {
-  updateHeld = v;
+export function setUpdateHeld(value) {
+  updateHeld = value;
 }
 
-export function setAppBuild(v) {
-  appBuild = v;
+export function setAppBuild(value) {
+  appBuild = value;
 }
 
 // The working trees the board made for a branch (2026-10-13; ensureWorktree): path -> { repo (its main tree), branch
@@ -160,20 +160,20 @@ export function setAppBuild(v) {
 export let worktreesMade = {};
 export let keyEnforced = false; // the board's key required of every ask (2026-10-16; see keyWant): once on, for good
 
-export function setKeyEnforced(v) {
-  keyEnforced = v;
+export function setKeyEnforced(value) {
+  keyEnforced = value;
 }
 
 export let jiraTokenSite = null; // the Jira site the kept token was saved for (2026-11-06; jiraToken)
 
-export function setJiraTokenSite(v) {
-  jiraTokenSite = v;
+export function setJiraTokenSite(value) {
+  jiraTokenSite = value;
 }
 
 export let peacockMoved = null; // when Peacock's colours went into the setup (2026-10-15; movePeacock): once
 
-export function setPeacockMoved(v) {
-  peacockMoved = v;
+export function setPeacockMoved(value) {
+  peacockMoved = value;
 }
 
 // The chat (2026-10-17; see chatTick): `owner/repo#room` -> the newest message shown there — after it, someone else's are
@@ -185,8 +185,8 @@ export let chatQuiet = [];
 // (a fork's transcript names no origin), and the board never writes under ~/.claude, so the board keeps it.
 export let chatLinks = [];
 
-export function setChatLinks(v) {
-  chatLinks = v;
+export function setChatLinks(value) {
+  chatLinks = value;
 }
 
 // Lunch (2026-10-18; see lunchTick): the day's menus and what you did about lunch — Going, In 15 min, back.
@@ -202,8 +202,8 @@ export let lunchDay = {
   readAt: 0,
 };
 
-export function setLunchDay(v) {
-  lunchDay = v;
+export function setLunchDay(value) {
+  lunchDay = value;
 }
 
 // The state file is read once the port is ours (2026-10-14; at import before): a server that waited behind another for
@@ -221,8 +221,8 @@ export function loadState() {
       mkdirSync(dirname(STATE_FILE), { recursive: true });
       renameSync(LEGACY_STATE_FILE, STATE_FILE);
       console.log(`[peixairada] moved state to ${STATE_FILE}`);
-    } catch (e) {
-      console.error('[peixairada] could not move state, still reading the old path:', e.message);
+    } catch (error) {
+      console.error('[peixairada] could not move state, still reading the old path:', error.message);
     }
   }
 
@@ -245,25 +245,25 @@ export function loadState() {
     favChats = st.favChats && typeof st.favChats === 'object' ? st.favChats : {};
 
     priority = Array.isArray(st.priority)
-      ? [...new Set(st.priority.filter(k => typeof k === 'string' && /^[\w-]+$/.test(k)))].slice(0, PRIORITY_MAX)
+      ? [...new Set(st.priority.filter(id => typeof id === 'string' && /^[\w-]+$/.test(id)))].slice(0, PRIORITY_MAX)
       : [];
 
     snoozed = Object.fromEntries(
       Object.entries(st.snoozed && typeof st.snoozed === 'object' ? st.snoozed : {}).filter(
-        ([, z]) => typeof z?.at === 'string',
+        ([, snooze]) => typeof snooze?.at === 'string',
       ),
     );
 
     woke = Object.fromEntries(
       Object.entries(st.woke && typeof st.woke === 'object' ? st.woke : {}).filter(
-        ([, w]) => typeof w?.at === 'string',
+        ([, woken]) => typeof woken?.at === 'string',
       ),
     );
 
     projects = st.projects || {};
     titles = st.titles || {};
-    pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
-    hiddenProjects = Array.isArray(st.hidden) ? st.hidden.filter(k => typeof k === 'string') : [];
+    pinned = Array.isArray(st.pinned) ? st.pinned.filter(key => typeof key === 'string') : [];
+    hiddenProjects = Array.isArray(st.hidden) ? st.hidden.filter(key => typeof key === 'string') : [];
     envs = st.envs || {};
     notificationsOn = st.notifications !== false;
     setSetup(st.config); // from before CONFIG_FILE — cleaned here, moved there by loadConfig
@@ -280,10 +280,10 @@ export function loadState() {
     keyEnforced = st.keyEnforced === true;
     jiraTokenSite = typeof st.jiraTokenSite === 'string' ? st.jiraTokenSite : null;
     chatSeen = st.chatSeen && typeof st.chatSeen === 'object' ? st.chatSeen : {};
-    chatQuiet = Array.isArray(st.chatQuiet) ? st.chatQuiet.filter(r => typeof r === 'string') : [];
+    chatQuiet = Array.isArray(st.chatQuiet) ? st.chatQuiet.filter(repo => typeof repo === 'string') : [];
 
     chatLinks = Array.isArray(st.links)
-      ? st.links.filter(l => LINK_KINDS.has(l?.k) && typeof l.from === 'string' && typeof l.to === 'string')
+      ? st.links.filter(link => LINK_KINDS.has(link?.k) && typeof link.from === 'string' && typeof link.to === 'string')
       : [];
 
     setLinkIdx(null);
@@ -295,11 +295,11 @@ export function loadState() {
         menus: st.lunch.menus && typeof st.lunch.menus === 'object' ? st.lunch.menus : {},
       };
     }
-  } catch (e) {
-    if (e.code !== 'ENOENT') {
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
       const bad = `${stateFrom}.bad-${Date.now()}`;
 
-      console.error(`[peixairada] the state file does not read (${e.message}) — kept as ${bad}, starting afresh`);
+      console.error(`[peixairada] the state file does not read (${error.message}) — kept as ${bad}, starting afresh`);
 
       try {
         renameSync(stateFrom, bad);
@@ -371,56 +371,63 @@ export function saveState() {
     );
 
     renameSync(tmp, STATE_FILE);
-  } catch (e) {
-    console.error('[peixairada] could not save state', e.message);
+  } catch (error) {
+    console.error('[peixairada] could not save state', error.message);
   }
 }
 
 // A tick lasts until something newer happens in the chat — or on one of its PRs, once that PR has come round to you
 // (a push since your review, a reply, a review on yours: prTurn), which is what a tick after a review waits for. Not
 // a tick for good: its PRs are forgotten.
-const forGood = s => !!doneMarks[s.id] && forGoodMarks[s.id] === doneMarks[s.id];
+const forGood = session => !!doneMarks[session.id] && forGoodMarks[session.id] === doneMarks[session.id];
 
-export const isDone = s => {
-  const at = doneMarks[s.id];
+export const isDone = session => {
+  const at = doneMarks[session.id];
 
-  return !!at && at >= (s.lastActivity || '') && (forGood(s) || s.prs.every(p => !p.turn?.you || at >= p.turn.movedAt));
+  return (
+    !!at &&
+    at >= (session.lastActivity || '') &&
+    (forGood(session) || session.prs.every(pr => !pr.turn?.you || at >= pr.turn.movedAt))
+  );
 };
 
 /** Done for good, and still done: its PRs move nothing of the chat's. */
-export const forgotten = s => forGood(s) && isDone(s);
+export const forgotten = session => forGood(session) && isDone(session);
 /** Deleted from the board, and it stands: a word in it ends that, as any tick's, and so does a claude started on it. */
 export const removing = new Set(); // the chats whose claudes are being ended
-export const isRemoved = s =>
-  !!removedMarks[s.id] && removedMarks[s.id] === doneMarks[s.id] && isDone(s) && (!s.alive || removing.has(s.id));
+export const isRemoved = session =>
+  !!removedMarks[session.id] &&
+  removedMarks[session.id] === doneMarks[session.id] &&
+  isDone(session) &&
+  (!session.alive || removing.has(session.id));
 
-export const markRemoved = s => {
-  doneMarks[s.id] = forGoodMarks[s.id] = removedMarks[s.id] = new Date().toISOString();
+export const markRemoved = session => {
+  doneMarks[session.id] = forGoodMarks[session.id] = removedMarks[session.id] = new Date().toISOString();
 };
 
-export function putBackOnBoard(s) {
-  delete doneMarks[s.id];
-  delete forGoodMarks[s.id];
-  delete removedMarks[s.id];
+export function putBackOnBoard(session) {
+  delete doneMarks[session.id];
+  delete forGoodMarks[session.id];
+  delete removedMarks[session.id];
   saveState();
-  schedulePush(s);
+  schedulePush(session);
 }
 
 /** The top-priority slot, and snoozes and marks, of chats the board no longer has; true when any went. */
 export function pruneChatMarks() {
-  const n = priority.length + Object.keys(snoozed).length + Object.keys(woke).length;
+  const before = priority.length + Object.keys(snoozed).length + Object.keys(woke).length;
 
   priority = priority.filter(id => sessions.has(id));
-  for (const m of [snoozed, woke]) for (const id of Object.keys(m)) if (!sessions.has(id)) delete m[id];
-  return n !== priority.length + Object.keys(snoozed).length + Object.keys(woke).length;
+  for (const marks of [snoozed, woke]) for (const id of Object.keys(marks)) if (!sessions.has(id)) delete marks[id];
+  return before !== priority.length + Object.keys(snoozed).length + Object.keys(woke).length;
 }
 
 /** A /clear or /resume in the same claude: the chat it left had a top-priority slot, the chat it went on in takes it. */
 export function carryPriority(from, to) {
-  const i = priority.indexOf(from.id);
+  const index = priority.indexOf(from.id);
 
-  if (i < 0 || priority.includes(to.id)) return;
-  priority = priority.with(i, to.id);
+  if (index < 0 || priority.includes(to.id)) return;
+  priority = priority.with(index, to.id);
   saveState();
   broadcast('priority', { priority });
 }

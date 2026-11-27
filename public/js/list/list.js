@@ -8,7 +8,7 @@
 function applyList() {
   const hide = !!prefs.listHidden;
   const list = $('#sessions');
-  const b = $('#sbList');
+  const button = $('#sbList');
 
   if (hide && !$('#main').classList.contains('lhide')) applyList.top = $('#slist').scrollTop; // display: none forgets it
   $('#main').classList.toggle('lhide', hide);
@@ -28,8 +28,8 @@ function applyList() {
 
   const shown = !hide && !prefs.space; // Space takes the list's place (2026-11-18): its button says so
 
-  b.setAttribute('aria-pressed', String(shown));
-  b.title = `${shown ? 'Hide' : 'Show'} the chat list (⌥⌘B)`;
+  button.setAttribute('aria-pressed', String(shown));
+  button.title = `${shown ? 'Hide' : 'Show'} the chat list (⌥⌘B)`;
 }
 
 function setList(show) {
@@ -70,25 +70,25 @@ applyList();
   let dragging = false;
   let left = 0;
 
-  splitter.addEventListener('mousedown', e => {
-    if (e.button !== 0 || e.ctrlKey) return;
+  splitter.addEventListener('mousedown', event => {
+    if (event.button !== 0 || event.ctrlKey) return;
     dragging = true;
     left = $('#sessions').getBoundingClientRect().left;
     splitter.classList.add('drag');
     document.body.style.userSelect = 'none';
-    e.preventDefault();
+    event.preventDefault();
   });
 
   // …and it snaps to the list's own width and to half the window (2026-10-11), with a bump on the trackpad as it does
   let snapped = null;
 
-  window.addEventListener('mousemove', e => {
+  window.addEventListener('mousemove', event => {
     if (!dragging) return;
 
-    const w = Math.round(Math.max(300, Math.min(innerWidth * 0.6, e.clientX - left)));
-    const stop = [LIST_W, Math.round(innerWidth / 2)].find(d => Math.abs(w - d) <= SNAP_PX);
+    const width = Math.round(Math.max(300, Math.min(innerWidth * 0.6, event.clientX - left)));
+    const stop = [LIST_W, Math.round(innerWidth / 2)].find(snapWidth => Math.abs(width - snapWidth) <= SNAP_PX);
 
-    prefs.sessionsWidth = stop ?? w;
+    prefs.sessionsWidth = stop ?? width;
     if (stop && snapped !== stop) haptic('alignment');
     snapped = stop ?? null;
     $('#sessions').style.width = `${prefs.sessionsWidth}px`;

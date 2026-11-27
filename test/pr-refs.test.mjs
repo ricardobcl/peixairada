@@ -41,21 +41,23 @@ process.env.ORG = 'acme';
 const { newSession, notePrs, summary, prTitle, setPrInfo, forgetRef, ghRepoOf, sessions } =
   await import('../server.mjs');
 
-const t = (d = 0) => new Date(Date.UTC(2026, 9, 6, 12) + d * 86_400_000).toISOString();
-const pull = (repo, n) => `https://github.com/${repo}/pull/${n}`;
+const isoAt = (days = 0) => new Date(Date.UTC(2026, 9, 6, 12) + days * 86_400_000).toISOString();
+const pull = (repo, number) => `https://github.com/${repo}/pull/${number}`;
 let ids = 0;
 
 function chat(cwd) {
-  const s = newSession(`refs-${++ids}`, `/x/refs-${ids}.jsonl`);
+  const session = newSession(`refs-${++ids}`, `/x/refs-${ids}.jsonl`);
 
-  s.cwd = cwd;
-  sessions.set(s.id, s);
-  return s;
+  session.cwd = cwd;
+  sessions.set(session.id, session);
+  return session;
 }
 
-const said = (s, text, d = 0) => {
-  notePrs(s, text, t(d), 'user');
-  return s.prs.map(p => `${p.url.replace('https://github.com/', '').replace('/pull/', '#')} ${p.ref || 'url'}`);
+const said = (session, text, days = 0) => {
+  notePrs(session, text, isoAt(days), 'user');
+  return session.prs.map(
+    pr => `${pr.url.replace('https://github.com/', '').replace('/pull/', '#')} ${pr.ref || 'url'}`,
+  );
 };
 
 test("the chat's repo is read from its checkout: the folder, one under it, a worktree elsewhere; none outside one", () => {
@@ -67,9 +69,9 @@ test("the chat's repo is read from its checkout: the folder, one under it, a wor
 });
 
 test("#12 is the chat's repo, widgets#12 the org's, owner/repo#12 as written", () => {
-  const s = chat(join(code, 'widgets'));
+  const session = chat(join(code, 'widgets'));
 
-  assert.deepEqual(said(s, 'Fixes #12; see gadgets#3 and other/thing#4.'), [
+  assert.deepEqual(said(session, 'Fixes #12; see gadgets#3 and other/thing#4.'), [
     'other/thing#4 repo',
     'acme/gadgets#3 repo',
     'acme/widgets#12 bare',
@@ -91,9 +93,9 @@ test("#12 is the chat's repo, widgets#12 the org's, owner/repo#12 as written", (
 });
 
 test('widgets #12 when widgets is a checkout under a root, and a list after it is its too — on one line', () => {
-  const s = chat(join(code, 'widgets'));
+  const session = chat(join(code, 'widgets'));
 
-  assert.deepEqual(said(s, 'gadgets #5, #6 and #7, then #8. **gadgets** PR #9\n#13'), [
+  assert.deepEqual(said(session, 'gadgets #5, #6 and #7, then #8. **gadgets** PR #9\n#13'), [
     'acme/widgets#13 bare',
     'acme/gadgets#9 repo',
     'acme/widgets#8 bare',
@@ -110,11 +112,11 @@ test('widgets #12 when widgets is a checkout under a root, and a list after it i
 });
 
 test("code, a link's text, a URL's fragment, an entity and a colour are no references", () => {
-  const s = chat(join(code, 'widgets'));
+  const session = chat(join(code, 'widgets'));
 
   assert.deepEqual(
     said(
-      s,
+      session,
       'a `#20` and\n```\n# 1\n#21\n```\n[#22](https://github.com/acme/gadgets/pull/22) https://example.com/page#23 &#24; #000 #0a0 x#y C#',
     ),
     ['acme/gadgets#22 url'],
@@ -138,9 +140,13 @@ test('a #n after a word that counts is a numbered point, and so is the list afte
 });
 
 test("a repo of your own under the org's root: its name is yours, any other the org's", () => {
-  const s = chat(join(code, 'mine'));
+  const session = chat(join(code, 'mine'));
 
-  assert.deepEqual(said(s, '#5, mine#3 and widgets#4'), ['acme/widgets#4 repo', 'me/mine#3 repo', 'me/mine#5 bare']);
+  assert.deepEqual(said(session, '#5, mine#3 and widgets#4'), [
+    'acme/widgets#4 repo',
+    'me/mine#3 repo',
+    'me/mine#5 bare',
+  ]);
 });
 
 test("outside a checkout a bare #n names nothing, and a repo's name is the one root's org's", () => {
@@ -149,10 +155,10 @@ test("outside a checkout a bare #n names nothing, and a repo's name is the one r
 });
 
 test('a short reference is on the chat once GitHub finds a PR there; a bare one to an old PR long closed is not', () => {
-  const s = chat(join(code, 'widgets'));
+  const session = chat(join(code, 'widgets'));
 
-  said(s, `#40, gadgets#41. Then #42 and ${pull('acme/widgets', 43)}`, 0);
-  const shown = () => summary(s).prs.map(p => p.label);
+  said(session, `#40, gadgets#41. Then #42 and ${pull('acme/widgets', 43)}`, 0);
+  const shown = () => summary(session).prs.map(pr => pr.label);
 
   assert.deepEqual(shown(), ['widgets#43'], 'a URL at once; the short ones once GitHub says');
   setPrInfo(pull('acme/widgets', 40), 'open', 'Forty', null, Date.now(), undefined, false, '2015-01-01T00:00:00Z');
@@ -185,8 +191,8 @@ test('a short reference is on the chat once GitHub finds a PR there; a bare one 
     'open, or named with its repo — an old merged #42 is a numbered point',
   );
 
-  assert.equal(prTitle(s), 'Forty', 'nor does it title the card');
-  setPrInfo(pull('acme/widgets', 42), 'merged', 'Forty-two', null, Date.now(), undefined, false, t(-30));
+  assert.equal(prTitle(session), 'Forty', 'nor does it title the card');
+  setPrInfo(pull('acme/widgets', 42), 'merged', 'Forty-two', null, Date.now(), undefined, false, isoAt(-30));
 
   assert.deepEqual(
     shown(),
@@ -194,7 +200,7 @@ test('a short reference is on the chat once GitHub finds a PR there; a bare one 
     "merged a month before it was said: the chat's",
   );
 
-  said(s, 'widgets#44 then #44', 1);
+  said(session, 'widgets#44 then #44', 1);
 
   setPrInfo(
     pull('acme/widgets', 44),
@@ -224,43 +230,43 @@ test('a short reference is on the chat once GitHub finds a PR there; a bare one 
   );
 
   assert.deepEqual(
-    [summary(old).prs.map(p => p.label), prTitle(old)],
+    [summary(old).prs.map(pr => pr.label), prTitle(old)],
     [['gadgets#61'], null],
     'an old one named with its repo is shown, and titles nothing',
   );
 });
 
 test('where GitHub has no PR, a chat that had it from a short reference lets it go, and does not take it up again', () => {
-  const a = chat(join(code, 'widgets'));
-  const b = chat(join(code, 'gadgets'));
+  const widgetsChat = chat(join(code, 'widgets'));
+  const gadgetsChat = chat(join(code, 'gadgets'));
 
-  said(a, '#50 and #51');
-  said(b, `see ${pull('acme/widgets', 50)}`);
+  said(widgetsChat, '#50 and #51');
+  said(gadgetsChat, `see ${pull('acme/widgets', 50)}`);
   forgetRef(pull('acme/widgets', 50));
 
   assert.deepEqual(
-    a.prs.map(p => p.number),
+    widgetsChat.prs.map(pr => pr.number),
     [51],
   );
 
   assert.deepEqual(
-    b.prs.map(p => p.number),
+    gadgetsChat.prs.map(pr => pr.number),
     [50],
     "a URL said is the chat's whatever GitHub says",
   );
 
-  said(a, 'about #50 again');
+  said(widgetsChat, 'about #50 again');
 
   assert.deepEqual(
-    a.prs.map(p => p.number),
+    widgetsChat.prs.map(pr => pr.number),
     [51],
     'not taken up again',
   );
 
-  said(a, pull('acme/widgets', 50));
+  said(widgetsChat, pull('acme/widgets', 50));
 
   assert.deepEqual(
-    a.prs.map(p => [p.number, p.ref]),
+    widgetsChat.prs.map(pr => [pr.number, pr.ref]),
     [
       [50, null],
       [51, 'bare'],

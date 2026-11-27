@@ -29,7 +29,9 @@ export default async function (ctx) {
 
   const cols = async () =>
     Object.fromEntries(
-      (await ctx.server.terminals()).filter(t => t.exited === null).map(t => [t.shell ? 'zsh' : 'claude', t.cols]),
+      (await ctx.server.terminals())
+        .filter(term => term.exited === null)
+        .map(term => [term.shell ? 'zsh' : 'claude', term.cols]),
     );
 
   const lastPane = () =>
@@ -112,7 +114,7 @@ export default async function (ctx) {
   ctx.assert.equal((await st()).zoomed, null, 'the first press only goes there');
   await ctx.key('KeyC');
   await ctx.waitFor(`window.peix.state().zoomed === 0`, { what: "claude's half filling the column" });
-  ctx.assert.deepEqual(await st().then(x => [x.a, x.b, x.bar]), [true, false, false]);
+  ctx.assert.deepEqual(await st().then(state => [state.a, state.b, state.bar]), [true, false, false]);
   await ctx.key('KeyT');
 
   await ctx.waitFor(
@@ -120,7 +122,7 @@ export default async function (ctx) {
     { what: 'the zsh, both halves back' },
   );
 
-  ctx.assert.deepEqual(await st().then(x => [x.a, x.b, x.bar]), [true, true, true]);
+  ctx.assert.deepEqual(await st().then(state => [state.a, state.b, state.bar]), [true, true, true]);
   // ⌘1 from a half filling the column is the same: the other half's keys bring both back
   await ctx.key('KeyT');
   await ctx.waitFor(`window.peix.state().zoomed === 1`, { what: 'zoomed again' });
@@ -159,7 +161,7 @@ export default async function (ctx) {
 
   ctx.assert.deepEqual(
     [out.again.cur, out.again.sel],
-    [pr.slice(3), urls.find(u => u !== pr.slice(3))],
+    [pr.slice(3), urls.find(url => url !== pr.slice(3))],
     `the one in front current, the other selected — ${JSON.stringify(out.again)}`,
   );
 
@@ -187,7 +189,7 @@ export default async function (ctx) {
   await ctx.key('KeyG');
   await enter();
 
-  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh:${urls.find(u => u !== pr.slice(3))}`)}`, {
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh:${urls.find(url => url !== pr.slice(3))}`)}`, {
     what: 'the other PR on its tab',
   });
 
@@ -230,7 +232,12 @@ export default async function (ctx) {
       timeout: 4000,
     });
 
-    ctx.assert.deepEqual(await st().then(x => [x.a, x.b]), [false, true], `${code}: claude's half behind it`);
+    ctx.assert.deepEqual(
+      await st().then(state => [state.a, state.b]),
+      [false, true],
+      `${code}: claude's half behind it`,
+    );
+
     await ctx.key(code);
 
     await ctx.waitFor(`window.peix.state().zoomed === null && !document.querySelector('#grp').hidden && ${on}`, {
@@ -249,7 +256,7 @@ export default async function (ctx) {
   await ctx.cmd('Digit0');
   await ctx.waitFor(`!window.peix.state().split`, { what: 'one half' });
   await ctx.key('KeyC');
-  ctx.assert.deepEqual(await st().then(x => [x.zoomed, x.split, x.tab]), [null, false, 'chat']);
+  ctx.assert.deepEqual(await st().then(state => [state.zoomed, state.split, state.tab]), [null, false, 'chat']);
 
   ctx.assert.deepEqual(await ctx.evaluate('JSON.stringify(window.__errs)').then(JSON.parse), [], 'nothing threw');
   // ⌥⌘R: the board reloads itself

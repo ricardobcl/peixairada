@@ -22,13 +22,13 @@ export default async function (ctx) {
   const root = realpathSync(tmpDir('peix-sp-'));
   const sleeps = [0, 1, 2, 3, 4].map(() => spawn('sleep', ['300'], { stdio: 'ignore' }));
 
-  const live = (i, more = {}) => ({ pid: sleeps[i].pid, startedAt: now - 90 * MIN, ...more });
+  const live = (index, more = {}) => ({ pid: sleeps[index].pid, startedAt: now - 90 * MIN, ...more });
 
   const dir = name => {
-    const d = join(root, name);
+    const path = join(root, name);
 
-    mkdirSync(d, { recursive: true });
-    return d;
+    mkdirSync(path, { recursive: true });
+    return path;
   };
 
   const projects = {
@@ -240,7 +240,7 @@ export default async function (ctx) {
     );
 
     out.nodes = await nodes();
-    const by = t => out.nodes.find(n => n.title.startsWith(t));
+    const by = title => out.nodes.find(node => node.title.startsWith(title));
 
     ctx.assert.equal(
       by('Review the staging').title,
@@ -252,7 +252,7 @@ export default async function (ctx) {
     ctx.assert.equal(by('Queue for invoice').st, 'ask', 'asking: its edge red');
 
     ctx.assert.deepEqual(
-      by('Review the staging').pods.map(p => [p.label, p.h, p.marks]),
+      by('Review the staging').pods.map(pod => [pod.label, pod.h, pod.marks]),
       [
         ['Security', '25', 'SE:run SE:run'],
         ['Specifier', by('Review the staging').pods[1].h, 'SP:done'],
@@ -263,7 +263,7 @@ export default async function (ctx) {
     );
 
     ctx.assert.deepEqual(
-      by('Queue for invoice').pods.map(p => p.marks),
+      by('Queue for invoice').pods.map(pod => pod.marks),
       ['GP:fail'],
       'two of one type: one pod, folded to its newest when none works',
     );
@@ -358,7 +358,7 @@ export default async function (ctx) {
     await ctx.sleep(1500);
     await ctx.shot('space-visitor');
 
-    for (let i = 0; i < 8; i++) {
+    for (let attempt = 0; attempt < 8; attempt++) {
       await ctx.evaluate(
         `(document.querySelectorAll('#spsky .spvis').forEach(v => v.getAnimations().forEach(a => a.finish())), 0)`,
       );
@@ -433,9 +433,9 @@ export default async function (ctx) {
     await ctx.shot('space-settings-dark');
     await ctx.evaluate(`document.querySelector('#settingsClose').click()`);
 
-    const set = (id, v) =>
+    const set = (id, value) =>
       ctx.evaluate(
-        `(() => { const el = document.querySelector('#${id}'); if (el.type === 'checkbox') el.checked = ${JSON.stringify(v)}; else el.value = ${JSON.stringify(v)}; el.dispatchEvent(new Event('change', { bubbles: true })); })()`,
+        `(() => { const el = document.querySelector('#${id}'); if (el.type === 'checkbox') el.checked = ${JSON.stringify(value)}; else el.value = ${JSON.stringify(value)}; el.dispatchEvent(new Event('change', { bubbles: true })); })()`,
       );
 
     await set('skyOn', false);
@@ -538,24 +538,24 @@ export default async function (ctx) {
 
     const press = async sel => {
       // the mouse at its middle, pressed and let go: hit-testing as a hand's click has it
-      const r = await ctx.evaluate(
+      const point = await ctx.evaluate(
         `(() => { const b = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; })()`,
       );
 
-      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.x, y: r.y });
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y });
 
       await ctx.send('Input.dispatchMouseEvent', {
         type: 'mousePressed',
-        x: r.x,
-        y: r.y,
+        x: point.x,
+        y: point.y,
         button: 'left',
         clickCount: 1,
       });
 
       await ctx.send('Input.dispatchMouseEvent', {
         type: 'mouseReleased',
-        x: r.x,
-        y: r.y,
+        x: point.x,
+        y: point.y,
         button: 'left',
         clickCount: 1,
       });
@@ -834,26 +834,38 @@ export default async function (ctx) {
     await ctx.shot('space-agent-click-dark');
 
     // the divider, dragged: kept with Space across a reload
-    const r = await ctx.evaluate(
+    const divider = await ctx.evaluate(
       `(() => { const d = document.querySelector('#spdiv').getBoundingClientRect(), m = document.querySelector('#main').getBoundingClientRect(); return { x: d.left + d.width / 2, y: d.top + d.height / 2, to: m.left + m.width * .6 }; })()`,
     );
 
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: r.x, y: r.y, button: 'left', clickCount: 1 });
+    await ctx.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      x: divider.x,
+      y: divider.y,
+      button: 'left',
+      clickCount: 1,
+    });
 
     await ctx.send('Input.dispatchMouseEvent', {
       type: 'mouseMoved',
-      x: (r.x + r.to) / 2,
-      y: r.y,
+      x: (divider.x + divider.to) / 2,
+      y: divider.y,
       button: 'left',
       buttons: 1,
     });
 
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.to, y: r.y, button: 'left', buttons: 1 });
+    await ctx.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: divider.to,
+      y: divider.y,
+      button: 'left',
+      buttons: 1,
+    });
 
     await ctx.send('Input.dispatchMouseEvent', {
       type: 'mouseReleased',
-      x: r.to,
-      y: r.y,
+      x: divider.to,
+      y: divider.y,
       button: 'left',
       clickCount: 1,
     });
@@ -979,6 +991,6 @@ export default async function (ctx) {
     await ctx.shot('space-chat-light');
     return out;
   } finally {
-    for (const s of sleeps) s.kill();
+    for (const child of sleeps) child.kill();
   }
 }

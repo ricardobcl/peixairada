@@ -15,74 +15,80 @@ export default async function (ctx) {
 
   await ctx.reload();
   await ctx.openChat(chat.id);
-  const [a] = await ctx.peix(`session(${JSON.stringify(chat.id)}).prs.map(p => p.url)`);
+  const [prUrl] = await ctx.peix(`session(${JSON.stringify(chat.id)}).prs.map(p => p.url)`);
   const pages = () => ctx.peix(`state().paneTabs[${JSON.stringify(chat.id)}] || []`);
 
   const open = () =>
     ctx.evaluate(
-      `document.querySelector('#slist > .card[data-id=${JSON.stringify(chat.id)}] .mxs[data-url=${JSON.stringify(a)}]').click()`,
+      `document.querySelector('#slist > .card[data-id=${JSON.stringify(chat.id)}] .mxs[data-url=${JSON.stringify(prUrl)}]').click()`,
     ); // the card's chip
 
-  const wentTo = (k, url) => ctx.evaluate(`window.peixPaneUrl(${JSON.stringify(k)}, ${JSON.stringify(url)})`); // the shell, as the page navigates
+  const wentTo = (key, url) => ctx.evaluate(`window.peixPaneUrl(${JSON.stringify(key)}, ${JSON.stringify(url)})`); // the shell, as the page navigates
 
   const lastPane = () =>
     ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'pane').pop() || null)`).then(JSON.parse);
 
-  const label = k =>
+  const label = key =>
     ctx.evaluate(
-      `[...(document.querySelector(${JSON.stringify(`.ptab[data-tab="${k}"]`)})?.childNodes || [])].find(n => n.nodeType === 3)?.textContent || null`,
+      `[...(document.querySelector(${JSON.stringify(`.ptab[data-tab="${key}"]`)})?.childNodes || [])].find(n => n.nodeType === 3)?.textContent || null`,
     );
 
   // the PR on its tab
   await open();
-  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh:${a}`)}`, { what: 'the PR on a tab' });
-  ctx.assert.deepEqual(await pages(), [`gh:${a}`]);
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh:${prUrl}`)}`, { what: 'the PR on a tab' });
+  ctx.assert.deepEqual(await pages(), [`gh:${prUrl}`]);
 
   // followed into its files, then to a comment: still the PR — opening it again is that tab
-  await wentTo(`gh:${a}`, `${a}/files`);
+  await wentTo(`gh:${prUrl}`, `${prUrl}/files`);
   await ctx.cmd('Digit1');
   await open();
 
-  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh:${a}`)}`, {
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh:${prUrl}`)}`, {
     what: "the same tab, the PR's files",
   });
 
-  await wentTo(`gh:${a}`, `${a}#issuecomment-1`);
+  await wentTo(`gh:${prUrl}`, `${prUrl}#issuecomment-1`);
   await ctx.cmd('Digit1');
   await open();
 
-  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh:${a}`)}`, {
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh:${prUrl}`)}`, {
     what: 'the same tab, a comment on it',
   });
 
-  ctx.assert.deepEqual(await pages(), [`gh:${a}`], 'no second tab while the first is at the PR');
+  ctx.assert.deepEqual(await pages(), [`gh:${prUrl}`], 'no second tab while the first is at the PR');
 
   // followed elsewhere — another PR whose number starts with this one's: no longer the PR. Opening it is a new tab, in
   // front, the keys on it; the old one stays, named for where it went
-  const away = `${a}0`;
+  const away = `${prUrl}0`;
 
-  await wentTo(`gh:${a}`, away);
+  await wentTo(`gh:${prUrl}`, away);
   await ctx.cmd('Digit1');
   await open();
-  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh2:${a}`)}`, { what: 'a new tab for the PR' });
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh2:${prUrl}`)}`, { what: 'a new tab for the PR' });
 
   out.two = {
     pages: await pages(),
     strip: (await ctx.peix('state().strips'))[1],
     pane: await lastPane(),
-    old: await label(`gh:${a}`),
+    old: await label(`gh:${prUrl}`),
   };
 
-  ctx.assert.deepEqual(out.two.pages, [`gh:${a}`, `gh2:${a}`]);
-  ctx.assert.deepEqual(out.two.strip, [`gh:${a}`, `gh2:${a}`], 'beside the old one, in the half without the chat');
-  ctx.assert.equal(out.two.pane.focus, `gh2:${a}`, 'the shell shows the new tab and gives it the keys');
-  const n = /\/pull\/(\d+)$/.exec(a)[1];
+  ctx.assert.deepEqual(out.two.pages, [`gh:${prUrl}`, `gh2:${prUrl}`]);
 
-  ctx.assert.match(out.two.old, new RegExp(`#${n}0$`), 'the old tab is named for where it is');
+  ctx.assert.deepEqual(
+    out.two.strip,
+    [`gh:${prUrl}`, `gh2:${prUrl}`],
+    'beside the old one, in the half without the chat',
+  );
+
+  ctx.assert.equal(out.two.pane.focus, `gh2:${prUrl}`, 'the shell shows the new tab and gives it the keys');
+  const number = /\/pull\/(\d+)$/.exec(prUrl)[1];
+
+  ctx.assert.match(out.two.old, new RegExp(`#${number}0$`), 'the old tab is named for where it is');
 
   ctx.assert.equal(
     await ctx.evaluate(`document.querySelector('#ptabsB .purl')?.dataset.url`),
-    a,
+    prUrl,
     "the new one's address is the PR",
   );
 
@@ -92,12 +98,12 @@ export default async function (ctx) {
   // again: the new tab, not a third
   await ctx.cmd('Digit1');
   await open();
-  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh2:${a}`)}`, { what: 'the new tab again' });
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh2:${prUrl}`)}`, { what: 'the new tab again' });
   ctx.assert.equal((await pages()).length, 2);
 
   // the old tab clicked: it comes up as it stands, nothing opened
-  await ctx.evaluate(`document.querySelector(${JSON.stringify(`#ptabsB .ptab[data-tab="gh:${a}"]`)}).click()`);
-  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh:${a}`)}`, { what: 'the old tab in front' });
+  await ctx.evaluate(`document.querySelector(${JSON.stringify(`#ptabsB .ptab[data-tab="gh:${prUrl}"]`)}).click()`);
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh:${prUrl}`)}`, { what: 'the old tab in front' });
   ctx.assert.equal((await pages()).length, 2, 'a tab clicked is never a new one');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#ptabsB .purl')?.dataset.url`), away);
   // ⌥⌘G from it: not the PR's page, so not filling the column — the PRs, to choose from
@@ -106,7 +112,7 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.peix('state().zoomed'), null, 'nothing filled the column');
   await ctx.evaluate(`document.querySelector('#pick').close()`);
   // ⌥⌘G from the PR's own tab is the picker again — the chat has two (2026-10-16) — and once more fills the column, and back
-  await ctx.evaluate(`document.querySelector(${JSON.stringify(`#ptabsB .ptab[data-tab="gh2:${a}"]`)}).click()`);
+  await ctx.evaluate(`document.querySelector(${JSON.stringify(`#ptabsB .ptab[data-tab="gh2:${prUrl}"]`)}).click()`);
   await ctx.key('KeyG');
 
   await ctx.waitFor(
@@ -126,30 +132,34 @@ export default async function (ctx) {
 
   // the new tab followed elsewhere too, then closed: its view lingers in the shell there, so the PR's next tab is
   // another name — from a blank tab, the PR's address typed
-  await wentTo(`gh2:${a}`, 'https://example.com/elsewhere');
+  await wentTo(`gh2:${prUrl}`, 'https://example.com/elsewhere');
   ctx.assert.equal(await ctx.evaluate(`window.peixKey('KeyW', 'cmd')`), true);
-  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh:${a}`)}`, { what: 'the old tab in front again' });
+
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh:${prUrl}`)}`, {
+    what: 'the old tab in front again',
+  });
+
   await ctx.cmd('KeyT');
   await ctx.waitFor(`/^new:/.test(window.peix.state().tab)`, { what: 'a blank tab' });
 
   ctx.assert.ok(
     await ctx.evaluate(
-      `[...document.querySelectorAll('#gbodyB .gblank .lpr')].some(e => e.textContent === ${JSON.stringify(`#${n}`)})`,
+      `[...document.querySelectorAll('#gbodyB .gblank .lpr')].some(e => e.textContent === ${JSON.stringify(`#${number}`)})`,
     ),
     'the PR offered under it: no tab is at it',
   );
 
-  await ctx.fill('#ptabsB .paddr', a);
+  await ctx.fill('#ptabsB .paddr', prUrl);
 
   await ctx.evaluate(
     `document.querySelector('#ptabsB .paddr').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`,
   );
 
-  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh3:${a}`)}`, {
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(`gh3:${prUrl}`)}`, {
     what: 'the PR on a tab of a name no view holds',
   });
 
-  ctx.assert.deepEqual(await pages(), [`gh:${a}`, `gh3:${a}`]);
+  ctx.assert.deepEqual(await pages(), [`gh:${prUrl}`, `gh3:${prUrl}`]);
   ctx.assert.deepEqual(await ctx.evaluate('JSON.stringify(window.__errs)').then(JSON.parse), [], 'nothing threw');
   return out;
 }

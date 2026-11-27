@@ -53,7 +53,7 @@ export default async function (ctx) {
     { cwd, title: 'An answered one', prompt: 'what day is it?', reply: 'Saturday.', at: at(100_000) },
   ]);
 
-  const chat = t => chats.find(c => c.title === t);
+  const chat = title => chats.find(candidate => candidate.title === title);
   const card = id => `document.querySelector('#slist > .card[data-id="${id}"]')`;
 
   const [mig, cut, ok] = ['Migrate the ledger tables', 'A long answer', 'An answered one'].map(chat);

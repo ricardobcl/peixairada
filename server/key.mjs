@@ -34,12 +34,12 @@ export let boardKey = '';
 export let keylessSaid = false;
 export let keyOpenAt = 0;
 
-export function setBoardKey(v) {
-  boardKey = v;
+export function setBoardKey(value) {
+  boardKey = value;
 } // for the modules that write it: an import is read-only
 
-export function setKeyOpenAt(v) {
-  keyOpenAt = v;
+export function setKeyOpenAt(value) {
+  keyOpenAt = value;
 }
 
 export const tickets = new Map(); // ticket → when it expires
@@ -51,8 +51,8 @@ export const tickets = new Map(); // ticket → when it expires
 export function privateDir(dir) {
   try {
     mkdirSync(dir, { recursive: true, mode: 0o700 });
-  } catch (e) {
-    if (e.code !== 'EEXIST') throw e;
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
   }
 
   const st = statSync(dir);
@@ -68,11 +68,11 @@ export function privateDir(dir) {
 /** A key of 64 hex digits kept in `file`: the file's, else a new one written there, this user's alone. */
 export function keyFile(file) {
   try {
-    const t = readFileSync(file, 'utf8').trim();
+    const key = readFileSync(file, 'utf8').trim();
 
-    if (/^[0-9a-f]{64}$/.test(t)) {
+    if (/^[0-9a-f]{64}$/.test(key)) {
       if (statSync(file).mode & 0o077) chmodSync(file, 0o600);
-      return t;
+      return key;
     }
   } catch {}
 
@@ -80,13 +80,13 @@ export function keyFile(file) {
 }
 
 export function writeKey(file) {
-  const t = randomBytes(32).toString('hex');
+  const key = randomBytes(32).toString('hex');
   const tmp = `${file}.${process.pid}`;
 
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(tmp, t, { mode: 0o600 });
+  writeFileSync(tmp, key, { mode: 0o600 });
   renameSync(tmp, file);
-  return t;
+  return key;
 }
 
 export const keyRequired = () => KEY_MODE !== 'lax' || !LOOPBACK_BIND || keyEnforced;
@@ -98,24 +98,28 @@ export function requireKey(why) {
   saveState();
   broadcast('key', keyState());
   // what came in without it while it was not required goes now: a stream, a drawer's socket
-  for (const c of sseClients) if (!c.keyed) c.end();
-  for (const t of terms.values()) for (const ws of t.clients) if (!ws.keyed) ws.close(4401, 'the board wants its key');
+  for (const client of sseClients) if (!client.keyed) client.end();
+
+  for (const term of terms.values()) {
+    for (const ws of term.clients) if (!ws.keyed) ws.close(4401, 'the board wants its key');
+  }
+
   console.log(`[peixairada] the board's key is required from now on — ${why}`);
 }
 
-const keyMatches = k => {
-  const a = Buffer.from(String(k));
-  const b = Buffer.from(boardKey);
+const keyMatches = key => {
+  const given = Buffer.from(String(key));
+  const expected = Buffer.from(boardKey);
 
-  return !!boardKey && a.length === b.length && timingSafeEqual(a, b);
+  return !!boardKey && given.length === expected.length && timingSafeEqual(given, expected);
 };
 
 /** Why `req` is not answered for want of the key — `missing` or `wrong` —, else null. */
 export function keyWant(req, url) {
-  const k = req.headers['x-peix-key'] || url.searchParams.get('key');
+  const key = req.headers['x-peix-key'] || url.searchParams.get('key');
 
-  if (k) {
-    if (!keyMatches(k)) return 'wrong';
+  if (key) {
+    if (!keyMatches(key)) return 'wrong';
     if (req.headers['x-peix-app'] === '1') requireKey("the app's page came with it");
     return null;
   }
@@ -136,11 +140,11 @@ export function keyWant(req, url) {
 export function newTicket() {
   const now = Date.now();
 
-  for (const [t, at] of tickets) if (at < now) tickets.delete(t);
-  const t = randomBytes(18).toString('base64url');
+  for (const [known, at] of tickets) if (at < now) tickets.delete(known);
+  const ticket = randomBytes(18).toString('base64url');
 
-  tickets.set(t, now + 60_000);
-  return t;
+  tickets.set(ticket, now + 60_000);
+  return ticket;
 }
 
 // The app proves the server before it trusts it (2026-11-06): it adopted whatever answered on the port, sent it the key
@@ -152,10 +156,10 @@ export function newTicket() {
 const ALIVE_NONCE = /^[0-9a-f]{32,128}$/;
 
 export const aliveProof = req => {
-  const n = String(req.headers['x-peix-nonce'] || '');
+  const nonce = String(req.headers['x-peix-nonce'] || '');
 
-  return boardKey && ALIVE_NONCE.test(n)
-    ? { 'x-peix-proof': createHmac('sha256', boardKey).update(`peix-alive:${n}`).digest('hex') }
+  return boardKey && ALIVE_NONCE.test(nonce)
+    ? { 'x-peix-proof': createHmac('sha256', boardKey).update(`peix-alive:${nonce}`).digest('hex') }
     : {};
 };
 

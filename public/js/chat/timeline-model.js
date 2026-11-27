@@ -14,40 +14,40 @@ const TV_LANES = 5; // a lane each for the first five PRs shown, the rest one gr
 const TV_EDITS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 
 // what the ledgers hold has moved: a PR's `logged` (the server's count of its ledger's changes), its state, its round
-const tvSig = s =>
-  (s.prs || [])
+const tvSig = session =>
+  (session.prs || [])
     .map(
-      p =>
-        `${p.url} ${p.logged || 0} ${p.state} ${p.turn?.movedAt || ''} ${(p.rounds || []).map(r => r.from + (r.end || '') + (r.let || '')).join()}`,
+      pr =>
+        `${pr.url} ${pr.logged || 0} ${pr.state} ${pr.turn?.movedAt || ''} ${(pr.rounds || []).map(round => round.from + (round.end || '') + (round.let || '')).join()}`,
     )
     .join('\n');
 
 /** The open chat's ledgers: asked when the tab or the PR list wants them, and again once one of them has moved. */
-function tvLogOf(s) {
-  if (tv.id !== s.id) {
-    Object.assign(tv, { id: s.id, log: null, sig: '' });
+function tvLogOf(session) {
+  if (tv.id !== session.id) {
+    Object.assign(tv, { id: session.id, log: null, sig: '' });
     tv.opened.clear();
   }
 
-  const sig = tvSig(s);
+  const sig = tvSig(session);
 
-  if (sig !== tv.sig && !tv.asking && s.prs?.length) {
+  if (sig !== tv.sig && !tv.asking && session.prs?.length) {
     tv.asking = true;
-    const id = s.id;
+    const id = session.id;
 
     api('GET', `/api/sessions/${encodeURIComponent(id)}/prlog`)
       .then(
-        v => v,
+        ledger => ledger,
         () => null,
       )
-      .then(v => {
+      .then(ledger => {
         tv.asking = false;
         if (tv.id !== id) return;
         tv.sig = sig;
 
-        if (v) {
-          tv.log = v;
-          prlogs.set(id, { at: Date.now(), v });
+        if (ledger) {
+          tv.log = ledger;
+          prlogs.set(id, { at: Date.now(), v: ledger });
         } // the card's popover reads the same
 
         const now = state.sessions.get(id);
@@ -63,34 +63,34 @@ function tvLogOf(s) {
 /** A chat's turns from its entries: your prompt (none for one a task's notice woke), Claude's calls, its last words. */
 function tvTurns(entries) {
   const out = [];
-  let t = null;
+  let turn = null;
 
   const begin = (at, you = null) => {
-    t = { at, you, last: at, end: null, worked: 0, tools: [], reply: '', closed: false, cut: false };
-    out.push(t);
+    turn = { at, you, last: at, end: null, worked: 0, tools: [], reply: '', closed: false, cut: false };
+    out.push(turn);
   };
 
-  for (const e of entries) {
-    if (!e.ts) continue;
+  for (const entry of entries) {
+    if (!entry.ts) continue;
 
-    if (e.kind === 'text' && e.role === 'user') {
-      begin(e.ts, e.text);
+    if (entry.kind === 'text' && entry.role === 'user') {
+      begin(entry.ts, entry.text);
       continue;
     } // one typed mid-turn starts its own line
 
-    if (e.kind === 'interrupt') {
-      if (t && !t.closed) Object.assign(t, { end: e.ts, closed: true, cut: true });
+    if (entry.kind === 'interrupt') {
+      if (turn && !turn.closed) Object.assign(turn, { end: entry.ts, closed: true, cut: true });
       continue;
     }
 
-    if (e.kind === 'compact') continue;
-    if (!t || t.closed) begin(e.ts);
-    t.last = e.ts;
+    if (entry.kind === 'compact') continue;
+    if (!turn || turn.closed) begin(entry.ts);
+    turn.last = entry.ts;
 
-    if (e.kind === 'tool_use') t.tools.push(e);
-    else if (e.kind === 'text' && e.role === 'assistant') {
-      t.reply = e.text;
-      if (e.turnEnd) Object.assign(t, { end: e.ts, worked: e.worked || 0, closed: true });
+    if (entry.kind === 'tool_use') turn.tools.push(entry);
+    else if (entry.kind === 'text' && entry.role === 'assistant') {
+      turn.reply = entry.text;
+      if (entry.turnEnd) Object.assign(turn, { end: entry.ts, worked: entry.worked || 0, closed: true });
     }
   }
 
@@ -105,28 +105,30 @@ function tvTurnsOf(arr) {
     Object.assign(tvTurnsMemo, { arr, n: arr.length, turns: tvTurns(arr) });
   }
 
-  return tvTurnsMemo.turns.map(t => ({ ...t })); // the model writes on its turns
+  return tvTurnsMemo.turns.map(turn => ({ ...turn })); // the model writes on its turns
 }
 
-const reLit = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const reLit = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** The chat's PRs a piece of text names: its URL, repo#n, or #n when no other PR of the chat has that number. */
-function tvNames(s, text) {
+function tvNames(session, text) {
   const out = new Set();
-  const prs = s.prs || [];
+  const prs = session.prs || [];
 
   if (!text) return out;
 
-  for (const p of prs) {
-    const n = p.number;
-    const repo = p.label.replace(/#.*$/, '');
+  for (const pr of prs) {
+    const number = pr.number;
+    const repo = pr.label.replace(/#.*$/, '');
 
     if (
-      new RegExp(`${reLit(p.url)}(?!\\d)`).test(text) ||
-      (n && new RegExp(`\\b${reLit(repo)}\\s?#${n}\\b`, 'i').test(text)) ||
-      (n && prs.filter(x => x.number === n).length === 1 && new RegExp(`(^|[^\\w/#])#${n}\\b`).test(text))
+      new RegExp(`${reLit(pr.url)}(?!\\d)`).test(text) ||
+      (number && new RegExp(`\\b${reLit(repo)}\\s?#${number}\\b`, 'i').test(text)) ||
+      (number &&
+        prs.filter(other => other.number === number).length === 1 &&
+        new RegExp(`(^|[^\\w/#])#${number}\\b`).test(text))
     ) {
-      out.add(p.url);
+      out.add(pr.url);
     }
   }
 
@@ -134,104 +136,117 @@ function tvNames(s, text) {
 }
 
 /** What the timeline reads: the turns, each with the PRs it is about; every PR event, the chat's own tied to its turn. */
-function tvModel(s) {
-  const prs = [...(s.prs || [])].sort((a, b) => (a.number || 0) - (b.number || 0) || a.label.localeCompare(b.label));
-  const byUrl = new Map(prs.map(p => [p.url, p]));
-  const log = tvLogOf(s); // by number, as their hues go
+function tvModel(session) {
+  const prs = [...(session.prs || [])].sort(
+    (left, right) => (left.number || 0) - (right.number || 0) || left.label.localeCompare(right.label),
+  );
 
-  const led = new Map((log?.prs || []).filter(p => byUrl.has(p.url)).map(p => [p.url, p]));
+  const byUrl = new Map(prs.map(pr => [pr.url, pr]));
+  const log = tvLogOf(session); // by number, as their hues go
+
+  const led = new Map((log?.prs || []).filter(pr => byUrl.has(pr.url)).map(pr => [pr.url, pr]));
   const roundsOf = url => led.get(url)?.rounds || byUrl.get(url)?.rounds || [];
 
   const turns = tvTurnsOf(state.entries);
   const byTool = new Map();
 
-  for (const t of turns) {
-    for (const u of t.tools) if (u.toolUseId) byTool.set(u.toolUseId, t);
-    Object.assign(t, { ref: tvNames(s, t.you), acts: [], ms: Date.parse(t.at) });
-    t.about = new Set([...t.ref, ...tvNames(s, t.reply)]);
+  for (const turn of turns) {
+    for (const call of turn.tools) if (call.toolUseId) byTool.set(call.toolUseId, turn);
+    Object.assign(turn, { ref: tvNames(session, turn.you), acts: [], ms: Date.parse(turn.at) });
+    turn.about = new Set([...turn.ref, ...tvNames(session, turn.reply)]);
   }
 
   const evs = [];
   const chatAt = [];
 
-  for (const [url, l] of led) {
-    for (const e of l.ev || []) {
-      const x = { ...e, url, ms: Date.parse(e.a) };
+  for (const [url, ledger] of led) {
+    for (const raw of ledger.ev || []) {
+      const event = { ...raw, url, ms: Date.parse(raw.a) };
 
-      if (e.k === 'chat') {
-        chatAt.push(x);
+      if (raw.k === 'chat') {
+        chatAt.push(event);
 
-        if (e.c === s.id) {
+        if (raw.c === session.id) {
           // the call it was, by its id (chat:<chat>:<tool call>:<n>), else the turn it fell in
-          x.turn =
-            byTool.get(/^chat:[^:]+:(.+):\d+$/.exec(e.id)?.[1]) ||
-            turns.find(t => t.ms <= x.ms && x.ms <= Date.parse(t.end || t.last) + 1000) ||
+          event.turn =
+            byTool.get(/^chat:[^:]+:(.+):\d+$/.exec(raw.id)?.[1]) ||
+            turns.find(turn => turn.ms <= event.ms && event.ms <= Date.parse(turn.end || turn.last) + 1000) ||
             null;
 
-          if (x.turn) {
-            x.turn.acts.push(x);
-            x.turn.about.add(url);
+          if (event.turn) {
+            event.turn.acts.push(event);
+            event.turn.about.add(url);
           }
         }
       }
 
-      evs.push(x);
+      evs.push(event);
     }
   }
 
   // a word of yours GitHub has and the chat's own act on the same PR are one, as in the card's popover: the chat's says where from
-  const twin = e =>
-    e.w === '' &&
-    e.k !== 'chat' &&
-    e.k !== 'board' &&
-    chatAt.some(c => c.url === e.url && Math.abs(c.ms - e.ms) < 120_000);
+  const twin = event =>
+    event.w === '' &&
+    event.k !== 'chat' &&
+    event.k !== 'board' &&
+    chatAt.some(act => act.url === event.url && Math.abs(act.ms - event.ms) < 120_000);
 
   for (const [url] of led) {
-    for (const r of roundsOf(url)) {
+    for (const round of roundsOf(url)) {
       // the first prompt after a move is about it
-      const a = Date.parse(r.from);
-      const b = r.end ? Date.parse(r.end) : Infinity;
-      const t = turns.find(t => t.you && t.ms >= a);
+      const from = Date.parse(round.from);
+      const until = round.end ? Date.parse(round.end) : Infinity;
+      const turn = turns.find(candidate => candidate.you && candidate.ms >= from);
 
-      if (t && t.ms <= b + 60_000) t.about.add(url);
+      if (turn && turn.ms <= until + 60_000) turn.about.add(url);
     }
   }
 
-  const m = { prs, byUrl, led, roundsOf, turns, evs: evs.filter(e => !twin(e)).sort((a, b) => a.ms - b.ms) };
+  const model = {
+    prs,
+    byUrl,
+    led,
+    roundsOf,
+    turns,
+    evs: evs.filter(event => !twin(event)).sort((left, right) => left.ms - right.ms),
+  };
 
-  for (const t of turns) t.closes = new Set(t.acts.filter(a => tvMark(m, a).k === 'close')); // the acts that answered a round
-  return m;
+  for (const turn of turns) turn.closes = new Set(turn.acts.filter(act => tvMark(model, act).k === 'close')); // the acts that answered a round
+  return model;
 }
 
 /** What an event did to its PR's rounds: opened one (`move`; `live` while it waits on you), closed one, let one go. */
-function tvMark(m, e) {
-  const rs = m.roundsOf(e.url);
+function tvMark(model, event) {
+  const rs = model.roundsOf(event.url);
 
-  if (e.k === 'board') return e.x === 'back' ? {} : { k: 'let' };
-  const opens = e.k !== 'chat' && e.k !== 'opened' && e.w !== '' && rs.find(r => r.from === e.a);
+  if (event.k === 'board') return event.x === 'back' ? {} : { k: 'let' };
 
-  if (opens) return { k: 'move', r: opens, live: !opens.end && !!m.byUrl.get(e.url)?.turn?.you };
+  const opens =
+    event.k !== 'chat' && event.k !== 'opened' && event.w !== '' && rs.find(round => round.from === event.a);
+
+  if (opens) return { k: 'move', r: opens, live: !opens.end && !!model.byUrl.get(event.url)?.turn?.you };
 
   const closes = rs.find(
-    r =>
-      r.how === 'answered' &&
-      (r.by
-        ? e.k === 'chat' && r.by.a === e.a
-        : (e.w === '' && r.end === e.a) || (e.k === 'chat' && Math.abs(Date.parse(r.end) - e.ms) < 120_000)),
+    round =>
+      round.how === 'answered' &&
+      (round.by
+        ? event.k === 'chat' && round.by.a === event.a
+        : (event.w === '' && round.end === event.a) ||
+          (event.k === 'chat' && Math.abs(Date.parse(round.end) - event.ms) < 120_000)),
   );
 
   if (closes) return { k: 'close', r: closes };
-  return e.k === 'ci' && e.s === 'fail' ? { k: 'bad' } : {};
+  return event.k === 'ci' && event.s === 'fail' ? { k: 'bad' } : {};
 }
 
 /** The PRs in play: at your move, let go, answered in the last PIP_OK_MS, or acted on from this chat — else those
  *  that ever came round to you, else the open ones. */
-function tvInPlay(s, m) {
-  const play = new Set(inPlay(s).map(x => x.pr.url));
+function tvInPlay(session, model) {
+  const play = new Set(inPlay(session).map(entry => entry.pr.url));
 
-  for (const e of m.evs) if (e.k === 'chat' && e.c === s.id) play.add(e.url);
-  if (!play.size) for (const p of m.prs) if (m.roundsOf(p.url).length) play.add(p.url);
-  if (!play.size) for (const p of m.prs) if (p.state === 'open' || p.state === 'draft') play.add(p.url);
+  for (const event of model.evs) if (event.k === 'chat' && event.c === session.id) play.add(event.url);
+  if (!play.size) for (const pr of model.prs) if (model.roundsOf(pr.url).length) play.add(pr.url);
+  if (!play.size) for (const pr of model.prs) if (pr.state === 'open' || pr.state === 'draft') play.add(pr.url);
   return play;
 }
 
@@ -244,150 +259,150 @@ function tvInPlay(s, m) {
 const tvNarrow = new Map(); // chat id → { on: [url…], you: false, claude: false, turns, dens }, each only when not the default
 const TV_WHO = { you: 'claude', claude: 'you' }; // the chat's two chips, each to the other
 
-function tvScope(s, m) {
-  const play = tvInPlay(s, m);
-  const n = tvNarrow.get(s.id) || {};
-  const urls = new Set(m.prs.map(p => p.url));
+function tvScope(session, model) {
+  const play = tvInPlay(session, model);
+  const narrow = tvNarrow.get(session.id) || {};
+  const urls = new Set(model.prs.map(pr => pr.url));
 
-  const on = n.on ? new Set(n.on.filter(u => urls.has(u))) : play;
-  const fewer = !!n.on && [...play].some(u => !on.has(u));
+  const on = narrow.on ? new Set(narrow.on.filter(url => urls.has(url))) : play;
+  const fewer = !!narrow.on && [...play].some(url => !on.has(url));
 
   return {
     play,
     on,
-    you: n.you !== false,
-    claude: n.claude !== false,
-    turns: n.turns || (fewer && on.size ? 'about' : 'all'),
-    dens: n.dens || 'fold',
+    you: narrow.you !== false,
+    claude: narrow.claude !== false,
+    turns: narrow.turns || (fewer && on.size ? 'about' : 'all'),
+    dens: narrow.dens || 'fold',
     solo: on.size === 1 ? [...on][0] : null,
-    n,
+    n: narrow,
   };
 }
 
-const sameSet = (a, b) => a.size === b.size && [...a].every(x => b.has(x));
+const sameSet = (first, second) => first.size === second.size && [...first].every(value => second.has(value));
 
-function tvSet(s, change) {
-  const n = { ...tvNarrow.get(s.id), ...change };
+function tvSet(session, change) {
+  const narrow = { ...tvNarrow.get(session.id), ...change };
 
-  for (const k of Object.keys(n)) if (n[k] === undefined) delete n[k];
-  if (Object.keys(n).length) tvNarrow.set(s.id, n);
-  else tvNarrow.delete(s.id);
-  tvAddress(s);
+  for (const key of Object.keys(narrow)) if (narrow[key] === undefined) delete narrow[key];
+  if (Object.keys(narrow).length) tvNarrow.set(session.id, narrow);
+  else tvNarrow.delete(session.id);
+  tvAddress(session);
   keepTabsSoon();
-  if (state.current === s.id) renderTimeline(s);
+  if (state.current === session.id) renderTimeline(session);
 }
 
-function tvToggle(s, url) {
-  const sc = tvScope(s, tvModel(s));
+function tvToggle(session, url) {
+  const sc = tvScope(session, tvModel(session));
   const on = new Set(sc.on);
 
   if (on.has(url)) on.delete(url);
   else on.add(url);
-  tvSet(s, { on: sameSet(on, sc.play) ? undefined : [...on] });
+  tvSet(session, { on: sameSet(on, sc.play) ? undefined : [...on] });
 }
 
 const tvAll = { on: undefined, you: undefined, claude: undefined, turns: undefined }; // everything in play
 
 /** ⌥-click: that PR alone — or, alone already, everything in play again. Your prompts' chip or Claude's alone is
  *  that side of the chat alone. */
-function tvSolo(s, url) {
-  const sc = tvScope(s, tvModel(s));
-  const o = TV_WHO[url];
+function tvSolo(session, url) {
+  const sc = tvScope(session, tvModel(session));
+  const other = TV_WHO[url];
 
-  if (o) {
+  if (other) {
     return tvSet(
-      s,
-      sc[url] && !sc[o] && !sc.on.size ? tvAll : { on: [], [url]: undefined, [o]: false, turns: undefined },
+      session,
+      sc[url] && !sc[other] && !sc.on.size ? tvAll : { on: [], [url]: undefined, [other]: false, turns: undefined },
     );
   }
 
-  tvSet(s, sc.solo === url && sc.n.on ? { on: undefined, turns: undefined } : { on: [url], turns: undefined });
+  tvSet(session, sc.solo === url && sc.n.on ? { on: undefined, turns: undefined } : { on: [url], turns: undefined });
 }
 
-const tvSide = (s, who) => tvSet(s, { [who]: tvScope(s, tvModel(s))[who] ? false : undefined });
-const tvLabel = p => p.label.replace('#', '.'); // repo#482 → repo.482: a # is the address's own
+const tvSide = (session, who) => tvSet(session, { [who]: tvScope(session, tvModel(session))[who] ? false : undefined });
+const tvLabel = pr => pr.label.replace('#', '.'); // repo#482 → repo.482: a # is the address's own
 
 /** The narrow as the address carries it after the chat's id — empty for in play's. */
-function tvHash(id, n = tvNarrow.get(id)) {
-  const s = state.sessions.get(id);
+function tvHash(id, narrow = tvNarrow.get(id)) {
+  const session = state.sessions.get(id);
 
-  if (!n || !s) return '';
+  if (!narrow || !session) return '';
 
-  const by = new Map((s.prs || []).map(p => [p.url, p]));
-  const q = [];
+  const by = new Map((session.prs || []).map(pr => [pr.url, pr]));
+  const parts = [];
 
-  if (n.on) {
-    q.push(
-      `p=${n.on
-        .map(u => by.get(u))
+  if (narrow.on) {
+    parts.push(
+      `p=${narrow.on
+        .map(url => by.get(url))
         .filter(Boolean)
         .map(tvLabel)
         .join(',')}`,
     );
   }
 
-  for (const w in TV_WHO) if (n[w] === false) q.push(`${w}=0`);
-  if (n.turns) q.push(`t=${n.turns}`);
-  if (n.dens) q.push(`d=${n.dens}`);
-  return q.length ? `/tl:${q.join('&')}` : '';
+  for (const who in TV_WHO) if (narrow[who] === false) parts.push(`${who}=0`);
+  if (narrow.turns) parts.push(`t=${narrow.turns}`);
+  if (narrow.dens) parts.push(`d=${narrow.dens}`);
+  return parts.length ? `/tl:${parts.join('&')}` : '';
 }
 
-function tvAddress(s) {
-  if (state.current !== s.id) return;
-  const h = `#${s.id}${tvHash(s.id)}`;
+function tvAddress(session) {
+  if (state.current !== session.id) return;
+  const hash = `#${session.id}${tvHash(session.id)}`;
 
-  if (location.hash !== h) history.replaceState(null, '', h);
+  if (location.hash !== hash) history.replaceState(null, '', hash);
 }
 
 /** The narrow an address names (a link's, a reload's, an alert's), as the chat's: true when it names one. */
-function tvFromHash(s) {
-  const t = /\/tl:([^/]*)$/.exec(location.hash)?.[1];
+function tvFromHash(session) {
+  const query = /\/tl:([^/]*)$/.exec(location.hash)?.[1];
 
-  if (t == null || !s) return false;
+  if (query == null || !session) return false;
 
-  const q = new URLSearchParams(t);
-  const by = new Map((s.prs || []).map(p => [tvLabel(p).toLowerCase(), p.url]));
-  const n = {};
+  const params = new URLSearchParams(query);
+  const by = new Map((session.prs || []).map(pr => [tvLabel(pr).toLowerCase(), pr.url]));
+  const narrow = {};
 
-  if (q.has('p')) {
-    n.on = q
+  if (params.has('p')) {
+    narrow.on = params
       .get('p')
       .split(',')
-      .map(l => by.get(l.toLowerCase()))
+      .map(label => by.get(label.toLowerCase()))
       .filter(Boolean);
   }
 
-  for (const w in TV_WHO) if (q.get(w) === '0') n[w] = false;
-  if (['all', 'about'].includes(q.get('t'))) n.turns = q.get('t');
-  if (q.get('d') === 'all') n.dens = 'all';
-  if (Object.keys(n).length) tvNarrow.set(s.id, n);
-  else tvNarrow.delete(s.id);
+  for (const who in TV_WHO) if (params.get(who) === '0') narrow[who] = false;
+  if (['all', 'about'].includes(params.get('t'))) narrow.turns = params.get('t');
+  if (params.get('d') === 'all') narrow.dens = 'all';
+  if (Object.keys(narrow).length) tvNarrow.set(session.id, narrow);
+  else tvNarrow.delete(session.id);
   return true;
 }
 
 /** The timeline soloed on one PR and gone to its move (N5): the header's your-move tag, a card's move line or its
  *  mark for that PR, an alert that it came round to you. */
-function tvOpenOn(s, url) {
+function tvOpenOn(session, url) {
   // no PR: the timeline as its narrow stands (a card's menu with no move)
-  if (!s || (url && !(s.prs || []).some(p => p.url === url))) return;
+  if (!session || (url && !(session.prs || []).some(pr => pr.url === url))) return;
 
   if (url) {
-    tvNarrow.set(s.id, { ...tvNarrow.get(s.id), on: [url] });
-    delete tvNarrow.get(s.id).turns;
-    tv.goto = { id: s.id, url };
+    tvNarrow.set(session.id, { ...tvNarrow.get(session.id), on: [url] });
+    delete tvNarrow.get(session.id).turns;
+    tv.goto = { id: session.id, url };
   }
 
-  if (!timelineOpen.has(s.id)) {
-    timelineOpen.add(s.id);
-    openNewTab(s, 'timeline');
-  } else setTab(s, 'timeline');
-  tvAddress(s);
-  syncTerm(s);
+  if (!timelineOpen.has(session.id)) {
+    timelineOpen.add(session.id);
+    openNewTab(session, 'timeline');
+  } else setTab(session, 'timeline');
+  tvAddress(session);
+  syncTerm(session);
   focusBoard();
 }
 
 const tvSoloHash = (id, url) => {
-  const p = state.sessions.get(id)?.prs?.find(x => x.url === url);
+  const pr = state.sessions.get(id)?.prs?.find(candidate => candidate.url === url);
 
-  return p ? `${id}/tl:p=${tvLabel(p)}` : id;
+  return pr ? `${id}/tl:p=${tvLabel(pr)}` : id;
 };

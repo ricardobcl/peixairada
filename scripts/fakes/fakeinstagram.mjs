@@ -9,16 +9,18 @@ const [cmd, ...names] = process.argv.slice(2);
 const file = process.env.FAKEIG_FILE;
 
 if (process.env.FAKEIG_LOG) appendFileSync(process.env.FAKEIG_LOG, `${[cmd, ...names].join(' ')}\n`);
-let d = {};
+let data = {};
 
 try {
-  d = JSON.parse(readFileSync(file, 'utf8'));
+  data = JSON.parse(readFileSync(file, 'utf8'));
 } catch {}
 
-const out = o => process.stdout.write(`${JSON.stringify(o)}\n`);
+const out = payload => process.stdout.write(`${JSON.stringify(payload)}\n`);
 
 if (cmd === 'look') {
-  out({ places: Object.fromEntries(names.map(h => [h, d.profiles?.[h] || { error: 'no such account' }])) });
+  out({
+    places: Object.fromEntries(names.map(handle => [handle, data.profiles?.[handle] || { error: 'no such account' }])),
+  });
 } else {
   process.stderr.write(`fakeinstagram: no command ${cmd}\n`);
   process.exit(2);

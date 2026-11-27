@@ -28,10 +28,10 @@ export function project() {
   const app = join(root, 'peixAIrada.app');
 
   const keygen = name => {
-    const f = join(root, name);
+    const keyFile = join(root, name);
 
-    execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', name, '-f', f]);
-    return f;
+    execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', name, '-f', keyFile]);
+    return keyFile;
   };
 
   const signer = keygen('signer');
@@ -58,15 +58,15 @@ export function project() {
   const signers = (...keys) =>
     `${keys
       .map(
-        k =>
-          `test@example.com namespaces="git" ${readFileSync(`${k}.pub`, 'utf8').trim().split(' ').slice(0, 2).join(' ')}`,
+        key =>
+          `test@example.com namespaces="git" ${readFileSync(`${key}.pub`, 'utf8').trim().split(' ').slice(0, 2).join(' ')}`,
       )
       .join('\n')}\n`;
 
   const write = (dir, files) => {
-    for (const [f, body] of Object.entries(files)) {
-      mkdirSync(dirname(join(dir, f)), { recursive: true });
-      writeFileSync(join(dir, f), body);
+    for (const [file, body] of Object.entries(files)) {
+      mkdirSync(dirname(join(dir, file)), { recursive: true });
+      writeFileSync(join(dir, file), body);
     }
   };
 
@@ -81,14 +81,14 @@ export function project() {
     '.github/allowed_signers': signers(signer),
   });
 
-  for (const f of [
+  for (const file of [
     'lib/testserver.mjs',
     'lib/page.mjs',
     'scripts/check-page.mjs',
     'mac/Sources/main.swift',
     'mac/Sources/Keys.swift',
   ]) {
-    cpSync(join(ROOT, f), join(dev, f));
+    cpSync(join(ROOT, file), join(dev, file));
   }
 
   git(dev, 'add', '-A');
@@ -112,11 +112,11 @@ export function project() {
   stamp(git(co, 'rev-parse', 'HEAD:mac'));
 
   const stand = (name, then = '') => {
-    const f = join(root, name);
+    const script = join(root, name);
 
-    writeFileSync(f, `#!/bin/sh\necho "${name} $*" >> "${marks}"\n${then}`);
-    chmodSync(f, 0o755);
-    return f;
+    writeFileSync(script, `#!/bin/sh\necho "${name} $*" >> "${marks}"\n${then}`);
+    chmodSync(script, 0o755);
+    return script;
   };
 
   // the app's build as build.sh ends: stamped with the checkout's mac/ and `installed →`, or a compiler's complaint; slow
@@ -171,7 +171,7 @@ export function project() {
     return git(co, 'rev-parse', 'HEAD');
   };
 
-  const builds = () => asked().filter(l => l.startsWith('build ')).length;
+  const builds = () => asked().filter(line => line.startsWith('build ')).length;
 
   return {
     root,

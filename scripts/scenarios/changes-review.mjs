@@ -16,8 +16,8 @@ const repo = join(realpathSync(tmpDir('peix-rev-')), 'shop');
 
 mkdirSync(join(repo, 'src'), { recursive: true });
 
-const g = (...a) =>
-  execFileSync('git', ['-C', repo, ...a], {
+const git = (...args) =>
+  execFileSync('git', ['-C', repo, ...args], {
     stdio: 'pipe',
     env: {
       ...process.env,
@@ -28,7 +28,7 @@ const g = (...a) =>
     },
   });
 
-g('init', '-q', '-b', 'main');
+git('init', '-q', '-b', 'main');
 
 writeFileSync(
   join(repo, 'src', 'cart.js'),
@@ -36,9 +36,9 @@ writeFileSync(
 );
 
 writeFileSync(join(repo, 'README.md'), '# shop\n');
-g('add', '.');
-g('commit', '-q', '-m', 'base');
-g('checkout', '-q', '-b', 'feat/tax');
+git('add', '.');
+git('commit', '-q', '-m', 'base');
+git('checkout', '-q', '-b', 'feat/tax');
 
 writeFileSync(
   join(repo, 'src', 'cart.js'),
@@ -210,8 +210,8 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#chg .crev textarea').value`), 'keep the tests green');
 
   // a range by a drag: from the + of cart.js's first removed line to its first added one — three lines, tinted as it goes
-  const at = (path, side, n) =>
-    `#chg .cfile[data-path="${path}"] .dl.${side === 'a' ? 'del' : 'add'}[data-${side}="${n}"]`;
+  const at = (path, side, number) =>
+    `#chg .cfile[data-path="${path}"] .dl.${side === 'a' ? 'del' : 'add'}[data-${side}="${number}"]`;
 
   const sel = () =>
     ctx.evaluate(
@@ -322,12 +322,12 @@ export default async function (ctx) {
     readFileSync(chat.file, 'utf8')
       .trim()
       .split('\n')
-      .map(l => JSON.parse(l))
-      .filter(l => l.type === 'user')
-      .map(l =>
+      .map(text => JSON.parse(text))
+      .filter(entry => entry.type === 'user')
+      .map(entry =>
         []
-          .concat(l.message.content)
-          .map(c => c.text ?? c)
+          .concat(entry.message.content)
+          .map(part => part.text ?? part)
           .join(''),
       )
       .pop();

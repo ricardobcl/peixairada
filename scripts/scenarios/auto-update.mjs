@@ -52,9 +52,9 @@ const gitAs = (sign, cwd, ...args) =>
 const git = (cwd, ...args) => gitAs(true, cwd, ...args);
 
 const write = files => {
-  for (const [f, body] of Object.entries(files)) {
-    mkdirSync(dirname(join(dev, f)), { recursive: true });
-    writeFileSync(join(dev, f), body);
+  for (const [file, body] of Object.entries(files)) {
+    mkdirSync(dirname(join(dev, file)), { recursive: true });
+    writeFileSync(join(dev, file), body);
   }
 };
 
@@ -70,14 +70,14 @@ write({
   '.github/allowed_signers': `test@example.com namespaces="git" ${readFileSync(`${signer}.pub`, 'utf8').trim().split(' ').slice(0, 2).join(' ')}\n`,
 });
 
-for (const f of [
+for (const file of [
   'lib/testserver.mjs',
   'lib/page.mjs',
   'scripts/check-page.mjs',
   'mac/Sources/main.swift',
   'mac/Sources/Keys.swift',
 ]) {
-  cpSync(join(ROOT, f), join(dev, f));
+  cpSync(join(ROOT, file), join(dev, file));
 }
 
 git(dev, 'add', '-A');
@@ -116,13 +116,13 @@ writeFileSync(
 chmodSync(build, 0o755);
 writeFileSync(npm, '#!/bin/sh\nsleep 3\n');
 chmodSync(npm, 0o755); // a slow install: long enough to see the step
-let n = 0;
+let pushCount = 0;
 
 /** a commit on origin, as from someone else's machine; its sha */
-const push = (files = { 'public/index.html': `${PAGE}<!-- ${++n} -->\n` }, sign = true) => {
+const push = (files = { 'public/index.html': `${PAGE}<!-- ${++pushCount} -->\n` }, sign = true) => {
   write(files);
   git(dev, 'add', '-A');
-  gitAs(sign, dev, 'commit', '-q', '-m', `change ${n}`);
+  gitAs(sign, dev, 'commit', '-q', '-m', `change ${pushCount}`);
   git(dev, 'push', '-q');
   return git(dev, 'rev-parse', 'HEAD');
 };
@@ -166,7 +166,7 @@ export default async function (ctx) {
       .evaluate(
         `(r => ({ x: r.left, y: r.top - 4, width: Math.min(r.width, 900), height: r.height + 8 }))(document.querySelector('#sbar').getBoundingClientRect())`,
       )
-      .then(r => ctx.shot(label, r));
+      .then(clip => ctx.shot(label, clip));
 
   try {
     // where it stands
@@ -247,7 +247,7 @@ export default async function (ctx) {
 
     // check now, with a commit that changes the page: said, not taken — the status bar's alert, update now offered
     const first = git(co, 'rev-parse', 'HEAD');
-    const a = push();
+    const pageCommit = push();
 
     await mark();
     await ctx.evaluate(`document.querySelector('#updBtn').click()`);
@@ -278,13 +278,13 @@ export default async function (ctx) {
     // update now: pulled, and the page reloaded at once — the dialog notwithstanding
     await ctx.evaluate(`document.querySelector('#updBtn').click()`);
     await reloaded('the page reloaded at once');
-    ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), a, 'pulled');
+    ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), pageCommit, 'pulled');
     out.after = await ctx.evaluate(`window.peix.state().reload`);
     ctx.assert.equal(out.after, null, 'a page loaded after the update wants nothing more');
     await ctx.waitFor(`document.querySelector('#sbLeft .upg')`, { what: 'the status bar saying it' });
 
     ctx.assert.deepEqual(
-      await seg().then(x => [x.cls, x.text]),
+      await seg().then(segment => [segment.cls, segment.text]),
       ['seg upg done', 'updated · 1 commit'],
       'for a minute, what came',
     );
@@ -294,19 +294,23 @@ export default async function (ctx) {
     await ctx.cmd('Comma');
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings again' });
     await ctx.evaluate(`document.querySelector('#autoUpdate').click()`);
-    for (let i = 0; i < 30 && (await ctx.server.api('api/update')).body.on !== true; i++) await ctx.sleep(100);
+
+    for (let attempt = 0; attempt < 30 && (await ctx.server.api('api/update')).body.on !== true; attempt++) {
+      await ctx.sleep(100);
+    }
+
     ctx.assert.equal((await ctx.server.api('api/update')).body.on, true, 'the server switched on');
-    const b = push();
+    const autoCommit = push();
 
     await ctx.server.post('/api/update', {});
-    ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), b);
+    ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), autoCommit);
     await ctx.waitFor(`window.peix.state().reload?.why === 'dialog'`, { what: 'the reload waiting on the dialog' });
     out.pageSeg = await seg();
     ctx.assert.deepEqual([out.pageSeg.cls, out.pageSeg.text], ['seg upg page', 'updated · reload the page']);
     ctx.assert.match(out.pageSeg.tip, /once you leave it be \(a dialog is up\) — click to reload it now/);
     await ctx.evaluate(`document.querySelector('#settings').close()`);
 
-    for (let i = 0; i < 4; i++) {
+    for (let press = 0; press < 4; press++) {
       await ctx.send('Input.dispatchKeyEvent', {
         type: 'keyDown',
         key: 'Shift',
@@ -325,7 +329,7 @@ export default async function (ctx) {
     }
 
     out.waiting = await ctx.evaluate(`window.peix?.state().reload`);
-    ctx.assert.deepEqual(out.waiting, { to: b, why: 'input' }, 'keys pressed a moment ago: not yet');
+    ctx.assert.deepEqual(out.waiting, { to: autoCommit, why: 'input' }, 'keys pressed a moment ago: not yet');
     ctx.assert.match((await seg()).tip, /\(you are at it\)/);
     await barShot('2-bar-reload');
     await reloaded('the page reloaded once left be');
@@ -334,11 +338,15 @@ export default async function (ctx) {
     await mark();
     await ctx.cmd('Comma');
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings once more' });
-    const c = push({ 'server.mjs': `${TINY}// ${++n}\n`, 'public/index.html': `${PAGE}<!-- ${n} -->\n` });
+
+    const serverCommit = push({
+      'server.mjs': `${TINY}// ${++pushCount}\n`,
+      'public/index.html': `${PAGE}<!-- ${pushCount} -->\n`,
+    });
 
     await ctx.evaluate(`document.querySelector('#updBtn').click()`);
     await ctx.waitFor(`window.peix.state().reload?.why === 'server'`, { what: 'the reload waiting on the server' });
-    ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), c);
+    ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), serverCommit);
     out.restartSeg = await seg();
 
     ctx.assert.deepEqual(
@@ -347,7 +355,7 @@ export default async function (ctx) {
       'the last of four steps',
     );
 
-    for (let i = 0; i < 40 && !existsSync(marks); i++) await ctx.sleep(100);
+    for (let attempt = 0; attempt < 40 && !existsSync(marks); attempt++) await ctx.sleep(100);
     ctx.assert.equal(readFileSync(marks, 'utf8').trim(), 'restart restart --detached', 'the agent asked to restart');
     await ctx.sleep(1500);
     ctx.assert.equal(await ctx.evaluate(`window.__mark`), 1, 'not before the server is back');
@@ -355,7 +363,7 @@ export default async function (ctx) {
     await reloaded('the page reloaded from the new server');
 
     // a step that takes a while — the packages — said with its bar as it runs
-    push({ 'package.json': `{ "name": "tiny", "version": "${++n}.0.0" }\n` });
+    push({ 'package.json': `{ "name": "tiny", "version": "${++pushCount}.0.0" }\n` });
     await ctx.evaluate(`document.querySelector('#updBtn').click()`);
 
     await ctx.waitFor(`document.querySelector('#sbLeft .upg.run')?.textContent === 'installing the packages…'`, {
@@ -383,7 +391,11 @@ export default async function (ctx) {
     await ctx.cmd('Comma');
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings, last' });
     await ctx.evaluate(`document.querySelector('#autoUpdate').click()`);
-    for (let i = 0; i < 30 && (await ctx.server.api('api/update')).body.on !== false; i++) await ctx.sleep(100);
+
+    for (let attempt = 0; attempt < 30 && (await ctx.server.api('api/update')).body.on !== false; attempt++) {
+      await ctx.sleep(100);
+    }
+
     ctx.assert.equal((await ctx.server.api('api/update')).body.on, false, 'the server switched off');
     push();
     await ctx.evaluate(`document.querySelector('#updBtn').click()`);
@@ -493,12 +505,12 @@ export default async function (ctx) {
       { what: 'the commit takeable again' },
     );
 
-    const d = git(dev, 'rev-parse', 'HEAD');
+    const devHead = git(dev, 'rev-parse', 'HEAD');
 
     await mark();
     await ctx.evaluate(`document.querySelector('#sbLeft .upg').click()`);
     await reloaded('the page reloaded after a click on the bar');
-    ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), d, 'pulled by the click');
+    ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), devHead, 'pulled by the click');
     ctx.assert.equal(readFileSync(dirty, 'utf8'), `${clean}// mine\n`, 'the change kept');
     writeFileSync(dirty, clean);
 
@@ -506,12 +518,12 @@ export default async function (ctx) {
     // as such, and followed by a click on the word, onto the new history
     const replaced = git(dev, 'rev-list', 'HEAD').split('\n');
 
-    for (const [k, v] of [
+    for (const [setting, value] of [
       ['gpg.format', 'ssh'],
       ['user.signingkey', signer],
       ['commit.gpgsign', 'true'],
     ]) {
-      git(dev, 'config', k, v);
+      git(dev, 'config', setting, value);
     }
 
     git(dev, 'rebase', '-q', '--root', '--force-rebase');

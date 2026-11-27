@@ -92,8 +92,8 @@ export { cronNext, nextWake, pruneWakes } from './server/wakes.mjs';
 export { ensureWorktree, linkModules, sweepWorktrees, switchGuard } from './server/worktrees.mjs';
 
 if (isMain) {
-  main().catch(e => {
-    console.error('[peixairada] boot failed:', e);
+  main().catch(error => {
+    console.error('[peixairada] boot failed:', error);
     process.exit(1);
   });
 }

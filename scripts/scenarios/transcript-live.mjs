@@ -41,7 +41,7 @@ export default async function (ctx) {
   const now = Date.now();
 
   const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));
-  const live = (i, extra = {}) => ({ pid: sleeps[i].pid, startedAt: now - 3600_000, ...extra });
+  const live = (index, extra = {}) => ({ pid: sleeps[index].pid, startedAt: now - 3600_000, ...extra });
 
   try {
     const { chats } = makeFixture(ctx.fixture.dir, [
@@ -76,12 +76,12 @@ export default async function (ctx) {
         reply: 'here goes',
         at: new Date(now - 7200_000),
         lines: id =>
-          Array.from({ length: 30 }, (_, i) =>
+          Array.from({ length: 30 }, (_, index) =>
             replyLines({
               id,
               cwd,
-              text: `Paragraph ${i + 1} of a long reply, long enough to take a line or two of the transcript, so that thirty of them run well past the bottom of the window.`,
-              at: new Date(now - 7200_000 + (i + 1) * 1000),
+              text: `Paragraph ${index + 1} of a long reply, long enough to take a line or two of the transcript, so that thirty of them run well past the bottom of the window.`,
+              at: new Date(now - 7200_000 + (index + 1) * 1000),
             }),
           ).flat(),
       },
@@ -177,7 +177,7 @@ export default async function (ctx) {
     appendFileSync(
       working.file,
       `${replyLines({ id: working.id, cwd, text: 'Built, all green.', at: new Date() })
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 
@@ -248,7 +248,7 @@ export default async function (ctx) {
     appendFileSync(
       long.file,
       `${replyLines({ id: long.id, cwd, text: 'And one more, while you were reading the top.', at: new Date() })
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 
@@ -259,8 +259,8 @@ export default async function (ctx) {
       pill: await pill(ctx),
       moves: (await ctx.peix('motion()'))
         .slice(n0)
-        .map(m => m.kind)
-        .filter(k => ['msg', 'pill'].includes(k)),
+        .map(move => move.kind)
+        .filter(kind => ['msg', 'pill'].includes(kind)),
     }; // the card's own slide to the top of the list is the list's business
 
     ctx.assert.equal(out.scrolledUp.pill.text, '↓ new reply', 'what the pill says');
@@ -279,7 +279,7 @@ export default async function (ctx) {
     appendFileSync(
       long.file,
       `${replyLines({ id: long.id, cwd, text: 'And another, with you at the end.', at: new Date() })
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 
@@ -301,8 +301,8 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-    for (const t of out.times) {
-      ctx.assert.match(t, /^\d{1,2}:\d{2}(?:[\s\u202f][AP]M)?$/, `a time without seconds: ${t}`);
+    for (const time of out.times) {
+      ctx.assert.match(time, /^\d{1,2}:\d{2}(?:[\s\u202f][AP]M)?$/, `a time without seconds: ${time}`);
     }
 
     out.longDays = await ctx.evaluate(`document.querySelectorAll('#log > .sysline.day').length`);
@@ -336,7 +336,7 @@ export default async function (ctx) {
     ctx.assert.match(out.age.text, /^\d+[smhd]$/, `and fillAges wrote the age: ${out.age.text}`);
     ctx.assert.match(out.age.tip, /last activity/, 'with the tooltip');
   } finally {
-    for (const s of sleeps) s.kill();
+    for (const child of sleeps) child.kill();
   }
 
   return out;

@@ -27,7 +27,7 @@ const click = (ctx, lane) =>
   return { ids: window.__held.map(a => a.id), kinds: window.peix.motion().slice(n0).map(m => m.kind) };
 })()`);
 
-const at = (ctx, t) => ctx.evaluate(`window.__held.forEach(a => a.currentTime = ${t})`);
+const at = (ctx, ms) => ctx.evaluate(`window.__held.forEach(a => a.currentTime = ${ms})`);
 const run = ctx => ctx.evaluate(`window.__held.forEach(a => a.play())`);
 
 // where things stand, in the list's own pixels: the lane's head, the next lane's head, the lane's cards by title (in
@@ -49,22 +49,22 @@ const look = (ctx, lane, next) =>
     cards, counted: l.querySelectorAll(':scope > .card').length, foot: l.clientHeight, flips: document.getAnimations().filter(a => a.id === 'flip').length, scroll: l.scrollTop };
 })()`);
 
-const near = (a, b, d = 1) => Math.abs(a - b) <= d;
+const near = (left, right, tolerance = 1) => Math.abs(left - right) <= tolerance;
 // the same place, or both past the list's foot: what is out of sight there moves at once (only the window's room slides)
-const same = (a, b, foot) => near(a, b) || (a >= foot - 1 && b >= foot - 1);
+const same = (left, right, foot) => near(left, right) || (left >= foot - 1 && right >= foot - 1);
 
 export default async function (ctx) {
   const out = {};
   const now = Date.now();
   const cwd = realpathSync(tmpDir('peix-fold-'));
 
-  const ago = m => new Date(now - m * 60_000);
+  const ago = minutes => new Date(now - minutes * 60_000);
 
-  const days = d => {
-    const t = new Date();
+  const days = back => {
+    const date = new Date();
 
-    t.setDate(t.getDate() - d);
-    return t;
+    date.setDate(date.getDate() - back);
+    return date;
   };
 
   await ctx.server.api('api/config', {
@@ -85,19 +85,19 @@ export default async function (ctx) {
   ];
 
   const { chats } = makeFixture(ctx.fixture.dir, [
-    ...ready.map((title, k) => ({
+    ...ready.map((title, index) => ({
       cwd,
       title,
       prompt: `${title.toLowerCase()}, please`,
       reply: 'Done, the tests pass.',
-      at: k < 4 ? ago(90 + k * 30) : days(1 + (k > 5)),
+      at: index < 4 ? ago(90 + index * 30) : days(1 + (index > 5)),
     })),
-    ...['Old spike on the search index', 'The flags cleanup', 'A wiki page'].map((title, k) => ({
+    ...['Old spike on the search index', 'The flags cleanup', 'A wiki page'].map((title, index) => ({
       cwd,
       title,
       prompt: 'this',
       reply: 'done',
-      at: days(8 + k),
+      at: days(8 + index),
     })),
   ]);
 
@@ -114,74 +114,74 @@ export default async function (ctx) {
       `(r => ({ x: r.left, y: r.top, width: r.width, height: Math.min(r.height, 760), scale: 2 }))(document.querySelector('#sessions').getBoundingClientRect())`,
     );
 
-  const T = [0, 40, 80, 120, 160, 200];
+  const MOMENTS = [0, 40, 80, 120, 160, 200];
 
   for (const layout of ['sidebar']) {
-    const o = (out[layout] = {});
+    const layoutOut = (out[layout] = {});
     // ---- folding Ready: one block under a head that stays, the lane under it rising over the cards ----
     const open0 = await look(ctx, 'ready', 'idle');
 
     ctx.assert.equal(open0.cards.length, 10, `${layout}: Ready's ten cards`);
     ctx.assert.ok(open0.order.includes('day'), `${layout}: day lines in the lane: ${open0.order}`);
-    o.fold = await click(ctx, 'ready');
+    layoutOut.fold = await click(ctx, 'ready');
 
     ctx.assert.deepEqual(
-      [...new Set(o.fold.ids)],
+      [...new Set(layoutOut.fold.ids)],
       ['fold'],
-      `${layout}: folding is one move, the lane's: ${o.fold.ids}`,
+      `${layout}: folding is one move, the lane's: ${layoutOut.fold.ids}`,
     );
 
     ctx.assert.deepEqual(
-      o.fold.kinds.filter(k => k !== 'roll'),
+      layoutOut.fold.kinds.filter(kind => kind !== 'roll'),
       ['fold', ...Array(10).fill('leave')],
-      `${layout}: the fold, and each card noted leaving: ${o.fold.kinds}`,
+      `${layout}: the fold, and each card noted leaving: ${layoutOut.fold.kinds}`,
     );
 
-    o.foldFrames = [];
+    layoutOut.foldFrames = [];
 
-    for (const t of T) {
-      await at(ctx, t);
-      const f = await look(ctx, 'ready', 'idle');
+    for (const ms of MOMENTS) {
+      await at(ctx, ms);
+      const frame = await look(ctx, 'ready', 'idle');
 
-      o.foldFrames.push({ t, head: f.head, next: f.next });
-      ctx.assert.equal(f.same, true, `${layout} fold @${t}: the head the same node`);
-      ctx.assert.equal(f.head, open0.head, `${layout} fold @${t}: the head where it stood`);
+      layoutOut.foldFrames.push({ t: ms, head: frame.head, next: frame.next });
+      ctx.assert.equal(frame.same, true, `${layout} fold @${ms}: the head the same node`);
+      ctx.assert.equal(frame.head, open0.head, `${layout} fold @${ms}: the head where it stood`);
 
       ctx.assert.deepEqual(
-        f.order,
+        frame.order,
         ['fold'],
-        `${layout} fold @${t}: under the head one block, the cards and day lines in it: ${f.order}`,
+        `${layout} fold @${ms}: under the head one block, the cards and day lines in it: ${frame.order}`,
       );
 
-      ctx.assert.equal(f.counted, 3, `${layout} fold @${t}: the folding cards not the list's`);
-      ctx.assert.equal(f.flips, 0, `${layout} fold @${t}: nothing else slides`);
+      ctx.assert.equal(frame.counted, 3, `${layout} fold @${ms}: the folding cards not the list's`);
+      ctx.assert.equal(frame.flips, 0, `${layout} fold @${ms}: nothing else slides`);
 
-      f.cards.forEach((c, i) => {
+      frame.cards.forEach((card, index) => {
         ctx.assert.ok(
-          near(c.y, open0.cards[i].y, 0.5) && c.t === open0.cards[i].t && !c.own && !c.id,
-          `${layout} fold @${t}: ${c.t} stands where it stood, out of the list's count: ${JSON.stringify([c, open0.cards[i]])}`,
+          near(card.y, open0.cards[index].y, 0.5) && card.t === open0.cards[index].t && !card.own && !card.id,
+          `${layout} fold @${ms}: ${card.t} stands where it stood, out of the list's count: ${JSON.stringify([card, open0.cards[index]])}`,
         );
 
         ctx.assert.ok(
-          !c.shows || c.y + c.shows <= f.next + 0.5,
-          `${layout} fold @${t}: ${c.t} shows only above the lane rising over it: ${JSON.stringify(c)}, next ${f.next}`,
+          !card.shows || card.y + card.shows <= frame.next + 0.5,
+          `${layout} fold @${ms}: ${card.t} shows only above the lane rising over it: ${JSON.stringify(card)}, next ${frame.next}`,
         );
       });
 
-      if (t === 0) {
+      if (ms === 0) {
         ctx.assert.ok(
-          same(f.next, open0.next, f.foot),
-          `${layout} fold @0: Idle's head where it was: ${f.next} vs ${open0.next}`,
+          same(frame.next, open0.next, frame.foot),
+          `${layout} fold @0: Idle's head where it was: ${frame.next} vs ${open0.next}`,
         );
       }
 
-      if (t === 80) await ctx.shot(`${layout}-fold`, await crop());
+      if (ms === 80) await ctx.shot(`${layout}-fold`, await crop());
     }
 
-    for (let i = 1; i < o.foldFrames.length; i++) {
+    for (let index = 1; index < layoutOut.foldFrames.length; index++) {
       ctx.assert.ok(
-        o.foldFrames[i].next < o.foldFrames[i - 1].next,
-        `${layout}: Idle's head rises all the way: ${JSON.stringify(o.foldFrames)}`,
+        layoutOut.foldFrames[index].next < layoutOut.foldFrames[index - 1].next,
+        `${layout}: Idle's head rises all the way: ${JSON.stringify(layoutOut.foldFrames)}`,
       );
     }
 
@@ -207,56 +207,56 @@ export default async function (ctx) {
     );
 
     // ---- opening it: the cards in place and the list's at once, the lane under them sliding down off them ----
-    o.open = await click(ctx, 'ready');
+    layoutOut.open = await click(ctx, 'ready');
 
     ctx.assert.deepEqual(
-      [...new Set(o.open.ids)].sort(),
+      [...new Set(layoutOut.open.ids)].sort(),
       ['enter', 'open'],
-      `${layout}: opening, the cards uncovered and the lane under them sliding: ${o.open.ids}`,
+      `${layout}: opening, the cards uncovered and the lane under them sliding: ${layoutOut.open.ids}`,
     );
 
-    o.openFrames = [];
+    layoutOut.openFrames = [];
 
-    for (const t of T) {
-      await at(ctx, t);
-      const f = await look(ctx, 'ready', 'idle');
+    for (const ms of MOMENTS) {
+      await at(ctx, ms);
+      const frame = await look(ctx, 'ready', 'idle');
 
-      o.openFrames.push({ t, next: f.next });
+      layoutOut.openFrames.push({ t: ms, next: frame.next });
 
       ctx.assert.deepEqual(
-        [f.same, f.head, f.counted, f.flips],
+        [frame.same, frame.head, frame.counted, frame.flips],
         [true, open0.head, 13, 0],
-        `${layout} open @${t}: the head kept where it stood, the cards the list's, nothing sliding across them`,
+        `${layout} open @${ms}: the head kept where it stood, the cards the list's, nothing sliding across them`,
       );
 
-      ctx.assert.deepEqual(f.order, open0.order, `${layout} open @${t}: the lane as it was drawn`);
+      ctx.assert.deepEqual(frame.order, open0.order, `${layout} open @${ms}: the lane as it was drawn`);
 
-      f.cards.forEach((c, i) => {
+      frame.cards.forEach((card, index) => {
         ctx.assert.ok(
-          near(c.y, open0.cards[i].y, 0.5) && c.own && c.id,
-          `${layout} open @${t}: ${c.t} at its place: ${JSON.stringify([c, open0.cards[i]])}`,
+          near(card.y, open0.cards[index].y, 0.5) && card.own && card.id,
+          `${layout} open @${ms}: ${card.t} at its place: ${JSON.stringify([card, open0.cards[index]])}`,
         );
 
         ctx.assert.ok(
-          !c.shows || c.y + c.shows <= f.next + 0.5,
-          `${layout} open @${t}: ${c.t} shows only above the lane sliding off it: ${JSON.stringify(c)}, next ${f.next}`,
+          !card.shows || card.y + card.shows <= frame.next + 0.5,
+          `${layout} open @${ms}: ${card.t} shows only above the lane sliding off it: ${JSON.stringify(card)}, next ${frame.next}`,
         );
       });
 
-      if (t === 0) {
+      if (ms === 0) {
         ctx.assert.ok(
-          near(f.next, shut.next) && f.cards.every(c => c.shows === 0),
-          `${layout} open @0: Idle's head where it was, nothing of Ready shown yet: ${f.next} vs ${shut.next}`,
+          near(frame.next, shut.next) && frame.cards.every(card => card.shows === 0),
+          `${layout} open @0: Idle's head where it was, nothing of Ready shown yet: ${frame.next} vs ${shut.next}`,
         );
       }
 
-      if (t === 80) await ctx.shot(`${layout}-open`, await crop());
+      if (ms === 80) await ctx.shot(`${layout}-open`, await crop());
     }
 
-    for (let i = 1; i < o.openFrames.length; i++) {
+    for (let index = 1; index < layoutOut.openFrames.length; index++) {
       ctx.assert.ok(
-        o.openFrames[i].next > o.openFrames[i - 1].next,
-        `${layout}: Idle's head slides down all the way: ${JSON.stringify(o.openFrames)}`,
+        layoutOut.openFrames[index].next > layoutOut.openFrames[index - 1].next,
+        `${layout}: Idle's head slides down all the way: ${JSON.stringify(layoutOut.openFrames)}`,
       );
     }
 
@@ -273,7 +273,7 @@ export default async function (ctx) {
     );
 
     ctx.assert.ok(
-      back.cards.every((c, i) => near(c.shows, open0.cards[i].shows)),
+      back.cards.every((card, index) => near(card.shows, open0.cards[index].shows)),
       `${layout}: every card whole again`,
     );
 
@@ -306,7 +306,7 @@ export default async function (ctx) {
     );
 
     ctx.assert.ok(
-      turned2.cards.every((c, i) => near(c.y, open0.cards[i].y, 0.5)),
+      turned2.cards.every((card, index) => near(card.y, open0.cards[index].y, 0.5)),
       `${layout}: …and the cards from where they stood`,
     );
 
@@ -327,7 +327,7 @@ export default async function (ctx) {
   await ctx.sleep(250);
   await ctx.settle();
   const before = await look(ctx, 'ready', 'idle');
-  const shown = before.cards.filter(c => c.y >= 30 && c.y < 600);
+  const shown = before.cards.filter(card => card.y >= 30 && card.y < 600);
 
   ctx.assert.ok(
     before.scroll > 0 && near(before.head, 0) && shown.length >= 2,
@@ -339,10 +339,10 @@ export default async function (ctx) {
 
   ctx.assert.ok(near(stuck.head, 0), `the head still at the top: ${stuck.head}`);
 
-  for (const c of shown) {
-    const now = stuck.cards.find(x => x.t === c.t);
+  for (const card of shown) {
+    const now = stuck.cards.find(stuckCard => stuckCard.t === card.t);
 
-    ctx.assert.ok(now && near(now.y, c.y), `${c.t} where it showed: ${JSON.stringify([c, now])}`);
+    ctx.assert.ok(now && near(now.y, card.y), `${card.t} where it showed: ${JSON.stringify([card, now])}`);
   }
 
   await run(ctx);
@@ -381,7 +381,7 @@ export default async function (ctx) {
   const ro = await look(ctx, 'ready', 'idle');
 
   ctx.assert.deepEqual(
-    [r2.ids, ro.cards.length, ro.cards.every(c => c.shows > 0)],
+    [r2.ids, ro.cards.length, ro.cards.every(card => card.shows > 0)],
     [[], 10, true],
     'reduced: opened at once',
   );

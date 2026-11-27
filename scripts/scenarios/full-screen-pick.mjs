@@ -47,9 +47,9 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.app.checked, ['fill'], 'up to the notch by default');
   await ctx.shot('look');
 
-  const choose = v =>
+  const choose = value =>
     ctx.evaluate(
-      `(s => { s.value = '${v}'; s.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#fsPick'))`,
+      `(s => { s.value = '${value}'; s.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#fsPick'))`,
     );
 
   await choose('space');

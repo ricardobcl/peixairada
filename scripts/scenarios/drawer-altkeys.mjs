@@ -22,7 +22,7 @@ export default async function (ctx) {
   const promptHas = text =>
     `[...document.querySelectorAll('#termBody .xterm-rows > div')].some(r => r.textContent.includes('❯') && r.textContent.includes(${JSON.stringify(text)}))`;
 
-  const prompt = async () => (await ctx.screen()).find(r => r.includes('❯')) || '';
+  const prompt = async () => (await ctx.screen()).find(row => row.includes('❯')) || '';
 
   await alt('@', 'Digit2', 50); // ⌥2 on a Portuguese layout — the composed character is e.key
   await ctx.waitFor(promptHas('@'), { what: 'the composed @ in the drawer' });

@@ -30,17 +30,17 @@ async function stream(srv) {
 
       if (done) break;
       buf += dec.decode(value, { stream: true });
-      let i;
+      let index;
 
-      while ((i = buf.indexOf('\n\n')) >= 0) {
-        const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i));
+      while ((index = buf.indexOf('\n\n')) >= 0) {
+        const match = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, index));
 
-        buf = buf.slice(i + 2);
-        if (!m) continue;
-        const data = JSON.parse(m[2]);
+        buf = buf.slice(index + 2);
+        if (!match) continue;
+        const data = JSON.parse(match[2]);
 
-        if (m[1] === 'snapshot') resolve(data);
-        else got.push({ event: m[1], data });
+        if (match[1] === 'snapshot') resolve(data);
+        else got.push({ event: match[1], data });
       }
     }
   })().catch(() => {});
@@ -48,7 +48,7 @@ async function stream(srv) {
   return {
     snapshot: await snapshot,
     got,
-    said: () => got.filter(e => e.event === 'priority').map(e => e.data.priority),
+    said: () => got.filter(message => message.event === 'priority').map(message => message.data.priority),
     stop: () => reader.cancel().catch(() => {}),
   };
 }
@@ -75,10 +75,10 @@ test(
     try {
       ev = await stream(srv);
       assert.deepEqual(ev.snapshot.priority, [], 'none to begin with');
-      const r = await put(srv, { ids: [two.id, 'no-such-chat', one.id, two.id, 5, '../x', null] });
+      const response = await put(srv, { ids: [two.id, 'no-such-chat', one.id, two.id, 5, '../x', null] });
 
       assert.deepEqual(
-        r.body,
+        response.body,
         { ok: true, priority: [two.id, one.id] },
         'in the order given; an unknown id, a repeat and a non-id dropped',
       );
@@ -119,9 +119,9 @@ test('a chat deleted from the board leaves it, and is not let back in while dele
   try {
     await put(srv, { ids: [one.id, two.id] });
     ev = await stream(srv);
-    const r = await srv.post(`api/sessions/${one.id}/remove`, {});
+    const response = await srv.post(`api/sessions/${one.id}/remove`, {});
 
-    assert.deepEqual(r.body, { ok: true, removed: true });
+    assert.deepEqual(response.body, { ok: true, removed: true });
     await waitFor(() => ev.said().length, { what: 'the priority event' });
     assert.deepEqual(ev.said().at(-1), [two.id]);
     assert.deepEqual(await listed(srv), [two.id]);
@@ -187,13 +187,19 @@ test('a /clear in the same claude carries the slot to the chat it went on in', {
   mkdirSync(join(dir, 'sessions'), { recursive: true });
 
   const write = (id, lines) =>
-    writeFileSync(join(proj, `${id}.jsonl`), `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
+    writeFileSync(join(proj, `${id}.jsonl`), `${lines.map(line => JSON.stringify(line)).join('\n')}\n`);
 
-  const [a, other, c] = [randomUUID(), randomUUID(), randomUUID()];
+  const [firstId, other, nextId] = [randomUUID(), randomUUID(), randomUUID()];
 
   write(
-    a,
-    chatLines({ id: a, cwd, prompt: 'the first chat', reply: 'done with it', at: new Date(Date.now() - 600_000) }),
+    firstId,
+    chatLines({
+      id: firstId,
+      cwd,
+      prompt: 'the first chat',
+      reply: 'done with it',
+      at: new Date(Date.now() - 600_000),
+    }),
   );
 
   write(other, chatLines({ id: other, cwd, prompt: 'another chat', reply: 'sure' }));
@@ -221,23 +227,26 @@ test('a /clear in the same claude carries the slot to the chat it went on in', {
       }),
     );
 
-  on(a);
+  on(firstId);
   const srv = await startTestServer({ claudeDir: dir });
   let ev;
 
   try {
-    await waitFor(async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === a)?.alive, {
-      what: 'the first chat alive',
-    });
+    await waitFor(
+      async () => (await srv.api('api/sessions')).body.sessions.find(session => session.id === firstId)?.alive,
+      {
+        what: 'the first chat alive',
+      },
+    );
 
-    await put(srv, { ids: [other, a] });
+    await put(srv, { ids: [other, firstId] });
     ev = await stream(srv);
-    write(c, clearLines(c, cwd));
-    on(c);
+    write(nextId, clearLines(nextId, cwd));
+    on(nextId);
     await waitFor(() => ev.said().length, { what: 'the priority event' });
-    assert.deepEqual(ev.said().at(-1), [other, c], 'the new chat in the slot the old one had');
-    assert.deepEqual(await listed(srv), [other, c]);
-    assert.deepEqual(JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8')).priority, [other, c], 'kept');
+    assert.deepEqual(ev.said().at(-1), [other, nextId], 'the new chat in the slot the old one had');
+    assert.deepEqual(await listed(srv), [other, nextId]);
+    assert.deepEqual(JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8')).priority, [other, nextId], 'kept');
   } finally {
     ev?.stop();
     sleeper.kill();

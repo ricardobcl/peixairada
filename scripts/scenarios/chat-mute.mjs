@@ -19,20 +19,21 @@ export default async function (ctx) {
 
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: SETUP });
   await ctx.reload();
-  const [a, b] = ctx.fixture.chats;
+  const [chatA, chatB] = ctx.fixture.chats;
   const card = id => `document.querySelector('#slist > .card[data-id="${id}"]')`;
   const word = id => ctx.evaluate(`${card(id)}?.querySelector('.chip.cmute')?.textContent.trim() ?? null`);
 
   const lastState = () =>
     ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'state').pop())`).then(JSON.parse);
 
-  const muted = async id => (await ctx.server.api('api/sessions')).body.sessions.find(s => s.id === id).muted;
+  const muted = async id =>
+    (await ctx.server.api('api/sessions')).body.sessions.find(session => session.id === id).muted;
 
   const landed = chat =>
     appendFileSync(
       chat.file,
       `${replyLines({ id: chat.id, cwd: chat.cwd, text: 'Done, have a look.', at: new Date() })
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 
@@ -44,39 +45,39 @@ export default async function (ctx) {
   const row = re => `[...document.querySelectorAll('#ctxm button')].find(b => ${re}.test(b.textContent))`;
 
   try {
-    await ctx.waitFor(`${card(a.id)} && ${card(b.id)}`, { what: 'the two cards' });
-    ctx.assert.equal(await word(a.id), null, 'no word on a card at rest');
+    await ctx.waitFor(`${card(chatA.id)} && ${card(chatB.id)}`, { what: 'the two cards' });
+    ctx.assert.equal(await word(chatA.id), null, 'no word on a card at rest');
 
     // ---- a right-click mutes it, and the card says so ----
-    await rightClick(a.id);
+    await rightClick(chatA.id);
     await ctx.waitFor(row('/^Mute/'), { what: "the card's menu row" });
     await ctx.evaluate(`${row('/^Mute/')}.click()`);
-    await ctx.waitFor(`${card(a.id)}.querySelector('.chip.cmute')`, { what: 'the word on the card, at once' });
-    ctx.assert.equal(await word(a.id), 'muted');
-    ctx.assert.equal(await word(b.id), null, 'on that card alone');
-    for (let i = 0; i < 20 && !(await muted(a.id)); i++) await ctx.sleep(100);
-    ctx.assert.equal(await muted(a.id), true, 'the server has it');
-    await rightClick(a.id);
+    await ctx.waitFor(`${card(chatA.id)}.querySelector('.chip.cmute')`, { what: 'the word on the card, at once' });
+    ctx.assert.equal(await word(chatA.id), 'muted');
+    ctx.assert.equal(await word(chatB.id), null, 'on that card alone');
+    for (let attempt = 0; attempt < 20 && !(await muted(chatA.id)); attempt++) await ctx.sleep(100);
+    ctx.assert.equal(await muted(chatA.id), true, 'the server has it');
+    await rightClick(chatA.id);
     await ctx.waitFor(row('/^Unmute/'), { what: 'the row now offers the way back' });
     await ctx.evaluate(`document.querySelector('#ctxm').close()`);
 
     // ---- at every size, every part hidden, and the word within the card ----
     const shown = () =>
       ctx.evaluate(`(c => { const w = c.querySelector('.chip.cmute'), r = w.getBoundingClientRect(), k = c.getBoundingClientRect(), s = getComputedStyle(w);
-      return { display: s.display, visibility: s.visibility, opacity: s.opacity, inside: r.left >= k.left && r.right <= k.right && r.top >= k.top && r.bottom <= k.bottom, w: Math.round(r.width), h: Math.round(r.height) }; })(${card(a.id)})`);
+      return { display: s.display, visibility: s.visibility, opacity: s.opacity, inside: r.left >= k.left && r.right <= k.right && r.top >= k.top && r.bottom <= k.bottom, w: Math.round(r.width), h: Math.round(r.height) }; })(${card(chatA.id)})`);
 
-    const fine = (s, where) => {
-      ctx.assert.equal(s.visibility, 'visible', where);
-      ctx.assert.ok(Number(s.opacity) >= 0.8, `${where}: its opacity ${s.opacity}`);
-      ctx.assert.notEqual(s.display, 'none', where);
-      ctx.assert.ok(s.inside, `${where}: within the card`);
-      ctx.assert.ok(s.w >= 30 && s.h >= 12, `${where}: its size ${s.w}×${s.h}`);
+    const fine = (style, where) => {
+      ctx.assert.equal(style.visibility, 'visible', where);
+      ctx.assert.ok(Number(style.opacity) >= 0.8, `${where}: its opacity ${style.opacity}`);
+      ctx.assert.notEqual(style.display, 'none', where);
+      ctx.assert.ok(style.inside, `${where}: within the card`);
+      ctx.assert.ok(style.w >= 30 && style.h >= 12, `${where}: its size ${style.w}×${style.h}`);
     };
 
     out.sizes = {};
 
-    for (const [v, size] of ['large', 'medium', 'compact'].entries()) {
-      await ctx.evaluate(`document.querySelector('#cardsSize [data-v="${v}"]').click()`);
+    for (const [index, size] of ['large', 'medium', 'compact'].entries()) {
+      await ctx.evaluate(`document.querySelector('#cardsSize [data-v="${index}"]').click()`);
       await ctx.settle();
       out.sizes[size] = await shown();
       fine(out.sizes[size], size);
@@ -119,7 +120,7 @@ export default async function (ctx) {
       await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: look }] });
       await ctx.waitFor(`document.documentElement.dataset.theme === '${look}'`, { what: `the ${look} look` });
       await ctx.settle();
-      out.ink[look] = await ratio(a.id);
+      out.ink[look] = await ratio(chatA.id);
       ctx.assert.ok(out.ink[look] >= 4.5, `the word at ${out.ink[look]}:1 in ${look}`);
       await ctx.shot(`look-${look}`, { x: 0, y: 0, width: 440, height: 300 });
     }
@@ -127,7 +128,7 @@ export default async function (ctx) {
     // …and in every theme, each light one in its dark frame too, as the inks' test goes through them
     out.inkWorst = await ctx.evaluate(`(() => {
       const root = document.documentElement, was = { ...root.dataset }, calm = document.head.appendChild(Object.assign(document.createElement('style'), { textContent: '* { transition: none !important; }' }));
-      const w = ${card(a.id)}.querySelector('.chip.cmute'), seen = [];
+      const w = ${card(chatA.id)}.querySelector('.chip.cmute'), seen = [];
       for (const [k, dark] of window.peix.skins()) for (const fr of dark ? ['dark'] : ['light', 'dark']) {
         Object.assign(root.dataset, { skin: k, theme: dark ? 'dark' : 'light', frame: fr });
         seen.push({ look: k + ' ' + fr, ratio: ${RATIO}(w) });
@@ -139,10 +140,10 @@ export default async function (ctx) {
     ctx.assert.ok(out.inkWorst[0].ratio >= 4.5, `the word under 4.5:1: ${JSON.stringify(out.inkWorst)}`);
 
     // ---- open, the word stays, in the open card's own ink ----
-    await ctx.openChat(a.id);
+    await ctx.openChat(chatA.id);
     await ctx.settle();
     fine(await shown(), 'the open card');
-    out.open = await ctx.evaluate(`getComputedStyle(${card(a.id)}.querySelector('.chip.cmute')).color`);
+    out.open = await ctx.evaluate(`getComputedStyle(${card(chatA.id)}.querySelector('.chip.cmute')).color`);
     ctx.assert.equal(out.open, 'rgb(255, 255, 255)', "white on the open card's colour");
     await ctx.shot('open', { x: 0, y: 0, width: 440, height: 300 });
 
@@ -158,48 +159,48 @@ export default async function (ctx) {
     await ctx.settle();
     await ctx.shot('menu');
     await ctx.evaluate(`document.querySelector('#muteBtn').click()`);
-    await ctx.waitFor(`!${card(a.id)}.querySelector('.chip.cmute')`, { what: 'the word gone' });
+    await ctx.waitFor(`!${card(chatA.id)}.querySelector('.chip.cmute')`, { what: 'the word gone' });
     ctx.assert.deepEqual(await hrow(), { pressed: 'false', k: 'off', on: false }, 'the row follows');
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#hmenu').open`), true, 'and the menu stays up');
     await ctx.evaluate(`document.querySelector('#muteBtn').click()`);
-    await ctx.waitFor(`${card(a.id)}.querySelector('.chip.cmute')`, { what: 'muted again' });
+    await ctx.waitFor(`${card(chatA.id)}.querySelector('.chip.cmute')`, { what: 'muted again' });
     await ctx.evaluate(`document.querySelector('#hmenu').close()`);
 
     // ---- its alert makes no banner or sound; another chat's does ----
     await ctx.evaluate(`window.__banners.length = 0`);
-    await ctx.openChat(b.id); // the other chat in front: the muted one has its card's count to earn
-    landed(a);
+    await ctx.openChat(chatB.id); // the other chat in front: the muted one has its card's count to earn
+    landed(chatA);
 
-    await ctx.waitFor(`window.__posts.some(m => m.type === 'alert' && m.sessionId === '${a.id}')`, {
+    await ctx.waitFor(`window.__posts.some(m => m.type === 'alert' && m.sessionId === '${chatA.id}')`, {
       what: "the muted chat's alert heard",
       timeout: 15000,
     });
 
     ctx.assert.equal(
-      await ctx.evaluate(`window.__posts.find(m => m.type === 'alert' && m.sessionId === '${a.id}').quiet`),
+      await ctx.evaluate(`window.__posts.find(m => m.type === 'alert' && m.sessionId === '${chatA.id}').quiet`),
       true,
       'quiet to the app',
     );
 
     ctx.assert.equal(await ctx.evaluate(`window.__banners.length`), 0, 'no banner in a browser');
-    await ctx.waitFor(`${card(a.id)}.querySelector('.badge')`, { what: "its card's own count" });
+    await ctx.waitFor(`${card(chatA.id)}.querySelector('.badge')`, { what: "its card's own count" });
     out.state = await lastState();
-    ctx.assert.deepEqual(out.state.mutes, [a.id], 'the app hears which chats are muted');
+    ctx.assert.deepEqual(out.state.mutes, [chatA.id], 'the app hears which chats are muted');
 
     ctx.assert.equal(
-      out.state.replied.some(r => r.id === a.id),
+      out.state.replied.some(chat => chat.id === chatA.id),
       false,
       'not in what the Dock counts',
     );
 
     ctx.assert.doesNotMatch(await ctx.evaluate(`document.title`), /^\(/, 'nor in the title');
     // …and another chat's does, on the same stream
-    await ctx.openChat(a.id);
-    landed(b);
+    await ctx.openChat(chatA.id);
+    landed(chatB);
     await ctx.waitFor(`window.__banners.length === 1`, { what: "the other chat's banner", timeout: 15000 });
 
     ctx.assert.equal(
-      await ctx.evaluate(`window.__posts.find(m => m.type === 'alert' && m.sessionId === '${b.id}').quiet`),
+      await ctx.evaluate(`window.__posts.find(m => m.type === 'alert' && m.sessionId === '${chatB.id}').quiet`),
       false,
       'loud to the app',
     );
@@ -241,12 +242,12 @@ export default async function (ctx) {
         `window.__m = Math.round(performance.now()); window.peix.alert({ kind: 'needs-input', sessionId: '${id}', project: 'p', title: 't', snippet: '', quiet: ${muted}, muted: ${muted} })`,
       );
 
-    await ctx.openChat(b.id);
-    await ring(a.id, true);
+    await ctx.openChat(chatB.id);
+    await ring(chatA.id, true);
     await ctx.sleep(500);
     ctx.assert.equal(await ctx.evaluate(heard), 0, 'none from the muted chat');
-    await ctx.openChat(a.id);
-    await ring(b.id, false);
+    await ctx.openChat(chatA.id);
+    await ring(chatB.id, false);
     await ctx.waitFor(`${heard} > 0`, { what: "the other chat's, heard", timeout: 3000 });
 
     // ---- a question: the card red, nothing else calling ----
@@ -320,7 +321,7 @@ export default async function (ctx) {
     ctx.assert.equal((await lastState()).needs[0]?.id, asker.id, 'and the app');
 
     // ---- the launcher has it, for the open chat ----
-    await ctx.openChat(b.id);
+    await ctx.openChat(chatB.id);
     await ctx.key('KeyL');
     await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the launcher' });
     await ctx.fill('#pickq', 'mute it');
@@ -333,15 +334,15 @@ export default async function (ctx) {
       `[...document.querySelectorAll('#picklist .pkrow')].find(r => /Mute it/.test(r.textContent)).click()`,
     );
 
-    await ctx.waitFor(`${card(b.id)}.querySelector('.chip.cmute')`, { what: 'muted from the launcher' });
+    await ctx.waitFor(`${card(chatB.id)}.querySelector('.chip.cmute')`, { what: 'muted from the launcher' });
 
     // ---- kept: over a reload and a restart ----
     await ctx.reload();
-    ctx.assert.equal(await word(a.id), 'muted', 'after a reload');
+    ctx.assert.equal(await word(chatA.id), 'muted', 'after a reload');
     await ctx.server.restart();
     await ctx.reload();
-    ctx.assert.equal(await word(a.id), 'muted', 'after a restart');
-    ctx.assert.equal(await word(b.id), 'muted', 'the other too');
+    ctx.assert.equal(await word(chatA.id), 'muted', 'after a restart');
+    ctx.assert.equal(await word(chatB.id), 'muted', 'the other too');
     return out;
   } finally {
     sleeper.kill();

@@ -13,8 +13,8 @@ const GEL = [
   { grp: '#grpB', tabs: '#ptabsB', body: '#gbodyB', term: '#termB', tbody: '#termBodyB' },
 ];
 
-const newTerm = (el, g) => ({
-  g,
+const newTerm = (el, half) => ({
+  g: half,
   el,
   id: null,
   sessionId: null,
@@ -31,27 +31,34 @@ const terms = GEL.map(newTerm);
 // later (ensureGroups) — its strip's listeners, its body's paste, the pane's observer.
 const groupHooks = [];
 
-const onGroup = f => {
-  groupHooks.push(f);
-  for (const tm of terms) f(tm);
+const onGroup = hook => {
+  groupHooks.push(hook);
+  for (const tm of terms) hook(tm);
 };
 
-/** Groups up to `n`, a tile's markup made beside the halves' for each one more. */
-function ensureGroups(n) {
-  while (GEL.length < n) {
-    const g = GEL.length;
-    const i = g + 1;
+/** Groups up to `count`, a tile's markup made beside the halves' for each one more. */
+function ensureGroups(count) {
+  while (GEL.length < count) {
+    const group = GEL.length;
+    const number = group + 1;
 
     $('#groups').insertAdjacentHTML(
       'beforeend',
-      `<div class="grp" id="grp${i}" data-g="${g}" hidden><div class="ptabs" id="ptabs${i}" role="tablist" aria-label="Tile ${i}'s tabs"></div><div class="gbody" id="gbody${i}"><div class="gterm" id="term${i}" hidden><div class="tbody" id="termBody${i}"></div></div></div></div>`,
+      `<div class="grp" id="grp${number}" data-g="${group}" hidden><div class="ptabs" id="ptabs${number}" role="tablist" aria-label="Tile ${number}'s tabs"></div><div class="gbody" id="gbody${number}"><div class="gterm" id="term${number}" hidden><div class="tbody" id="termBody${number}"></div></div></div></div>`,
     );
 
-    GEL.push({ grp: `#grp${i}`, tabs: `#ptabs${i}`, body: `#gbody${i}`, term: `#term${i}`, tbody: `#termBody${i}` });
-    const tm = newTerm(GEL[g], g);
+    GEL.push({
+      grp: `#grp${number}`,
+      tabs: `#ptabs${number}`,
+      body: `#gbody${number}`,
+      term: `#term${number}`,
+      tbody: `#termBody${number}`,
+    });
+
+    const tm = newTerm(GEL[group], group);
 
     terms.push(tm);
-    for (const f of groupHooks) f(tm);
+    for (const hook of groupHooks) hook(tm);
   }
 }
 
@@ -69,7 +76,7 @@ const stacked = new Set();
 // …and which half of a split chat fills the column, the other kept as it was behind it (2026-10-13, a chat's key pressed
 // again — zoomAgain): held while the keys stay in that half, so going to a tab of the other one brings both back.
 const zoomed = new Map(); // chat id → 0 | 1
-const isSplit = s => !!s && splits.has(s.id);
+const isSplit = session => !!session && splits.has(session.id);
 const splitNow = () => splits.has(state.current);
 const stackNow = () => splitNow() && stacked.has(state.current) && !trees.has(state.current);
 // …and a chat past two halves is a tree of tiles (2026-11-25, prefs.autoTile): each new terminal splits the tile the
@@ -78,46 +85,49 @@ const stackNow = () => splitNow() && stacked.has(state.current) && !trees.has(st
 // or a split { d: 'row' | 'col', r, a, b }, `r` the first part's share. Made only by the setting, so a chat with none
 // is the two halves as they were; it goes with the split (unsplit).
 const trees = new Map(); // chat id → node
-const leavesOf = n => (!n ? [] : 'g' in n ? [n.g] : [...leavesOf(n.a), ...leavesOf(n.b)]);
-const isTiled = s => !!s && splits.has(s.id) && trees.has(s.id);
+const leavesOf = node => (!node ? [] : 'g' in node ? [node.g] : [...leavesOf(node.a), ...leavesOf(node.b)]);
+const isTiled = session => !!session && splits.has(session.id) && trees.has(session.id);
 const tiledNow = () => splits.has(state.current) && trees.has(state.current);
 /** The groups a chat's column shows, in the tree's order: the one, the two halves, or its tiles. */
-const groupsOf = s => (!isSplit(s) ? [0] : isTiled(s) ? leavesOf(trees.get(s.id)) : [0, 1]);
+const groupsOf = session => (!isSplit(session) ? [0] : isTiled(session) ? leavesOf(trees.get(session.id)) : [0, 1]);
 
-/** A tree with leaf `g` replaced by what `f` makes of it; `null` from f drops it, its sibling taking its place. */
-const treeMap = (n, g, f) =>
-  'g' in n
-    ? n.g === g
-      ? f(n)
-      : n
-    : (a => (b => (!a ? b : !b ? a : { ...n, a, b }))(treeMap(n.b, g, f)))(treeMap(n.a, g, f));
+/** A tree with leaf `group` replaced by what `transform` makes of it; `null` from transform drops it, its sibling taking its place. */
+const treeMap = (node, group, transform) =>
+  'g' in node
+    ? node.g === group
+      ? transform(node)
+      : node
+    : (left =>
+        (right => (!left ? right : !right ? left : { ...node, a: left, b: right }))(treeMap(node.b, group, transform)))(
+        treeMap(node.a, group, transform),
+      );
 
-/** The split right over leaf `g`, or null for the root's leaf. */
-const parentOf = (n, g) =>
-  !n || 'g' in n
+/** The split right over leaf `group`, or null for the root's leaf. */
+const parentOf = (node, group) =>
+  !node || 'g' in node
     ? null
-    : ('g' in n.a && n.a.g === g) || ('g' in n.b && n.b.g === g)
-      ? n
-      : parentOf(n.a, g) || parentOf(n.b, g);
+    : ('g' in node.a && node.a.g === group) || ('g' in node.b && node.b.g === group)
+      ? node
+      : parentOf(node.a, group) || parentOf(node.b, group);
 
 /** Each leaf's box in the unit square, [x0, y0, x1, y1] by group — the layout's and the arrows' one reading. */
 function tileRects(node) {
   const rects = {};
 
-  const cut = (n, x, y, w, h) => {
-    if ('g' in n) {
-      rects[n.g] = [x, y, x + w, y + h];
+  const cut = (subtree, left, top, width, height) => {
+    if ('g' in subtree) {
+      rects[subtree.g] = [left, top, left + width, top + height];
       return;
     }
 
-    const r = Math.max(0.15, Math.min(0.85, n.r || 0.5));
+    const ratio = Math.max(0.15, Math.min(0.85, subtree.r || 0.5));
 
-    if (n.d === 'row') {
-      cut(n.a, x, y, w * r, h);
-      cut(n.b, x + w * r, y, w * (1 - r), h);
+    if (subtree.d === 'row') {
+      cut(subtree.a, left, top, width * ratio, height);
+      cut(subtree.b, left + width * ratio, top, width * (1 - ratio), height);
     } else {
-      cut(n.a, x, y, w, h * r);
-      cut(n.b, x, y + h * r, w, h * (1 - r));
+      cut(subtree.a, left, top, width, height * ratio);
+      cut(subtree.b, left, top + height * ratio, width, height * (1 - ratio));
     }
   };
 
@@ -126,24 +136,24 @@ function tileRects(node) {
 }
 
 /** A chat's two halves as a tree, as they stand — what a tree past them starts from. */
-const halvesTree = s => {
-  const h = stacked.has(s.id) ? 'col' : 'row';
+const halvesTree = session => {
+  const direction = stacked.has(session.id) ? 'col' : 'row';
 
-  return { d: h, r: (h === 'col' ? prefs.stackAt : prefs.splitAt) || 0.5, a: { g: 0 }, b: { g: 1 } };
+  return { d: direction, r: (direction === 'col' ? prefs.stackAt : prefs.splitAt) || 0.5, a: { g: 0 }, b: { g: 1 } };
 };
 
-/** Where the keys go back to when tile `g` goes (2026-11-25): the part it was cut from, at the tile nearest it — a
+/** Where the keys go back to when tile `group` goes (2026-11-25): the part it was cut from, at the tile nearest it — a
  *  second part's sibling's last leaf, a first part's sibling's first — as i3's focus falls back to the window it split. */
-const backOf = (n, g) => {
-  const par = parentOf(n, g);
+const backOf = (node, group) => {
+  const par = parentOf(node, group);
 
-  return !par ? null : 'g' in par.a && par.a.g === g ? leavesOf(par.b)[0] : leavesOf(par.a).at(-1);
+  return !par ? null : 'g' in par.a && par.a.g === group ? leavesOf(par.b)[0] : leavesOf(par.a).at(-1);
 };
 
 const tileSeen = new Map(); // chat id → its groups, the one the keys were in last first (the arrows', as i3's focus stack)
 let focusG = 0; // the half the keys, the pickers and a new tab act on
 const curTerm = () => terms[focusG];
-const termFor = id => (id ? terms.find(t => t.id === id) || null : null);
+const termFor = id => (id ? terms.find(term => term.id === id) || null : null);
 
 const focusTerm = () => {
   const tm = curTerm();
@@ -154,22 +164,22 @@ const focusTerm = () => {
 
 function xtTheme() {
   const cs = getComputedStyle(document.documentElement);
-  const v = n => cs.getPropertyValue(n).trim();
+  const cssValue = name => cs.getPropertyValue(name).trim();
 
   const ansi = SKINS[skinOn()]?.ansi; // a theme's sixteen colours (2026-10-10); none, xterm's own
 
   return {
-    background: v('--term-bg'),
-    foreground: v('--ink'),
-    cursor: v('--accent'),
-    cursorAccent: v('--term-bg'),
-    selectionBackground: v('--term-sel'),
-    ...(ansi ? Object.fromEntries(ANSI.map((n, i) => [n, ansi[i]])) : {}),
+    background: cssValue('--term-bg'),
+    foreground: cssValue('--ink'),
+    cursor: cssValue('--accent'),
+    cursorAccent: cssValue('--term-bg'),
+    selectionBackground: cssValue('--term-sel'),
+    ...(ansi ? Object.fromEntries(ANSI.map((name, index) => [name, ansi[index]])) : {}),
   };
 }
 
-const termSend = (tm, d) => {
-  if (tm.ws?.readyState === 1 && tm.exited === null) tm.ws.send(JSON.stringify({ t: 'in', d }));
+const termSend = (tm, data) => {
+  if (tm.ws?.readyState === 1 && tm.exited === null) tm.ws.send(JSON.stringify({ t: 'in', d: data }));
 };
 
 // What the board types into a claude for you goes as `type` (2026-11-27): the server types it, and ⏎ after it when
@@ -178,22 +188,22 @@ const termSend = (tm, d) => {
 const ASKS_FIRST = 'it is asking you something — answer it first';
 let typeN = 0;
 
-function typeIn(ws, d, send) {
+function typeIn(ws, data, send) {
   if (ws?.readyState !== 1) return Promise.resolve('its drawer is not attached yet — try again in a moment');
   return new Promise(res => {
-    const n = ++typeN;
+    const typeId = ++typeN;
 
-    const hear = e => {
-      if (typeof e.data !== 'string') return;
-      let m;
+    const hear = event => {
+      if (typeof event.data !== 'string') return;
+      let message;
 
       try {
-        m = JSON.parse(e.data);
+        message = JSON.parse(event.data);
       } catch {
         return;
       }
 
-      if (m.t === 'typed' && m.n === n) done(m.why || null);
+      if (message.t === 'typed' && message.n === typeId) done(message.why || null);
     };
 
     const done = why => {
@@ -208,7 +218,7 @@ function typeIn(ws, d, send) {
 
     ws.addEventListener('message', hear);
     ws.addEventListener('close', gone);
-    ws.send(JSON.stringify({ t: 'type', d, send: !!send, n }));
+    ws.send(JSON.stringify({ t: 'type', d: data, send: !!send, n: typeId }));
   });
 }
 
@@ -222,18 +232,18 @@ function typeIn(ws, d, send) {
 const CTL = /[\x00-\x08\x0b-\x1f\x7f-\x9f]/g;
 const BIDI = /[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
 
-const typable = t =>
-  String(t ?? '')
+const typable = text =>
+  String(text ?? '')
     .replace(/\r\n?|[\u2028\u2029]/g, '\n')
     .replace(/\t/g, '  ')
     .replace(CTL, '')
     .replace(BIDI, '');
 
 /** For Claude's prompt: its newlines as Claude Code's own (ESC CR), so nothing is sent before the ⏎ the caller adds. */
-const forClaude = t => typable(t).replace(/\n/g, '\x1b\r');
+const forClaude = text => typable(text).replace(/\n/g, '\x1b\r');
 /** For a shell's line, left unrun: one line. */
-const forShell = t => typable(t).replace(/\n+/g, ' ');
-const hasCtl = t => /[\x00-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069\u2028\u2029]/.test(t);
+const forShell = text => typable(text).replace(/\n+/g, ' ');
+const hasCtl = text => /[\x00-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069\u2028\u2029]/.test(text);
 
 // ⌘K clears the terminal, as Terminal.app and iTerm do — a key xterm.js does not ship and zsh cannot bind
 // (⌃L is the shell's own, and keeps the scrollback). The holder clears its screen too and echoes the clear
@@ -249,14 +259,14 @@ const clearTerm = tm => {
 
 /** What the drawer last said about its focus view: the newest such line on its screen, null if it never said. */
 function focusSaid(tm) {
-  const b = tm.xt?.buffer.active;
+  const buffer = tm.xt?.buffer.active;
 
-  if (!b) return null;
+  if (!buffer) return null;
 
-  for (let i = b.length - 1; i >= Math.max(0, b.length - 200); i--) {
-    const m = /Focus view (enabled|disabled)/.exec(b.getLine(i)?.translateToString(true) || '');
+  for (let row = buffer.length - 1; row >= Math.max(0, buffer.length - 200); row--) {
+    const match = /Focus view (enabled|disabled)/.exec(buffer.getLine(row)?.translateToString(true) || '');
 
-    if (m) return m[1] === 'enabled';
+    if (match) return match[1] === 'enabled';
   }
 
   return null;
@@ -276,11 +286,11 @@ function readFocusFromScreen(tm) {
   // snapshot is written into xterm over several parse ticks, and a scan that lands mid-write finds whichever
   // line the parser has reached. On this chat that is the *older* `/focus` line as often as not — and taking it
   // both lit the button wrong and stopped the read, because a verdict equal to what the board already thinks is
-  // a verdict. So: wait for the buffer to stop growing, then read once. `still` counts the quiet ticks; `n` caps
+  // a verdict. So: wait for the buffer to stop growing, then read once. `still` counts the quiet ticks; `tries` caps
   // the whole thing, for a drawer that never settles or never said anything.
   let len = -1;
   let still = 0;
-  let n = 0;
+  let tries = 0;
 
   const tick = () => {
     if (tm.ws !== ws || tm.sessionId !== id) return; // switched away: this read belonged to that drawer
@@ -293,15 +303,15 @@ function readFocusFromScreen(tm) {
     const said = still >= 3 ? focusSaid(tm) : null;
 
     if (said === null) {
-      if (++n < 25) setTimeout(tick, 200);
+      if (++tries < 25) setTimeout(tick, 200);
       return;
     }
 
     if (focusView.get(id) === said) return;
     focusView.set(id, said);
-    const s = state.sessions.get(state.current);
+    const session = state.sessions.get(state.current);
 
-    if (s && s.id === id) renderHead(s);
+    if (session && session.id === id) renderHead(session);
   };
 
   setTimeout(tick, 250);
@@ -310,33 +320,33 @@ function readFocusFromScreen(tm) {
 // The header's target button (#viewBtn): type /focus into this chat's own holder and wait for the session to say
 // which way it went — the only channel there is, the one the drawer's keyboard uses. The zsh tab holds the other
 // holder, so it shows the claude one first rather than type a slash command into a shell.
-async function toggleFocusView(s) {
+async function toggleFocusView(session) {
   const at = () => seen($('#viewBtn'));
 
-  if (!termLive(s)) return note(at(), 'No claude running here — ⌥⌘C starts one', true);
-  const tm = termFor(s.terminal.id);
+  if (!termLive(session)) return note(at(), 'No claude running here — ⌥⌘C starts one', true);
+  const tm = termFor(session.terminal.id);
 
   if (!tm || tm.exited !== null) {
-    showChat(s);
-    syncTerm(s);
+    showChat(session);
+    syncTerm(session);
     return note(at(), 'Showing the claude session first — press again', true);
   }
 
-  if (asking(s)) return note(at(), `Not now: ${ASKS_FIRST}`, true); // /focus⏎ in a dialog is its Yes
+  if (asking(session)) return note(at(), `Not now: ${ASKS_FIRST}`, true); // /focus⏎ in a dialog is its Yes
 
   const before = focusSaid(tm);
   const no = await typeIn(tm.ws, '/focus', true);
 
   if (no) return note(at(), `/focus not sent: ${no}`, true);
 
-  for (let i = 0; i < 20; i++) {
+  for (let attempt = 0; attempt < 20; attempt++) {
     // ~2.4 s: the command runs at once, but it has a menu to close and a frame to paint
-    await new Promise(r => setTimeout(r, 120));
+    await new Promise(resolve => setTimeout(resolve, 120));
     const now = focusSaid(tm);
 
     if (now !== null && now !== before) {
-      focusView.set(s.id, now);
-      renderHead(s);
+      focusView.set(session.id, now);
+      renderHead(session);
       return note(at(), `Focus view ${now ? 'on' : 'off'} in this session`);
     }
   }
@@ -364,28 +374,30 @@ const MAC_EDIT = {
   'alt:Delete': '\x1bd',
 };
 
-const macEdit = e =>
-  e.ctrlKey || e.shiftKey || e.metaKey === e.altKey ? undefined : MAC_EDIT[`${e.metaKey ? 'cmd' : 'alt'}:${e.key}`];
+const macEdit = event =>
+  event.ctrlKey || event.shiftKey || event.metaKey === event.altKey
+    ? undefined
+    : MAC_EDIT[`${event.metaKey ? 'cmd' : 'alt'}:${event.key}`];
 
 // xterm's DOM renderer reads a glyph's width as offsetWidth / 32, a whole px over 32 glyphs, and brings each glyph to
 // its cell by the letter-spacing that leaves (2026-10-20): 12 px SF Mono's 7.418 read as 7.406 is 0.012 px too much a
 // column, and the last glyph of 160 sat 2 px past its row, which clips it — the right edge of every full line cut. The
 // same measure with the fraction kept: the computed width, which a tile's scale does not reach. Still offsetWidth in 6.0.
 function exactGlyphs(xt) {
-  const r = xt._core?._renderService?._renderer?.value;
-  const wc = r?._widthCache;
+  const renderer = xt._core?._renderService?._renderer?.value;
+  const wc = renderer?._widthCache;
 
-  if (typeof wc?._measure !== 'function' || typeof r._setDefaultSpacing !== 'function') return;
+  if (typeof wc?._measure !== 'function' || typeof renderer._setDefaultSpacing !== 'function') return;
 
-  wc._measure = function (c, v) {
-    const el = this._measureElements[v];
+  wc._measure = function (char, variant) {
+    const el = this._measureElements[variant];
 
-    el.textContent = c.repeat(32);
+    el.textContent = char.repeat(32);
     return parseFloat(getComputedStyle(el).width) / 32 || 0;
   };
 
   wc.clear();
-  r._setDefaultSpacing();
+  renderer._setDefaultSpacing();
   xt.refresh(0, xt.rows - 1);
 }
 
@@ -397,9 +409,9 @@ function exactFit(tm) {
   const propose = tm.fit.proposeDimensions.bind(tm.fit);
 
   tm.fit.proposeDimensions = () => {
-    const r = tm.xt._core?._renderService?.dimensions;
-    const cell = r?.css?.cell;
-    const dev = r?.device?.cell;
+    const dimensions = tm.xt._core?._renderService?.dimensions;
+    const cell = dimensions?.css?.cell;
+    const dev = dimensions?.device?.cell;
     const dpr = window.devicePixelRatio || 1;
 
     if (!(dev?.width > 0 && dev.height > 0 && cell)) return propose();

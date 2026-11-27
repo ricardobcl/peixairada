@@ -53,8 +53,8 @@ export function claudeTrusts(cwd) {
       mtime,
       dirs: new Set(
         Object.entries(projects)
-          .filter(([, p]) => p?.hasTrustDialogAccepted === true)
-          .map(([d]) => d),
+          .filter(([, project]) => project?.hasTrustDialogAccepted === true)
+          .map(([dir]) => dir),
       ),
     };
   }
@@ -67,14 +67,14 @@ export function claudeTrusts(cwd) {
 
   // up to the repository's own folder and no further (2026-11-06), as Claude Code walks it: a trusted folder of repos (an
   // org's root) trusts none of them, nor a fresh clone in it whose Taskfile would run before claude ever asked
-  for (let d of new Set([resolve(cwd), real])) {
+  for (let dir of new Set([resolve(cwd), real])) {
     for (;;) {
-      if (trustRead.dirs.has(d)) return true;
-      if (existsSync(join(d, '.git'))) break;
-      const up = dirname(d);
+      if (trustRead.dirs.has(dir)) return true;
+      if (existsSync(join(dir, '.git'))) break;
+      const up = dirname(dir);
 
-      if (up === d) break;
-      d = up;
+      if (up === dir) break;
+      dir = up;
     }
   }
 
@@ -96,10 +96,10 @@ const untrustedSaid = new Set(); // the folders whose Taskfile was left unasked,
 export const TASK_NAME = /^\w[\w:.-]*$/; // a word's character first (2026-11-27): `task -x` is an option
 
 export function taskfileOf(cwd) {
-  for (const f of TASKFILES) {
-    const p = join(cwd, f);
+  for (const name of TASKFILES) {
+    const path = join(cwd, name);
 
-    if (existsSync(p)) return p;
+    if (existsSync(path)) return path;
   }
 
   return null;
@@ -143,14 +143,14 @@ export function launchersFor(cwd) {
   const asking = execFileP(bin, ['--list', '--json'], { cwd, env: termEnv(), timeout: 15_000, maxBuffer: 4e6 }).then(
     ({ stdout }) => {
       const launchers = (JSON.parse(stdout).tasks || [])
-        .filter(t => /\bclaude\b/i.test(t.desc || ''))
-        .map(t => ({ name: t.name, desc: t.desc || '' }));
+        .filter(task => /\bclaude\b/i.test(task.desc || ''))
+        .map(task => ({ name: task.name, desc: task.desc || '' }));
 
       launcherCache.set(cwd, { mtime, launchers });
       return launchers;
     },
-    e => {
-      console.error(`[peixairada] task --list in ${cwd}: ${String(e.message).split('\n')[0]}`);
+    error => {
+      console.error(`[peixairada] task --list in ${cwd}: ${String(error.message).split('\n')[0]}`);
       if (launcherCache.get(cwd)?.asking === asking) launcherCache.delete(cwd);
       return [];
     },

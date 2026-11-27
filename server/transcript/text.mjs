@@ -10,8 +10,8 @@ export function textOf(content) {
   if (typeof content === 'string') return content;
   if (!Array.isArray(content)) return '';
   return content
-    .filter(b => b?.type === 'text')
-    .map(b => b.text || '')
+    .filter(block => block?.type === 'text')
+    .map(block => block.text || '')
     .join('\n');
 }
 
@@ -19,15 +19,15 @@ export function cleanPrompt(text) {
   return text.replace(STRIP_RE, '').trim();
 }
 
-/** At most `n` UTF-16 units, never half an emoji: a cut between a surrogate pair left a lone one, a U+FFFD on the page. */
-export const cut = (t, n) => (t.length > n ? t.slice(0, n).replace(/[\uD800-\uDBFF]$/, '') : t);
+/** At most `max` UTF-16 units, never half an emoji: a cut between a surrogate pair left a lone one, a U+FFFD on the page. */
+export const cut = (text, max) => (text.length > max ? text.slice(0, max).replace(/[\uD800-\uDBFF]$/, '') : text);
 
-export function snippet(text, n = 240) {
-  const t = String(text || '')
+export function snippet(text, max = 240) {
+  const oneLine = String(text || '')
     .replace(/\s+/g, ' ')
     .trim();
 
-  return t.length > n ? `${cut(t, n - 1)}…` : t;
+  return oneLine.length > max ? `${cut(oneLine, max - 1)}…` : oneLine;
 }
 
 /** Markdown as a sentence (2026-10-12): a card, a picker and an alert show the start of a prompt or a reply, and the
@@ -42,22 +42,22 @@ export function plain(text) {
   return String(text || '')
     .replace(/^\s*(?:```|~~~).*$/gm, '')
     .split('\n')
-    .map(l => {
-      if (/^[\s:|-]*$/.test(l) && l.includes('--')) return ''; // a table's rule, or a --- one — two tests, linear: as one regex a long run of dashes and a letter after took seconds (2026-10-14)
-      l = l.replace(/^\s*(?:>\s?)+/, '').replace(/^\s{0,3}#{1,6}\s+/, '');
-      const item = ITEM_RE.test(l);
+    .map(line => {
+      if (/^[\s:|-]*$/.test(line) && line.includes('--')) return ''; // a table's rule, or a --- one — two tests, linear: as one regex a long run of dashes and a letter after took seconds (2026-10-14)
+      line = line.replace(/^\s*(?:>\s?)+/, '').replace(/^\s{0,3}#{1,6}\s+/, '');
+      const item = ITEM_RE.test(line);
 
-      if (item) l = l.replace(ITEM_RE, '');
+      if (item) line = line.replace(ITEM_RE, '');
 
-      l = l.replace(/^\s*\|(.*)\|\s*$/, (_, row) =>
+      line = line.replace(/^\s*\|(.*)\|\s*$/, (_, row) =>
         row
           .split('|')
-          .map(c => c.trim())
+          .map(cell => cell.trim())
           .filter(Boolean)
           .join(' · '),
       );
 
-      return (item ? '· ' : '') + l;
+      return (item ? '· ' : '') + line;
     })
     .join('\n')
     .replace(/!?\[([^\]\n]*)\]\((?:[^()\s]|\([^()\s]*\))+\)/g, '$1')
@@ -74,7 +74,7 @@ export function plain(text) {
     );
 }
 
-export const plainSnippet = (text, n) => snippet(plain(String(text || '').slice(0, Math.max(2000, n * 8))), n); // the start is all a snippet shows: a long reply is not walked whole
+export const plainSnippet = (text, max) => snippet(plain(String(text || '').slice(0, Math.max(2000, max * 8))), max); // the start is all a snippet shows: a long reply is not walked whole
 
 export function summarizeToolInput(name, input = {}) {
   try {
@@ -114,14 +114,14 @@ export function summarizeToolInput(name, input = {}) {
 }
 
 export function resultText(block) {
-  const c = block.content;
+  const content = block.content;
 
-  return typeof c === 'string'
-    ? c
-    : Array.isArray(c)
-      ? c
-          .filter(b => b.type === 'text')
-          .map(b => b.text)
+  return typeof content === 'string'
+    ? content
+    : Array.isArray(content)
+      ? content
+          .filter(part => part.type === 'text')
+          .map(part => part.text)
           .join('\n')
       : '';
 }

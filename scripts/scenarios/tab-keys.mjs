@@ -16,13 +16,15 @@ export default async function (ctx) {
 
   await ctx.reload();
   await ctx.openChat(chat.id);
-  const shells = () => ctx.peix('state().tabs').then(t => t.filter(k => k.startsWith('shell:')));
+  const shells = () => ctx.peix('state().tabs').then(tabs => tabs.filter(key => key.startsWith('shell:')));
 
   const live = async () =>
-    (await ctx.server.terminals()).filter(t => t.shell && t.sessionId === chat.id && t.exited === null).map(t => t.id);
+    (await ctx.server.terminals())
+      .filter(term => term.shell && term.sessionId === chat.id && term.exited === null)
+      .map(term => term.id);
 
   const until = async (fn, what) => {
-    for (let i = 0; i < 100; i++) {
+    for (let attempt = 0; attempt < 100; attempt++) {
       if (await fn()) return;
       await ctx.sleep(100);
     }
@@ -60,7 +62,7 @@ export default async function (ctx) {
   });
 
   const both = await shells();
-  const second = both.find(k => k !== first);
+  const second = both.find(key => key !== first);
 
   await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(second)} && window.peix.term(1).ws === 1`, {
     what: 'the keys on the second zsh, attached',
@@ -350,7 +352,7 @@ export default async function (ctx) {
 
   ctx.assert.deepEqual(
     (await ctx.peix('state().strips'))[1],
-    before[1].filter(k => k !== ide),
+    before[1].filter(key => key !== ide),
     'the rest of its strip as it was',
   );
 

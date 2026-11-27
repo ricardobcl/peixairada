@@ -34,7 +34,7 @@ const die = line => {
   process.exit(1);
 };
 
-const many = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const many = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
 const writtenAt = ref => {
   try {
@@ -59,7 +59,7 @@ const MONTHS = [
   'December',
 ];
 
-const longDate = (d = new Date()) => `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+const longDate = (date = new Date()) => `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 
 const HEAD_CHANGELOG = `# Changelog
 
@@ -89,21 +89,21 @@ function lastRelease() {
 
 /** The next release: the next minor (2026-11-27, V1: a fix that cannot wait is a minor too). */
 function nextVersion(version) {
-  const p = verParts(version);
+  const parts = verParts(version);
 
-  if (!p) die(`package.json's version, ${version}, is no x.y.z`);
-  return `${p[0]}.${p[1] + 1}.0`;
+  if (!parts) die(`package.json's version, ${version}, is no x.y.z`);
+  return `${parts[0]}.${parts[1] + 1}.0`;
 }
 
 /** The parts of the board a commit's files are (server/update.mjs' updateParts), or `notes` for none of them. */
 function partsOf(files) {
   const has = new Set();
 
-  for (const f of files) {
-    if (/^package(-lock)?\.json$/.test(f)) has.add('deps');
-    else if (f === 'server.mjs' || /^(server|lib)\//.test(f)) has.add('server');
-    else if (f.startsWith('public/')) has.add('page');
-    else if (f.startsWith('mac/') && !f.endsWith('.md')) has.add('app');
+  for (const file of files) {
+    if (/^package(-lock)?\.json$/.test(file)) has.add('deps');
+    else if (file === 'server.mjs' || /^(server|lib)\//.test(file)) has.add('server');
+    else if (file.startsWith('public/')) has.add('page');
+    else if (file.startsWith('mac/') && !file.endsWith('.md')) has.add('app');
   }
 
   return has.size ? [...has].join('+') : 'notes';
@@ -118,8 +118,8 @@ function decisionsSince(since) {
   } catch {}
 
   return [...text.matchAll(/^## Decisions of (\d{4}-\d{2}-\d{2})([^\n]*)$/gm)]
-    .filter(m => !since || m[1] >= since)
-    .map(m => ({ date: m[1], title: m[2].replace(/^[,\s]*(?:—\s*)?/, '').trim() }));
+    .filter(match => !since || match[1] >= since)
+    .map(match => ({ date: match[1], title: match[2].replace(/^[,\s]*(?:—\s*)?/, '').trim() }));
 }
 
 function draft(sinceArg) {
@@ -136,14 +136,14 @@ function draft(sinceArg) {
   const log = tryGit('log', '--format=%x1e%h%x1f%cs%x1f%s', '--name-only', ...range)
     .split('\x1e')
     .filter(Boolean)
-    .map(b => {
-      const [head, ...files] = b.trim().split('\n');
-      const [h, d, s] = head.split('\x1f');
+    .map(block => {
+      const [head, ...files] = block.trim().split('\n');
+      const [hash, date, subject] = head.split('\x1f');
 
-      return { h, d, s, part: partsOf(files.filter(Boolean)) };
+      return { h: hash, d: date, s: subject, part: partsOf(files.filter(Boolean)) };
     });
 
-  const facing = log.filter(c => c.part !== 'notes').length;
+  const facing = log.filter(commit => commit.part !== 'notes').length;
 
   console.log(
     `peixAIrada: the last release ${relName(last.version)} (${last.sha.slice(0, 7)}, ${last.date}); the next ${relName(next)}`,
@@ -156,9 +156,9 @@ function draft(sinceArg) {
   const dec = decisionsSince(sinceDate);
 
   console.log(`\nDECISIONS.md, ${dec.length} ${dec.length === 1 ? 'entry' : 'entries'} since ${sinceDate}:`);
-  for (const e of dec) console.log(`  ${e.date}  ${e.title}`);
+  for (const entry of dec) console.log(`  ${entry.date}  ${entry.title}`);
   console.log('\nThe commits, newest first:');
-  for (const c of log) console.log(`  ${c.d} ${c.h} [${c.part}] ${c.s}`);
+  for (const commit of log) console.log(`  ${commit.d} ${commit.h} [${commit.part}] ${commit.s}`);
 
   console.log(`\nThe notes: markdown, ### New / ### Changed / ### Security / ### Fixed; then
   node scripts/release.mjs cut <notes.md>`);
@@ -200,15 +200,15 @@ function cut(file, date) {
   writeFileSync(path, at < 0 ? `${was.trimEnd()}\n\n${section}` : was.slice(0, at) + section + was.slice(at));
   if (changelogSections(readFileSync(path, 'utf8'))[0]?.version !== name) die(`${CHANGELOG} did not read back`);
 
-  for (const f of ['package.json', 'package-lock.json']) {
-    const p = join(DIR, f);
+  for (const manifest of ['package.json', 'package-lock.json']) {
+    const manifestPath = join(DIR, manifest);
 
-    if (!existsSync(p)) continue;
-    const j = JSON.parse(readFileSync(p, 'utf8'));
+    if (!existsSync(manifestPath)) continue;
+    const json = JSON.parse(readFileSync(manifestPath, 'utf8'));
 
-    j.version = next;
-    if (j.packages?.['']) j.packages[''].version = next;
-    writeFileSync(p, `${JSON.stringify(j, null, 2)}\n`);
+    json.version = next;
+    if (json.packages?.['']) json.packages[''].version = next;
+    writeFileSync(manifestPath, `${JSON.stringify(json, null, 2)}\n`);
   }
 
   git(
@@ -248,7 +248,7 @@ function publish() {
     die(`not published: ${at.slice(0, 7)} is not signed by a key in .github/allowed_signers — no board would take it`);
   }
 
-  const notes = changelogSections(git('show', `${at}:${CHANGELOG}`)).find(s => s.version === name);
+  const notes = changelogSections(git('show', `${at}:${CHANGELOG}`)).find(section => section.version === name);
 
   if (!notes) die(`not published: ${CHANGELOG} has no ${name} at ${tag}`);
   git('push', '-q', 'origin', 'main');
@@ -281,16 +281,16 @@ function publish() {
 
 const [cmd, ...rest] = process.argv.slice(2);
 
-const opt = k => {
-  const i = rest.indexOf(k);
+const opt = flag => {
+  const index = rest.indexOf(flag);
 
-  return i >= 0 ? rest[i + 1] : null;
+  return index >= 0 ? rest[index + 1] : null;
 };
 
 if (!cmd || cmd === '--since') draft(cmd ? rest[0] : null);
 else if (cmd === 'cut') {
   cut(
-    rest.find(a => !a.startsWith('--') && a !== opt('--date')),
+    rest.find(argument => !argument.startsWith('--') && argument !== opt('--date')),
     opt('--date'),
   );
 } else if (cmd === 'publish') publish();

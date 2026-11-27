@@ -32,74 +32,79 @@ function tokens(src) {
 
 /** The selection set at `at` (a `{`) as a tree: each field by its alias, else its name → { sub: its own tree or null for a
  *  scalar, on: the types of the inline fragments it came from, or null when it is asked for whatever the type }. */
-function selection(t, at) {
+function selection(tokenList, at) {
   const sel = {};
 
-  const put = (key, f) => {
+  const put = (key, field) => {
     const was = sel[key];
 
-    if (!was) return void (sel[key] = f);
-    if (f.sub) was.sub = { ...(was.sub || {}), ...f.sub }; // the same field twice (two fragments): what either asks
-    was.on = was.on && f.on ? new Set([...was.on, ...f.on]) : null;
+    if (!was) return void (sel[key] = field);
+    if (field.sub) was.sub = { ...(was.sub || {}), ...field.sub }; // the same field twice (two fragments): what either asks
+    was.on = was.on && field.on ? new Set([...was.on, ...field.on]) : null;
   };
 
-  let i = at + 1;
+  let index = at + 1;
 
-  while (i < t.length && t[i] !== '}') {
-    if (t[i] === '...') {
+  while (index < tokenList.length && tokenList[index] !== '}') {
+    if (tokenList[index] === '...') {
       // `... on Type { … }`
-      const type = t[i + 2];
-      const r = selection(t, i + 3);
+      const type = tokenList[index + 2];
+      const fragment = selection(tokenList, index + 3);
 
-      for (const [k, f] of Object.entries(r.sel)) put(k, { sub: f.sub, on: f.on || new Set([type]) });
-      i = r.end;
+      for (const [name, field] of Object.entries(fragment.sel)) {
+        put(name, { sub: field.sub, on: field.on || new Set([type]) });
+      }
+
+      index = fragment.end;
       continue;
     }
 
-    const key = t[i++];
+    const key = tokenList[index++];
 
-    if (t[i] === ':') i += 2; // an alias: the answer is keyed by it
+    if (tokenList[index] === ':') index += 2; // an alias: the answer is keyed by it
 
-    if (t[i] === '(') {
+    if (tokenList[index] === '(') {
       let depth = 0;
 
       do {
-        if (t[i] === '(') depth++;
-        else if (t[i] === ')') depth--;
-        i++;
-      } while (depth && i < t.length);
+        if (tokenList[index] === '(') depth++;
+        else if (tokenList[index] === ')') depth--;
+        index++;
+      } while (depth && index < tokenList.length);
     }
 
     let sub = null;
 
-    if (t[i] === '{') {
-      const r = selection(t, i);
+    if (tokenList[index] === '{') {
+      const nested = selection(tokenList, index);
 
-      sub = r.sel;
-      i = r.end;
+      sub = nested.sel;
+      index = nested.end;
     }
 
     put(key, { sub, on: null });
   }
 
-  return { sel, end: i + 1 };
+  return { sel, end: index + 1 };
 }
 
 const NOT_NULL = new Set(['isDraft', 'isCrossRepository']); // Boolean! in GitHub's schema: false, never null
+
 /** GitHub's answer for a field the entry leaves out. */
-const blank = (key, f) => (f.sub ? ('nodes' in f.sub ? { nodes: [] } : null) : NOT_NULL.has(key) ? false : null);
+const blank = (key, field) =>
+  field.sub ? ('nodes' in field.sub ? { nodes: [] } : null) : NOT_NULL.has(key) ? false : null;
 
 /** The entry's value cut to the selection `sel`; every key it holds that `sel` does not name goes to `unasked`. */
-function shape(v, sel, path, unasked) {
-  if (v === null || v === undefined) return null;
-  if (Array.isArray(v)) return v.map((x, i) => shape(x, sel, `${path}[${i}]`, unasked));
-  if (!sel || typeof v !== 'object') return v;
-  for (const k of Object.keys(v)) if (!(k in sel)) unasked.push(`${path}.${k}`);
+function shape(value, sel, path, unasked) {
+  if (value === null || value === undefined) return null;
+  if (Array.isArray(value)) return value.map((item, index) => shape(item, sel, `${path}[${index}]`, unasked));
+  if (!sel || typeof value !== 'object') return value;
+  for (const key of Object.keys(value)) if (!(key in sel)) unasked.push(`${path}.${key}`);
   const out = {};
 
-  for (const [k, f] of Object.entries(sel)) {
-    if (k in v) out[k] = shape(v[k], f.sub, `${path}.${k}`, unasked);
-    else if (!f.on || f.on.has(v.__typename)) out[k] = blank(k, f);
+  for (const [key, field] of Object.entries(sel)) {
+    if (key in value) out[key] = shape(value[key], field.sub, `${path}.${key}`, unasked);
+    else if (!field.on || field.on.has(value.__typename)) out[key] = blank(key, field);
   }
 
   return out;
@@ -129,20 +134,20 @@ if (cmd === 'repo' && sub === 'clone') {
       process.exit(1);
     }, ms / 4);
   } else {
-    let i = 0;
+    let step = 0;
 
     const tick = setInterval(() => {
-      i++;
+      step++;
 
       if (progress) {
         process.stderr.write(
-          i <= 7
-            ? `Receiving objects: ${String(Math.round((i / 7) * 100)).padStart(3)}% (${i * 10}/70)\r`
-            : `Resolving deltas: ${String(Math.round(((i - 7) / 3) * 100)).padStart(3)}% (${i - 7}/3)\r`,
+          step <= 7
+            ? `Receiving objects: ${String(Math.round((step / 7) * 100)).padStart(3)}% (${step * 10}/70)\r`
+            : `Resolving deltas: ${String(Math.round(((step - 7) / 3) * 100)).padStart(3)}% (${step - 7}/3)\r`,
         );
       }
 
-      if (i < steps) return;
+      if (step < steps) return;
       clearInterval(tick);
       mkdirSync(join(dir, '.git'), { recursive: true });
       writeFileSync(join(dir, '.git', 'config'), `[remote "origin"]\n\turl = https://github.com/${ref}.git\n`);
@@ -160,8 +165,8 @@ if (cmd === 'repo' && sub === 'clone') {
     prs = JSON.parse(readFileSync(process.env.FAKEGH_PRS, 'utf8'));
   } catch {}
 
-  const m = /github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/.exec(flag || '');
-  const pr = m && prs[`${m[1]}/${m[2]}#${m[3]}`];
+  const match = /github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/.exec(flag || '');
+  const pr = match && prs[`${match[1]}/${match[2]}#${match[3]}`];
 
   if (pr?.diff) process.stdout.write(pr.diff);
   else {
@@ -203,23 +208,23 @@ if (cmd === 'repo' && sub === 'clone') {
   const errors = [];
   const unasked = [];
 
-  for (const m of arg.matchAll(
+  for (const match of arg.matchAll(
     /(p\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\) \{ pullRequest\(number: (\d+)\)/g,
   )) {
-    const key = `${m[2]}/${m[3]}#${m[4]}`;
+    const key = `${match[2]}/${match[3]}#${match[4]}`;
     const pr = prs[key];
 
     if (pr) {
       const { diff, ...entry } = pr;
 
-      data[m[1]] = { pullRequest: shape(entry, query[m[1]].sub.pullRequest.sub, key, unasked) };
-    } else data[m[1]] = null;
+      data[match[1]] = { pullRequest: shape(entry, query[match[1]].sub.pullRequest.sub, key, unasked) };
+    } else data[match[1]] = null;
 
     if (!pr) {
       errors.push({
         type: 'NOT_FOUND',
-        path: [m[1], 'pullRequest'],
-        message: `Could not resolve to a PullRequest with the number of ${m[4]}.`,
+        path: [match[1], 'pullRequest'],
+        message: `Could not resolve to a PullRequest with the number of ${match[4]}.`,
       });
     }
   }
@@ -235,7 +240,7 @@ if (cmd === 'repo' && sub === 'clone') {
   process.stdout.write(`${JSON.stringify(errors.length ? { data, errors } : { data })}\n`);
 
   if (errors.length) {
-    console.error(errors.map(e => `gh: ${e.message}`).join('\n'));
+    console.error(errors.map(error => `gh: ${error.message}`).join('\n'));
     process.exitCode = 1;
   }
 }

@@ -51,8 +51,8 @@ export default async function (ctx) {
       features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }],
     });
 
-  const root = v =>
-    ctx.evaluate(`getComputedStyle(document.documentElement).getPropertyValue(${JSON.stringify(v)}).trim()`);
+  const root = property =>
+    ctx.evaluate(`getComputedStyle(document.documentElement).getPropertyValue(${JSON.stringify(property)}).trim()`);
 
   const skin = () => ctx.evaluate(`document.documentElement.dataset.skin || null`);
 
@@ -61,9 +61,9 @@ export default async function (ctx) {
       `document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') || null`,
     );
 
-  const keyIn = k =>
+  const keyIn = key =>
     ctx.evaluate(
-      `document.querySelector('#themeq').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true }))`,
+      `document.querySelector('#themeq').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true, cancelable: true }))`,
     );
 
   const escape = () =>
@@ -74,27 +74,27 @@ export default async function (ctx) {
   const look = () => ctx.evaluate(`document.documentElement.dataset.theme`);
 
   const prefs = async (...keys) => {
-    const p = await ctx.peix('prefs()');
+    const stored = await ctx.peix('prefs()');
 
-    return Object.fromEntries(keys.map(k => [k, p[k] ?? null]));
+    return Object.fromEntries(keys.map(key => [key, stored[key] ?? null]));
   };
 
-  const pick = async (q, k) => {
+  const pick = async (query, skinKey) => {
     await ctx.key('KeyY');
-    await ctx.waitFor(`document.querySelector('#themes').open`, { what: `the grid, for ${q}` });
-    await ctx.fill('#themeq', q);
+    await ctx.waitFor(`document.querySelector('#themes').open`, { what: `the grid, for ${query}` });
+    await ctx.fill('#themeq', query);
 
-    await ctx.waitFor(`(document.documentElement.dataset.skin || null) === ${JSON.stringify(k)}`, {
-      what: `${q} previewed`,
+    await ctx.waitFor(`(document.documentElement.dataset.skin || null) === ${JSON.stringify(skinKey)}`, {
+      what: `${query} previewed`,
     });
   };
 
-  const appearance = async m => {
-    await ctx.evaluate(`document.querySelector('#lookPick [data-look="${m}"]').click()`);
+  const appearance = async mode => {
+    await ctx.evaluate(`document.querySelector('#lookPick [data-look="${mode}"]').click()`);
 
     await ctx.waitFor(
-      `window.peix.prefs().skinFollow === ${m === 'auto'}${m === 'auto' ? '' : ` && window.peix.prefs().look === '${m}'`}`,
-      { what: `Appearance › ${m}` },
+      `window.peix.prefs().skinFollow === ${mode === 'auto'}${mode === 'auto' ? '' : ` && window.peix.prefs().look === '${mode}'`}`,
+      { what: `Appearance › ${mode}` },
     );
   };
 
@@ -397,9 +397,9 @@ export default async function (ctx) {
   });
 
   // a board from before the families: the family of what it wore, the slots and Frame gone; a theme gone is the board's own
-  const saved = async p => {
+  const saved = async oldPrefs => {
     await ctx.evaluate(
-      `(p => { const k = 'peixairada-prefs', o = JSON.parse(localStorage.getItem(k) || '{}'); delete o.theme; delete o.darkFrame; localStorage.setItem(k, JSON.stringify({ ...o, ...p })); })(${JSON.stringify(p)})`,
+      `(p => { const k = 'peixairada-prefs', o = JSON.parse(localStorage.getItem(k) || '{}'); delete o.theme; delete o.darkFrame; localStorage.setItem(k, JSON.stringify({ ...o, ...p })); })(${JSON.stringify(oldPrefs)})`,
     );
 
     await ctx.reload();

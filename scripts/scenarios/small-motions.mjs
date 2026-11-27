@@ -12,11 +12,11 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 2`, { what: "the fixture's two chats" });
   await ctx.settle();
 
-  const mouse = (type, p) =>
+  const mouse = (type, point) =>
     ctx.send('Input.dispatchMouseEvent', {
       type,
-      x: p.x,
-      y: p.y,
+      x: point.x,
+      y: point.y,
       button: 'left',
       buttons: type === 'mouseReleased' ? 0 : 1,
       clickCount: 1,
@@ -28,29 +28,29 @@ export default async function (ctx) {
     await ctx.settle(); // a draw between the press and the read replaces the node, and the new one is not :active
 
     if (over) {
-      const o = await ctx.evaluate(at(over));
+      const hoverPoint = await ctx.evaluate(at(over));
 
-      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: o.x, y: o.y });
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: hoverPoint.x, y: hoverPoint.y });
       await ctx.sleep(100);
     } // the ✓ has no room until the pointer is on its card (2026-11-03)
 
-    const p = await ctx.evaluate(at(sel));
+    const point = await ctx.evaluate(at(sel));
 
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y });
-    await mouse('mousePressed', p);
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y });
+    await mouse('mousePressed', point);
     // held: read until the dip has settled — two reads alike, 80 ms apart (a page out of sight runs late)
     let seen = null;
 
-    for (let i = 0, last; i < 12; i++) {
+    for (let attempt = 0, last; attempt < 12; attempt++) {
       await ctx.sleep(80);
-      const v = JSON.stringify(await ctx.evaluate(read));
+      const reading = JSON.stringify(await ctx.evaluate(read));
 
-      if (v === last) {
-        seen = JSON.parse(v);
+      if (reading === last) {
+        seen = JSON.parse(reading);
         break;
       }
 
-      last = v;
+      last = reading;
     }
 
     // let go somewhere else, so the press is not a click (a ✓ would tick the chat, a chip would filter the list) — out in
@@ -99,7 +99,7 @@ export default async function (ctx) {
   );
 
   ctx.assert.ok(
-    out.rolling.some(r => r.startsWith('lane:ready:')),
+    out.rolling.some(roll => roll.startsWith('lane:ready:')),
     "the lane's count is a strip of digits while it rolls",
   );
 
@@ -171,7 +171,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.zero.ready, false, 'no Ready lane');
   // the sparks go on their animations' finish, an event a page out of sight hears late
   await ctx.waitFor(`document.querySelectorAll('.spark').length === 0`, { what: 'the sparks gone', timeout: 4000 });
-  for (const c of [one, two]) await ctx.server.post(`api/sessions/${c.id}/done`, { done: false });
+  for (const chat of [one, two]) await ctx.server.post(`api/sessions/${chat.id}/done`, { done: false });
 
   await ctx.waitFor(
     `document.querySelector('.gsep.lane.ready b')?.textContent === '2' && !document.querySelector('.gsep.lane.zero')`,
@@ -281,13 +281,13 @@ export default async function (ctx) {
   );
 
   ctx.assert.deepEqual(
-    out.path.map(p => p.facing),
+    out.path.map(step => step.facing),
     ['left', 'left', 'left', 'right', 'right', 'right'],
     'turning at the end',
   );
 
   ctx.assert.ok(
-    out.path.every(p => p.x >= 0 && p.right >= 0),
+    out.path.every(step => step.x >= 0 && step.right >= 0),
     `never outside the lane: ${JSON.stringify(out.path)}`,
   );
 
@@ -309,7 +309,7 @@ export default async function (ctx) {
     `(l => { window.__opened = false; new MutationObserver(() => { window.__opened ||= l.classList.contains('open'); }).observe(l, { attributes: true }); })(document.querySelector('#sbSwim'))`,
   );
 
-  for (let i = 0; i < 10 && !patted; i++) {
+  for (let attempt = 0; attempt < 10 && !patted; attempt++) {
     await ctx.waitFor(`!window.peix.state().swim.food.length`, { what: 'nothing out to eat', timeout: 15_000 });
     await ctx.sleep(700);
     m21 = await ctx.evaluate(`Math.round(performance.now())`);
@@ -365,7 +365,8 @@ export default async function (ctx) {
   );
 
   ctx.assert.ok(
-    out.burp.includes('burp') && out.burp.filter(k => k.startsWith('gulp')).some(k => +k.slice(4) % 3 === 0),
+    out.burp.includes('burp') &&
+      out.burp.filter(kind => kind.startsWith('gulp')).some(kind => +kind.slice(4) % 3 === 0),
     `a burp after every third: ${JSON.stringify(out.burp)}`,
   );
 

@@ -23,7 +23,9 @@ const AGENT_STALE_MS = Number(process.env.AGENT_STALE_MS || 15 * 60_000);
 const isHandback = (line, id) =>
   line?.type === 'assistant' &&
   Array.isArray(line.message?.content) &&
-  line.message.content.some(b => b?.type === 'tool_use' && b.name === 'SubagentHandback' && b.id === id);
+  line.message.content.some(
+    block => block?.type === 'tool_use' && block.name === 'SubagentHandback' && block.id === id,
+  );
 
 /** A chat with no claude, its agents as they were (2026-11-24): Space's pods, a resume's. Read again only when its folder of
  *  agents changed, and only for a chat with a word in the last AGENT_PAST_DAYS — the rest wait for a look of their own. On
@@ -32,23 +34,27 @@ const isHandback = (line, id) =>
 const AGENT_PAST_DAYS = Number(process.env.AGENT_PAST_DAYS ?? 14);
 const PAST_PER_POLL = Number(process.env.PAST_PER_POLL || 20);
 
-function pastAgents(s) {
-  if (s.alive || !s.file || !(Date.now() - Date.parse(s.lastActivity || 0) < AGENT_PAST_DAYS * 86_400_000)) {
+function pastAgents(session) {
+  if (
+    session.alive ||
+    !session.file ||
+    !(Date.now() - Date.parse(session.lastActivity || 0) < AGENT_PAST_DAYS * 86_400_000)
+  ) {
     return false;
   }
 
   let at;
 
   try {
-    at = statSync(agentsDir(s)).mtimeMs;
+    at = statSync(agentsDir(session)).mtimeMs;
   } catch {
     at = 0;
   }
 
-  if (at === s.agentDirAt) return false;
-  s.agentDirAt = at;
-  if (!at && !s.agentAll && !s.agentRows) return false; // none, and none before: nothing read
-  scanAgents(s);
+  if (at === session.agentDirAt) return false;
+  session.agentDirAt = at;
+  if (!at && !session.agentAll && !session.agentRows) return false; // none, and none before: nothing read
+  scanAgents(session);
   return true;
 }
 
@@ -56,12 +62,12 @@ export function pastSweep() {
   let left = PAST_PER_POLL;
 
   const todo = [...sessions.values()]
-    .filter(s => !s.alive && s.file)
-    .sort((a, b) => String(b.lastActivity || '').localeCompare(String(a.lastActivity || '')));
+    .filter(session => !session.alive && session.file)
+    .sort((first, second) => String(second.lastActivity || '').localeCompare(String(first.lastActivity || '')));
 
-  for (const s of todo) {
+  for (const session of todo) {
     if (left <= 0) break;
-    if (pastAgents(s)) left--;
+    if (pastAgents(session)) left--;
   }
 }
 
@@ -92,9 +98,9 @@ export function agentRunning(file, now = Date.now(), since = 0) {
     .trim()
     .split('\n')
     .slice(-8)
-    .map(l => {
+    .map(line => {
       try {
-        return JSON.parse(l);
+        return JSON.parse(line);
       } catch {
         return null;
       }
@@ -105,34 +111,34 @@ export function agentRunning(file, now = Date.now(), since = 0) {
   if (!last) return true; // a line still being written: at work
   if (last.type === 'assistant') return !endsTurn(last.message);
   if (last.type !== 'user') return true; // an attachment (a token reminder) is an agent mid-way
-  const c = last.message?.content;
+  const content = last.message?.content;
 
-  if (textOf(c).startsWith('[Request interrupted')) return false;
-  const res = Array.isArray(c) && c.find(b => b?.type === 'tool_result');
+  if (textOf(content).startsWith('[Request interrupted')) return false;
+  const res = Array.isArray(content) && content.find(block => block?.type === 'tool_result');
 
-  return !(res && tail.some(l => isHandback(l, res.tool_use_id)));
+  return !(res && tail.some(line => isHandback(line, res.tool_use_id)));
 }
 
-export const agentsDir = s => (s.file ? join(dirname(s.file), s.id, 'subagents') : null);
+export const agentsDir = session => (session.file ? join(dirname(session.file), session.id, 'subagents') : null);
 /** A scan soon, for a chat whose agents moved: from the transcripts' watcher and from a notice folded (noteAgentNotices), so
  *  it lives out here (2026-11-04: inside main(), a notice threw and its line was skipped). */
 const pendingAgents = new Map();
 
-export function agentsSoon(s) {
-  if (indexing || s.silent) return; // the boot's scan, a re-read: its own scan follows
-  clearTimeout(pendingAgents.get(s.id));
+export function agentsSoon(session) {
+  if (indexing || session.silent) return; // the boot's scan, a re-read: its own scan follows
+  clearTimeout(pendingAgents.get(session.id));
 
   pendingAgents.set(
-    s.id,
+    session.id,
     setTimeout(() => {
-      pendingAgents.delete(s.id);
-      scanAgents(sessions.get(s.id) ?? s);
+      pendingAgents.delete(session.id);
+      scanAgents(sessions.get(session.id) ?? session);
     }, 200),
   ); // the chat as it is then: a re-read (indexFile) replaces the object
 }
 
-export function scanAgents(s) {
-  const dir = agentsDir(s);
+export function scanAgents(session) {
+  const dir = agentsDir(session);
   let names = [];
 
   if (dir) {
@@ -143,21 +149,24 @@ export function scanAgents(s) {
 
   // the oldest claude on the chat: an agent from before it died with the one before — the rows' and the count's; one with no
   // claude, all of them before (its past alone: Space's pods, 2026-11-24)
-  const since = s.alive ? Math.min(...[s.live, ...(s.rivals || [])].map(l => Number(l?.startedAt) || 0)) : Infinity;
+  const since = session.alive
+    ? Math.min(...[session.live, ...(session.rivals || [])].map(claude => Number(claude?.startedAt) || 0))
+    : Infinity;
+
   const now = Date.now();
 
   const work = new Map(
     names
-      .filter(n => n.endsWith('.jsonl'))
-      .map(n => [n, agentRunning(join(dir, n), now, since) && !agentFinished(dir, n)]),
+      .filter(fileName => fileName.endsWith('.jsonl'))
+      .map(fileName => [fileName, agentRunning(join(dir, fileName), now, since) && !agentFinished(dir, fileName)]),
   );
 
   const running = [...work.values()].filter(Boolean).length;
 
-  if (running !== (s.agentsRunning || 0)) {
-    s.agentsRunning = running;
-    schedulePush(s);
+  if (running !== (session.agentsRunning || 0)) {
+    session.agentsRunning = running;
+    schedulePush(session);
   }
 
-  if (noteAgents(s, dir, work, since, now)) schedulePush(s); // a row each (2026-11-02)
+  if (noteAgents(session, dir, work, since, now)) schedulePush(session); // a row each (2026-11-02)
 }

@@ -34,22 +34,22 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.reds, [], `nothing on the bar is red while nothing asks: ${JSON.stringify(out.reds)}`);
 
   ctx.assert.ok(
-    out.hot.some(([l, u, t]) => l === 'CPU' && u === 'var(--ink)' && t === '!96%'),
+    out.hot.some(([label, color, text]) => label === 'CPU' && color === 'var(--ink)' && text === '!96%'),
     `CPU past 90 %: the ink and a !: ${JSON.stringify(out.hot)}`,
   );
 
   ctx.assert.ok(
-    out.hot.some(([l, u, t]) => l === 'RAM' && u === 'var(--ink)' && t === '!95%'),
+    out.hot.some(([label, color, text]) => label === 'RAM' && color === 'var(--ink)' && text === '!95%'),
     'RAM likewise',
   );
 
   ctx.assert.ok(
-    out.hot.some(([, u, t]) => u === 'var(--ink)' && t === '!93%'),
+    out.hot.some(([, color, text]) => color === 'var(--ink)' && text === '!93%'),
     'and the plan usage',
   );
 
   ctx.assert.ok(
-    out.hot.some(([, u, t]) => u === 'var(--spend)' && t === '42%'),
+    out.hot.some(([, color, text]) => color === 'var(--spend)' && text === '42%'),
     'a meter under 90 % keeps its colour and no !',
   );
 

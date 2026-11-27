@@ -43,7 +43,7 @@ const BRANCHES_MAX = 6;
 const GIT_CMDS_MAX = 40;
 const AGENT_GIT_BYTES = 4 << 20;
 
-export const driftKey = d => `${d.from}→${d.to}`;
+export const driftKey = drift => `${drift.from}→${drift.to}`;
 
 /** A Bash command of the chat's — its own, a sub-agent's, a `!` one of yours — that can move the branch. */
 export function noteGitCmd(cmds, cmd, ts, msg = null) {
@@ -55,11 +55,11 @@ export function noteGitCmd(cmds, cmd, ts, msg = null) {
 
 export const bashCmds = line =>
   (Array.isArray(line.message?.content) ? line.message.content : [])
-    .filter(b => b?.type === 'tool_use' && b.name === 'Bash')
-    .map(b => b.input?.command);
+    .filter(block => block?.type === 'tool_use' && block.name === 'Bash')
+    .map(block => block.input?.command);
 
-const namesBranch = (cmd, b) =>
-  new RegExp(`(?:^|[\\s'"/:=])${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[\\s'";&|)])`).test(cmd);
+const namesBranch = (cmd, branch) =>
+  new RegExp(`(?:^|[\\s'"/:=])${branch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[\\s'";&|)])`).test(cmd);
 
 /** Whether the chat's own git explains a move to `to` seen at `at` on a line of message `msg`: any of those commands in
  *  the hour before (the study's rule), or one since the chat was on the branch it left (`since`) that names the new one,
@@ -68,15 +68,15 @@ const namesBranch = (cmd, b) =>
  *  hours later — so the line before the change says nothing. */
 const ownMove = (cmds, at, to, since, msg = null) =>
   (cmds || []).some(
-    c =>
-      (c.at <= at + MOVE_SLACK_MS &&
-        (c.at >= at - DRIFT_WINDOW_MS || (c.at >= since - MOVE_SLACK_MS && namesBranch(c.cmd, to)))) ||
-      (msg && c.msg === msg && namesBranch(c.cmd, to)),
+    entry =>
+      (entry.at <= at + MOVE_SLACK_MS &&
+        (entry.at >= at - DRIFT_WINDOW_MS || (entry.at >= since - MOVE_SLACK_MS && namesBranch(entry.cmd, to)))) ||
+      (msg && entry.msg === msg && namesBranch(entry.cmd, to)),
   );
 
 /** The same asked of the chat's sub-agents' transcripts — read only when a move is not otherwise explained. */
-function agentsMoved(s, at, to, since) {
-  const dir = agentsDir(s);
+function agentsMoved(session, at, to, since) {
+  const dir = agentsDir(session);
   let names = [];
 
   if (dir) {
@@ -88,13 +88,13 @@ function agentsMoved(s, at, to, since) {
   const from = Math.min(at - DRIFT_WINDOW_MS, Math.max(since, at - 24 * 3600_000));
   const cmds = [];
 
-  for (const n of names) {
-    if (!n.endsWith('.jsonl')) continue;
-    const f = join(dir, n);
+  for (const name of names) {
+    if (!name.endsWith('.jsonl')) continue;
+    const file = join(dir, name);
     let st;
 
     try {
-      st = statSync(f);
+      st = statSync(file);
     } catch {
       continue;
     }
@@ -105,7 +105,7 @@ function agentsMoved(s, at, to, since) {
     const buf = Buffer.alloc(len);
 
     try {
-      const fd = openSync(f, 'r');
+      const fd = openSync(file, 'r');
 
       try {
         readSync(fd, buf, 0, len, st.size - len);
@@ -118,15 +118,17 @@ function agentsMoved(s, at, to, since) {
 
     for (const raw of buf.toString('utf8').split('\n')) {
       if (!raw.includes('"Bash"')) continue;
-      let l;
+      let line;
 
       try {
-        l = JSON.parse(raw);
+        line = JSON.parse(raw);
       } catch {
         continue;
       }
 
-      if (l.type === 'assistant') for (const c of bashCmds(l)) noteGitCmd(cmds, c, l.timestamp, l.message?.id);
+      if (line.type === 'assistant') {
+        for (const cmd of bashCmds(line)) noteGitCmd(cmds, cmd, line.timestamp, line.message?.id);
+      }
     }
   }
 
@@ -148,158 +150,174 @@ function treeTop(cwd) {
   return top;
 }
 
-const sameTree = (a, b) => a === b || (!!a && !!b && (treeTop(a) || a) === (treeTop(b) || b));
+const sameTree = (folderA, folderB) =>
+  folderA === folderB || (!!folderA && !!folderB && (treeTop(folderA) || folderA) === (treeTop(folderB) || folderB));
 
 /** A line's branch. `s.branchBase` is the branch the chat is on as its lines tell it — `{name, cwd, from, at}`, the
  *  first and last line of the run —, `s.branches` the last few it was on. A change in the same checkout that the chat's
  *  own git does not explain so far is a drift held for judgement (`s.driftDue`), from the branch the chat was on before
  *  anything moved under it; back there is none. The lines still to come and its sub-agents may explain it (settleDrift);
  *  until then the drift shown is the one before (`shown`). */
-export function noteBranch(s, line, ts) {
-  const b = line.gitBranch;
-  const cwd = line.cwd || s.cwd;
+export function noteBranch(session, line, ts) {
+  const branch = line.gitBranch;
+  const cwd = line.cwd || session.cwd;
   const at = Date.parse(ts) || 0;
   const msg = (line.type === 'assistant' && line.message?.id) || null;
 
-  if (!s.reading) s.linesIn++;
-  if (!b) return;
+  if (!session.reading) session.linesIn++;
+  if (!branch) return;
 
-  if (s.branches.at(-1)?.name !== b) {
-    s.branches.push({ name: b, at: ts });
-    if (s.branches.length > BRANCHES_MAX) s.branches.shift();
+  if (session.branches.at(-1)?.name !== branch) {
+    session.branches.push({ name: branch, at: ts });
+    if (session.branches.length > BRANCHES_MAX) session.branches.shift();
   }
 
-  if (b === 'HEAD') return; // detached, mostly mid-rebase: where it lands is what counts
-  const base = s.branchBase;
+  if (branch === 'HEAD') return; // detached, mostly mid-rebase: where it lands is what counts
+  const base = session.branchBase;
 
   if (!base || !sameTree(base.cwd, cwd)) {
-    s.branchBase = { name: b, cwd, from: at, at };
-    s.drift = null;
+    session.branchBase = { name: branch, cwd, from: at, at };
+    session.drift = null;
     return;
   } // the first line, or another checkout
 
-  if (base.name === b) {
+  if (base.name === branch) {
     base.at = at;
     return;
   }
 
-  const ok = s.headOk === b;
+  const ok = session.headOk === branch;
 
-  s.headOk = null;
-  s.branchBase = { name: b, cwd, from: at, at };
+  session.headOk = null;
+  session.branchBase = { name: branch, cwd, from: at, at };
 
-  if (ok || s.drift?.from === b || ownMove(s.gitCmds, at, b, base.from, msg)) {
-    s.drift = null;
-    s.driftDue = null;
+  if (ok || session.drift?.from === branch || ownMove(session.gitCmds, at, branch, base.from, msg)) {
+    session.drift = null;
+    session.driftDue = null;
     return;
   }
 
-  const shown = shownDrift(s);
+  const shown = shownDrift(session);
 
-  s.drift = { from: s.drift?.from || base.name, to: b, at: ts, since: base.from, msg };
+  session.drift = { from: session.drift?.from || base.name, to: branch, at: ts, since: base.from, msg };
 
-  s.driftDue = {
+  session.driftDue = {
     at,
-    to: b,
-    working: statusOf(s) === 'working',
+    to: branch,
+    working: statusOf(session) === 'working',
     shown,
     base,
-    until: s.reading ? 0 : Date.now() + MOVE_SLACK_MS,
+    until: session.reading ? 0 : Date.now() + MOVE_SLACK_MS,
   }; // a whole read has the lines after it in hand
 }
 
 /** The transcript's drift as shown: one held for judgement shows the one before it. */
-const shownDrift = s => (s.driftDue ? s.driftDue.shown : s.drift);
+const shownDrift = session => (session.driftDue ? session.driftDue.shown : session.drift);
 
 /** A word of yours: whatever moved before it, you have had your say — the drift goes, and the branch the folder was on
  *  as you spoke is taken as the chat's (`headOk`), for the lines that are still to catch up with it. */
-export function branchHeard(s) {
-  s.drift = null;
-  s.driftDue = null;
-  s.diskDrift = null;
-  s.diskSeen = null;
-  if (!s.reading) s.headOk = s.headNow && s.headNow !== 'HEAD' && s.headNow !== s.branchBase?.name ? s.headNow : null; // a re-read's prompts are old: the head now is not what they saw
-  s.pendingNotify?.delete('drift');
+export function branchHeard(session) {
+  session.drift = null;
+  session.driftDue = null;
+  session.diskDrift = null;
+  session.diskSeen = null;
+
+  if (!session.reading) {
+    session.headOk =
+      session.headNow && session.headNow !== 'HEAD' && session.headNow !== session.branchBase?.name
+        ? session.headNow
+        : null;
+  } // a re-read's prompts are old: the head now is not what they saw
+
+  session.pendingNotify?.delete('drift');
 }
 
 /** The drift as it stands: the disk's (newer) or the transcript's, while the claude runs, unless the folder is back on
  *  the chat's branch. `driftOf` leaves out one you said you know. */
-export function rawDrift(s) {
-  const d = s.alive ? s.diskDrift || shownDrift(s) : null;
+export function rawDrift(session) {
+  const drift = session.alive ? session.diskDrift || shownDrift(session) : null;
 
-  return d && !(s.headNow && s.headNow === d.from) ? d : null;
+  return drift && !(session.headNow && session.headNow === drift.from) ? drift : null;
 }
 
-export const driftOf = s => {
-  const d = rawDrift(s);
+export const driftOf = session => {
+  const drift = rawDrift(session);
 
-  return d && driftAcks[s.id] !== driftKey(d) ? d : null;
+  return drift && driftAcks[session.id] !== driftKey(drift) ? drift : null;
 };
 
 /** After a batch of lines (indexFile, tailFile), and on its own timer: a drift held is judged once MOVE_SLACK_MS has
  *  passed since it was seen — the chat's own command on a line written after it, or a sub-agent's, explains it —, and
  *  only then shown and alerted: the alert's debounce starts after the judgement, so nothing is said and taken back. A
  *  drift shown goes too when a command within its slack turns up late. True when what is shown may have changed. */
-export function settleDrift(s, now = Date.now()) {
-  const due = s.driftDue;
+export function settleDrift(session, now = Date.now()) {
+  const due = session.driftDue;
 
   if (due?.until > now) {
-    clearTimeout(s.driftTimer);
+    clearTimeout(session.driftTimer);
 
-    s.driftTimer = setTimeout(
+    session.driftTimer = setTimeout(
       () => {
-        s.driftTimer = null;
+        session.driftTimer = null;
 
-        if (sessions.get(s.id) === s) {
-          settleDrift(s);
-          schedulePush(s);
+        if (sessions.get(session.id) === session) {
+          settleDrift(session);
+          schedulePush(session);
         }
       },
       due.until - now + 20,
     );
 
-    s.driftTimer.unref?.();
+    session.driftTimer.unref?.();
     return false;
   }
 
-  s.driftDue = null;
+  session.driftDue = null;
 
-  const d = s.drift;
-  const at = d && Date.parse(d.at);
+  const drift = session.drift;
+  const at = drift && Date.parse(drift.at);
 
-  const gone = !!(d && (ownMove(s.gitCmds, at, d.to, d.since, d.msg) || (due && agentsMoved(s, at, d.to, d.since))));
+  const gone = !!(
+    drift &&
+    (ownMove(session.gitCmds, at, drift.to, drift.since, drift.msg) ||
+      (due && agentsMoved(session, at, drift.to, drift.since)))
+  );
 
-  if (gone) s.drift = null;
-  driftNews(s, !!due?.working && !gone);
+  if (gone) session.drift = null;
+  driftNews(session, !!due?.working && !gone);
   return gone || !!due;
 }
 
 /** An acknowledgement lasts until the move it was for is gone — not while a move seen on disk awaits its judgement, which
  *  shows none meanwhile (2026-10-14: a line in that while dropped it); an alert goes out once per move, and only for a
  *  chat at work — Claude editing the wrong branch is the case that matters. */
-function driftNews(s, working) {
-  const raw = rawDrift(s);
-  const k = raw && driftKey(raw);
-  const judging = !!s.diskSeen && s.diskSeen.drift === undefined;
+function driftNews(session, working) {
+  const raw = rawDrift(session);
+  const key = raw && driftKey(raw);
+  const judging = !!session.diskSeen && session.diskSeen.drift === undefined;
 
-  if (!indexing && !judging && driftAcks[s.id] && driftAcks[s.id] !== k) {
-    delete driftAcks[s.id];
+  if (!indexing && !judging && driftAcks[session.id] && driftAcks[session.id] !== key) {
+    delete driftAcks[session.id];
     saveState();
   }
 
-  const d = driftOf(s);
-  const said = d ? driftKey(d) : null;
+  const drift = driftOf(session);
+  const said = drift ? driftKey(drift) : null;
 
-  if (said === (s.driftSaid ?? null)) return;
-  s.driftSaid = said;
-  if (said && working) queueNotify(s, 'drift');
+  if (said === (session.driftSaid ?? null)) return;
+  session.driftSaid = said;
+  if (said && working) queueNotify(session, 'drift');
 }
 
 /** The work tree a folder is in: the nearest folder at or above it with a `.git` — a directory, or a worktree's file.
  *  Not checkoutOf, which climbs from a worktree to its repo; a worktree has a HEAD of its own. */
 export function gitTopOf(cwd) {
   if (!cwd?.startsWith('/')) return null;
-  for (let d = cwd; d && d !== '/' && d !== homedir(); d = dirname(d)) if (existsSync(join(d, '.git'))) return d;
+
+  for (let dir = cwd; dir && dir !== '/' && dir !== homedir(); dir = dirname(dir)) {
+    if (existsSync(join(dir, '.git'))) return dir;
+  }
+
   return null;
 }
 
@@ -314,11 +332,11 @@ export function headAt(top) {
 
     if (!statSync(git).isDirectory()) git = resolve(top, /^gitdir:\s*(.+)$/m.exec(readFileSync(git, 'utf8'))[1].trim());
 
-    const h = readFileSync(join(git, 'HEAD'), 'utf8').trim();
-    const m = /^ref:\s*refs\/heads\/(.+)$/.exec(h);
+    const head = readFileSync(join(git, 'HEAD'), 'utf8').trim();
+    const match = /^ref:\s*refs\/heads\/(.+)$/.exec(head);
 
-    if (m?.[1] === '.invalid') return reftableHead(top, git); // no branch is named so
-    return m ? m[1] : /^[0-9a-f]{40,64}$/.test(h) ? 'HEAD' : null;
+    if (match?.[1] === '.invalid') return reftableHead(top, git); // no branch is named so
+    return match ? match[1] : /^[0-9a-f]{40,64}$/.test(head) ? 'HEAD' : null;
   } catch {
     return null;
   }
@@ -345,8 +363,8 @@ function reftableHead(top, git) {
         timeout: 5000,
         stdio: ['ignore', 'pipe', 'ignore'],
       }).trim() || null;
-  } catch (e) {
-    if (e.status === 1) head = 'HEAD';
+  } catch (error) {
+    if (error.status === 1) head = 'HEAD';
   } // 1: no symbolic ref — detached
 
   if (head) reftableHeads.set(git, { stamp, head });
@@ -364,31 +382,43 @@ export const headOf = cwd => headAt(gitTopOf(cwd));
  *  look, judged at once — a move from before it was judged then. */
 const DISK_HOLD_MS = 5 * 60_000;
 
-export function noteHead(s, head, now = Date.now(), boot = false) {
-  const before = JSON.stringify([s.headNow, s.diskDrift]);
-  const base = s.driftDue?.base || s.branchBase; // a move held is not the chat's branch yet
+export function noteHead(session, head, now = Date.now(), boot = false) {
+  const before = JSON.stringify([session.headNow, session.diskDrift]);
+  const base = session.driftDue?.base || session.branchBase; // a move held is not the chat's branch yet
 
-  s.headNow = head;
-  let d = null;
+  session.headNow = head;
+  let drift = null;
 
-  if (head && head !== 'HEAD' && base && head !== base.name && head !== s.headOk && head !== s.drift?.from) {
+  if (
+    head &&
+    head !== 'HEAD' &&
+    base &&
+    head !== base.name &&
+    head !== session.headOk &&
+    head !== session.drift?.from
+  ) {
     const key = `${base.name}→${head}`;
 
-    if (s.diskSeen?.key !== key) s.diskSeen = { key, at: now, lines: s.linesIn, drift: undefined }; // seen: judged on a later look
-    const seen = s.diskSeen;
+    if (session.diskSeen?.key !== key) session.diskSeen = { key, at: now, lines: session.linesIn, drift: undefined }; // seen: judged on a later look
+    const seen = session.diskSeen;
 
     if (seen.drift === undefined && (boot || now - seen.at >= MOVE_SLACK_MS)) {
-      if (ownMove(s.gitCmds, now, head, base.from)) seen.drift = null;
-      else if (boot || statusOf(s) !== 'working' || s.linesIn > seen.lines || now - seen.at >= DISK_HOLD_MS) {
-        seen.drift = agentsMoved(s, now, head, base.from)
+      if (ownMove(session.gitCmds, now, head, base.from)) seen.drift = null;
+      else if (
+        boot ||
+        statusOf(session) !== 'working' ||
+        session.linesIn > seen.lines ||
+        now - seen.at >= DISK_HOLD_MS
+      ) {
+        seen.drift = agentsMoved(session, now, head, base.from)
           ? null
-          : { from: s.drift?.from || base.name, to: head, at: new Date(now).toISOString() };
+          : { from: session.drift?.from || base.name, to: head, at: new Date(now).toISOString() };
       }
-    } else if (seen.drift && ownMove(s.gitCmds, Date.parse(seen.drift.at), head, base.from)) seen.drift = null;
-    d = seen.drift || null;
-  } else s.diskSeen = null;
-  s.diskDrift = d;
-  return JSON.stringify([s.headNow, s.diskDrift]) !== before;
+    } else if (seen.drift && ownMove(session.gitCmds, Date.parse(seen.drift.at), head, base.from)) seen.drift = null;
+    drift = seen.drift || null;
+  } else session.diskSeen = null;
+  session.diskDrift = drift;
+  return JSON.stringify([session.headNow, session.diskDrift]) !== before;
 }
 
 /** On the registry poll: every live chat's checkout's HEAD, each read once, and who else runs in it — the chip's
@@ -399,19 +429,19 @@ export function sweepHeads(now = Date.now(), boot = false) {
   const heads = new Map();
   const live = [];
 
-  for (const s of sessions.values()) {
-    if (!s.alive) {
-      if (s.headNow || s.diskDrift) {
-        s.headNow = null;
-        s.diskDrift = null;
-        s.diskSeen = null;
-        schedulePush(s);
+  for (const session of sessions.values()) {
+    if (!session.alive) {
+      if (session.headNow || session.diskDrift) {
+        session.headNow = null;
+        session.diskDrift = null;
+        session.diskSeen = null;
+        schedulePush(session);
       }
 
       continue;
     }
 
-    const cwd = s.branchBase?.cwd || s.cwd || s.live?.cwd;
+    const cwd = session.branchBase?.cwd || session.cwd || session.live?.cwd;
 
     if (!cwd) continue;
     if (!tops.has(cwd)) tops.set(cwd, gitTopOf(cwd));
@@ -419,18 +449,18 @@ export function sweepHeads(now = Date.now(), boot = false) {
 
     if (!top) continue;
     if (!heads.has(top)) heads.set(top, headAt(top));
-    live.push([s, top]);
+    live.push([session, top]);
   }
 
-  for (const [s, top] of live) {
-    const peers = live.filter(([o, t]) => t === top && o !== s).map(([o]) => o.id);
-    const was = driftOf(s);
+  for (const [session, top] of live) {
+    const peers = live.filter(([other, otherTop]) => otherTop === top && other !== session).map(([other]) => other.id);
+    const was = driftOf(session);
 
-    const moved = noteHead(s, heads.get(top), now, boot);
-    const peersMoved = JSON.stringify(peers) !== JSON.stringify(s.peers || []);
+    const moved = noteHead(session, heads.get(top), now, boot);
+    const peersMoved = JSON.stringify(peers) !== JSON.stringify(session.peers || []);
 
-    s.peers = peers;
-    if (moved || (peersMoved && driftOf(s)) || was !== driftOf(s)) schedulePush(s);
-    driftNews(s, statusOf(s) === 'working');
+    session.peers = peers;
+    if (moved || (peersMoved && driftOf(session)) || was !== driftOf(session)) schedulePush(session);
+    driftNews(session, statusOf(session) === 'working');
   }
 }

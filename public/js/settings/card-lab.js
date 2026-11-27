@@ -58,7 +58,7 @@ const CLAUDING = {
 function applyCards() {
   if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'compact';
 
-  const v = CARD_SIZES.indexOf(prefs.cards);
+  const sizeIndex = CARD_SIZES.indexOf(prefs.cards);
   const line = prefs.cards === 'line';
 
   $('#sessions').dataset.cards = line ? 'compact' : prefs.cards;
@@ -66,11 +66,14 @@ function applyCards() {
   $('#sessions').toggleAttribute('data-bylane', !!prefs.cardsByLane && !line);
   $('#cardsByLane').checked = !!prefs.cardsByLane;
   $('#sessions').toggleAttribute('data-even', line || (prefs.cards === 'compact' && !!prefs.cardsEven)); // compact's own switch, and one line's rule
+
   // what a card shows besides its words (2026-10-21, prefs.cardParts): what is left out is hidden by CSS, the markup
   // the same, so a change redraws no card
-  const parts = Array.isArray(prefs.cardParts) ? prefs.cardParts : CARD_PARTS.filter(k => !['age', 'tick'].includes(k));
+  const parts = Array.isArray(prefs.cardParts)
+    ? prefs.cardParts
+    : CARD_PARTS.filter(part => !['age', 'tick'].includes(part));
 
-  $('#sessions').dataset.hide = CARD_PARTS.filter(k => !parts.includes(k)).join(' ');
+  $('#sessions').dataset.hide = CARD_PARTS.filter(part => !parts.includes(part)).join(' ');
   $('#cardsEven').checked = !!prefs.cardsEven;
   $('#sessions').toggleAttribute('data-snipone', !!prefs.cardsSnipOne);
   $('#cardsSnipOne').checked = !!prefs.cardsSnipOne;
@@ -82,8 +85,8 @@ function applyCards() {
   $('#claudingSay').textContent = CLAUDING[prefs.clauding];
 
   // the settings: the size picked and what it carries, and its two switches under it — off, with why, where they do nothing
-  for (const b of document.querySelectorAll('#cardsSize [data-v]')) {
-    b.setAttribute('aria-checked', String(+b.dataset.v === v));
+  for (const button of document.querySelectorAll('#cardsSize [data-v]')) {
+    button.setAttribute('aria-checked', String(+button.dataset.v === sizeIndex));
   }
 
   $('#cardsSay').textContent = [
@@ -91,18 +94,18 @@ function applyCards() {
     'The last word, yours or Claude’s',
     'The title, its chips and its PRs',
     'One height, and a line for the question, your move, what it is doing or the last word',
-  ][v];
+  ][sizeIndex];
 
   for (const [row, off, why] of [
     ['#laneRow', prefs.cards === 'large' || line, line ? 'One line keeps every card one height' : ''],
     ['#evenRow', prefs.cards !== 'compact'],
     ['#snipRow', line || (prefs.cards === 'compact' && !prefs.cardsByLane)],
   ]) {
-    const r = $(row);
-    const say = r.querySelector('small');
+    const element = $(row);
+    const say = element.querySelector('small');
 
-    r.classList.toggle('off', off);
-    r.querySelector('input').disabled = off;
+    element.classList.toggle('off', off);
+    element.querySelector('input').disabled = off;
     say.textContent = off ? why || say.dataset.off : say.dataset.d;
   }
 
@@ -111,8 +114,8 @@ function applyCards() {
   fadeSoon(); // the cards changed height under the same scroll position; a PR matrix shown again is read (fadeOver)
 }
 
-const setCards = v => {
-  prefs.cards = CARD_SIZES[v] || 'compact';
+const setCards = sizeIndex => {
+  prefs.cards = CARD_SIZES[sizeIndex] || 'compact';
   savePrefs();
   applyCards();
   renderBoard();
@@ -126,8 +129,8 @@ function clabCss() {
   const named = /#(slist|sessions)\b/;
 
   const swap = sel =>
-    sel.replace(/#[A-Za-z_][\w-]*/g, m =>
-      m === '#slist' ? ':is(#_, .clab)' : m === '#sessions' ? ':is(#_, .clabs)' : '#_',
+    sel.replace(/#[A-Za-z_][\w-]*/g, match =>
+      match === '#slist' ? ':is(#_, .clab)' : match === '#sessions' ? ':is(#_, .clabs)' : '#_',
     );
 
   const tops = sel => {
@@ -136,34 +139,34 @@ function clabCss() {
     let cur = '';
     let depth = 0;
 
-    for (const c of sel) {
-      if (c === '(' || c === '[') depth++;
-      if (c === ')' || c === ']') depth--;
-      if (c === ',' && !depth) {
+    for (const char of sel) {
+      if (char === '(' || char === '[') depth++;
+      if (char === ')' || char === ']') depth--;
+      if (char === ',' && !depth) {
         out.push(cur);
         cur = '';
-      } else cur += c;
+      } else cur += char;
     }
 
     return [...out, cur];
   };
 
   const walk = rules => {
-    let t = '';
+    let css = '';
 
-    for (const r of rules) {
-      if (r.selectorText != null) {
-        const keep = tops(r.selectorText).filter(x => named.test(x));
+    for (const rule of rules) {
+      if (rule.selectorText != null) {
+        const keep = tops(rule.selectorText).filter(selector => named.test(selector));
 
-        if (keep.length) t += `${keep.map(swap).join(',')}{${r.style.cssText}}\n`;
-      } else if (r.cssRules && !(r instanceof CSSKeyframesRule)) {
-        const inner = walk(r.cssRules);
+        if (keep.length) css += `${keep.map(swap).join(',')}{${rule.style.cssText}}\n`;
+      } else if (rule.cssRules && !(rule instanceof CSSKeyframesRule)) {
+        const inner = walk(rule.cssRules);
 
-        if (inner) t += `${r.cssText.slice(0, r.cssText.indexOf('{'))}{${inner}}\n`;
+        if (inner) css += `${rule.cssText.slice(0, rule.cssText.indexOf('{'))}{${inner}}\n`;
       }
     }
 
-    return t;
+    return css;
   };
 
   let text = '';
@@ -182,10 +185,10 @@ function cardLabMake() {
   const who = login => ({ login, at, did: ['reviewed'] });
   const turn = why => ({ you: true, why, movedAt: at, at });
 
-  const pr = (n, why) => ({
-    url: `https://github.com/acme/project/pull/${n}`,
-    label: `project#${n}`,
-    number: n,
+  const pr = (number, why) => ({
+    url: `https://github.com/acme/project/pull/${number}`,
+    label: `project#${number}`,
+    number,
     state: 'open',
     title: 'A pull request',
     updated: at,
@@ -193,7 +196,7 @@ function cardLabMake() {
     turn: turn(why),
   });
 
-  const s = {
+  const session = {
     id: 'cardlab',
     title: 'What the chat is about',
     project: 'project',
@@ -212,38 +215,38 @@ function cardLabMake() {
     prs: [pr(1, 'why it is your move'), pr(2, 'and this one')],
   };
 
-  const c = html2el(cardHtml(s));
+  const card = html2el(cardHtml(session));
 
-  c.className = 'card idle';
-  c.removeAttribute('data-id');
-  const q = sel => c.querySelector(sel);
+  card.className = 'card idle';
+  card.removeAttribute('data-id');
+  const inCard = sel => card.querySelector(sel);
 
-  q('.trow .time').textContent = '3m';
-  q('.trow .fable')?.insertAdjacentHTML('afterend', '<span class="badge">2</span>');
-  q('.state.live').innerHTML = '<span class="ll"><b>A tool</b><span>what it is doing</span></span>';
-  const chip = q('.trow .chip.agents');
+  inCard('.trow .time').textContent = '3m';
+  inCard('.trow .fable')?.insertAdjacentHTML('afterend', '<span class="badge">2</span>');
+  inCard('.state.live').innerHTML = '<span class="ll"><b>A tool</b><span>what it is doing</span></span>';
+  const chip = inCard('.trow .chip.agents');
 
   chip.hidden = false;
   chip.textContent = '1 agent';
-  const rows = q('.agl');
+  const rows = inCard('.agl');
 
   rows.hidden = false;
 
   rows.innerHTML =
     '<div class="agr" data-st="run"><span class="agd"></span><span class="aga">What an agent was asked</span><span class="agt">2m</span><span class="agn">what it does now</span></div>';
 
-  for (const el of c.querySelectorAll('a, button')) el.tabIndex = -1;
+  for (const el of card.querySelectorAll('a, button')) el.tabIndex = -1;
 
-  for (const [k, [sel, name]] of Object.entries(CARD_PART)) {
-    for (const el of c.querySelectorAll(sel)) {
-      el.dataset.part = k;
+  for (const [part, [sel, name]] of Object.entries(CARD_PART)) {
+    for (const el of card.querySelectorAll(sel)) {
+      el.dataset.part = part;
       el.tabIndex = 0;
       el.setAttribute('role', 'switch');
       el.setAttribute('aria-label', name);
     }
   }
 
-  return c;
+  return card;
 }
 
 function cardLabDraw() {
@@ -258,9 +261,9 @@ function cardLabDraw() {
   }
 
   for (const el of box.querySelectorAll('[data-part]')) {
-    const k = el.dataset.part;
-    const [, name, off] = CARD_PART[k];
-    const here = on.includes(k);
+    const part = el.dataset.part;
+    const [, name, off] = CARD_PART[part];
+    const here = on.includes(part);
 
     el.classList.toggle('cpoff', !here);
     el.setAttribute('aria-checked', String(here));
@@ -270,7 +273,7 @@ function cardLabDraw() {
       : `${name}: ${off || 'hidden'}. Click to ${off ? 'keep it at rest' : 'bring it back'}`;
   }
 
-  const gone = CARD_PARTS.filter(k => !on.includes(k) && !CARD_PART[k][2]).map(k => CARD_PART[k][1]);
+  const gone = CARD_PARTS.filter(part => !on.includes(part) && !CARD_PART[part][2]).map(part => CARD_PART[part][1]);
 
   $('#cardLabSay').textContent =
     `Click a part to hide it or bring it back. This card has them all at once, which no real one does.${gone.length ? ` Hidden: ${gone.join(', ')}.` : ''}`;
@@ -292,37 +295,37 @@ function cardLabShow(on) {
 }
 
 function cardLabFlip(el) {
-  const k = el.dataset.part;
+  const part = el.dataset.part;
   const on = Array.isArray(prefs.cardParts) ? prefs.cardParts : [];
 
-  prefs.cardParts = on.includes(k) ? on.filter(x => x !== k) : [...on, k];
+  prefs.cardParts = on.includes(part) ? on.filter(other => other !== part) : [...on, part];
   savePrefs();
   applyCards();
 }
 
 $('#cardLab').addEventListener(
   'click',
-  e => {
-    e.preventDefault();
-    e.stopPropagation();
-    const el = e.target.closest('[data-part]');
+  event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const el = event.target.closest('[data-part]');
 
     if (el) cardLabFlip(el);
   },
   true,
 );
 
-$('#cardLab').addEventListener('contextmenu', e => {
-  e.preventDefault();
-  e.stopPropagation();
+$('#cardLab').addEventListener('contextmenu', event => {
+  event.preventDefault();
+  event.stopPropagation();
 });
 
-$('#cardLab').addEventListener('keydown', e => {
-  const el = e.target.closest('[data-part]');
+$('#cardLab').addEventListener('keydown', event => {
+  const el = event.target.closest('[data-part]');
 
-  if (el && (e.key === ' ' || e.key === 'Enter')) {
-    e.preventDefault();
-    e.stopPropagation();
+  if (el && (event.key === ' ' || event.key === 'Enter')) {
+    event.preventDefault();
+    event.stopPropagation();
     cardLabFlip(el);
   }
 });
@@ -330,33 +333,33 @@ $('#cardLab').addEventListener('keydown', e => {
 // …and by lane (2026-10-12, a switch, off): the lanes that want you — a question, a PR at your move, Claude at work, a
 // new reply — large whatever the slider says, the rest at its size. cardHtml marks those cards .roomy; the list's
 // data-bylane lets the mark count, so the switch, like the slider, re-renders nothing.
-$('#cardsByLane').addEventListener('change', e => {
-  prefs.cardsByLane = e.target.checked;
+$('#cardsByLane').addEventListener('change', event => {
+  prefs.cardsByLane = event.target.checked;
   savePrefs();
   applyCards();
 });
 
-$('#cardsSize').addEventListener('click', e => {
-  const x = e.target.closest('[data-v]');
+$('#cardsSize').addEventListener('click', event => {
+  const button = event.target.closest('[data-v]');
 
-  if (x) setCards(+x.dataset.v);
+  if (button) setCards(+button.dataset.v);
 });
 
-$('#cardsEven').addEventListener('change', e => {
-  prefs.cardsEven = e.target.checked;
+$('#cardsEven').addEventListener('change', event => {
+  prefs.cardsEven = event.target.checked;
   savePrefs();
   applyCards();
   renderBoard();
 });
 
-$('#cardsSnipOne').addEventListener('change', e => {
-  prefs.cardsSnipOne = e.target.checked;
+$('#cardsSnipOne').addEventListener('change', event => {
+  prefs.cardsSnipOne = event.target.checked;
   savePrefs();
   applyCards();
 });
 
-$('#claudingLook').addEventListener('change', e => {
-  prefs.clauding = e.target.value;
+$('#claudingLook').addEventListener('change', event => {
+  prefs.clauding = event.target.value;
   savePrefs();
   applyCards();
   phaseAnims(true); // an arc shown now turns with every other ring
@@ -367,10 +370,10 @@ $('#claudingLook').addEventListener('change', e => {
 $('#prioOn').checked = !!prefs.prio;
 $('#mornings').value = String(prefs.mornings ?? 9);
 
-$('#prioOn').addEventListener('change', e => {
+$('#prioOn').addEventListener('change', event => {
   const was = prioFocus();
 
-  prefs.prio = e.target.checked;
+  prefs.prio = event.target.checked;
   savePrefs();
   renderBoard();
   if (was && !prioFocus()) focusCatch();
@@ -379,8 +382,8 @@ $('#prioOn').addEventListener('change', e => {
   if (cs) renderHead(cs);
 });
 
-$('#mornings').addEventListener('change', e => {
-  prefs.mornings = Number(e.target.value) || 9;
+$('#mornings').addEventListener('change', event => {
+  prefs.mornings = Number(event.target.value) || 9;
   savePrefs();
 });
 
@@ -389,7 +392,7 @@ applyCards();
 // A theme's colours are drawn again on the list and the open chat's header.
 const redrawColors = () => {
   renderBoard();
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (s) renderHead(s);
+  if (session) renderHead(session);
 };

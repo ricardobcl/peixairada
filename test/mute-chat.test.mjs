@@ -35,14 +35,14 @@ async function alerts(url, key) {
 
       if (done) break;
       buf += dec.decode(value, { stream: true });
-      let i;
+      let index;
 
-      while ((i = buf.indexOf('\n\n')) >= 0) {
-        const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i));
+      while ((index = buf.indexOf('\n\n')) >= 0) {
+        const match = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, index));
 
-        buf = buf.slice(i + 2);
-        if (m?.[1] === 'snapshot') resolve();
-        if (m?.[1] === 'alert') got.push(JSON.parse(m[2]));
+        buf = buf.slice(index + 2);
+        if (match?.[1] === 'snapshot') resolve();
+        if (match?.[1] === 'alert') got.push(JSON.parse(match[2]));
       }
     }
   })().catch(() => {});
@@ -55,11 +55,11 @@ const said = (chat, text) =>
   appendFileSync(
     chat.file,
     `${replyLines({ id: chat.id, cwd: chat.cwd, text, at: new Date() })
-      .map(l => JSON.stringify(l))
+      .map(line => JSON.stringify(line))
       .join('\n')}\n`,
   );
 
-const summaryOf = async (srv, id) => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+const summaryOf = async (srv, id) => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
 
 test(
   "a muted chat's reply goes out quiet and muted, another chat's as ever, and unmuted it is loud again",
@@ -69,26 +69,40 @@ test(
     const [one, two] = fx.chats;
 
     const srv = await startTestServer({ claudeDir: fx.dir });
-    let a;
+    let alertFeed;
 
     try {
       assert.equal((await summaryOf(srv, one.id)).muted, false, 'not muted to begin with');
       assert.deepEqual((await srv.post(`api/sessions/${one.id}/mute`, { on: true })).body, { ok: true, muted: true });
       assert.equal((await summaryOf(srv, one.id)).muted, true, 'the summary says so');
       assert.equal((await summaryOf(srv, two.id)).muted, false, 'that chat alone');
-      a = await alerts(srv.url, srv.key);
+      alertFeed = await alerts(srv.url, srv.key);
       said(one, 'from the muted one');
-      await waitFor(() => a.got.length === 1, { what: "the muted chat's alert" });
-      assert.deepEqual([a.got[0].sessionId, a.got[0].quiet, a.got[0].muted], [one.id, true, true]);
+      await waitFor(() => alertFeed.got.length === 1, { what: "the muted chat's alert" });
+
+      assert.deepEqual(
+        [alertFeed.got[0].sessionId, alertFeed.got[0].quiet, alertFeed.got[0].muted],
+        [one.id, true, true],
+      );
+
       said(two, 'from the other');
-      await waitFor(() => a.got.length === 2, { what: "the other chat's alert" });
-      assert.deepEqual([a.got[1].sessionId, a.got[1].quiet, a.got[1].muted], [two.id, false, false]);
+      await waitFor(() => alertFeed.got.length === 2, { what: "the other chat's alert" });
+
+      assert.deepEqual(
+        [alertFeed.got[1].sessionId, alertFeed.got[1].quiet, alertFeed.got[1].muted],
+        [two.id, false, false],
+      );
+
       await srv.post(`api/sessions/${one.id}/mute`, { on: false });
       said(one, 'loud again');
-      await waitFor(() => a.got.length === 3, { what: 'the alert once unmuted' });
-      assert.deepEqual([a.got[2].sessionId, a.got[2].quiet, a.got[2].muted], [one.id, false, false]);
+      await waitFor(() => alertFeed.got.length === 3, { what: 'the alert once unmuted' });
+
+      assert.deepEqual(
+        [alertFeed.got[2].sessionId, alertFeed.got[2].quiet, alertFeed.got[2].muted],
+        [one.id, false, false],
+      );
     } finally {
-      a?.stop();
+      alertFeed?.stop();
       await srv.stop();
     }
   },
@@ -113,25 +127,25 @@ test('a question from a muted chat is silent too', { timeout: 30_000 }, async ()
 
   writeFileSync(reg, JSON.stringify(entry));
   const srv = await startTestServer({ claudeDir: fx.dir });
-  let a;
+  let alertFeed;
 
   try {
     await waitFor(async () => (await summaryOf(srv, chat.id))?.alive, { what: 'the chat alive' });
     await srv.post(`api/sessions/${chat.id}/mute`, { on: true });
-    a = await alerts(srv.url, srv.key);
+    alertFeed = await alerts(srv.url, srv.key);
 
     writeFileSync(
       reg,
       JSON.stringify({ ...entry, status: 'waiting', waitingFor: 'input needed', statusUpdatedAt: Date.now() }),
     );
 
-    await waitFor(() => a.got.some(x => x.kind === 'needs-input'), { what: 'the question' });
-    const q = a.got.find(x => x.kind === 'needs-input');
+    await waitFor(() => alertFeed.got.some(alert => alert.kind === 'needs-input'), { what: 'the question' });
+    const question = alertFeed.got.find(alert => alert.kind === 'needs-input');
 
-    assert.deepEqual([q.quiet, q.muted], [true, true]);
+    assert.deepEqual([question.quiet, question.muted], [true, true]);
     assert.equal((await summaryOf(srv, chat.id)).status, 'needs-input', 'its card still says it is asking');
   } finally {
-    a?.stop();
+    alertFeed?.stop();
     await srv.stop();
   }
 });

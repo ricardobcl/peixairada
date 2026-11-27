@@ -41,7 +41,7 @@ export default async function (ctx) {
   ctx.assert.match(out.first[0], /^Merge — 1 chat in so far/, 'the first row says what is in');
 
   ctx.assert.ok(
-    out.first.some(t => t.startsWith('✓taken in: Plain chat')),
+    out.first.some(row => row.startsWith('✓taken in: Plain chat')),
     `the card's chat is in, the ✓ said in words too: ${JSON.stringify(out.first)}`,
   );
 
@@ -94,7 +94,7 @@ export default async function (ctx) {
 
   const said =
     (await ctx.server.api(`/api/sessions/${fresh}/messages`)).body.entries.find(
-      e => e.role === 'user' && e.kind === 'text',
+      entry => entry.role === 'user' && entry.kind === 'text',
     )?.text || '';
 
   ctx.assert.match(
@@ -143,8 +143,8 @@ export default async function (ctx) {
   );
 
   await ctx.waitFor(`window.peix.state().current === ${sid(plain.id)}`, { what: 'a row opens the chat it names' });
-  const t = (await ctx.peix(`session(${sid(fresh)})`)).terminal;
+  const term = (await ctx.peix(`session(${sid(fresh)})`)).terminal;
 
-  if (t) await ctx.server.api(`/api/terminals/${t.id}`, { method: 'DELETE' });
+  if (term) await ctx.server.api(`/api/terminals/${term.id}`, { method: 'DELETE' });
   return out;
 }

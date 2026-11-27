@@ -7,40 +7,40 @@
 const agentsSeen = new Map(); // cwd → { at, v }, asked again 15 s on
 
 const agentsNow = cwd => {
-  const h = agentsSeen.get(cwd);
+  const cached = agentsSeen.get(cwd);
 
-  return h && Date.now() - h.at < 15_000 ? h.v : null;
+  return cached && Date.now() - cached.at < 15_000 ? cached.v : null;
 };
 
 async function agentsOf(cwd) {
   const now = agentsNow(cwd);
 
   if (now) return now;
-  const v = await api('GET', `/api/agents?cwd=${encodeURIComponent(cwd)}`).catch(() => null);
+  const listing = await api('GET', `/api/agents?cwd=${encodeURIComponent(cwd)}`).catch(() => null);
 
-  if (v) agentsSeen.set(cwd, { at: Date.now(), v });
-  return v;
+  if (listing) agentsSeen.set(cwd, { at: Date.now(), v: listing });
+  return listing;
 }
 
-const agentShort = n => String(n || '').replace(/^[^:]*:/, ''); // a plugin's, without the plugin
-const agDot = c => `<span class="asdot"${c ? ` data-c="${esc(c)}"` : ''}></span>`;
-const agentModel = a => (a?.model && a.model !== 'inherit' ? a.model : '');
+const agentShort = name => String(name || '').replace(/^[^:]*:/, ''); // a plugin's, without the plugin
+const agDot = color => `<span class="asdot"${color ? ` data-c="${esc(color)}"` : ''}></span>`;
+const agentModel = agent => (agent?.model && agent.model !== 'inherit' ? agent.model : '');
 
-const agentFrom = (a, cwd) =>
-  a.source === 'folder'
-    ? a.at === cwd
+const agentFrom = (agent, cwd) =>
+  agent.source === 'folder'
+    ? agent.at === cwd
       ? 'this folder'
-      : folderName(a.at)
-    : a.source === 'user'
+      : folderName(agent.at)
+    : agent.source === 'user'
       ? 'yours'
-      : a.source === 'plugin'
-        ? a.plugin
+      : agent.source === 'plugin'
+        ? agent.plugin
         : 'Claude Code';
 
 /** A chat's agent where the chat is named: its card, its header, a picker's row (C1). */
-const agentTag = (s, cls = 'runas') =>
-  s.agent
-    ? `<span class="${cls}" title="${esc(`Runs as the agent ${s.agent}: claude --agent, or its folder's setting`)}">${agDot(s.agentColor)}@${esc(agentShort(s.agent))}</span>`
+const agentTag = (session, cls = 'runas') =>
+  session.agent
+    ? `<span class="${cls}" title="${esc(`Runs as the agent ${session.agent}: claude --agent, or its folder's setting`)}">${agDot(session.agentColor)}@${esc(agentShort(session.agent))}</span>`
     : '';
 
 /** Where claude starts bare, so a row has the chip: the chats step's one folder (＋), or ⌥⌘N's chat in no folder
@@ -63,20 +63,20 @@ const atIn = () =>
   (pick.mode === 'chats' || pick.mode === 'new') && agentsHere() ? $('#pickq').value.indexOf('@') : -1;
 
 const boxText = () => {
-  const v = $('#pickq').value;
-  const i = atIn();
+  const value = $('#pickq').value;
+  const atIndex = atIn();
 
-  return (i >= 0 ? v.slice(0, i) : v).trim();
+  return (atIndex >= 0 ? value.slice(0, atIndex) : value).trim();
 };
 
-function agentStart(key, v) {
-  if (!v || v.launchers) return null;
+function agentStart(key, listing) {
+  if (!listing || listing.launchers) return null;
 
-  const has = n => !!n && v.agents.some(a => a.name === n);
+  const has = name => !!name && listing.agents.some(agent => agent.name === name);
   const last = prefs.agentFor?.[key];
 
   if (last === '') return null;
-  return has(last) ? last : has(v.setting?.name) ? v.setting.name : null;
+  return has(last) ? last : has(listing.setting?.name) ? listing.setting.name : null;
 }
 
 function pickAgents() {
@@ -85,19 +85,19 @@ function pickAgents() {
   pick.agLoad = null;
   if (!cwd) return;
 
-  const take = v => {
-    if (!v || agentCwd() !== cwd) return false;
-    pick.ag = v;
-    if (!pick.agentTouched) pick.agent = agentStart(agentKey(), v);
+  const take = listing => {
+    if (!listing || agentCwd() !== cwd) return false;
+    pick.ag = listing;
+    if (!pick.agentTouched) pick.agent = agentStart(agentKey(), listing);
     return true;
   };
 
   if (take(agentsNow(cwd))) return;
   const gen = pick.gen;
 
-  pick.agLoad = agentsOf(cwd).then(v => {
+  pick.agLoad = agentsOf(cwd).then(listing => {
     // ⏎ before it lands waits on it (newFromChats); an @ typed before it lists them now
-    if (gen !== pick.gen || !$('#pick').open || !take(v)) return;
+    if (gen !== pick.gen || !$('#pick').open || !take(listing)) return;
     pickHint();
     if (atIn() >= 0) {
       pick.typed = true;
@@ -111,7 +111,7 @@ const agentArg = () => (!pick.ag || pick.ag.launchers ? undefined : pick.agent |
 
 /** …and the project keeps it for next time when it was your pick (D1). */
 function agentGo() {
-  const a = agentArg();
+  const agent = agentArg();
   const key = agentKey();
 
   if (pick.agentTouched && key) {
@@ -119,47 +119,47 @@ function agentGo() {
     savePrefs();
   }
 
-  return a;
+  return agent;
 }
 
-const withAgent = a => (a === undefined ? null : { agent: a });
+const withAgent = agent => (agent === undefined ? null : { agent });
 
 /** ⏎ or a click on an agent's row (null: Claude): the chip has it, the box loses the @, the chats are back. */
 function agentTake(name) {
   pick.agent = name;
   pick.agentTouched = true;
 
-  const q = $('#pickq');
-  const i = q.value.indexOf('@');
+  const box = $('#pickq');
+  const atIndex = box.value.indexOf('@');
 
-  if (pick.mode === 'new') q.value = '';
-  else if (i >= 0) q.value = q.value.slice(0, i).trimEnd();
+  if (pick.mode === 'new') box.value = '';
+  else if (atIndex >= 0) box.value = box.value.slice(0, atIndex).trimEnd();
   pick.sel = 0;
   pickHint();
   pickRender();
   brAsk();
-  q.focus(); // ⌥⌘N: the box empty, no folder is the first row
+  box.focus(); // ⌥⌘N: the box empty, no folder is the first row
 }
 
 /** The chip clicked: the list under ＋, as @ typed — or, open, shut. */
 function agentList() {
-  const q = $('#pickq');
-  const i = q.value.indexOf('@');
+  const box = $('#pickq');
+  const atIndex = box.value.indexOf('@');
 
-  q.value =
+  box.value =
     pick.mode === 'new'
-      ? i >= 0
+      ? atIndex >= 0
         ? ''
         : '@'
-      : i >= 0
-        ? q.value.slice(0, i).trimEnd()
-        : `${q.value.trim() ? `${q.value.trimEnd()} ` : ''}@`; // ⌥⌘N's projects are no folder's agents' business
+      : atIndex >= 0
+        ? box.value.slice(0, atIndex).trimEnd()
+        : `${box.value.trim() ? `${box.value.trimEnd()} ` : ''}@`; // ⌥⌘N's projects are no folder's agents' business
 
   pick.sel = 0;
-  pick.typed = i < 0;
+  pick.typed = atIndex < 0;
   pickHint();
   pickRender();
-  q.focus();
+  box.focus();
 }
 
 function agentEscape() {
@@ -170,17 +170,17 @@ function agentEscape() {
 
 /** The list for the query after the @ (B1): typed, every agent that matches, best first; else Claude, the folder's and
  *  yours, and a row for each plugin's and Claude Code's own, opened by ⏎, → or a click. */
-function agentItems(v, aq, claude = true) {
+function agentItems(listing, aq, claude = true) {
   if (aq) {
     const hits = [];
 
-    v.agents.forEach((a, i) => {
-      const m = fuzzy([agentShort(a.name), a.name, a.description || ''], aq);
+    listing.agents.forEach((agent, index) => {
+      const match = fuzzy([agentShort(agent.name), agent.name, agent.description || ''], aq);
 
-      if (m) hits.push([m.score, i, a]);
+      if (match) hits.push([match.score, index, agent]);
     });
 
-    const out = hits.sort((x, y) => y[0] - x[0] || x[1] - y[1]).map(h => ({ ag: h[2] }));
+    const out = hits.sort((left, right) => right[0] - left[0] || left[1] - right[1]).map(hit => ({ ag: hit[2] }));
 
     return !claude || !fuzzy(['claude'], aq)
       ? out
@@ -192,20 +192,20 @@ function agentItems(v, aq, claude = true) {
   const out = claude ? [{ agClaude: true }] : [];
   const groups = new Map();
 
-  for (const a of v.agents) {
-    if (a.source === 'folder' || a.source === 'user') {
-      out.push({ ag: a });
+  for (const agent of listing.agents) {
+    if (agent.source === 'folder' || agent.source === 'user') {
+      out.push({ ag: agent });
       continue;
     }
 
-    const k = a.source === 'plugin' ? `p:${a.plugin}` : 'own';
+    const groupKey = agent.source === 'plugin' ? `p:${agent.plugin}` : 'own';
 
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(a);
+    if (!groups.has(groupKey)) groups.set(groupKey, []);
+    groups.get(groupKey).push(agent);
   }
 
-  for (const [k, list] of groups) {
-    out.push(...(pick.unfold.has(k) ? list.map(a => ({ ag: a })) : [{ agFold: k, list }]));
+  for (const [groupKey, list] of groups) {
+    out.push(...(pick.unfold.has(groupKey) ? list.map(agent => ({ ag: agent })) : [{ agFold: groupKey, list }]));
   }
 
   return out;
@@ -215,28 +215,28 @@ function agentItems(v, aq, claude = true) {
 function agentLand(items, aq) {
   if (aq) return items.length ? 1 : 0;
 
-  const i = items.findIndex(x => x.ag && x.ag.name === pick.agent);
-  const f = items.findIndex(x => x.ag);
+  const chosen = items.findIndex(item => item.ag && item.ag.name === pick.agent);
+  const first = items.findIndex(item => item.ag);
 
-  return 1 + (i >= 0 ? i : f >= 0 ? f : 0);
+  return 1 + (chosen >= 0 ? chosen : first >= 0 ? first : 0);
 }
 
-function agentRowHtml(x, i, selc, aq, cwd, v) {
-  if (x.agClaude) {
-    const set = v.setting && v.agents.find(a => a.name === v.setting.name);
+function agentRowHtml(item, index, selc, aq, cwd, listing) {
+  if (item.agClaude) {
+    const set = listing.setting && listing.agents.find(listed => listed.name === listing.setting.name);
 
-    return `<div class="pkrow asrow${selc}" data-i="${i}" title="${esc(set ? `No agent — claude --agent '', so not the folder's own, @${set.name}` : 'No agent — claude as it starts')}"><span class="asdot own">✳</span><span class="n">Claude<span class="cur">${set ? `no agent, not the folder’s @${esc(agentShort(set.name))}` : 'no agent: Claude Code as it starts'}</span></span><span class="num"></span><span class="src"></span></div>`;
+    return `<div class="pkrow asrow${selc}" data-i="${index}" title="${esc(set ? `No agent — claude --agent '', so not the folder's own, @${set.name}` : 'No agent — claude as it starts')}"><span class="asdot own">✳</span><span class="n">Claude<span class="cur">${set ? `no agent, not the folder’s @${esc(agentShort(set.name))}` : 'no agent: Claude Code as it starts'}</span></span><span class="num"></span><span class="src"></span></div>`;
   }
 
-  if (x.agFold) {
-    const names = x.list.map(a => agentShort(a.name));
+  if (item.agFold) {
+    const names = item.list.map(member => agentShort(member.name));
 
-    return `<div class="pkrow asrow fold${selc}" data-i="${i}" title="${esc(`${x.list.map(a => a.name).join(', ')} — ⏎, → or a click shows them`)}"><span class="asdot"></span><span class="n">${x.agFold === 'own' ? `${x.list.length} of Claude Code’s own` : `${x.list.length} from ${esc(x.list[0].plugin)}`}<span class="cur">${esc(names.slice(0, 3).join(', '))}${names.length > 3 ? '…' : ''} · → shows them</span></span><span class="num"></span><span class="src"></span></div>`;
+    return `<div class="pkrow asrow fold${selc}" data-i="${index}" title="${esc(`${item.list.map(member => member.name).join(', ')} — ⏎, → or a click shows them`)}"><span class="asdot"></span><span class="n">${item.agFold === 'own' ? `${item.list.length} of Claude Code’s own` : `${item.list.length} from ${esc(item.list[0].plugin)}`}<span class="cur">${esc(names.slice(0, 3).join(', '))}${names.length > 3 ? '…' : ''} · → shows them</span></span><span class="num"></span><span class="src"></span></div>`;
   }
 
-  const a = x.ag;
+  const agent = item.ag;
 
-  return `<div class="pkrow asrow${selc}" data-i="${i}" title="${esc(`claude --agent ${a.name}${a.description ? `\n${a.description}` : ''}`)}">${agDot(a.color)}<span class="n">${markHits(`@${agentShort(a.name)}`, aq)}<span class="cur">${esc(a.description || '')}</span></span><span class="num">${esc(a.model || '')}</span><span class="src">${esc(agentFrom(a, cwd))}</span></div>`;
+  return `<div class="pkrow asrow${selc}" data-i="${index}" title="${esc(`claude --agent ${agent.name}${agent.description ? `\n${agent.description}` : ''}`)}">${agDot(agent.color)}<span class="n">${markHits(`@${agentShort(agent.name)}`, aq)}<span class="cur">${esc(agent.description || '')}</span></span><span class="num">${esc(agent.model || '')}</span><span class="src">${esc(agentFrom(agent, cwd))}</span></div>`;
 }
 
 /** ＋'s chip: who ⏎ starts it as, its model, and why it starts there; off where claude starts through a Taskfile. */
@@ -247,71 +247,71 @@ function agentChip() {
     return `<span class="pkag off" title="${esc(`task ${pick.ctx.env} starts claude its own way: it takes no agent`)}">as Claude</span>`;
   }
 
-  const v = pick.ag;
+  const listing = pick.ag;
 
-  if (!v || !agentCwd()) return '';
+  if (!listing || !agentCwd()) return '';
 
-  if (v.launchers) {
+  if (listing.launchers) {
     return '<span class="pkag off" title="This folder starts claude through its Taskfile (task &lt;env&gt;), which takes no agent">as Claude</span>';
   }
 
-  const a = pick.agent && v.agents.find(x => x.name === pick.agent);
+  const agent = pick.agent && listing.agents.find(listed => listed.name === pick.agent);
   const open = atIn() >= 0;
 
   const why =
-    a && !pick.agentTouched
-      ? prefs.agentFor?.[agentKey()] === a.name
+    agent && !pick.agentTouched
+      ? prefs.agentFor?.[agentKey()] === agent.name
         ? 'the last you took here'
-        : v.setting?.name === a.name
+        : listing.setting?.name === agent.name
           ? 'the folder’s setting'
           : ''
       : '';
 
-  const tip = a
-    ? `claude --agent ${a.name}${a.description ? ` — ${a.description}` : ''} · a click or @ for another`
-    : `Claude, no agent${v.setting ? ` (claude --agent '': not the folder's own, @${v.setting.name})` : ''} · a click or @ for an agent`;
+  const tip = agent
+    ? `claude --agent ${agent.name}${agent.description ? ` — ${agent.description}` : ''} · a click or @ for another`
+    : `Claude, no agent${listing.setting ? ` (claude --agent '': not the folder's own, @${listing.setting.name})` : ''} · a click or @ for an agent`;
 
-  return `<button type="button" class="pkag${a ? ' on' : ''}${open ? ' open' : ''}" tabindex="-1" aria-haspopup="listbox" aria-expanded="${open}" title="${esc(tip)}">${a ? `${agDot(a.color)}@${esc(agentShort(a.name))}` : 'as Claude'} <i>▾</i></button>${a && agentModel(a) ? `<span class="pkas">on ${esc(agentModel(a))}</span>` : ''}${why ? `<span class="pkas">· ${why}</span>` : ''}`;
+  return `<button type="button" class="pkag${agent ? ' on' : ''}${open ? ' open' : ''}" tabindex="-1" aria-haspopup="listbox" aria-expanded="${open}" title="${esc(tip)}">${agent ? `${agDot(agent.color)}@${esc(agentShort(agent.name))}` : 'as Claude'} <i>▾</i></button>${agent && agentModel(agent) ? `<span class="pkas">on ${esc(agentModel(agent))}</span>` : ''}${why ? `<span class="pkas">· ${why}</span>` : ''}`;
 }
 
 /** ⌥⌘L by an agent's name (E2): a new chat as it in the project in view — its one folder, else the open chat's in it. */
 const launchAg = { cwd: null, v: null };
 
 function launchAgents() {
-  const p = prefs.project !== ALL ? projectStub(prefs.project) : null;
-  const s = state.sessions.get(state.current);
+  const project = prefs.project !== ALL ? projectStub(prefs.project) : null;
+  const session = state.sessions.get(state.current);
 
   const cwd =
-    p && !p.custom
-      ? p.key
-      : p?.cwds?.length === 1
-        ? p.cwds[0]
-        : s?.cwd && (!p || inProject(s, p))
-          ? projDir(s.cwd)
+    project && !project.custom
+      ? project.key
+      : project?.cwds?.length === 1
+        ? project.cwds[0]
+        : session?.cwd && (!project || inProject(session, project))
+          ? projDir(session.cwd)
           : null;
 
   Object.assign(launchAg, { cwd, v: cwd ? agentsNow(cwd) : null });
   if (!cwd || launchAg.v) return;
   const gen = pick.gen;
 
-  agentsOf(cwd).then(v => {
+  agentsOf(cwd).then(listing => {
     if (gen !== pick.gen || launchAg.cwd !== cwd) return;
-    launchAg.v = v;
+    launchAg.v = listing;
     if ($('#pick').open && pick.mode === 'launch' && $('#pickq').value.trim()) pickRender(true);
   });
 }
 
 const agentActs = () => {
-  const { cwd, v } = launchAg;
+  const { cwd, v: listing } = launchAg;
 
-  return !v || v.launchers
+  return !listing || listing.launchers
     ? []
-    : v.agents.map(a => ({
+    : listing.agents.map(agent => ({
         kind: 'action',
-        id: `ag:${a.name}`,
-        agent: a,
-        name: `New chat as @${agentShort(a.name)}`,
-        sub: ` — in ${folderName(cwd)}${agentModel(a) ? `, on ${agentModel(a)}` : ''}`,
-        fn: () => newChat(cwd, null, { agent: a.name }),
+        id: `ag:${agent.name}`,
+        agent,
+        name: `New chat as @${agentShort(agent.name)}`,
+        sub: ` — in ${folderName(cwd)}${agentModel(agent) ? `, on ${agentModel(agent)}` : ''}`,
+        fn: () => newChat(cwd, null, { agent: agent.name }),
       }));
 };

@@ -25,12 +25,12 @@ export default async function (ctx) {
 
   const { chats } = makeFixture(
     ctx.fixture.dir,
-    Array.from({ length: 34 }, (_, i) => ({
+    Array.from({ length: 34 }, (_, index) => ({
       cwd,
-      title: `Old chat ${String(i).padStart(2, '0')}`,
-      prompt: `an old question ${i}`,
+      title: `Old chat ${String(index).padStart(2, '0')}`,
+      prompt: `an old question ${index}`,
       reply: 'an old answer',
-      at: new Date(now - 8 * day - i * 3_600_000),
+      at: new Date(now - 8 * day - index * 3_600_000),
     })),
   );
 
@@ -49,8 +49,8 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-  const words = n =>
-    ctx.waitFor(`(s => s && s.lastUserAt > ${sid(n)})(window.peix.session(${sid(old.id)}))`, {
+  const words = since =>
+    ctx.waitFor(`(s => s && s.lastUserAt > ${sid(since)})(window.peix.session(${sid(old.id)}))`, {
       what: 'the word in the transcript',
       timeout: 10_000,
     });
@@ -105,10 +105,10 @@ export default async function (ctx) {
   ctx.assert.equal(out.wrote.top, 0, `the list at its top (${out.wrote.top})`);
   ctx.assert.ok(out.wrote.seen, `the card in sight (y ${out.wrote.y})`);
   await ctx.shot('at-top');
-  const flips = (await ctx.peix('motion()')).slice(n0).filter(m => m.kind === 'flip');
-  const mine = flips.find(m => m.id === old.id);
+  const flips = (await ctx.peix('motion()')).slice(n0).filter(move => move.kind === 'flip');
+  const mine = flips.find(move => move.id === old.id);
 
-  out.flips = { mine, others: flips.length - 1, far: Math.max(...flips.map(m => Math.abs(m.dy))) };
+  out.flips = { mine, others: flips.length - 1, far: Math.max(...flips.map(move => Math.abs(move.dy))) };
   ctx.assert.ok(mine && mine.dy > 0, `the card rose from where it stood: ${JSON.stringify(mine)}`);
 
   ctx.assert.ok(
@@ -141,7 +141,7 @@ export default async function (ctx) {
   appendFileSync(
     other.file,
     `${chatLines({ id: other.id, cwd, prompt: 'a word in another chat', reply: 'and back', at: new Date() })
-      .map(l => JSON.stringify(l))
+      .map(entry => JSON.stringify(entry))
       .join('\n')}\n`,
   );
 
@@ -185,7 +185,13 @@ export default async function (ctx) {
   await ctx.waitFor(`${LIST}.scrollTop < 300`, { what: 'the list at the card, under reduced motion' });
   out.reduced = await look(old.id);
   ctx.assert.ok(out.reduced.seen, 'in sight under reduced motion');
-  ctx.assert.equal((await ctx.peix('motion()')).slice(n1).filter(m => m.kind === 'flip').length, 0, 'and nothing slid');
+
+  ctx.assert.equal(
+    (await ctx.peix('motion()')).slice(n1).filter(move => move.kind === 'flip').length,
+    0,
+    'and nothing slid',
+  );
+
   await reduce(ctx, false);
 
   await ctx.waitFor(`window.peix.session(${sid(old.id)}).status === 'idle'`, {
@@ -236,8 +242,8 @@ export default async function (ctx) {
   let said = '';
 
   const told = new Promise(res => {
-    const hear = d => {
-      said += d;
+    const hear = chunk => {
+      said += chunk;
 
       if (said.includes('READY')) {
         res();
@@ -254,8 +260,8 @@ export default async function (ctx) {
   const ended = new Promise(res => {
     let all = '';
 
-    wk.stdout.on('data', d => {
-      all += d;
+    wk.stdout.on('data', chunk => {
+      all += chunk;
     });
 
     wk.on('close', () => res(all));
@@ -267,7 +273,7 @@ export default async function (ctx) {
     appendFileSync(
       far.file,
       `${chatLines({ id: far.id, cwd, prompt: 'a word in WebKit', reply: 'and back', at: new Date() })
-        .map(l => JSON.stringify(l))
+        .map(entry => JSON.stringify(entry))
         .join('\n')}\n`,
     );
   }
@@ -280,7 +286,7 @@ export default async function (ctx) {
     return out;
   }
 
-  const line = printed.split('\n').find(l => l.startsWith('"{'));
+  const line = printed.split('\n').find(outputLine => outputLine.startsWith('"{'));
 
   ctx.assert.ok(line, `an answer from WebKit: ${(said + printed).slice(-600)}`);
   out.webkit = JSON.parse(JSON.parse(line));

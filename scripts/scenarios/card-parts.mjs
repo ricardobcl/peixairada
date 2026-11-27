@@ -36,7 +36,7 @@ export const meta = {
 export default async function (ctx) {
   const [two] = ctx.fixture.chats;
   const out = {};
-  const a = ctx.assert;
+  const assert = ctx.assert;
   const card = `#slist > .card[data-id="${two.id}"]`;
 
   await ctx.openChat(two.id);
@@ -58,8 +58,8 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-  const flip = async k => {
-    await ctx.evaluate(`document.querySelector('#cardLab [data-part="${k}"]').click()`);
+  const flip = async part => {
+    await ctx.evaluate(`document.querySelector('#cardLab [data-part="${part}"]').click()`);
     await ctx.settle();
   };
 
@@ -68,19 +68,19 @@ export default async function (ctx) {
   // by default all but the age and the ✓ at rest (the pin and the snooze's mark on, 2026-11-25);
   // the card in the pane has every part, and its rules are a copy that goes with the pane
   out.on = await look();
-  a.deepEqual(out.on, { hide: 'age tick', prs: true, node: true }, 'everything shown by default');
+  assert.deepEqual(out.on, { hide: 'age tick', prs: true, node: true }, 'everything shown by default');
 
   const parts = await ctx.evaluate(
     `[...new Set([...document.querySelectorAll('#cardLab [data-part]')].map(e => e.dataset.part))].sort().join(' ')`,
   );
 
-  a.equal(
+  assert.equal(
     parts,
     'age agents branch fable live move nap pin prs rounds tab tick tickets unread watch where',
     'every part on it',
   );
 
-  a.deepEqual(
+  assert.deepEqual(
     await ctx
       .evaluate(
         `JSON.stringify((c => [getComputedStyle(c.querySelector('.top .repo')).fontWeight, c.querySelector('[data-part="age"]').classList.contains('cpoff'), c.querySelector('[data-part="age"]').getAttribute('aria-checked'), document.querySelectorAll('#slist > .card[data-id="cardlab"]').length])(document.querySelector('#cardLab .card')))`,
@@ -101,13 +101,13 @@ export default async function (ctx) {
   await flip('prs');
   out.bare = await look();
 
-  a.deepEqual(
+  assert.deepEqual(
     [out.bare.hide, out.bare.prs, out.bare.node],
     ['prs age tick', false, true],
     'the PRs gone, no card redrawn',
   );
 
-  a.deepEqual(
+  assert.deepEqual(
     await ctx
       .evaluate(
         `JSON.stringify((e => [e.classList.contains('cpoff'), e.getAttribute('aria-checked'), +getComputedStyle(e).opacity < .5])(document.querySelector('#cardLab [data-part="prs"]')))`,
@@ -117,7 +117,7 @@ export default async function (ctx) {
     'faint on the card in the pane, to be clicked back',
   );
 
-  a.match(
+  assert.match(
     await ctx.evaluate(`document.querySelector('#cardLabSay').textContent`),
     /Hidden: PRs\./,
     'and named under it',
@@ -137,16 +137,16 @@ export default async function (ctx) {
     live: ['', 'div', 'state live wake'],
   };
 
-  for (const [k, [where, tag, cls]] of Object.entries(standIns)) {
+  for (const [part, [where, tag, cls]] of Object.entries(standIns)) {
     const shown = () =>
       ctx.evaluate(
         `(c => { const t = document.createElement('${tag}'); t.className = '${cls}'; t.textContent = 'x'; ${where ? `c.querySelector('${where}')` : 'c'}.append(t); const v = getComputedStyle(t).display; t.remove(); return v; })(document.querySelector('${card}'))`,
       );
 
-    a.notEqual(await shown(), 'none', `${k}: shown`);
-    await flip(k);
-    a.equal(await shown(), 'none', `${k}: left out`);
-    await flip(k);
+    assert.notEqual(await shown(), 'none', `${part}: shown`);
+    await flip(part);
+    assert.equal(await shown(), 'none', `${part}: left out`);
+    await flip(part);
   }
 
   // same height holds a hidden move's row; one line gives the row to the word
@@ -166,7 +166,7 @@ export default async function (ctx) {
   await ctx.settle();
   await flip('move');
 
-  a.deepEqual(
+  assert.deepEqual(
     await moved(),
     { same: true, display: 'flex', seen: 'hidden', words: 0 },
     'same height: its row kept, empty',
@@ -175,7 +175,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#cardsSize [data-v="3"]').click()`);
   await ctx.settle();
 
-  a.deepEqual(
+  assert.deepEqual(
     await moved(),
     { same: true, display: 'none', seen: 'visible', words: 1 },
     'one line: the word has the row',
@@ -183,7 +183,7 @@ export default async function (ctx) {
 
   await flip('move');
 
-  a.deepEqual(
+  assert.deepEqual(
     await moved(),
     { same: true, display: 'flex', seen: 'visible', words: 0 },
     'one line: the move has it back',
@@ -201,12 +201,12 @@ export default async function (ctx) {
 
   const off = await rest();
 
-  a.deepEqual([off[0], off[1], off[2]], ['none', false, 0], 'both only under the pointer by default');
+  assert.deepEqual([off[0], off[1], off[2]], ['none', false, 0], 'both only under the pointer by default');
   await flip('age');
   await flip('tick');
   const kept = await rest();
 
-  a.deepEqual([kept[0], kept[1], kept[2] > 0], ['block', true, true], 'both at rest');
+  assert.deepEqual([kept[0], kept[1], kept[2] > 0], ['block', true, true], 'both at rest');
 
   // the keyboard: a part takes the keys and a press flips it
   await ctx.evaluate(
@@ -215,20 +215,20 @@ export default async function (ctx) {
 
   await ctx.settle();
 
-  a.match(
+  assert.match(
     await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`),
     /\bfable\b/,
     'space on a part leaves it out',
   );
 
-  a.equal(await ctx.evaluate(`document.activeElement?.dataset.part`), 'fable', 'the keys stay on it');
+  assert.equal(await ctx.evaluate(`document.activeElement?.dataset.part`), 'fable', 'the keys stay on it');
   await flip('fable');
 
   // the copy of the rules goes with the pane
   await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="general"]').click()`);
   await ctx.settle();
 
-  a.equal(
+  assert.equal(
     await ctx.evaluate(`!document.querySelector('#clabCss') && !document.querySelector('#cardLab .card')`),
     true,
     'gone on another pane',
@@ -237,7 +237,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="list"]').click()`);
   await ctx.settle();
 
-  a.equal(
+  assert.equal(
     await ctx.evaluate(`!!document.querySelector('#clabCss') && !!document.querySelector('#cardLab .card')`),
     true,
     'back on this one',
@@ -245,15 +245,15 @@ export default async function (ctx) {
 
   await ctx.evaluate(`document.querySelector('#settings').close()`);
   await ctx.settle();
-  a.equal(await ctx.evaluate(`!document.querySelector('#clabCss')`), true, 'gone with the dialog');
+  assert.equal(await ctx.evaluate(`!document.querySelector('#clabCss')`), true, 'gone with the dialog');
 
   // a pref: the same after a reload
   const hidden = await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`);
 
-  a.equal(hidden, 'prs', 'the age and the ✓ kept, the PRs left out');
+  assert.equal(hidden, 'prs', 'the age and the ✓ kept, the PRs left out');
   await ctx.reload();
   await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
-  a.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), hidden, 'kept across a reload');
+  assert.equal(await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`), hidden, 'kept across a reload');
 
   // prefs from before: what was chosen stays, the new parts shown, the age and the ✓ not at rest
   await ctx.evaluate(
@@ -263,16 +263,16 @@ export default async function (ctx) {
   await ctx.reload();
   await ctx.waitFor(`!!document.querySelector('${card}')`, { what: 'the card again' });
 
-  a.equal(
+  assert.equal(
     await ctx.evaluate(`document.querySelector('#sessions').dataset.hide`),
     'rounds tickets age tick',
     'older prefs: their choice, the rest of the parts shown',
   );
 
   // prefs from before the snooze's mark and the pin were on (2026-11-25): on, once; taken off after, they stay off
-  const seen = async (parts, n) => {
+  const seen = async (parts, partsSeen) => {
     await ctx.evaluate(
-      `(p => { p.cardParts = ${JSON.stringify(parts)}; p.cardPartsSeen = ${n}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })(JSON.parse(localStorage.getItem('peixairada-prefs')))`,
+      `(p => { p.cardParts = ${JSON.stringify(parts)}; p.cardPartsSeen = ${partsSeen}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })(JSON.parse(localStorage.getItem('peixairada-prefs')))`,
     );
 
     await ctx.reload();
@@ -280,7 +280,7 @@ export default async function (ctx) {
     return ctx.evaluate(`document.querySelector('#sessions').dataset.hide`);
   };
 
-  a.equal(
+  assert.equal(
     await seen(
       ['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'],
       2,
@@ -289,7 +289,7 @@ export default async function (ctx) {
     "the snooze's mark and the pin on, once",
   );
 
-  a.equal(
+  assert.equal(
     await seen(
       ['prs', 'rounds', 'tickets', 'agents', 'tab', 'branch', 'where', 'watch', 'fable', 'unread', 'move', 'live'],
       4,

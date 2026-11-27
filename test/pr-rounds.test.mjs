@@ -30,21 +30,21 @@ const {
   indexFile,
 } = await import('../server.mjs');
 
-const t = (h, m = 0) => new Date(Date.UTC(2026, 9, 15, h, m)).toISOString().replace('.000', ''); // GitHub writes no milliseconds
-const at = (h, m = 0) => Date.UTC(2026, 9, 15, h, m);
+const isoAt = (hour, minute = 0) => new Date(Date.UTC(2026, 9, 15, hour, minute)).toISOString().replace('.000', ''); // GitHub writes no milliseconds
+const at = (hour, minute = 0) => Date.UTC(2026, 9, 15, hour, minute);
 const user = login => ({ login, __typename: 'User' });
 
-const commit = (h, login, m = 0) => ({
+const commit = (hour, login, minute = 0) => ({
   __typename: 'PullRequestCommit',
-  commit: { committedDate: t(h, m), author: { user: login ? { login } : null } },
+  commit: { committedDate: isoAt(hour, minute), author: { user: login ? { login } : null } },
 });
 
-const force = (h, login) => ({ __typename: 'HeadRefForcePushedEvent', createdAt: t(h), actor: user(login) });
+const force = (hour, login) => ({ __typename: 'HeadRefForcePushedEvent', createdAt: isoAt(hour), actor: user(login) });
 
 /** Your own PR, opened at 8:00. */
-const mine = (o = {}) => ({
+const mine = (overrides = {}) => ({
   state: 'OPEN',
-  createdAt: t(8),
+  createdAt: isoAt(8),
   headRefOid: 'A',
   author: user('me'),
   viewerLatestReview: null,
@@ -53,31 +53,31 @@ const mine = (o = {}) => ({
   comments: { nodes: [] },
   pushes: { nodes: [commit(8, 'me')] },
   asks: { nodes: [] },
-  ...o,
+  ...overrides,
 });
 
-const word = (h, login, m = 0) => ({ author: user(login), createdAt: t(h, m) });
+const word = (hour, login, minute = 0) => ({ author: user(login), createdAt: isoAt(hour, minute) });
 
 test("a look's events: who opened, reviewed, commented, pushed and asked — you as '', no bots, a rebase one push", () => {
   const pr = mine({
     reviews: {
       nodes: [
-        { author: user('ana'), state: 'COMMENTED', submittedAt: t(9) },
-        { author: user('ana'), state: 'PENDING', submittedAt: t(9, 30) },
+        { author: user('ana'), state: 'COMMENTED', submittedAt: isoAt(9) },
+        { author: user('ana'), state: 'PENDING', submittedAt: isoAt(9, 30) },
       ],
     },
     comments: {
       nodes: [
         word(10, 'rui'),
         word(10, 'renovate[bot]'),
-        { author: { login: 'ci', __typename: 'Bot' }, createdAt: t(10, 5) },
+        { author: { login: 'ci', __typename: 'Bot' }, createdAt: isoAt(10, 5) },
       ],
     },
     pushes: { nodes: [commit(11, 'me'), commit(11, 'me'), commit(11, 'me'), force(12, 'bob')] },
     asks: {
       nodes: [
-        { createdAt: t(13), requestedReviewer: { login: 'me' } },
-        { createdAt: t(13, 5), requestedReviewer: { login: 'ana' } },
+        { createdAt: isoAt(13), requestedReviewer: { login: 'me' } },
+        { createdAt: isoAt(13, 5), requestedReviewer: { login: 'ana' } },
       ],
     },
   });
@@ -85,22 +85,22 @@ test("a look's events: who opened, reviewed, commented, pushed and asked — you
   const ev = prEvents(pr, 'me');
 
   assert.deepEqual(
-    ev.map(e => [e.k, e.w, e.a, e.n ?? null, e.s ?? e.f ?? null]),
+    ev.map(event => [event.k, event.w, event.a, event.n ?? null, event.s ?? event.f ?? null]),
     [
-      ['opened', '', t(8), null, null],
-      ['review', 'ana', t(9), null, 'COMMENTED'],
-      ['comment', 'rui', t(10), null, null],
-      ['push', '', t(11), 3, null],
-      ['push', 'bob', t(12), null, 1],
-      ['ask', null, t(13), null, null],
-      ['asked', null, t(13, 5), null, null],
+      ['opened', '', isoAt(8), null, null],
+      ['review', 'ana', isoAt(9), null, 'COMMENTED'],
+      ['comment', 'rui', isoAt(10), null, null],
+      ['push', '', isoAt(11), 3, null],
+      ['push', 'bob', isoAt(12), null, 1],
+      ['ask', null, isoAt(13), null, null],
+      ['asked', null, isoAt(13, 5), null, null],
     ],
   );
 
-  assert.equal(new Set(ev.map(e => e.id)).size, ev.length, 'each its own id');
+  assert.equal(new Set(ev.map(event => event.id)).size, ev.length, 'each its own id');
 
   assert.deepEqual(
-    prEvents(mine({ pushes: { nodes: [commit(9, null)] } }), 'me').map(e => [e.k, e.w]),
+    prEvents(mine({ pushes: { nodes: [commit(9, null)] } }), 'me').map(event => [event.k, event.w]),
     [
       ['opened', ''],
       ['push', ''],
@@ -120,17 +120,17 @@ test('the ledger takes an event once and gives none back: a short look loses not
   assert.equal(logEvents(url, all.slice(0, 1)), false, 'a look that lacks some takes none away');
 
   assert.deepEqual(
-    prLogs[url].ev.map(e => e.k),
+    prLogs[url].ev.map(event => event.k),
     ['opened', 'push', 'comment', 'comment'],
   );
 
   assert.equal(prLogs[url].older, undefined, 'nothing let go yet');
 
-  const many = Array.from({ length: 150 }, (_, i) => ({
-    id: `comment:ana:${i}`,
+  const many = Array.from({ length: 150 }, (_, index) => ({
+    id: `comment:ana:${index}`,
     k: 'comment',
     w: 'ana',
-    a: new Date(at(12) + i * 1000).toISOString().replace('.000', ''),
+    a: new Date(at(12) + index * 1000).toISOString().replace('.000', ''),
   }));
 
   logEvents(url, many);
@@ -147,32 +147,40 @@ test('the ledger takes an event once and gives none back: a short look loses not
 
 test('a round opens at your move, stays open through a look that misses it, and closes on your word', () => {
   const url = 'https://github.com/acme/r/pull/2';
-  const s = newSession('rounds', '/x/rounds.jsonl');
+  const session = newSession('rounds', '/x/rounds.jsonl');
 
-  sessions.set(s.id, s);
-  s.lastActivity = new Date(at(8)).toISOString();
-  notePr(s, url, s.lastActivity, 'user');
-  const look = (o, h, m = 0) => setPrInfo(url, 'open', 'PR', prTurn(mine(o), 'me', prTurns[url]?.said), at(h, m));
+  sessions.set(session.id, session);
+  session.lastActivity = new Date(at(8)).toISOString();
+  notePr(session, url, session.lastActivity, 'user');
+
+  const look = (overrides, hour, minute = 0) =>
+    setPrInfo(url, 'open', 'PR', prTurn(mine(overrides), 'me', prTurns[url]?.said), at(hour, minute));
 
   const rounds = () =>
-    s.prs[0].rounds?.map(r => ({ from: r.from, why: r.why, end: r.end ?? null, how: r.how ?? null, them: !!r.them }));
+    session.prs[0].rounds?.map(round => ({
+      from: round.from,
+      why: round.why,
+      end: round.end ?? null,
+      how: round.how ?? null,
+      them: !!round.them,
+    }));
 
   look({}, 9);
-  assert.equal(s.prs[0].rounds, null, 'theirs from the start: no round');
-  const ana = { reviews: { nodes: [{ author: user('ana'), state: 'COMMENTED', submittedAt: t(10) }] } };
+  assert.equal(session.prs[0].rounds, null, 'theirs from the start: no round');
+  const ana = { reviews: { nodes: [{ author: user('ana'), state: 'COMMENTED', submittedAt: isoAt(10) }] } };
 
   look(ana, 10, 5);
 
   assert.deepEqual(
     rounds(),
-    [{ from: t(10), why: '1 comment from ana', end: null, how: null, them: false }],
+    [{ from: isoAt(10), why: '1 comment from ana', end: null, how: null, them: false }],
     "opened at GitHub's time for it",
   );
 
   look({ ...ana, reviews: { nodes: [] } }, 10, 10);
 
   assert.deepEqual(
-    rounds().map(r => [r.end, r.them]),
+    rounds().map(round => [round.end, round.them]),
     [[null, true]],
     'a look without the review: still open, marked',
   );
@@ -180,7 +188,7 @@ test('a round opens at your move, stays open through a look that misses it, and 
   look(ana, 10, 15);
 
   assert.deepEqual(
-    rounds().map(r => [r.end, r.them]),
+    rounds().map(round => [round.end, round.them]),
     [[null, false]],
     'back: the mark goes, one round still',
   );
@@ -190,26 +198,26 @@ test('a round opens at your move, stays open through a look that misses it, and 
   look(rui, 10, 25);
 
   assert.deepEqual(
-    rounds().map(r => [r.from, r.why]),
-    [[t(10), '2 comments from ana, rui']],
+    rounds().map(round => [round.from, round.why]),
+    [[isoAt(10), '2 comments from ana, rui']],
     'more news, the same round',
   );
 
   look({ ...rui, comments: { nodes: [word(10, 'rui', 20), word(11, 'me')] } }, 11, 5);
 
   assert.deepEqual(
-    rounds().map(r => [r.end, r.how]),
-    [[t(11), 'answered']],
+    rounds().map(round => [round.end, round.how]),
+    [[isoAt(11), 'answered']],
     'your word closes it, at its time',
   );
 
   look({ ...rui, comments: { nodes: [word(10, 'rui', 20), word(11, 'me'), word(12, 'ana')] } }, 12, 5);
 
   assert.deepEqual(
-    rounds().map(r => [r.from, r.how]),
+    rounds().map(round => [round.from, round.how]),
     [
-      [t(10), 'answered'],
-      [t(12), null],
+      [isoAt(10), 'answered'],
+      [isoAt(12), null],
     ],
     'the next move, the next round',
   );
@@ -217,61 +225,66 @@ test('a round opens at your move, stays open through a look that misses it, and 
 
 test('a round let go ends when the next move comes; one whose reason went ends as gone, an hour on', () => {
   const url = 'https://github.com/acme/r/pull/3';
-  const s = newSession('letgo', '/x/letgo.jsonl');
+  const session = newSession('letgo', '/x/letgo.jsonl');
 
-  sessions.set(s.id, s);
-  s.lastActivity = new Date(at(8)).toISOString();
-  notePr(s, url, s.lastActivity, 'user');
-  const look = (o, h, m = 0) => setPrInfo(url, 'open', 'PR', prTurn(mine(o), 'me', prTurns[url]?.said), at(h, m));
-  const approved = { reviews: { nodes: [{ author: user('priya'), state: 'APPROVED', submittedAt: t(9) }] } };
+  sessions.set(session.id, session);
+  session.lastActivity = new Date(at(8)).toISOString();
+  notePr(session, url, session.lastActivity, 'user');
+
+  const look = (overrides, hour, minute = 0) =>
+    setPrInfo(url, 'open', 'PR', prTurn(mine(overrides), 'me', prTurns[url]?.said), at(hour, minute));
+
+  const approved = { reviews: { nodes: [{ author: user('priya'), state: 'APPROVED', submittedAt: isoAt(9) }] } };
 
   look(approved, 9, 5);
   assert.equal(waiveTurn(url), true);
-  assert.ok(s.prs[0].rounds[0].let, 'the round says when it was let go');
+  assert.ok(session.prs[0].rounds[0].let, 'the round says when it was let go');
 
   assert.deepEqual(
-    prLogs[url].ev.filter(e => e.k === 'board').map(e => e.x),
+    prLogs[url].ev.filter(event => event.k === 'board').map(event => event.x),
     ['let go'],
     'and the ledger, that it was',
   );
 
   look(approved, 9, 30);
-  assert.equal(s.prs[0].rounds.length, 1, 'the same round on the next look');
+  assert.equal(session.prs[0].rounds.length, 1, 'the same round on the next look');
 
   const more = {
-    reviews: { nodes: [...approved.reviews.nodes, { author: user('kenji'), state: 'COMMENTED', submittedAt: t(10) }] },
+    reviews: {
+      nodes: [...approved.reviews.nodes, { author: user('kenji'), state: 'COMMENTED', submittedAt: isoAt(10) }],
+    },
   };
 
   look(more, 10, 5);
 
   assert.deepEqual(
-    s.prs[0].rounds.map(r => r.how ?? null),
+    session.prs[0].rounds.map(round => round.how ?? null),
     ['let go', null],
     'let go, then kenji: a round of its own',
   );
 
   // their move with no word of yours since — the reviews taken back — is marked, then gone an hour on
   look({}, 10, 10);
-  assert.ok(s.prs[0].rounds[1].them && !s.prs[0].rounds[1].end);
+  assert.ok(session.prs[0].rounds[1].them && !session.prs[0].rounds[1].end);
   look({}, 11, 5);
-  assert.ok(!s.prs[0].rounds[1].end, 'within the hour: still open');
+  assert.ok(!session.prs[0].rounds[1].end, 'within the hour: still open');
   look({}, 11, 15);
 
   assert.deepEqual(
-    s.prs[0].rounds.map(r => r.how),
+    session.prs[0].rounds.map(round => round.how),
     ['let go', 'gone'],
   );
 
   setPrInfo(url, 'merged', 'PR', null, at(12));
 
   assert.deepEqual(
-    prLogs[url].r.map(r => r.how),
+    prLogs[url].r.map(round => round.how),
     ['let go', 'gone'],
     'merged: its history stays while a chat names it (2026-10-17; it went with it)',
   );
 
   assert.deepEqual(
-    s.prs[0].rounds.map(r => r.how),
+    session.prs[0].rounds.map(round => round.how),
     ['let go', 'gone'],
   );
 });
@@ -317,7 +330,7 @@ test("the server keeps a PR's history over a restart and hands it to the page", 
     const first = await log();
 
     assert.deepEqual(
-      first.ev.map(e => [e.k, e.w, e.s ?? null]),
+      first.ev.map(event => [event.k, event.w, event.s ?? null]),
       [
         ['opened', '', null],
         ['push', '', null],
@@ -329,15 +342,15 @@ test("the server keeps a PR's history over a restart and hands it to the page", 
     const said = (await srv.api(`api/sessions/${id}/prlog`)).body.said;
 
     assert.deepEqual(
-      said.map(x => [x.text, x.urls]),
+      said.map(quote => [quote.text, quote.urls]),
       [['Open widgets#5', ['https://github.com/acme/widgets/pull/5']]],
       "your words that named it, for the history beside GitHub's",
     );
 
-    const card = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id).prs[0];
+    const card = (await srv.api('api/sessions')).body.sessions.find(session => session.id === id).prs[0];
 
     assert.deepEqual(
-      card.rounds.map(r => r.why),
+      card.rounds.map(round => round.why),
       ['changes asked by ana'],
       "the chat's PR carries its rounds",
     );
@@ -348,11 +361,11 @@ test("the server keeps a PR's history over a restart and hands it to the page", 
 
     assert.equal((await waive({ url: 'https://github.com/acme/widgets/pull/6' })).status, 404, "not this chat's");
     assert.equal((await waive({ url: pr5 })).status, 200);
-    let one = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id).prs[0];
+    let one = (await srv.api('api/sessions')).body.sessions.find(session => session.id === id).prs[0];
 
     assert.deepEqual([one.turn.you, one.turn.waived, !!one.rounds[0].let], [false, true, true]);
     assert.equal((await waive({ url: pr5, undo: true })).status, 200);
-    one = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id).prs[0];
+    one = (await srv.api('api/sessions')).body.sessions.find(session => session.id === id).prs[0];
 
     assert.deepEqual(
       [one.turn.you, one.turn.waived ?? null, one.rounds[0].let ?? null],
@@ -363,7 +376,7 @@ test("the server keeps a PR's history over a restart and hands it to the page", 
     assert.equal((await waive({ url: pr5, undo: true })).status, 409, 'nothing let go to take back');
 
     assert.deepEqual(
-      (await log()).ev.filter(e => e.k === 'board').map(e => e.x),
+      (await log()).ev.filter(event => event.k === 'board').map(event => event.x),
       ['let go', 'back'],
     );
 
@@ -378,8 +391,8 @@ test("the server keeps a PR's history over a restart and hands it to the page", 
     const back = await log();
 
     assert.deepEqual(
-      back.ev.map(e => e.id),
-      before.ev.map(e => e.id),
+      back.ev.map(event => event.id),
+      before.ev.map(event => event.id),
       'the events kept',
     );
 
@@ -390,7 +403,8 @@ test("the server keeps a PR's history over a restart and hands it to the page", 
 });
 
 test('what a Bash command does to a PR, by its words: a push and its branch, gh pr review · comment · merge · create, a gh api write', () => {
-  const said = c => prActs(c).map(a => [a.x, a.url || a.num || (a.branch ?? null), a.repo ?? null]);
+  const said = command =>
+    prActs(command).map(act => [act.x, act.url || act.num || (act.branch ?? null), act.repo ?? null]);
 
   assert.deepEqual(said('git push'), [['push', '', null]], 'the branch checked out');
   assert.deepEqual(said('git push -u origin feat/x'), [['push', 'feat/x', null]]);
@@ -447,14 +461,14 @@ test("a chat's push, review and reply go into its PRs' ledgers, and the round it
   const u41 = 'https://github.com/acme/shop/pull/41';
   const u42 = 'https://github.com/acme/shop/pull/42';
 
-  const d = (h, m = 0) => new Date(at(h, m));
+  const dateAt = (hour, minute = 0) => new Date(at(hour, minute));
 
   const fx = makeFixture(tmpDir('peix-acts-claude-'), [
     {
       cwd: repo,
       prompt: `Address the review on ${u40}, approve ${u41}, answer on ${u42}`,
       reply: 'On it.',
-      at: d(10),
+      at: dateAt(10),
       lines: id => [
         ...toolLines({
           id,
@@ -462,7 +476,7 @@ test("a chat's push, review and reply go into its PRs' ledgers, and the round it
           name: 'Bash',
           input: { command: 'git commit -am "Cap the jitter" && git push -u origin retry' },
           result: 'To github.com:acme/shop.git',
-          at: d(10, 20),
+          at: dateAt(10, 20),
         }),
         ...toolLines({
           id,
@@ -470,7 +484,7 @@ test("a chat's push, review and reply go into its PRs' ledgers, and the round it
           name: 'Bash',
           input: { command: 'gh pr review 41 --approve -b "Both fixed"' },
           result: '✓ Approved',
-          at: d(10, 25),
+          at: dateAt(10, 25),
         }),
         ...toolLines({
           id,
@@ -478,7 +492,7 @@ test("a chat's push, review and reply go into its PRs' ledgers, and the round it
           name: 'Bash',
           input: { command: 'gh api repos/{owner}/{repo}/pulls/42/comments/7/replies -f body=Yes' },
           result: '{"id": 8}',
-          at: d(10, 30),
+          at: dateAt(10, 30),
         }),
         ...toolLines({
           id,
@@ -486,19 +500,19 @@ test("a chat's push, review and reply go into its PRs' ledgers, and the round it
           name: 'Bash',
           input: { command: 'gh pr comment 43 -b nope' },
           result: null,
-          at: d(10, 35),
+          at: dateAt(10, 35),
         }),
-        ...replyLines({ id, cwd: repo, text: 'Pushed, approved, answered.', at: d(10, 40) }),
+        ...replyLines({ id, cwd: repo, text: 'Pushed, approved, answered.', at: dateAt(10, 40) }),
       ],
     },
   ]);
 
-  const s = indexFile(fx.chats[0].file);
+  const session = indexFile(fx.chats[0].file);
 
-  sessions.set(s.id, s);
+  sessions.set(session.id, session);
 
   assert.deepEqual(
-    s.prActs.map(a => [a.x, a.url]),
+    session.prActs.map(act => [act.x, act.url]),
     [
       ['push', null],
       ['review', u41],
@@ -508,12 +522,12 @@ test("a chat's push, review and reply go into its PRs' ledgers, and the round it
   );
 
   assert.deepEqual(
-    prLogs[u41].ev.map(e => [e.k, e.x, e.c]),
-    [['chat', 'review', s.id]],
+    prLogs[u41].ev.map(event => [event.k, event.x, event.c]),
+    [['chat', 'review', session.id]],
   );
 
   // #40, yours: ana asked for changes at 10:00 — then GitHub names its branch, and the chat's push is tied to it
-  const asked = { reviews: { nodes: [{ author: user('ana'), state: 'CHANGES_REQUESTED', submittedAt: t(10) }] } };
+  const asked = { reviews: { nodes: [{ author: user('ana'), state: 'CHANGES_REQUESTED', submittedAt: isoAt(10) }] } };
 
   setPrInfo(u40, 'open', 'Retry', prTurn(mine(asked), 'me'), at(10, 5), undefined, false, null, null, {
     head: 'retry',
@@ -521,8 +535,8 @@ test("a chat's push, review and reply go into its PRs' ledgers, and the round it
   });
 
   assert.deepEqual(
-    prLogs[u40].ev.filter(e => e.k === 'chat').map(e => [e.x, e.a]),
-    [['push', t(10, 20)]],
+    prLogs[u40].ev.filter(event => event.k === 'chat').map(event => [event.x, event.a]),
+    [['push', isoAt(10, 20)]],
   );
 
   setPrInfo(
@@ -538,11 +552,11 @@ test("a chat's push, review and reply go into its PRs' ledgers, and the round it
     { head: 'retry', fork: false },
   );
 
-  const r = s.prs.find(p => p.url === u40).rounds[0];
+  const round = session.prs.find(pr => pr.url === u40).rounds[0];
 
   assert.deepEqual(
-    [r.how, r.end, r.by],
-    ['answered', t(10, 19), { c: s.id, x: 'push', a: t(10, 20) }],
+    [round.how, round.end, round.by],
+    ['answered', isoAt(10, 19), { c: session.id, x: 'push', a: isoAt(10, 20) }],
     'answered by the commit pushed from this chat',
   );
 });

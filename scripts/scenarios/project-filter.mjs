@@ -19,7 +19,9 @@ export default async function (ctx) {
   const sleeper = spawn('sleep', ['300'], { stdio: 'ignore' });
 
   const LONG = 'a-very-long-project-name-that-goes-on-and-on-and-on';
-  const near = (a, b, what, by = 1.5) => ctx.assert.ok(Math.abs(a - b) <= by, `${what}: ${a} against ${b}`);
+
+  const near = (actual, expected, what, by = 1.5) =>
+    ctx.assert.ok(Math.abs(actual - expected) <= by, `${what}: ${actual} against ${expected}`);
 
   const cue = () =>
     ctx.evaluate(`(() => { const c = document.querySelector('#stitle'); if (c.hidden) return null;
@@ -108,27 +110,31 @@ export default async function (ctx) {
     // the list's own tab, level with the toolbar, on the cards' edges
     await pick('shop');
 
-    const c = (out.cue = await cue());
-    const h = await head();
+    const reading = (out.cue = await cue());
+    const toolbar = await head();
 
     ctx.assert.deepEqual(
-      [c.name, c.count, c.way],
+      [reading.name, reading.count, reading.way],
       ['shop', `2 of ${notDone}`, '1 asking·Show all'],
       'its name, how many of how many, and the way out in words',
     );
 
-    near(c.box.t, h.t, 'level with the toolbar: its top');
-    near(c.box.b, h.b, 'and its foot');
-    near((c.words.t + c.words.b) / 2, h.mid, 'its words level with the title');
+    near(reading.box.t, toolbar.t, 'level with the toolbar: its top');
+    near(reading.box.b, toolbar.b, 'and its foot');
+    near((reading.words.t + reading.words.b) / 2, toolbar.mid, 'its words level with the title');
 
     const row = await ctx.evaluate(
       `(() => { const c = document.querySelector('#slist > .card'), b = c.getBoundingClientRect(), g = document.createRange(); g.selectNodeContents(c.querySelector('.title')); return { l: b.left, r: b.right, words: g.getBoundingClientRect().left }; })()`,
     );
 
-    near(c.tab.l, row.l, "the tab on the cards' left edge");
-    near(c.out.r, row.r, 'the way out on their right');
-    near(c.words.l, row.words, "its words on the title's edge");
-    ctx.assert.ok(c.sx.h >= 24 && c.sx.w >= 24, `the way out a target of 24 px at least: ${c.sx.w} × ${c.sx.h}`);
+    near(reading.tab.l, row.l, "the tab on the cards' left edge");
+    near(reading.out.r, row.r, 'the way out on their right');
+    near(reading.words.l, row.words, "its words on the title's edge");
+
+    ctx.assert.ok(
+      reading.sx.h >= 24 && reading.sx.w >= 24,
+      `the way out a target of 24 px at least: ${reading.sx.w} × ${reading.sx.h}`,
+    );
 
     ctx.assert.equal(
       await ctx.evaluate(`!!document.querySelector('#slist > .gsep.lane[data-away]')`),
@@ -144,7 +150,7 @@ export default async function (ctx) {
     const n0 = (await ctx.peix('motion()')).length;
 
     await pick('other');
-    out.slide = (await ctx.peix('motion()')).slice(n0).find(m => m.id === asker.id && m.kind === 'flip');
+    out.slide = (await ctx.peix('motion()')).slice(n0).find(move => move.id === asker.id && move.kind === 'flip');
 
     ctx.assert.ok(
       out.slide && out.slide.dy <= -40,
@@ -178,11 +184,11 @@ export default async function (ctx) {
     // narrow: the count first, a long name fades, Show all whole
     await ctx.evaluate(`document.querySelector('#sessions').style.width = '300px'`);
     await pick(LONG);
-    const w = (out.narrow = await cue());
+    const narrow = (out.narrow = await cue());
 
-    ctx.assert.equal(w.shown, false, 'the count gives way first');
-    ctx.assert.equal(w.wholeName, false, 'a long name ends in …');
-    ctx.assert.ok(w.fits && w.sx.r <= w.box.r + 0.5, `Show all whole: ${JSON.stringify(w)}`);
+    ctx.assert.equal(narrow.shown, false, 'the count gives way first');
+    ctx.assert.equal(narrow.wholeName, false, 'a long name ends in …');
+    ctx.assert.ok(narrow.fits && narrow.sx.r <= narrow.box.r + 0.5, `Show all whole: ${JSON.stringify(narrow)}`);
     await showAll();
     await ctx.evaluate(`document.querySelector('#sessions').style.width = '417px'`);
 
@@ -324,9 +330,9 @@ export default async function (ctx) {
         `(el => { const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 8, clientY: r.top + 8 })); })(document.querySelector('#slist > .card[data-id="${id}"]'))`,
       );
 
-    const menuRow = t =>
+    const menuRow = label =>
       ctx.evaluate(
-        `(b => b ? (b.click(), 'pressed') : 'none')([...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith(${JSON.stringify(t)})))`,
+        `(b => b ? (b.click(), 'pressed') : 'none')([...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith(${JSON.stringify(label)})))`,
       );
 
     await right(first.id);
@@ -343,7 +349,7 @@ export default async function (ctx) {
     await ctx.settle();
 
     const cueMoves = async fn => {
-      const n = (await ctx.peix('motion()')).length;
+      const before = (await ctx.peix('motion()')).length;
 
       await fn();
 
@@ -353,9 +359,9 @@ export default async function (ctx) {
       await ctx.settle();
       return {
         kinds: (await ctx.peix('motion()'))
-          .slice(n)
-          .filter(m => m.id === 'cue')
-          .map(m => m.kind),
+          .slice(before)
+          .filter(move => move.id === 'cue')
+          .map(move => move.kind),
         stand,
         hidden,
         left: await ctx.evaluate(`!!document.querySelector('.tabfly')`),
@@ -397,11 +403,11 @@ export default async function (ctx) {
     await pick('shop');
 
     const waves = async fn => {
-      const n = (await ctx.peix('motion()')).length;
+      const before = (await ctx.peix('motion()')).length;
 
       await fn();
       await ctx.sleep(700);
-      return (await ctx.peix('motion()')).slice(n).filter(m => m.kind === 'wave').length;
+      return (await ctx.peix('motion()')).slice(before).filter(move => move.kind === 'wave').length;
     };
 
     const OUT = await ctx.evaluate(`Date.now() - 3 * 3600_000`);
@@ -422,7 +428,7 @@ export default async function (ctx) {
     await ctx.sleep(900);
 
     ctx.assert.ok(
-      (await ctx.peix('motion()')).some(m => m.id === 'cue' && m.kind === 'wave'),
+      (await ctx.peix('motion()')).some(move => move.id === 'cue' && move.kind === 'wave'),
       'and on launch',
     );
 

@@ -25,9 +25,9 @@ export default async function (ctx) {
     );
 
   const endDrawer = async id => {
-    const t = (await ctx.peix(`session(${sid(id)})`)).terminal;
+    const term = (await ctx.peix(`session(${sid(id)})`)).terminal;
 
-    await ctx.server.api(`/api/terminals/${t.id}`, { method: 'DELETE' });
+    await ctx.server.api(`/api/terminals/${term.id}`, { method: 'DELETE' });
 
     await ctx.waitFor(
       `(s => s && !s.alive && !(s.terminal && s.terminal.exited === null))(window.peix.session(${sid(id)}))`,
@@ -213,9 +213,9 @@ export default async function (ctx) {
     await ctx.waitFor(`${BAR}.hidden`, { what: 'the bar gone under the drawer' });
     ctx.assert.equal(worker.exitCode ?? worker.signalCode ?? null, null, 'one press, and nothing ended');
     ctx.assert.match(ctx.server.logText(), /claude attach abcd1234/, 'the session itself, not a second claude');
-    const t = (await ctx.peix(`session(${sid(plain.id)})`)).terminal;
+    const term = (await ctx.peix(`session(${sid(plain.id)})`)).terminal;
 
-    await ctx.server.api(`/api/terminals/${t.id}`, { method: 'DELETE' });
+    await ctx.server.api(`/api/terminals/${term.id}`, { method: 'DELETE' });
 
     await ctx.waitFor(`document.querySelector('#takeGo')?.textContent.startsWith('Attach')`, {
       what: 'Attach back once the drawer closed',

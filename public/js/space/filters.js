@@ -2,13 +2,13 @@
 // the rest the fuzzy match; every filter must hold. is: a state or starred; pr: where its open PRs stand; @ an agent's
 // type its claude ran; # its project. A prefix typed lists what it can be, each with how many chats it would keep.
 const SP_IS = {
-  asking: s => spState(s) === 'ask',
-  working: s => spState(s) === 'work',
-  watching: s => spState(s) === 'watch',
-  ready: s => spState(s) === 'ready',
-  idle: s => spState(s) === 'idle',
-  done: s => spState(s) === 'done',
-  star: s => !!s.fav,
+  asking: session => spState(session) === 'ask',
+  working: session => spState(session) === 'work',
+  watching: session => spState(session) === 'watch',
+  ready: session => spState(session) === 'ready',
+  idle: session => spState(session) === 'idle',
+  done: session => spState(session) === 'done',
+  star: session => !!session.fav,
 };
 
 const SP_IS_SAY = {
@@ -22,13 +22,15 @@ const SP_IS_SAY = {
 };
 
 const SP_PRS = {
-  mine: s => spOpenPrs(s).some(p => p.turn?.you),
-  open: s => spOpenPrs(s).length > 0,
-  changes: s => spOpenPrs(s).some(p => p.review?.decision === 'changes'),
-  unresolved: s => spOpenPrs(s).some(p => p.review?.open > 0),
-  approved: s => spOpenPrs(s).some(p => p.review?.decision === 'approved'),
-  review: s =>
-    spOpenPrs(s).some(p => p.review && (p.review.decision === 'required' || (!p.review.decision && p.review.asked))),
+  mine: session => spOpenPrs(session).some(pr => pr.turn?.you),
+  open: session => spOpenPrs(session).length > 0,
+  changes: session => spOpenPrs(session).some(pr => pr.review?.decision === 'changes'),
+  unresolved: session => spOpenPrs(session).some(pr => pr.review?.open > 0),
+  approved: session => spOpenPrs(session).some(pr => pr.review?.decision === 'approved'),
+  review: session =>
+    spOpenPrs(session).some(
+      pr => pr.review && (pr.review.decision === 'required' || (!pr.review.decision && pr.review.asked)),
+    ),
 };
 
 const SP_PRS_SAY = {
@@ -40,87 +42,94 @@ const SP_PRS_SAY = {
   review: 'awaiting review',
 };
 
-const spTypes = s => [...new Set(spRows(s).map(r => spKind(r).toLowerCase()))];
+const spTypes = session => [...new Set(spRows(session).map(row => spKind(row).toLowerCase()))];
 
-function spTokTest(t) {
-  const m = /^(is|pr):(\w+)$/.exec(t);
+function spTokTest(token) {
+  const match = /^(is|pr):(\w+)$/.exec(token);
 
-  if (m) return (m[1] === 'is' ? SP_IS : SP_PRS)[m[2]] || null;
+  if (match) return (match[1] === 'is' ? SP_IS : SP_PRS)[match[2]] || null;
 
-  if (/^@\S+$/.test(t)) {
-    const w = t.slice(1).toLowerCase();
+  if (/^@\S+$/.test(token)) {
+    const prefix = token.slice(1).toLowerCase();
 
-    return s => spTypes(s).some(k => k.startsWith(w));
+    return session => spTypes(session).some(kind => kind.startsWith(prefix));
   }
 
-  if (/^#\S+$/.test(t)) {
-    const w = t.slice(1).toLowerCase();
+  if (/^#\S+$/.test(token)) {
+    const prefix = token.slice(1).toLowerCase();
 
-    return s =>
-      String(s.project || '')
+    return session =>
+      String(session.project || '')
         .toLowerCase()
-        .includes(w);
+        .includes(prefix);
   }
 
   return null;
 }
 
 const spOn = () => !!(spQuery() || sp.toks.length);
-const spTokOk = s => sp.toks.every(t => spTokTest(t)?.(s) ?? true);
-const spFields = s => [...chatFields(s), spFolder(s), [...new Set(spRows(s).map(spKind))].join(' ')];
+const spTokOk = session => sp.toks.every(token => spTokTest(token)?.(session) ?? true);
+
+const spFields = session => [
+  ...chatFields(session),
+  spFolder(session),
+  [...new Set(spRows(session).map(spKind))].join(' '),
+];
 
 function spChats() {
-  const p = projectList().find(x => x.key === prefs.project);
+  const project = projectList().find(candidate => candidate.key === prefs.project);
   const off = spOff();
   const rank = ['fav', ...Object.keys(SP_ST)];
   const by = {};
-  const q = spQuery();
+  const query = spQuery();
 
-  if (q) {
-    return (p?.sessions || [])
+  if (query) {
+    return (project?.sessions || [])
       .filter(spTokOk)
-      .map(s => [s, fuzzy(spFields(s), q)])
-      .filter(([, m]) => m)
-      .map(([s, m]) => [s, m.score * (s.done ? 0.5 : 1)])
-      .sort((a, b) => b[1] - a[1] || byWord(a[0], b[0]))
-      .map(([s]) => s);
+      .map(session => [session, fuzzy(spFields(session), query)])
+      .filter(([, match]) => match)
+      .map(([session, match]) => [session, match.score * (session.done ? 0.5 : 1)])
+      .sort((left, right) => right[1] - left[1] || byWord(left[0], right[0]))
+      .map(([session]) => session);
   }
 
   if (sp.toks.length) {
     const at = Object.keys(SP_ST);
 
-    return (p?.sessions || [])
+    return (project?.sessions || [])
       .filter(spTokOk)
-      .sort((a, b) => at.indexOf(spState(a)) - at.indexOf(spState(b)) || byWord(a, b));
+      .sort((left, right) => at.indexOf(spState(left)) - at.indexOf(spState(right)) || byWord(left, right));
   } // filters alone: every state, by state
 
-  for (const s of p?.sessions || []) {
-    const k = spCat(s);
+  for (const session of project?.sessions || []) {
+    const category = spCat(session);
 
-    if (!off.includes(k)) (by[k] ||= []).push(s);
+    if (!off.includes(category)) (by[category] ||= []).push(session);
   }
 
-  const shown = rank.flatMap(k =>
-    (by[k] || []).sort(byWord).slice(0, k === 'idle' || k === 'done' ? SP_CAP : Infinity),
+  const shown = rank.flatMap(category =>
+    (by[category] || []).sort(byWord).slice(0, category === 'idle' || category === 'done' ? SP_CAP : Infinity),
   );
 
   // laid out (2026-11-24, `prefs.spArrange`): by state as above; by the last word, the favourites still first; by project,
   // a run per project — the one with the newest word first —, by state inside it
-  if (spArr() === 'word') return [...shown.filter(s => s.fav), ...shown.filter(s => !s.fav).sort(byWord)];
+  if (spArr() === 'word') {
+    return [...shown.filter(session => session.fav), ...shown.filter(session => !session.fav).sort(byWord)];
+  }
 
   if (spArr() === 'project') {
     const runs = new Map();
 
-    for (const s of shown) {
-      const k = s.project || '—';
+    for (const session of shown) {
+      const name = session.project || '—';
 
-      if (!runs.has(k)) runs.set(k, []);
-      runs.get(k).push(s);
+      if (!runs.has(name)) runs.set(name, []);
+      runs.get(name).push(session);
     }
 
-    const newest = r => r.reduce((a, s) => (wordAt(s) > a ? wordAt(s) : a), '');
+    const newest = run => run.reduce((latest, session) => (wordAt(session) > latest ? wordAt(session) : latest), '');
 
-    return [...runs.values()].sort((a, b) => newest(b).localeCompare(newest(a))).flat();
+    return [...runs.values()].sort((left, right) => newest(right).localeCompare(newest(left))).flat();
   }
 
   return shown;
@@ -132,25 +141,25 @@ const SP_STAR =
   '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6l1.95 3.95 4.36.63-3.16 3.08.75 4.34L8 11.55l-3.9 2.05.75-4.34L1.69 6.18l4.36-.63z"/></svg>';
 
 function setFav(id, on) {
-  const show = v => {
-    const s = state.sessions.get(id);
+  const show = starred => {
+    const session = state.sessions.get(id);
 
-    if (s) {
-      s.fav = v;
+    if (session) {
+      session.fav = starred;
       renderSpace();
     }
   };
 
   if (on && spOff().includes('fav')) {
-    prefs.spOff = spOff().filter(k => k !== 'fav');
+    prefs.spOff = spOff().filter(category => category !== 'fav');
     savePrefs();
   } // a star just given never hides its node
 
   show(on);
 
-  api('POST', `/api/sessions/${id}/favorite`, { on }).catch(e => {
+  api('POST', `/api/sessions/${id}/favorite`, { on }).catch(error => {
     show(!on);
-    note($('#space'), `Could not ${on ? 'star' : 'unstar'} it: ${e.message}`, true); // a server started before this has no such route: api() says so (e.old)
+    note($('#space'), `Could not ${on ? 'star' : 'unstar'} it: ${error.message}`, true); // a server started before this has no such route: api() says so (e.old)
   });
 }
 
@@ -166,7 +175,7 @@ function spOpen(key) {
     key,
     setTimeout(function fold() {
       const id = key.slice(0, key.indexOf(':'));
-      const tile = [...document.querySelectorAll('#spgrid .spt')].find(t => t.dataset.id === id);
+      const tile = [...document.querySelectorAll('#spgrid .spt')].find(node => node.dataset.id === id);
 
       if (tile?.matches(':hover')) return sp.open.set(key, setTimeout(fold, 3000));
       sp.open.delete(key);
@@ -179,71 +188,71 @@ function renderSpace() {
   sp.raf = 0;
   if (!prefs.space) return;
 
-  const p = projectList().find(x => x.key === prefs.project);
-  const pool = p?.sessions || [];
+  const project = projectList().find(candidate => candidate.key === prefs.project);
+  const pool = project?.sessions || [];
   const list = (sp.list = spChats());
   const off = spOff();
 
   $('#main').classList.toggle('spfull', !state.current);
 
-  const favs = pool.filter(s => s.fav).length;
-  const q = spOn();
+  const favs = pool.filter(session => session.fav).length;
+  const searching = spOn();
   const sel = (sp.sel = Math.max(0, Math.min(sp.sel, list.length - 1)));
 
   // while a search is typed the chips count its matches, every state in: they filter again once it is cleared
   setHtml(
     $('#spfs'),
-    (favs && !q
+    (favs && !searching
       ? `<button type="button" class="spf fav" data-k="fav" aria-pressed="${!off.includes('fav')}" title="Your starred chats, first, whatever their state">${SP_STAR}Favorites<b>${favs}</b></button>`
       : '') +
       Object.keys(SP_ST)
         .map(
-          k =>
-            `<button type="button" class="spf" data-k="${k}" data-st="${k}" aria-pressed="${q ? true : !off.includes(k)}"${q ? ' disabled title="Every state, while a search is typed"' : ''}><i></i>${SP_ST[k]}<b>${(q ? list : pool.filter(s => !s.fav)).filter(s => spState(s) === k).length}</b></button>`,
+          stateKey =>
+            `<button type="button" class="spf" data-k="${stateKey}" data-st="${stateKey}" aria-pressed="${searching ? true : !off.includes(stateKey)}"${searching ? ' disabled title="Every state, while a search is typed"' : ''}><i></i>${SP_ST[stateKey]}<b>${(searching ? list : pool.filter(session => !session.fav)).filter(session => spState(session) === stateKey).length}</b></button>`,
         )
         .join(''),
   );
 
-  $('#spqn').textContent = !q ? '' : list.length ? `${sel + 1} of ${list.length}` : 'none';
+  $('#spqn').textContent = !searching ? '' : list.length ? `${sel + 1} of ${list.length}` : 'none';
 
   setHtml(
     $('#spsub'),
     `${spCount(list.length, 'chat')} · ${spCount(
-      list.reduce((n, s) => n + spRows(s).length, 0),
+      list.reduce((total, session) => total + spRows(session).length, 0),
       'agent',
     )}`,
   );
 
   // a node keeps its element while its markup is the same, so its arcs turn on through every redraw
   const grid = $('#spgrid');
-  const had = new Map([...grid.children].map(e => [e.dataset.id, e]));
+  const had = new Map([...grid.children].map(child => [child.dataset.id, child]));
   const tpl = document.createElement('template');
   const keys = document.activeElement?.closest?.('#spgrid .spt')?.dataset.id;
 
   let prev = null;
   let made = false;
-  let i = 0;
+  let index = 0;
 
   const byProj = spArr() === 'project';
   const items = [];
 
-  for (const s of list) {
-    if (byProj && (!items.length || items.at(-1).s?.project !== s.project)) {
-      const n = list.filter(c => c.project === s.project).length;
-      const color = repoColor(s.cwd);
+  for (const session of list) {
+    if (byProj && (!items.length || items.at(-1).s?.project !== session.project)) {
+      const count = list.filter(other => other.project === session.project).length;
+      const color = repoColor(session.cwd);
 
       items.push({
-        id: `h:${s.project}`,
-        html: `<div class="sphead" data-id="h:${esc(s.project || '')}" role="heading" aria-level="3" style="${color ? `--repo:${color}` : ''}"><i></i>${esc(s.project || 'no folder')}<b>${n}</b></div>`,
+        id: `h:${session.project}`,
+        html: `<div class="sphead" data-id="h:${esc(session.project || '')}" role="heading" aria-level="3" style="${color ? `--repo:${color}` : ''}"><i></i>${esc(session.project || 'no folder')}<b>${count}</b></div>`,
       });
     }
 
-    items.push({ id: s.id, s });
+    items.push({ id: session.id, s: session });
   }
 
   $('#spar')
     .querySelectorAll('[data-arr]')
-    .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.arr === spArr())));
+    .forEach(button => button.setAttribute('aria-pressed', String(button.dataset.arr === spArr())));
 
   for (const it of items) {
     if (!it.s) {
@@ -269,12 +278,12 @@ function renderSpace() {
       continue;
     }
 
-    const s = it.s;
-    const hit = !!q && i++ === sel;
-    const html = spNode(s);
-    let el = had.get(s.id);
+    const session = it.s;
+    const hit = !!searching && index++ === sel;
+    const html = spNode(session);
+    let el = had.get(session.id);
 
-    had.delete(s.id);
+    had.delete(session.id);
 
     if (el?._drawn !== html) {
       tpl.innerHTML = html;
@@ -291,21 +300,25 @@ function renderSpace() {
       else grid.prepend(el);
     }
 
-    if (el.classList.contains('on') !== (s.id === state.current)) {
-      el.classList.toggle('on', s.id === state.current);
-      el.setAttribute('aria-current', String(s.id === state.current));
+    if (el.classList.contains('on') !== (session.id === state.current)) {
+      el.classList.toggle('on', session.id === state.current);
+      el.setAttribute('aria-current', String(session.id === state.current));
     }
 
     if (el.classList.contains('hit') !== hit) el.classList.toggle('hit', hit);
-    if (el.classList.contains('chosen') !== sp.chosen.has(s.id)) el.classList.toggle('chosen', sp.chosen.has(s.id));
-    const first = !q && !byProj && !s.fav && !!prev?._fav; // the first after the favourites starts a row; a search ranks them as the rest
+
+    if (el.classList.contains('chosen') !== sp.chosen.has(session.id)) {
+      el.classList.toggle('chosen', sp.chosen.has(session.id));
+    }
+
+    const first = !searching && !byProj && !session.fav && !!prev?._fav; // the first after the favourites starts a row; a search ranks them as the rest
 
     if (el.classList.contains('spfirst') !== first) el.classList.toggle('spfirst', first);
-    el._fav = !!s.fav;
+    el._fav = !!session.fav;
     prev = el;
   }
 
-  for (const e of had.values()) e.remove();
+  for (const stale of had.values()) stale.remove();
 
   if (keys && document.activeElement === document.body) {
     grid.querySelector(`.spt[data-id="${CSS.escape(keys)}"]`)?.focus();
@@ -313,7 +326,7 @@ function renderSpace() {
 
   $('#spempty').hidden = !!list.length;
 
-  $('#spempty').textContent = q
+  $('#spempty').textContent = searching
     ? `No chat matches “${[...sp.toks, sp.q.trim()].filter(Boolean).join(' ')}”. Esc clears it.`
     : 'No chat in the states picked above.';
 

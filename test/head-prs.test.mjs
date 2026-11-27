@@ -16,24 +16,24 @@ process.env.TAIL_BYTES = '4096';
 process.env.HEAD_BYTES = '4096';
 const { indexFile, sessions } = await import('../server.mjs');
 
-const ts = i => new Date(Date.UTC(2026, 9, 27, 12, 0, i)).toISOString();
+const ts = seconds => new Date(Date.UTC(2026, 9, 27, 12, 0, seconds)).toISOString();
 const base = { isSidechain: false, cwd: '/tmp/repo', sessionId: 'head-1' };
 
-const user = (text, i) => ({
+const user = (text, seconds) => ({
   ...base,
   type: 'user',
   message: { role: 'user', content: [{ type: 'text', text }] },
-  timestamp: ts(i),
+  timestamp: ts(seconds),
 });
 
-const assistant = (content, i, stop = 'end_turn') => ({
+const assistant = (content, seconds, stop = 'end_turn') => ({
   ...base,
   type: 'assistant',
-  message: { role: 'assistant', id: `m${i}`, content, stop_reason: stop },
-  timestamp: ts(i),
+  message: { role: 'assistant', id: `m${seconds}`, content, stop_reason: stop },
+  timestamp: ts(seconds),
 });
 
-const pull = n => `https://github.com/acme/r/pull/${n}`;
+const pull = number => `https://github.com/acme/r/pull/${number}`;
 
 test("the head's PRs are read as the whole file reads them; the rest of the head is not", () => {
   const lines = [
@@ -71,11 +71,14 @@ test("the head's PRs are read as the whole file reads them; the rest of the head
   ];
 
   // nothing names a PR for a while: the tail starts well past the head
-  for (let i = 0; i < 60; i++) lines.push(assistant([{ type: 'text', text: `step ${i}: ${'x'.repeat(200)}` }], 10 + i));
+  for (let index = 0; index < 60; index++) {
+    lines.push(assistant([{ type: 'text', text: `step ${index}: ${'x'.repeat(200)}` }], 10 + index));
+  }
+
   lines.push(user(`and ${pull(5)}`, 80), assistant([{ type: 'text', text: 'Done.' }], 81));
   const file = join(tmp, 'head-1.jsonl');
 
-  writeFileSync(file, `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
+  writeFileSync(file, `${lines.map(line => JSON.stringify(line)).join('\n')}\n`);
 
   const tail = indexFile(file);
 
@@ -84,12 +87,12 @@ test("the head's PRs are read as the whole file reads them; the rest of the head
 
   sessions.clear();
   assert.equal(tail.loaded, false, 'the boot read a tail');
-  const seen = s => s.prs.map(p => `${p.number} ${p.firstAt} ${p.linked != null} ${p.named != null}`);
+  const seen = session => session.prs.map(pr => `${pr.number} ${pr.firstAt} ${pr.linked != null} ${pr.named != null}`);
 
   assert.deepEqual(seen(tail), seen(whole), 'the same PRs, first seen when they were, owned as they were');
 
   assert.deepEqual(
-    tail.prs.map(p => p.number),
+    tail.prs.map(pr => pr.number),
     [5, 4, 3, 2, 1],
   );
 

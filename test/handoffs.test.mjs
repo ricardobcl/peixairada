@@ -11,7 +11,7 @@ import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { defaultFixture, makeFixture, yesterday } from '../scripts/fixture.mjs';
 import { handoffText } from '../server.mjs';
 
-const chatOf = async (srv, id) => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+const chatOf = async (srv, id) => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
 
 /** The stream's `alert` events as they come, once its snapshot is in (reindex.test's). */
 async function alerts(srv) {
@@ -32,14 +32,14 @@ async function alerts(srv) {
 
       if (done) break;
       buf += dec.decode(value, { stream: true });
-      let i;
+      let index;
 
-      while ((i = buf.indexOf('\n\n')) >= 0) {
-        const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i));
+      while ((index = buf.indexOf('\n\n')) >= 0) {
+        const match = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, index));
 
-        buf = buf.slice(i + 2);
-        if (m?.[1] === 'snapshot') resolve();
-        if (m?.[1] === 'alert') got.push(JSON.parse(m[2]));
+        buf = buf.slice(index + 2);
+        if (match?.[1] === 'snapshot') resolve();
+        if (match?.[1] === 'alert') got.push(JSON.parse(match[2]));
       }
     }
   })().catch(() => {});
@@ -69,7 +69,7 @@ const awayLine = (id, cwd, text, at) => ({
 });
 
 test("a handoff's words: each chat's title, folder and branch, PRs, what was asked, Claude Code's recap — and the last reply only when it came after", () => {
-  const a = {
+  const retryChat = {
     title: 'Retry declined payments',
     cwd: '~/acme/storefront',
     branch: 'fix/retry',
@@ -81,7 +81,7 @@ test("a handoff's words: each chat's title, folder and branch, PRs, what was ask
     file: '~/.claude/projects/x/a.jsonl',
   };
 
-  const b = {
+  const queueChat = {
     title: 'Queue for invoice webhooks',
     cwd: '~/acme/billing-api',
     branch: null,
@@ -93,36 +93,36 @@ test("a handoff's words: each chat's title, folder and branch, PRs, what was ask
     file: null,
   };
 
-  const t = handoffText([a, b]);
+  const text = handoffText([retryChat, queueChat]);
 
-  assert.match(t, /^A handoff: 2 chats of mine, merged into this one/);
+  assert.match(text, /^A handoff: 2 chats of mine, merged into this one/);
 
   assert.match(
-    t,
+    text,
     /## 1\. Retry declined payments\nFolder: ~\/acme\/storefront · branch fix\/retry\nPRs: https:\/\/github\.com\/acme\/storefront\/pull\/482 \(open\) — Retry declined payments/,
   );
 
-  assert.match(t, /First asked: make declined payments retry\nLast asked: and log each try/);
+  assert.match(text, /First asked: make declined payments retry\nLast asked: and log each try/);
 
   assert.match(
-    t,
+    text,
     /Where it stands — Claude Code's recap, 2026-10-31 \d\d:\d\d:\n> Retries are in; the PR waits on review\./,
   );
 
-  assert.doesNotMatch(t, /Done — pushed/, 'a reply older than the recap says nothing the recap does not');
+  assert.doesNotMatch(text, /Done — pushed/, 'a reply older than the recap says nothing the recap does not');
 
   assert.match(
-    t,
+    text,
     /## 2\. Queue for invoice webhooks\nFolder: ~\/acme\/billing-api\nLast asked: a queue for webhooks\nClaude's last reply, [\d-]+ [\d:]+:\n> SQS it is\.\n> The module is set up\./,
     'the same first and last words once; the reply quoted line by line',
   );
 
-  assert.doesNotMatch(t, /First asked: a queue/);
-  assert.match(t, /Its transcript, to read for more: ~\/\.claude\/projects\/x\/a\.jsonl/);
-  assert.match(t, /then wait for what I ask next\.$/);
+  assert.doesNotMatch(text, /First asked: a queue/);
+  assert.match(text, /Its transcript, to read for more: ~\/\.claude\/projects\/x\/a\.jsonl/);
+  assert.match(text, /then wait for what I ask next\.$/);
 
   assert.match(
-    handoffText([b], 'fold'),
+    handoffText([queueChat], 'fold'),
     /^Another chat of mine, folded into this one[\s\S]*Take it in, then wait for what I ask next\.$/,
   );
 });
@@ -154,23 +154,23 @@ test(
       },
     ]);
 
-    const [a, b] = fx.chats;
+    const [chatA, chatB] = fx.chats;
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
 
     try {
-      const h = await srv.api(`api/handoff?ids=${a.id},${b.id}`);
+      const handoff = await srv.api(`api/handoff?ids=${chatA.id},${chatB.id}`);
 
-      assert.equal(h.status, 200, JSON.stringify(h.body));
+      assert.equal(handoff.status, 200, JSON.stringify(handoff.body));
 
       assert.match(
-        h.body.text,
+        handoff.body.text,
         /## 1\. Retry declined payments[\s\S]*Claude Code's recap[^\n]*:\n> The retries are in and the PR waits on review\.[\s\S]*## 2\. Queue for invoice webhooks[\s\S]*> SQS it is\./,
-        h.body.text,
+        handoff.body.text,
       );
 
       assert.deepEqual(
-        h.body.chats.map(c => c.id),
-        [a.id, b.id],
+        handoff.body.chats.map(chat => chat.id),
+        [chatA.id, chatB.id],
       );
 
       assert.equal(
@@ -179,53 +179,53 @@ test(
         'a chat the board does not have is said, not skipped',
       );
 
-      const r = await srv.post('api/terminals', {
+      const started = await srv.post('api/terminals', {
         cwd: process.cwd(),
         cols: 90,
         rows: 24,
-        prompt: h.body.text,
-        from: [a.id, b.id],
+        prompt: handoff.body.text,
+        from: [chatA.id, chatB.id],
       });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      const id = r.body.sessionId;
+      assert.equal(started.status, 201, JSON.stringify(started.body));
+      const id = started.body.sessionId;
 
       assert.match(id, /^[0-9a-f-]{36}$/);
-      assert.equal(r.body.terminal.sessionId, id, "the drawer is the new chat's from its start");
+      assert.equal(started.body.terminal.sessionId, id, "the drawer is the new chat's from its start");
       assert.ok(!srv.logText().includes('waits on review'), "the handoff is not the log's");
 
       assert.deepEqual(
-        (await linksOf(srv, id)).map(l => [l.k, l.dir, l.id]).sort(),
+        (await linksOf(srv, id)).map(link => [link.k, link.dir, link.id]).sort(),
         [
-          ['merge', 'in', a.id],
-          ['merge', 'in', b.id],
+          ['merge', 'in', chatA.id],
+          ['merge', 'in', chatB.id],
         ].sort(),
         'the new chat: merged from both',
       );
 
       assert.deepEqual(
-        (await linksOf(srv, a.id)).map(l => [l.k, l.dir, l.id]),
+        (await linksOf(srv, chatA.id)).map(link => [link.k, link.dir, link.id]),
         [['merge', 'out', id]],
         'each old one: merged into it',
       );
 
-      const s = await waitFor(
+      const session = await waitFor(
         async () => {
-          const c = await chatOf(srv, id);
+          const chat = await chatOf(srv, id);
 
-          return c?.alive && c.lastPrompt?.startsWith('A handoff: 2 chats') && c;
+          return chat?.alive && chat.lastPrompt?.startsWith('A handoff: 2 chats') && chat;
         },
         { what: 'the new chat alive, the handoff its first prompt' },
       );
 
-      assert.equal(s.terminal?.id, r.body.terminal.id);
+      assert.equal(session.terminal?.id, started.body.terminal.id);
       const st = JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8'));
 
       assert.deepEqual(
-        st.links.map(l => [l.k, l.from, l.to]).sort(),
+        st.links.map(link => [link.k, link.from, link.to]).sort(),
         [
-          ['merge', a.id, id],
-          ['merge', b.id, id],
+          ['merge', chatA.id, id],
+          ['merge', chatB.id, id],
         ].sort(),
         'kept in the state file',
       );
@@ -234,11 +234,11 @@ test(
       await srv.restart();
 
       assert.deepEqual(
-        (await linksOf(srv, b.id)).map(l => [l.k, l.dir, l.id]),
+        (await linksOf(srv, chatB.id)).map(link => [link.k, link.dir, link.id]),
         [['merge', 'out', id]],
       );
 
-      await srv.api(`api/terminals/${r.body.terminal.id}`, { method: 'DELETE' });
+      await srv.api(`api/terminals/${started.body.terminal.id}`, { method: 'DELETE' });
     } finally {
       await srv.stop();
     }
@@ -250,30 +250,30 @@ test(
   { timeout: 30_000 },
   async () => {
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
-    const [a, b] = fx.chats;
+    const [chatA, chatB] = fx.chats;
     const srv = await startTestServer({ claudeDir: fx.dir });
 
     try {
-      assert.equal((await srv.post(`api/sessions/${a.id}/fold`, { into: a.id })).status, 400);
-      assert.equal((await srv.post(`api/sessions/${a.id}/fold`, { into: 'nope' })).status, 404);
-      const r = await srv.post(`api/sessions/${a.id}/fold`, { into: b.id });
+      assert.equal((await srv.post(`api/sessions/${chatA.id}/fold`, { into: chatA.id })).status, 400);
+      assert.equal((await srv.post(`api/sessions/${chatA.id}/fold`, { into: 'nope' })).status, 404);
+      const folded = await srv.post(`api/sessions/${chatA.id}/fold`, { into: chatB.id });
 
-      assert.equal(r.status, 200, JSON.stringify(r.body));
+      assert.equal(folded.status, 200, JSON.stringify(folded.body));
 
       assert.deepEqual(
-        (await linksOf(srv, a.id)).map(l => [l.k, l.dir, l.id]),
-        [['fold', 'out', b.id]],
+        (await linksOf(srv, chatA.id)).map(link => [link.k, link.dir, link.id]),
+        [['fold', 'out', chatB.id]],
       );
 
       assert.deepEqual(
-        (await linksOf(srv, b.id)).map(l => [l.k, l.dir, l.id]),
-        [['fold', 'in', a.id]],
+        (await linksOf(srv, chatB.id)).map(link => [link.k, link.dir, link.id]),
+        [['fold', 'in', chatA.id]],
       );
 
-      const h = await srv.api(`api/handoff?kind=fold&ids=${a.id}`);
+      const handoff = await srv.api(`api/handoff?kind=fold&ids=${chatA.id}`);
 
       assert.match(
-        h.body.text,
+        handoff.body.text,
         /^Another chat of mine, folded into this one[\s\S]*Two PRs mentioned[\s\S]*Take it in, then wait for what I ask next\.$/,
       );
     } finally {
@@ -291,9 +291,9 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
 
     try {
-      const r = await srv.post(`api/sessions/${chat.id}/branch`, { cols: 90, rows: 24 });
-      const id = r.body.sessionId;
-      const tid = r.body.terminal.id;
+      const branched = await srv.post(`api/sessions/${chat.id}/branch`, { cols: 90, rows: 24 });
+      const id = branched.body.sessionId;
+      const tid = branched.body.terminal.id;
 
       await waitFor(async () => (await chatOf(srv, id))?.alive, { what: 'the branch up' });
       const ws = new WebSocket(srv.ws(`api/terminals/${tid}/ws`));
@@ -323,31 +323,34 @@ test(
       await waitFor(async () => !(await chatOf(srv, chat.id)).alive, { what: 'that claude ended' });
 
       // ---- a branch closed before a word ----
-      const e = await srv.post(`api/sessions/${chat.id}/branch`, { cols: 90, rows: 24 });
+      const emptyBranch = await srv.post(`api/sessions/${chat.id}/branch`, { cols: 90, rows: 24 });
 
       assert.ok(
-        (await linksOf(srv, chat.id)).some(l => l.id === e.body.sessionId),
+        (await linksOf(srv, chat.id)).some(link => link.id === emptyBranch.body.sessionId),
         'while it runs, the chat names it',
       );
 
-      await waitFor(async () => (await chatOf(srv, e.body.sessionId))?.alive, { what: 'the empty branch up' });
-      await srv.api(`api/terminals/${e.body.terminal.id}`, { method: 'DELETE' });
+      await waitFor(async () => (await chatOf(srv, emptyBranch.body.sessionId))?.alive, {
+        what: 'the empty branch up',
+      });
+
+      await srv.api(`api/terminals/${emptyBranch.body.terminal.id}`, { method: 'DELETE' });
 
       await waitFor(
         async () => {
-          const c = await chatOf(srv, e.body.sessionId);
+          const emptyChat = await chatOf(srv, emptyBranch.body.sessionId);
 
-          return !c.alive && c.terminal?.exited != null;
+          return !emptyChat.alive && emptyChat.terminal?.exited != null;
         },
         { what: 'the empty branch ended' },
       );
 
       assert.ok(
-        !(await linksOf(srv, chat.id)).some(l => l.id === e.body.sessionId),
+        !(await linksOf(srv, chat.id)).some(link => link.id === emptyBranch.body.sessionId),
         'then there is no chat at that end to name',
       );
 
-      const again = await srv.post(`api/sessions/${e.body.sessionId}/terminal`, { cols: 90, rows: 24 });
+      const again = await srv.post(`api/sessions/${emptyBranch.body.sessionId}/terminal`, { cols: 90, rows: 24 });
 
       assert.equal(again.status, 409, 'and nothing to resume, said rather than a drawer that exits');
       assert.match(again.body.error, /nothing in it to resume/);
@@ -367,27 +370,27 @@ test(
     const was = readFileSync(chat.file, 'utf8');
 
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
-    const a = await alerts(srv);
+    const alertFeed = await alerts(srv);
 
     try {
-      const r = await srv.post(`api/sessions/${chat.id}/branch`, { cols: 90, rows: 24 });
+      const branched = await srv.post(`api/sessions/${chat.id}/branch`, { cols: 90, rows: 24 });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      const id = r.body.sessionId;
+      assert.equal(branched.status, 201, JSON.stringify(branched.body));
+      const id = branched.body.sessionId;
 
       assert.match(id, /^[0-9a-f-]{36}$/);
       assert.notEqual(id, chat.id);
-      assert.equal(r.body.terminal.sessionId, id, "the drawer is the copy's");
+      assert.equal(branched.body.terminal.sessionId, id, "the drawer is the copy's");
       assert.match(srv.logText(), new RegExp(`claude --resume ${chat.id} --fork-session --session-id ${id} in `));
 
       assert.deepEqual(
-        (await linksOf(srv, id)).map(l => [l.k, l.dir, l.id]),
+        (await linksOf(srv, id)).map(link => [link.k, link.dir, link.id]),
         [['branch', 'in', chat.id]],
         'the copy: branched from it',
       );
 
       assert.deepEqual(
-        (await linksOf(srv, chat.id)).map(l => [l.k, l.dir, l.id]),
+        (await linksOf(srv, chat.id)).map(link => [link.k, link.dir, link.id]),
         [['branch', 'out', id]],
         'the chat: its branch',
       );
@@ -398,26 +401,26 @@ test(
         'before a line of its own, the copy goes by the title of the chat it copied',
       );
 
-      const s = await waitFor(
+      const copy = await waitFor(
         async () => {
-          const c = await chatOf(srv, id);
+          const branchChat = await chatOf(srv, id);
 
-          return c?.alive && c;
+          return branchChat?.alive && branchChat;
         },
         { what: 'the copy alive' },
       );
 
-      assert.equal(s.terminal?.id, r.body.terminal.id, 'its drawer is its own');
-      assert.equal(s.file, null, 'no transcript before its first word, as Claude Code writes a fork');
+      assert.equal(copy.terminal?.id, branched.body.terminal.id, 'its drawer is its own');
+      assert.equal(copy.file, null, 'no transcript before its first word, as Claude Code writes a fork');
       const orig = await chatOf(srv, chat.id);
 
       assert.equal(orig.alive, false, 'the chat it copied is not resumed');
       assert.equal(orig.terminal, null, 'nor given the drawer');
       assert.equal(readFileSync(chat.file, 'utf8'), was, 'nor written to');
       await new Promise(res => setTimeout(res, 900)); // the alert debounce is 400 ms
-      assert.deepEqual(a.got, [], 'the past it copied is no news');
+      assert.deepEqual(alertFeed.got, [], 'the past it copied is no news');
       // a word in the copy is the copy's alone
-      const ws = new WebSocket(srv.ws(`api/terminals/${r.body.terminal.id}/ws`));
+      const ws = new WebSocket(srv.ws(`api/terminals/${branched.body.terminal.id}/ws`));
 
       await new Promise(res => ws.addEventListener('open', res, { once: true }));
       ws.send(JSON.stringify({ t: 'in', d: 'try it the other way\r' }));
@@ -431,27 +434,27 @@ test(
       const lines = readFileSync((await chatOf(srv, id)).file, 'utf8')
         .split('\n')
         .filter(Boolean)
-        .map(l => JSON.parse(l));
+        .map(line => JSON.parse(line));
 
       assert.equal(
-        lines.find(l => l.type === 'user').message.content[0]?.text ??
-          lines.find(l => l.type === 'user').message.content,
+        lines.find(line => line.type === 'user').message.content[0]?.text ??
+          lines.find(line => line.type === 'user').message.content,
         'what day is it?',
         'its file begins with the past it copied',
       );
 
       assert.equal((await chatOf(srv, chat.id)).lastPrompt, 'what day is it?');
       assert.equal(readFileSync(chat.file, 'utf8'), was);
-      await waitFor(() => a.got.length, { what: "the copy's own reply, news" });
+      await waitFor(() => alertFeed.got.length, { what: "the copy's own reply, news" });
 
       assert.deepEqual(
-        a.got.map(x => [x.kind, x.sessionId]),
+        alertFeed.got.map(alert => [alert.kind, alert.sessionId]),
         [['reply', id]],
       );
 
-      await srv.api(`api/terminals/${r.body.terminal.id}`, { method: 'DELETE' });
+      await srv.api(`api/terminals/${branched.body.terminal.id}`, { method: 'DELETE' });
     } finally {
-      a.stop();
+      alertFeed.stop();
       await srv.stop();
     }
   },
@@ -466,14 +469,14 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
 
     try {
-      const r = await srv.post(`api/sessions/${chat.id}/terminal`, {
+      const resumed = await srv.post(`api/sessions/${chat.id}/terminal`, {
         cols: 100,
         rows: 30,
         prompt: 'carry on\r\nwith the\x1b[Z queue\x07',
       }); // a control character is nobody's to send (2026-11-06)
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      assert.equal(r.body.prompted, true, 'the words went in with the resume');
+      assert.equal(resumed.status, 201, JSON.stringify(resumed.body));
+      assert.equal(resumed.body.prompted, true, 'the words went in with the resume');
 
       await waitFor(() => readFileSync(chat.file, 'utf8').includes(JSON.stringify('carry on\nwith the[Z queue')), {
         what: 'the prompt in its transcript, as written but its control characters',
@@ -490,8 +493,8 @@ test(
 
       assert.equal(again.status, 200);
       assert.equal(again.body.prompted, false);
-      assert.equal(again.body.terminal.id, r.body.terminal.id);
-      await srv.api(`api/terminals/${r.body.terminal.id}`, { method: 'DELETE' });
+      assert.equal(again.body.terminal.id, resumed.body.terminal.id);
+      await srv.api(`api/terminals/${resumed.body.terminal.id}`, { method: 'DELETE' });
     } finally {
       await srv.stop();
     }

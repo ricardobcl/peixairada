@@ -15,7 +15,9 @@ export default async function (ctx) {
   const { key } = await ctx.halfOf(url);
   const t0 = Date.now();
 
-  while (!(await ctx.win()).panes[key]?.up && Date.now() - t0 < 10_000) await new Promise(r => setTimeout(r, 100));
+  while (!(await ctx.win()).panes[key]?.up && Date.now() - t0 < 10_000) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
 
   await ctx.page(
     key,
@@ -23,9 +25,12 @@ export default async function (ctx) {
   );
 
   const wait = async re => {
-    const t = Date.now();
+    const startedAt = Date.now();
 
-    while (!re.test(ctx.appLog()) && Date.now() - t < 5000) await new Promise(r => setTimeout(r, 100));
+    while (!re.test(ctx.appLog()) && Date.now() - startedAt < 5000) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
     return re.test(ctx.appLog());
   };
 

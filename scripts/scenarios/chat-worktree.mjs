@@ -30,14 +30,14 @@ const env = {
   GIT_COMMITTER_EMAIL: 't@t',
 };
 
-const git = (cwd, ...a) =>
-  execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env })
+const git = (cwd, ...args) =>
+  execFileSync('git', ['-C', cwd, ...args], { stdio: 'pipe', env })
     .toString()
     .trim();
 
-const put = (dir, f, text) => {
-  mkdirSync(join(dir, f, '..'), { recursive: true });
-  writeFileSync(join(dir, f), text);
+const put = (dir, file, text) => {
+  mkdirSync(join(dir, file, '..'), { recursive: true });
+  writeFileSync(join(dir, file), text);
 };
 
 execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin]);
@@ -78,7 +78,7 @@ execFileSync(
 mkdirSync(other, { recursive: true });
 
 const real = realpathSync(repo);
-const wt = n => join(real, '.claude', 'worktrees', n);
+const wt = name => join(real, '.claude', 'worktrees', name);
 
 // origin slow to say whether it has a branch under slow/: as long as this Mac's SSH took on 2026-11-04
 const slowGit = join(root, 'slowgit');
@@ -154,7 +154,7 @@ export default async function (ctx) {
     timeout: 20000,
   });
 
-  const termIn = async dir => (await ctx.server.terminals()).find(t => t.cwd === dir && !t.shell);
+  const termIn = async dir => (await ctx.server.terminals()).find(term => term.cwd === dir && !term.shell);
 
   // Chat ▾ on #14, its first row (2026-11-06: the rest are agents): a worktree for its branch inside the repo, and a chat in it — the repo's
   const chatRow = async () => {
@@ -167,7 +167,7 @@ export default async function (ctx) {
 
   await chatRow();
   await ctx.evaluate(`document.querySelector('#ctxm button[data-i="0"]').click()`);
-  for (let i = 0; i < 150 && !(await termIn(wt('feat-tax-rounding'))); i++) await ctx.sleep(100);
+  for (let attempt = 0; attempt < 150 && !(await termIn(wt('feat-tax-rounding'))); attempt++) await ctx.sleep(100);
   ctx.assert.ok(await termIn(wt('feat-tax-rounding')), 'a chat started in .claude/worktrees/feat-tax-rounding');
   ctx.assert.equal(git(wt('feat-tax-rounding'), 'branch', '--show-current'), 'feat/tax-rounding');
   ctx.assert.equal(git(repo, 'branch', '--show-current'), 'main', 'the folder’s branch untouched');
@@ -200,7 +200,7 @@ export default async function (ctx) {
   );
 
   ctx.assert.deepEqual(
-    out.projects.filter(n => n !== 'ALL').sort(),
+    out.projects.filter(name => name !== 'ALL').sort(),
     ['storefront', 'widgets'],
     JSON.stringify(out.projects),
   );
@@ -379,7 +379,7 @@ export default async function (ctx) {
   await ctx.fill('#pickq', 'tax');
 
   ctx.assert.deepEqual(
-    (await bases()).rows.map(r => [r[0], r[3]]),
+    (await bases()).rows.map(row => [row[0], row[3]]),
     [['origin/feat/tax-rounding', true]],
     'typing filters, the best match selected',
   );
@@ -400,7 +400,7 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelector('#picklist .pkrow.base.sel')`, { what: 'the base step again' });
   ctx.assert.equal((await bases()).rows[0][3], true, 'the default selected: ⏎ ⏎ is the common case');
   await press('Enter');
-  for (let i = 0; i < 150 && !(await termIn(wt('feat-new-thing'))); i++) await ctx.sleep(100);
+  for (let attempt = 0; attempt < 150 && !(await termIn(wt('feat-new-thing'))); attempt++) await ctx.sleep(100);
   ctx.assert.ok(await termIn(wt('feat-new-thing')), 'a chat started in .claude/worktrees/feat-new-thing');
 
   ctx.assert.equal(
@@ -413,11 +413,11 @@ export default async function (ctx) {
 
   // One press is one chat (2026-11-04). The way to a branch's base step, the chats in a folder, and a wait long enough
   // for a second one to have shown
-  const chatsIn = async dir => (await ctx.server.terminals()).filter(t => t.cwd === dir && !t.shell).length;
+  const chatsIn = async dir => (await ctx.server.terminals()).filter(term => term.cwd === dir && !term.shell).length;
 
   const noSecond = async (dir, want, what) => {
     await ctx.waitFor(`!document.querySelector('#pick').open`, { what: `the picker gone: ${what}`, timeout: 15000 });
-    for (let i = 0; i < 100 && (await chatsIn(dir)) < want; i++) await ctx.sleep(100);
+    for (let attempt = 0; attempt < 100 && (await chatsIn(dir)) < want; attempt++) await ctx.sleep(100);
     await ctx.sleep(1000);
     ctx.assert.equal(await chatsIn(dir), want, `one chat: ${what}`);
   };
@@ -463,7 +463,7 @@ export default async function (ctx) {
     }
   };
 
-  for (let i = 0; i < 4; i++) {
+  for (let round = 0; round < 4; round++) {
     await click();
     await ctx.sleep(150);
   }

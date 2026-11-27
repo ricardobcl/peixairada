@@ -22,9 +22,9 @@ import { restoreTree } from './worktrees.mjs';
 const REPO_NAME = /^[A-Za-z0-9][\w.-]*$/; // a name for a folder and a repo, and nothing that walks out of its root
 const CLONE_MS = Number(process.env.CLONE_MS || 10 * 60_000); // a big repo over a slow line; the page waits on it
 
-export const isDir = p => {
+export const isDir = path => {
   try {
-    return statSync(p).isDirectory();
+    return statSync(path).isDirectory();
   } catch {
     return false;
   }
@@ -60,12 +60,20 @@ export function foldersIn(root) {
 
   try {
     folders = readdirSync(root, { withFileTypes: true })
-      .filter(d => !d.name.startsWith('.') && (d.isDirectory() || (d.isSymbolicLink() && isDir(join(root, d.name)))))
-      .map(d => ({ name: d.name, cwd: join(root, d.name) }))
-      .map(f => ({ ...f, git: existsSync(join(f.cwd, '.git')), ...(isWorktree(f.cwd) ? { worktree: true } : {}) }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  } catch (e) {
-    console.error(`[peixairada] ${root}: ${e.message}`);
+      .filter(
+        entry =>
+          !entry.name.startsWith('.') &&
+          (entry.isDirectory() || (entry.isSymbolicLink() && isDir(join(root, entry.name)))),
+      )
+      .map(entry => ({ name: entry.name, cwd: join(root, entry.name) }))
+      .map(folder => ({
+        ...folder,
+        git: existsSync(join(folder.cwd, '.git')),
+        ...(isWorktree(folder.cwd) ? { worktree: true } : {}),
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+  } catch (error) {
+    console.error(`[peixairada] ${root}: ${error.message}`);
   }
 
   folderCache.set(root, { mtime, folders });
@@ -97,17 +105,17 @@ export function checkoutOf(cwd) {
 
   if (!cwd?.startsWith('/')) return null; // dirname('.') is '.': a relative cwd climbed forever
 
-  for (let d = cwd; d && d !== '/' && d !== homedir(); d = dirname(d)) {
+  for (let dir = cwd; dir && dir !== '/' && dir !== homedir(); dir = dirname(dir)) {
     let st;
 
     try {
-      st = statSync(join(d, '.git'));
+      st = statSync(join(dir, '.git'));
     } catch {
       continue;
     }
 
-    if (st.isDirectory()) return d;
-    any ||= d;
+    if (st.isDirectory()) return dir;
+    any ||= dir;
   }
 
   return any;
@@ -115,23 +123,23 @@ export function checkoutOf(cwd) {
 
 /** The GitHub account most of a root's checkouts come from, by their `origin` — an ssh alias (github.com-work) too. */
 function orgOf(root) {
-  const n = new Map();
+  const counts = new Map();
 
-  for (const f of foldersIn(root).slice(0, 400)) {
+  for (const folder of foldersIn(root).slice(0, 400)) {
     let txt;
 
     try {
-      txt = readFileSync(join(f.cwd, '.git', 'config'), 'utf8');
+      txt = readFileSync(join(folder.cwd, '.git', 'config'), 'utf8');
     } catch {
       continue;
     }
 
-    const m = /\[remote "origin"\][^[]*?url\s*=\s*\S*?github[\w.-]*[:/]([A-Za-z0-9][A-Za-z0-9-]{0,38})\//.exec(txt);
+    const match = /\[remote "origin"\][^[]*?url\s*=\s*\S*?github[\w.-]*[:/]([A-Za-z0-9][A-Za-z0-9-]{0,38})\//.exec(txt);
 
-    if (m) n.set(m[1], (n.get(m[1]) || 0) + 1);
+    if (match) counts.set(match[1], (counts.get(match[1]) || 0) + 1);
   }
 
-  return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+  return [...counts].sort((left, right) => right[1] - left[1])[0]?.[0] || '';
 }
 
 /** Up to four folders of repos, likeliest first: `{dir, org, repos, chats}` — `chats`, how many of its checkouts a
@@ -140,8 +148,8 @@ export function suggestRoots() {
   const used = new Map();
   const seen = new Set(); // root -> the checkouts under it a chat ran in
 
-  for (const s of sessions.values()) {
-    const cwd = s.live?.cwd || s.cwd;
+  for (const session of sessions.values()) {
+    const cwd = session.live?.cwd || session.cwd;
 
     if (!cwd || seen.has(cwd)) continue;
     seen.add(cwd);
@@ -154,25 +162,27 @@ export function suggestRoots() {
     used.get(root).add(top);
   }
 
-  for (const n of ROOT_NAMES) {
-    const d = join(homedir(), n);
+  for (const name of ROOT_NAMES) {
+    const dir = join(homedir(), name);
 
-    if (!used.has(d)) used.set(d, new Set());
+    if (!used.has(dir)) used.set(dir, new Set());
   }
 
   const all = [...used]
-    .map(([dir, tops]) => ({ dir, chats: tops.size, repos: foldersIn(dir).filter(f => f.git).length }))
-    .filter(r => r.repos)
-    .sort((a, b) => b.chats - a.chats || b.repos - a.repos);
+    .map(([dir, tops]) => ({ dir, chats: tops.size, repos: foldersIn(dir).filter(folder => folder.git).length }))
+    .filter(root => root.repos)
+    .sort((left, right) => right.chats - left.chats || right.repos - left.repos);
 
-  const likely = all.filter(r => r.chats > 1 || r.repos > 1); // one chat in one checkout is a download unzipped, not where the repos live
+  const likely = all.filter(root => root.chats > 1 || root.repos > 1); // one chat in one checkout is a download unzipped, not where the repos live
 
-  return (likely.length ? likely : all).slice(0, 4).map(r => ({ ...r, org: orgOf(r.dir) }));
+  return (likely.length ? likely : all).slice(0, 4).map(root => ({ ...root, org: orgOf(root.dir) }));
 }
 
 /** Every root's folders, a root at a time, each saying which root and org it is of. */
 export const rootFolders = () =>
-  boardConfig().roots.flatMap(r => foldersIn(r.dir).map(f => ({ ...f, root: r.dir, org: r.org })));
+  boardConfig().roots.flatMap(root =>
+    foldersIn(root.dir).map(folder => ({ ...folder, root: root.dir, org: root.org })),
+  );
 
 /** The repo a chat's folder was a checkout of, when that folder is not there (2026-10-09): under one of the setup's roots
  *  with an org, the folder right under the root names it — `<root>/<name>[/…]` is `<org>/<name>`, cloned to
@@ -181,16 +191,16 @@ export const rootFolders = () =>
 export function cloneFor(cwd) {
   if (!cwd || (existsSync(cwd) && !cloneUnder(cwd))) return null;
 
-  for (const r of boardConfig().roots) {
-    const rel = r.org ? relative(r.dir, cwd) : '';
+  for (const root of boardConfig().roots) {
+    const rel = root.org ? relative(root.dir, cwd) : '';
 
     if (!rel || rel.startsWith('..') || isAbsolute(rel)) continue;
 
     const name = rel.split(sep)[0];
-    const dir = join(r.dir, name);
+    const dir = join(root.dir, name);
 
     if (!REPO_NAME.test(name) || (existsSync(dir) && !clones.has(dir))) return null;
-    return { name, root: r.dir, org: r.org, ref: `${r.org}/${name}`, dir };
+    return { name, root: root.dir, org: root.org, ref: `${root.org}/${name}`, dir };
   }
 
   return null;
@@ -204,32 +214,32 @@ export function cloneFor(cwd) {
 export function folderBack(cwd) {
   if (!cwd?.startsWith('/') || existsSync(cwd)) return null;
 
-  const m = WT_IN.exec(cwd);
-  const repo = m && cwd.slice(0, m.index);
-  const tree = m && `${repo}/.claude/worktrees/${m[1]}`;
+  const match = WT_IN.exec(cwd);
+  const repo = match && cwd.slice(0, match.index);
+  const tree = match && `${repo}/.claude/worktrees/${match[1]}`;
 
-  if (m && existsSync(join(repo, '.git')) && !existsSync(tree)) return { tree, repo };
-  let d = dirname(cwd);
+  if (match && existsSync(join(repo, '.git')) && !existsSync(tree)) return { tree, repo };
+  let dir = dirname(cwd);
 
-  while (d !== '/' && !existsSync(d)) d = dirname(d);
-  return gitTopOf(d) ? { near: d } : null;
+  while (dir !== '/' && !existsSync(dir)) dir = dirname(dir);
+  return gitTopOf(dir) ? { near: dir } : null;
 }
 
 /** A chat's folder gone from a repo that is there, put back for its resume or its zsh (2026-10-19): its worktree made
  *  again, and the folder it was in inside it (else the nearest one of it there); a worktree that cannot be made is the
  *  repo's own folder, and why. `cwd` is where the chat starts; null where folderBack has nowhere. */
-export async function putBack(cwd, s) {
-  const b = folderBack(cwd);
+export async function putBack(cwd, session) {
+  const back = folderBack(cwd);
 
-  if (!b) return null;
-  if (!b.tree) return { cwd: b.near };
-  const r = await restoreTree(b.tree, s?.gitBranch);
+  if (!back) return null;
+  if (!back.tree) return { cwd: back.near };
+  const restored = await restoreTree(back.tree, session?.gitBranch);
 
-  if (!r.path) return { cwd: b.repo, why: r.error };
-  let at = join(r.path, relative(b.tree, cwd));
+  if (!restored.path) return { cwd: back.repo, why: restored.error };
+  let at = join(restored.path, relative(back.tree, cwd));
 
-  while (at !== r.path && !existsSync(at)) at = dirname(at);
-  return { cwd: at, tree: r.path, branch: r.branch, made: r.made };
+  while (at !== restored.path && !existsSync(at)) at = dirname(at);
+  return { cwd: at, tree: restored.path, branch: restored.branch, made: restored.made };
 }
 
 // The clones under way, by the folder each is cloning into (2026-10-09): a second ask for one joins it — the folder is
@@ -237,31 +247,31 @@ export async function putBack(cwd, s) {
 // and git's own progress (`--progress`: it writes none into a pipe otherwise) goes out as `clone` events, the page's
 // bar. The phases are weighted into one number: receiving the objects is most of a clone.
 export const clones = new Map(); // dir → { ref, dir, phase, percent, at, waiters }
-export const cloneUnder = cwd => [...clones.keys()].some(d => cwd === d || cwd.startsWith(d + sep));
+export const cloneUnder = cwd => [...clones.keys()].some(dir => cwd === dir || cwd.startsWith(dir + sep));
 const CLONE_PHASES = { 'Receiving objects': [0, 80], 'Resolving deltas': [80, 95], 'Updating files': [95, 100] };
 
-export const cloneState = c => ({ ref: c.ref, dir: c.dir, phase: c.phase, percent: c.percent });
+export const cloneState = clone => ({ ref: clone.ref, dir: clone.dir, phase: clone.phase, percent: clone.percent });
 
-function cloneProgress(c, chunk) {
+function cloneProgress(clone, chunk) {
   let moved = false;
 
   for (const line of chunk.split(/[\r\n]+/)) {
-    const m = /^(?:remote: )?([A-Z][a-z]+(?: [a-z]+)?):\s+(\d+)%/.exec(line.trim());
+    const match = /^(?:remote: )?([A-Z][a-z]+(?: [a-z]+)?):\s+(\d+)%/.exec(line.trim());
 
-    if (!m) continue;
-    const [lo, hi] = CLONE_PHASES[m[1]] || [c.percent, c.percent];
-    const pct = Math.round(lo + ((hi - lo) * Number(m[2])) / 100);
+    if (!match) continue;
+    const [lo, hi] = CLONE_PHASES[match[1]] || [clone.percent, clone.percent];
+    const pct = Math.round(lo + ((hi - lo) * Number(match[2])) / 100);
 
-    if (m[1] !== c.phase || pct !== c.percent) {
-      c.phase = m[1];
-      c.percent = Math.max(c.percent, pct);
+    if (match[1] !== clone.phase || pct !== clone.percent) {
+      clone.phase = match[1];
+      clone.percent = Math.max(clone.percent, pct);
       moved = true;
     }
   }
 
-  if (moved && Date.now() - c.at >= 150) {
-    c.at = Date.now();
-    broadcast('clone', cloneState(c));
+  if (moved && Date.now() - clone.at >= 150) {
+    clone.at = Date.now();
+    broadcast('clone', cloneState(clone));
   }
 }
 
@@ -272,8 +282,8 @@ function cloneProgress(c, chunk) {
  *  not told the folder exists. */
 export function cloneRepo(name, rootDir, done) {
   if (!REPO_NAME.test(name || '')) return done({ code: 400, error: `"${name}" is not a repository name` });
-  const roots = boardConfig().roots.filter(r => r.org);
-  const root = rootDir ? roots.find(r => r.dir === rootDir) : roots.length === 1 ? roots[0] : null;
+  const roots = boardConfig().roots.filter(entry => entry.org);
+  const root = rootDir ? roots.find(entry => entry.dir === rootDir) : roots.length === 1 ? roots[0] : null;
 
   if (!root) {
     return done({
@@ -303,21 +313,27 @@ export function cloneRepo(name, rootDir, done) {
 
   try {
     mkdirSync(root.dir, { recursive: true });
-  } catch (e) {
-    return done({ code: 500, error: `${root.dir}: ${e.message}` });
+  } catch (error) {
+    return done({ code: 500, error: `${root.dir}: ${error.message}` });
   }
 
   console.log(`[peixairada] clone ${ref} → ${cwd}`);
-  const c = { ref, dir: cwd, phase: null, percent: 0, at: 0, waiters: [done] };
+  const clone = { ref, dir: cwd, phase: null, percent: 0, at: 0, waiters: [done] };
 
-  clones.set(cwd, c);
-  broadcast('clone', cloneState(c));
+  clones.set(cwd, clone);
+  broadcast('clone', cloneState(clone));
 
-  const finish = r => {
+  const finish = result => {
     clones.delete(cwd);
     folderCache.delete(root.dir);
-    broadcast('clone', { ...cloneState(c), ...(r.error ? { error: r.error } : { percent: 100 }), done: true });
-    for (const w of c.waiters) w(r);
+
+    broadcast('clone', {
+      ...cloneState(clone),
+      ...(result.error ? { error: result.error } : { percent: 100 }),
+      done: true,
+    });
+
+    for (const waiter of clone.waiters) waiter(result);
   };
 
   const child = execFile(
@@ -338,8 +354,8 @@ export function cloneRepo(name, rootDir, done) {
       const why =
         String(stderr || err.message)
           .split(/[\r\n]+/)
-          .map(l => l.trim())
-          .filter(l => l && !/^(?:remote: )?[A-Z][a-z]+(?: [a-z]+)?:\s+\d+%/.test(l))
+          .map(line => line.trim())
+          .filter(line => line && !/^(?:remote: )?[A-Z][a-z]+(?: [a-z]+)?:\s+\d+%/.test(line))
           .pop() || 'clone failed';
 
       console.error(`[peixairada] clone ${ref}: ${why}`);
@@ -348,5 +364,5 @@ export function cloneRepo(name, rootDir, done) {
   );
 
   child.stderr?.setEncoding('utf8');
-  child.stderr?.on('data', chunk => cloneProgress(c, chunk));
+  child.stderr?.on('data', chunk => cloneProgress(clone, chunk));
 }

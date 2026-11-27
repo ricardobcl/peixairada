@@ -47,12 +47,12 @@ export default async function (ctx) {
 
   // the drawer at its size, and still: the attach's fit and nudge each draw every row again, which drops the link under
   // the pointer — a click then is on nothing
-  for (let last = '', same = 0, t = Date.now(); same < 3; await ctx.sleep(200)) {
-    const g = await ctx.evaluate(`JSON.stringify(window.peix.grid())`);
+  for (let last = '', same = 0, startedAt = Date.now(); same < 3; await ctx.sleep(200)) {
+    const grid = await ctx.evaluate(`JSON.stringify(window.peix.grid())`);
 
-    same = g === last ? same + 1 : 0;
-    last = g;
-    if (Date.now() - t > 15_000) throw new Error(`the drawer never still: ${g}`);
+    same = grid === last ? same + 1 : 0;
+    last = grid;
+    if (Date.now() - startedAt > 15_000) throw new Error(`the drawer never still: ${grid}`);
   }
 
   await ctx.settle();
@@ -75,14 +75,14 @@ export default async function (ctx) {
 
     // xterm drops the link under the pointer when its row is drawn again (the attach's repaint): moved onto it until
     // the pointer says it is on one
-    for (let i = 0; ; i++) {
+    for (let attempt = 0; ; attempt++) {
       for (const dx of [-30, 0]) {
         await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x + dx, y: at.y });
       }
 
       await ctx.sleep(100);
       if (await ctx.evaluate(`!!document.querySelector('#termBody .xterm-screen.xterm-cursor-pointer')`)) break;
-      if (i === 50) throw new Error(`the pointer never on the link ${words}`);
+      if (attempt === 50) throw new Error(`the pointer never on the link ${words}`);
     }
 
     await ctx.send('Input.dispatchMouseEvent', {

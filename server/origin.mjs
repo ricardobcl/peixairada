@@ -55,17 +55,21 @@ export function foreignTo(bind, port) {
       return open && !thisMac(req.socket?.remoteAddress) ? `no origin, from ${req.socket?.remoteAddress}` : null;
     }
 
-    let o;
+    let originUrl;
 
     try {
-      o = new URL(origin);
+      originUrl = new URL(origin);
     } catch {
       return `origin ${origin}`;
     }
 
-    const p = o.port || '80';
+    const originPort = originUrl.port || '80';
 
-    if (o.protocol !== 'http:' || (open ? o.host !== hostPort : !loopback.has(o.hostname)) || p !== String(port)) {
+    if (
+      originUrl.protocol !== 'http:' ||
+      (open ? originUrl.host !== hostPort : !loopback.has(originUrl.hostname)) ||
+      originPort !== String(port)
+    ) {
       return `origin ${origin}`;
     }
 
@@ -75,21 +79,21 @@ export function foreignTo(bind, port) {
 
 const IP_HOST = /^(\d{1,3}(\.\d{1,3}){3}|\[[0-9a-f:.]+\])$/; // an address cannot be rebound: a page from it is that machine's
 
-const ownName = h => {
+const ownName = host => {
   const me = hostname()
     .toLowerCase()
     .replace(/\.local$/, '');
 
-  return h === me || h === `${me}.local`;
+  return host === me || host === `${me}.local`;
 };
 
 const LOCAL_ADDR = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
-const thisMac = a =>
-  !!a &&
-  (LOCAL_ADDR.has(a) ||
+const thisMac = address =>
+  !!address &&
+  (LOCAL_ADDR.has(address) ||
     Object.values(networkInterfaces())
       .flat()
-      .some(i => i.address === a.replace(/^::ffff:/, '')));
+      .some(entry => entry.address === address.replace(/^::ffff:/, '')));
 
 export const foreign = foreignTo(HOST, PORT);

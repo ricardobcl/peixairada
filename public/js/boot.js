@@ -28,19 +28,19 @@ const hashId = () => location.hash.slice(1).split('/')[0];
 // …and /tl:… after the id, the timeline's narrow (2026-10-17): a link's or a PR alert's — the tab opened on it, at its move
 window.addEventListener('hashchange', () => {
   const id = hashId();
-  const s = state.sessions.get(id);
+  const session = state.sessions.get(id);
 
-  if (!s) return;
-  const tl = tvFromHash(s);
+  if (!session) return;
+  const tl = tvFromHash(session);
 
   if (id !== state.current) openSession(id, { locate: true });
   if (!tl) return;
-  const n = tvNarrow.get(id);
+  const narrow = tvNarrow.get(id);
 
-  if (n?.on?.length === 1) tv.goto = { id, url: n.on[0] };
+  if (narrow?.on?.length === 1) tv.goto = { id, url: narrow.on[0] };
   if (!timelineOpen.has(id)) {
     timelineOpen.add(id);
-    openNewTab(s, 'timeline');
-  } else setTab(s, 'timeline');
-  syncTerm(s);
+    openNewTab(session, 'timeline');
+  } else setTab(session, 'timeline');
+  syncTerm(session);
 });

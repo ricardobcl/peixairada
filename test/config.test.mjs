@@ -34,8 +34,8 @@ test(
     // A home of its own, so `~/…` can be checked without touching the real one.
     const home = realpathSync(tmpDir('peix-home-'));
 
-    for (const f of ['code/acme/api', 'code/acme/web', 'code/other/tool', 'loose']) {
-      mkdirSync(join(home, f), { recursive: true });
+    for (const folder of ['code/acme/api', 'code/acme/web', 'code/other/tool', 'loose']) {
+      mkdirSync(join(home, folder), { recursive: true });
     }
 
     const srv = await startTestServer({ env: { HOME: home } });
@@ -110,7 +110,7 @@ test(
       const folders = await srv.api('api/folders');
 
       assert.deepEqual(
-        folders.body.folders.map(f => [f.name, f.org]),
+        folders.body.folders.map(folder => [folder.name, folder.org]),
         [
           ['api', 'acme'],
           ['web', 'acme'],
@@ -176,7 +176,7 @@ test(
       const after = await srv.api('api/config');
 
       assert.deepEqual(
-        after.body.roots.map(r => r.org),
+        after.body.roots.map(root => root.org),
         ['acme', 'other'],
         'and read back after a restart',
       );
@@ -195,7 +195,7 @@ test(
   async () => {
     const home = realpathSync(tmpDir('peix-home-'));
 
-    for (const f of ['code/acme/api', 'code/beta']) mkdirSync(join(home, f), { recursive: true });
+    for (const folder of ['code/acme/api', 'code/beta']) mkdirSync(join(home, folder), { recursive: true });
     const dir = tmpDir('peix-');
 
     // a state file from before 2026-10-01, the setup in it
@@ -228,9 +228,9 @@ test(
 
       const edited = await waitFor(
         async () => {
-          const c = (await srv.api('api/config')).body;
+          const config = (await srv.api('api/config')).body;
 
-          return c.quick === 'beta' && c;
+          return config.quick === 'beta' && config;
         },
         { what: 'the hand edit, read back', timeout: 8000 },
       );
@@ -242,9 +242,9 @@ test(
 
       const broken = await waitFor(
         async () => {
-          const c = (await srv.api('api/config')).body;
+          const config = (await srv.api('api/config')).body;
 
-          return c.error && c;
+          return config.error && config;
         },
         { what: 'the parse error, said', timeout: 8000 },
       );
@@ -258,9 +258,9 @@ test(
 
       await waitFor(
         async () => {
-          const c = (await srv.api('api/config')).body;
+          const config = (await srv.api('api/config')).body;
 
-          return c.error === null && c.quick === 'api';
+          return config.error === null && config.quick === 'api';
         },
         { what: 'the fixed file, read', timeout: 8000 },
       );
@@ -272,11 +272,11 @@ test(
         const rq = request(
           `${srv.url}api/config`,
           { method: 'PUT', headers: { 'content-type': 'application/json', 'x-peix-key': srv.key } },
-          r => {
-            let b = '';
+          response => {
+            let body = '';
 
-            r.on('data', d => (b += d));
-            r.on('end', () => res({ status: r.statusCode, body: JSON.parse(b || '{}') }));
+            response.on('data', chunk => (body += chunk));
+            response.on('end', () => res({ status: response.statusCode, body: JSON.parse(body || '{}') }));
           },
         );
 
@@ -355,7 +355,7 @@ test(
       assert.equal(statSync(target).mode & 0o777, 0o600, 'its mode kept');
 
       assert.deepEqual(
-        readdirSync(dots).filter(f => f.endsWith('.tmp')),
+        readdirSync(dots).filter(name => name.endsWith('.tmp')),
         [],
         'nothing left beside it',
       );
@@ -418,7 +418,7 @@ test(
       const sug = (await srv.api('api/config/suggest')).body.roots;
 
       assert.deepEqual(
-        sug.map(r => [r.dir, r.org, r.chats, r.repos]),
+        sug.map(root => [root.dir, root.org, root.chats, root.repos]),
         [
           [join(home, 'work'), 'acme', 2, 4],
           [join(home, 'code'), 'me', 0, 2],
@@ -488,7 +488,7 @@ test('an import of the server moves nothing: the setup leaves the state file at 
   writeFileSync(state, JSON.stringify({ config: { quick: 'api' } }));
   const env = { ...process.env, HOME: home, CLAUDE_DIR: join(home, '.claude'), USAGE: 'off', NOTIFY: 'off' };
 
-  for (const k of ['STATE_FILE', 'CONFIG_FILE', 'XDG_CONFIG_HOME', 'XDG_STATE_HOME']) delete env[k];
+  for (const name of ['STATE_FILE', 'CONFIG_FILE', 'XDG_CONFIG_HOME', 'XDG_STATE_HOME']) delete env[name];
 
   try {
     execFileSync(

@@ -13,19 +13,19 @@ export const meta = { server: true, fixture: 'auto' };
 
 const titles = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist > .card .title')].map(t => t.textContent)`);
 
-const card = t =>
-  `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title').textContent === ${JSON.stringify(t)})`;
+const card = title =>
+  `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title').textContent === ${JSON.stringify(title)})`;
 
-const rects = (ctx, t) =>
+const rects = (ctx, title) =>
   ctx.evaluate(`(c => { const r = e => { const b = e.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; };
-  return { card: r(c), time: r(c.querySelector('.time')), title: r(c.querySelector('.title')), top: r(c.querySelector('.top')), op: getComputedStyle(c.querySelector('.time')).opacity, text: c.querySelector('.time').textContent }; })(${card(t)})`);
+  return { card: r(c), time: r(c.querySelector('.time')), title: r(c.querySelector('.title')), top: r(c.querySelector('.top')), op: getComputedStyle(c.querySelector('.time')).opacity, text: c.querySelector('.time').textContent }; })(${card(title)})`);
 
 export default async function (ctx) {
   const out = {};
   const cwd = join(tmpdir(), 'peix-card-marks', 'marks-repo');
 
-  const T = Date.now();
-  const ago = ms => new Date(T - ms);
+  const START = Date.now();
+  const ago = ms => new Date(START - ms);
 
   const base = id => ({
     isSidechain: false,
@@ -94,8 +94,8 @@ export default async function (ctx) {
   );
 
   out.api = (await ctx.server.api('api/sessions')).body.sessions
-    .map(s => s.title)
-    .filter(t => out.order.slice(0, 3).includes(t));
+    .map(session => session.title)
+    .filter(title => out.order.slice(0, 3).includes(title));
 
   ctx.assert.deepEqual(out.api, out.order.slice(0, 3), 'the server lists them in the same order');
 
@@ -140,9 +140,9 @@ export default async function (ctx) {
   );
 
   // the ✓ ends the top row, at the project name's height; the F ends the title row (2026-09-28)
-  const ends = t =>
+  const ends = title =>
     ctx.evaluate(`(c => { const r = e => e && Math.round(e.getBoundingClientRect().right), edge = r(c) - 12; const a = c.querySelector('.top .act'), f = c.querySelector('.trow .fable');
-    return { edge, act: r(a), fable: r(f), y: (b => b.top + b.height / 2)(a.getBoundingClientRect()) - (b => b.top + b.height / 2)(c.querySelector('.repo').getBoundingClientRect()), fy: f && Math.round(f.getBoundingClientRect().top - c.querySelector('.title').getBoundingClientRect().top), inTrow: !!c.querySelector('.trow .act') }; })(${card(t)})`);
+    return { edge, act: r(a), fable: r(f), y: (b => b.top + b.height / 2)(a.getBoundingClientRect()) - (b => b.top + b.height / 2)(c.querySelector('.repo').getBoundingClientRect()), fy: f && Math.round(f.getBoundingClientRect().top - c.querySelector('.title').getBoundingClientRect().top), inTrow: !!c.querySelector('.trow .act') }; })(${card(title)})`);
 
   out.ends = { fable: await ends('Fable replied last'), opus: await ends('Opus, you wrote after it') };
   ctx.assert.ok(out.ends.fable.fable <= out.ends.fable.edge, 'the F in the title row, inside the padding');
@@ -161,29 +161,33 @@ export default async function (ctx) {
   );
 
   // ---- the time: beside the title, left of the F (2026-09-28), and only under the pointer (2026-09-27) ----
-  const t = 'Opus, you wrote after it';
+  const opusTitle = 'Opus, you wrote after it';
 
   await ctx.settle(); // the fixture's cards slid in: a rectangle read mid-slide put the pointer on the card above (2026-09-27, night)
   // the fixture's replies land after the board has loaded, so each card gets an unread count — beside the time since
   // 2026-09-28, so it has to be there before the time is measured
-  await ctx.waitFor(`${card(t)}.querySelector('.trow .badge')`, { what: 'the unread count beside the time' });
-  out.rest = await rects(ctx, t);
+  await ctx.waitFor(`${card(opusTitle)}.querySelector('.trow .badge')`, { what: 'the unread count beside the time' });
+  out.rest = await rects(ctx, opusTitle);
   ctx.assert.equal(out.rest.op, '0', 'invisible at rest');
   ctx.assert.equal(out.rest.time.w, 0, 'and no room');
   ctx.assert.equal(out.rest.text, '2h', 'when anything last happened — the reply');
-  const c = out.rest.card;
+  const restRect = out.rest.card;
 
-  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: c.x + c.w / 2, y: c.y + c.h / 2 });
+  await ctx.send('Input.dispatchMouseEvent', {
+    type: 'mouseMoved',
+    x: restRect.x + restRect.w / 2,
+    y: restRect.y + restRect.h / 2,
+  });
 
-  await ctx.waitFor(`getComputedStyle(${card(t)}.querySelector('.time')).opacity !== '0'`, {
+  await ctx.waitFor(`getComputedStyle(${card(opusTitle)}.querySelector('.time')).opacity !== '0'`, {
     what: 'the time fading in',
   });
 
   await ctx.sleep(250);
-  out.hover = await rects(ctx, t);
+  out.hover = await rects(ctx, opusTitle);
   ctx.assert.ok(Number(out.hover.op) > 0.5, `shown under the pointer (opacity ${out.hover.op})`);
   // a hover brings out a mark in the title row, which narrows the title; where things start in the card is what must hold (the card itself rises, 2026-11-03)
-  const at = (r, o) => [r.x, r.y - o.card.y];
+  const at = (rect, snapshot) => [rect.x, rect.y - snapshot.card.y];
 
   ctx.assert.deepEqual(
     [at(out.hover.title, out.hover), at(out.hover.top, out.hover)],
@@ -194,9 +198,14 @@ export default async function (ctx) {
   await ctx.shot('hover', { x: 0, y: 40, width: 400, height: 460 });
 
   const place = async title => {
-    const b = (await rects(ctx, title)).card;
+    const cardRect = (await rects(ctx, title)).card;
 
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: b.x + b.w / 2, y: b.y + b.h - 3 });
+    await ctx.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: cardRect.x + cardRect.w / 2,
+      y: cardRect.y + cardRect.h - 3,
+    });
+
     await ctx.sleep(150);
     return placed(title);
   }; // the age is the pointer's
@@ -209,7 +218,7 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-  out.place = { opus: await place(t), fable: await place('Fable replied last') };
+  out.place = { opus: await place(opusTitle), fable: await place('Fable replied last') };
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1000, y: 500 });
   ctx.assert.ok(out.place.opus.time && !out.place.opus.inTop, 'beside the title, not in the top row');
   ctx.assert.ok(out.place.opus.title.r <= out.place.opus.time.l, 'right of the title');

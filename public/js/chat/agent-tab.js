@@ -5,63 +5,63 @@
 const agentTabs = new Map(); // chat id → [{ id, asked }]: the tabs, kept across a reload (keepTabs)
 const AGV_POLL_MS = 2500;
 const agv = { key: null, sid: null, id: null, n: 0, run: [], group: null, drawnRun: 0, timer: 0, gen: 0, asking: 0 };
-const isAgentTab = k => /^agent:/.test(k || '');
+const isAgentTab = key => /^agent:/.test(key || '');
 
-const agTabName = (s, k, whole) => {
-  const t = agentTabs.get(s.id)?.find(a => `agent:${a.id}` === k)?.asked || 'An agent';
+const agTabName = (session, key, whole) => {
+  const name = agentTabs.get(session.id)?.find(tab => `agent:${tab.id}` === key)?.asked || 'An agent';
 
-  return whole || t.length <= 28 ? t : `${t.slice(0, 27).trimEnd()}…`;
+  return whole || name.length <= 28 ? name : `${name.slice(0, 27).trimEnd()}…`;
 };
 
-function agOpen(s, r) {
-  if (!AG_ID.test(String(r?.id || ''))) return; // an id goes into a route's path (2026-11-06): an agent's, never `../`
-  if (state.current !== s.id) openSession(s.id);
+function agOpen(session, row) {
+  if (!AG_ID.test(String(row?.id || ''))) return; // an id goes into a route's path (2026-11-06): an agent's, never `../`
+  if (state.current !== session.id) openSession(session.id);
 
-  const k = `agent:${r.id}`;
-  const l = agentTabs.get(s.id) || [];
+  const key = `agent:${row.id}`;
+  const list = agentTabs.get(session.id) || [];
 
-  if (l.some(a => a.id === r.id)) setTab(s, k);
+  if (list.some(tab => tab.id === row.id)) setTab(session, key);
   else {
-    l.push({ id: r.id, asked: r.name || r.asked || 'An agent' });
-    agentTabs.set(s.id, l);
-    openNewTab(s, k);
+    list.push({ id: row.id, asked: row.name || row.asked || 'An agent' });
+    agentTabs.set(session.id, list);
+    openNewTab(session, key);
   }
 
-  syncTerm(s);
+  syncTerm(session);
 }
 
-function agvHead(s) {
+function agvHead(session) {
   const el = $('#agv');
-  const is = x => x.id === agv.id;
-  const r = s.agentRows?.find(is) || s.agentAll?.find(is);
-  const name = agTabName(s, `agent:${agv.id}`, true); // one from a round before, or a claude before: Space's pods open those too
+  const is = candidate => candidate.id === agv.id;
+  const row = session.agentRows?.find(is) || session.agentAll?.find(is);
+  const name = agTabName(session, `agent:${agv.id}`, true); // one from a round before, or a claude before: Space's pods open those too
 
-  const st = r ? (agQuiet(r) ? 'quiet' : r.st) : 'done';
+  const st = row ? (agQuiet(row) ? 'quiet' : row.st) : 'done';
   const at = st === 'run' || st === 'quiet' || st === 'wait';
 
   el.classList.toggle('working', at);
-  const html = `${ICON.lock}<b>${esc(name)}</b><span class="say${st === 'fail' ? ' fail' : ''}">${at ? `${esc(AG_SAID[st])} · read-only, it reports to the chat when it ends` : st === 'fail' ? esc(r?.why || 'It ended on an error') : `${esc(AG_SAID[st] || 'done')} · read-only`}</span><button type="button" class="agvx" title="Close this tab — the agent carries on · ⌘W">${ICON.close}</button>`;
-  const h = el.querySelector('.agvh');
+  const html = `${ICON.lock}<b>${esc(name)}</b><span class="say${st === 'fail' ? ' fail' : ''}">${at ? `${esc(AG_SAID[st])} · read-only, it reports to the chat when it ends` : st === 'fail' ? esc(row?.why || 'It ended on an error') : `${esc(AG_SAID[st] || 'done')} · read-only`}</span><button type="button" class="agvx" title="Close this tab — the agent carries on · ⌘W">${ICON.close}</button>`;
+  const head = el.querySelector('.agvh');
 
-  if (h && h._h !== html) {
-    h._h = html;
-    h.innerHTML = html;
+  if (head && head._h !== html) {
+    head._h = html;
+    head.innerHTML = html;
   }
 
   return at;
 }
 
-function agvAdd(entries, s) {
+function agvAdd(entries, session) {
   const log = $('#agv .agvlog');
   const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-  const cwd = s.cwd;
+  const cwd = session.cwd;
 
-  for (const e of entries) {
-    if (e.kind === 'tool_result' && e.toolUseId) {
-      toolRes.set(e.toolUseId, !!e.isError);
-      const m = log.querySelector(`.tst[data-tu="${CSS.escape(e.toolUseId)}"]`);
+  for (const entry of entries) {
+    if (entry.kind === 'tool_result' && entry.toolUseId) {
+      toolRes.set(entry.toolUseId, !!entry.isError);
+      const mark = log.querySelector(`.tst[data-tu="${CSS.escape(entry.toolUseId)}"]`);
 
-      if (m) m.className = `tst ${toolMark(e.toolUseId)}`;
+      if (mark) mark.className = `tst ${toolMark(entry.toolUseId)}`;
     }
   }
 
@@ -69,11 +69,11 @@ function agvAdd(entries, s) {
     if (!agv.run.length || agv.drawnRun === agv.run.length) return;
 
     if (!agv.group) {
-      const f = htmlNodes(toolGroupHtml(agv.run), cwd);
+      const fragment = htmlNodes(toolGroupHtml(agv.run), cwd);
 
-      agv.group = f.firstElementChild;
+      agv.group = fragment.firstElementChild;
       agv.group.open = true;
-      log.append(f);
+      log.append(fragment);
     } // nearly all it does: open, unlike the chat's
     else {
       agv.group.append(htmlNodes(agv.run.slice(agv.drawnRun).map(entryHtml).join(''), cwd));
@@ -83,9 +83,9 @@ function agvAdd(entries, s) {
     agv.drawnRun = agv.run.length;
   };
 
-  for (const e of entries) {
-    if (e.kind === 'tool_use' || e.kind === 'tool_result') {
-      agv.run.push(e);
+  for (const entry of entries) {
+    if (entry.kind === 'tool_use' || entry.kind === 'tool_result') {
+      agv.run.push(entry);
       continue;
     }
 
@@ -93,15 +93,15 @@ function agvAdd(entries, s) {
     agv.run = [];
     agv.group = null;
     agv.drawnRun = 0;
-    const f = htmlNodes(entryHtml(e), cwd);
+    const fragment = htmlNodes(entryHtml(entry), cwd);
 
-    if (e.role === 'user') {
-      const w = f.querySelector('.who span');
+    if (entry.role === 'user') {
+      const who = fragment.querySelector('.who span');
 
-      if (w) w.textContent = 'The chat asked';
+      if (who) who.textContent = 'The chat asked';
     } // not your words: Claude's, to its agent
 
-    log.append(f);
+    log.append(fragment);
   }
 
   group();
@@ -113,22 +113,22 @@ async function agvPoll() {
   clearTimeout(agv.timer);
   agv.timer = 0;
 
-  const { sid, id, gen, n } = agv;
-  const s = state.sessions.get(sid);
+  const { sid, id, gen, n: count } = agv;
+  const session = state.sessions.get(sid);
 
-  if (!s || $('#agv').hidden || agv.asking === gen) return; // one ask at a time: two would draw it twice
-  agvHead(s);
+  if (!session || $('#agv').hidden || agv.asking === gen) return; // one ask at a time: two would draw it twice
+  agvHead(session);
 
   if (!document.hidden) {
     agv.asking = gen;
 
     try {
-      const d = await api('GET', `/api/sessions/${sid}/agents/${encodeURIComponent(id)}?after=${n}`);
+      const data = await api('GET', `/api/sessions/${sid}/agents/${encodeURIComponent(id)}?after=${count}`);
 
       if (gen !== agv.gen) return; // another agent's by now
-      if (d.entries?.length) agvAdd(d.entries, s);
-    } catch (e) {
-      if (gen === agv.gen && e.status === 404) {
+      if (data.entries?.length) agvAdd(data.entries, session);
+    } catch (error) {
+      if (gen === agv.gen && error.status === 404) {
         $('#agv .agvlog').textContent = 'Its transcript is gone.';
         return;
       }
@@ -138,22 +138,22 @@ async function agvPoll() {
   }
 
   if (gen !== agv.gen) return;
-  const at = agvHead(state.sessions.get(sid) || s);
+  const at = agvHead(state.sessions.get(sid) || session);
 
   if (at || !agv.n) agv.timer = setTimeout(agvPoll, AGV_POLL_MS);
 }
 
-function placeAgent(s, p) {
+function placeAgent(session, place) {
   const el = $('#agv');
-  const g = s ? p.findIndex(isAgentTab) : -1;
+  const half = session ? place.findIndex(isAgentTab) : -1;
 
-  if (g < 0) {
+  if (half < 0) {
     el.hidden = true;
     clearTimeout(agv.timer);
     return;
   }
 
-  const host = $(GEL[g].body);
+  const host = $(GEL[half].body);
 
   if (el.parentElement !== host) {
     const top = el.querySelector('.agvlog')?.scrollTop;
@@ -166,24 +166,24 @@ function placeAgent(s, p) {
 
   el.hidden = false;
 
-  const id = p[g].slice('agent:'.length);
-  const key = `${s.id}:${id}`;
+  const id = place[half].slice('agent:'.length);
+  const key = `${session.id}:${id}`;
 
   if (agv.key !== key) {
-    Object.assign(agv, { key, sid: s.id, id, n: 0, run: [], group: null, drawnRun: 0, gen: agv.gen + 1 });
+    Object.assign(agv, { key, sid: session.id, id, n: 0, run: [], group: null, drawnRun: 0, gen: agv.gen + 1 });
     el.innerHTML = '<div class="agvh"></div><div class="agvlog"></div>';
     agvPoll();
   } else if (was) agvPoll();
   else {
-    agvHead(s);
+    agvHead(session);
     if (el.classList.contains('working') && !agv.timer) agvPoll();
   }
 }
 
-$('#agv').addEventListener('click', e => {
-  if (e.target.closest('.agvx')) {
-    const s = state.sessions.get(agv.sid);
+$('#agv').addEventListener('click', event => {
+  if (event.target.closest('.agvx')) {
+    const session = state.sessions.get(agv.sid);
 
-    if (s) closeTab(s, `agent:${agv.id}`);
+    if (session) closeTab(session, `agent:${agv.id}`);
   }
 }); // alone in its half it has no strip

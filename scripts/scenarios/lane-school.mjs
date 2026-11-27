@@ -14,8 +14,8 @@ export default async function (ctx) {
   const sleeps = Array.from({ length: 16 }, () => spawn('sleep', ['120'], { stdio: 'ignore' }));
 
   try {
-    const ago = m => Date.now() - m * 60_000;
-    const live = (i, o = {}) => ({ pid: sleeps[i].pid, startedAt: ago(200 - i), ...o });
+    const ago = minutes => Date.now() - minutes * 60_000;
+    const live = (index, extra = {}) => ({ pid: sleeps[index].pid, startedAt: ago(200 - index), ...extra });
 
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#sbSwim .schoolbox')`), null, 'off by default');
 
@@ -63,29 +63,29 @@ export default async function (ctx) {
         .then(JSON.parse);
 
     const three = await read();
-    const by = Object.fromEntries(three.map(f => [f.title, f])); // their places go by when the board first saw each: three at once here
+    const by = Object.fromEntries(three.map(fish => [fish.title, fish])); // their places go by when the board first saw each: three at once here
 
     ctx.assert.deepEqual(
-      ['Asks', 'Works', 'Rests'].map(t => by[t]?.cls),
+      ['Asks', 'Works', 'Rests'].map(title => by[title]?.cls),
       ['s-ask', 's-work', 's-ready'],
       'each its state',
     );
 
     ctx.assert.deepEqual(
-      ['Asks', 'Works', 'Rests'].map(t => by[t].running),
+      ['Asks', 'Works', 'Rests'].map(title => by[title].running),
       [0, 1, 0],
       'only the one at work swims',
     );
 
     ctx.assert.deepEqual(
-      ['Asks', 'Works', 'Rests'].map(t => by[t].ping),
+      ['Asks', 'Works', 'Rests'].map(title => by[title].ping),
       [true, false, false],
       'the one asking pings',
     );
 
     ctx.assert.deepEqual(
-      three.map(f => f.x),
-      [...three.map(f => f.x)].sort((p, q) => p - q),
+      three.map(fish => fish.x),
+      [...three.map(fish => fish.x)].sort((left, right) => left - right),
       'spread along the lane',
     );
 
@@ -118,13 +118,13 @@ export default async function (ctx) {
     // past twelve: those that want you stay, and a count stands for the rest
     makeFixture(
       ctx.fixture.dir,
-      Array.from({ length: 12 }, (_, i) => ({
+      Array.from({ length: 12 }, (_, index) => ({
         cwd,
-        title: `Idle ${i}`,
+        title: `Idle ${index}`,
         prompt: 'go',
         reply: 'done',
-        at: new Date(ago(60 + i)),
-        live: live(3 + i, { status: 'idle' }),
+        at: new Date(ago(60 + index)),
+        live: live(3 + index, { status: 'idle' }),
       })),
     );
 
@@ -135,7 +135,7 @@ export default async function (ctx) {
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#sbSwim .sfmore').textContent`), '+4');
 
     ctx.assert.ok(
-      ['Asks', 'Works'].every(t => many.some(f => f.title === t)),
+      ['Asks', 'Works'].every(title => many.some(fish => fish.title === title)),
       'the ones that want you or work stay',
     );
 
@@ -151,6 +151,6 @@ export default async function (ctx) {
 
     return { three };
   } finally {
-    for (const s of sleeps) s.kill();
+    for (const child of sleeps) child.kill();
   }
 }

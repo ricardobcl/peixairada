@@ -31,12 +31,12 @@ const strip = ctx =>
     )
     .then(JSON.parse);
 
-const pad2 = n => String(n).padStart(2, '0');
-const ddmmyyyy = d => `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
+const pad2 = number => String(number).padStart(2, '0');
+const ddmmyyyy = date => `${pad2(date.getDate())}-${pad2(date.getMonth() + 1)}-${date.getFullYear()}`;
 
 // the page's name for a day this many days back: the weekday within the week
-const named = (d, back) =>
-  back === 1 ? 'Yesterday' : back < 7 ? d.toLocaleDateString('en', { weekday: 'long' }) : ddmmyyyy(d);
+const named = (date, back) =>
+  back === 1 ? 'Yesterday' : back < 7 ? date.toLocaleDateString('en', { weekday: 'long' }) : ddmmyyyy(date);
 
 // ⌥⌘P, the folder's name, ⏎: the list is that project's
 const project = async (ctx, name) => {
@@ -55,11 +55,11 @@ export default async function (ctx) {
   const today = new Date(Math.max(Date.now(), new Date().setHours(0, 0, 0, 0) + 61_000));
 
   const noon = back => {
-    const d = new Date();
+    const date = new Date();
 
-    d.setDate(d.getDate() - back);
-    d.setHours(12, 0, 0, 0);
-    return d;
+    date.setDate(date.getDate() - back);
+    date.setHours(12, 0, 0, 0);
+    return date;
   };
 
   const [d2, d3] = [noon(2), noon(3)];
@@ -99,15 +99,15 @@ export default async function (ctx) {
   ];
 
   ctx.assert.deepEqual(
-    out.all.map(x => (x.sep ? { sep: x.sep, day: x.day } : x)),
+    out.all.map(entry => (entry.sep ? { sep: entry.sep, day: entry.day } : entry)),
     expect,
     "a label over each day but today's, naming it: the weekday",
   );
 
-  for (const x of out.all.filter(x => x.sep)) {
-    ctx.assert.ok(Math.abs(x.off) <= 1, `${x.day} starts its line (${x.off}px in)`);
-    ctx.assert.deepEqual(x.sides, [], `${x.day} stands alone on its line`);
-    ctx.assert.equal(x.anim, 0, `and nothing on ${x.day}'s line moves`);
+  for (const separator of out.all.filter(entry => entry.sep)) {
+    ctx.assert.ok(Math.abs(separator.off) <= 1, `${separator.day} starts its line (${separator.off}px in)`);
+    ctx.assert.deepEqual(separator.sides, [], `${separator.day} stands alone on its line`);
+    ctx.assert.equal(separator.anim, 0, `and nothing on ${separator.day}'s line moves`);
   }
 
   // Done cards come last, whatever their day: ticking today's newest brings today back after the older days, at the
@@ -120,7 +120,7 @@ export default async function (ctx) {
       body: JSON.stringify({ done: true }),
     });
 
-  for (let i = 0; i < 70 && !(await tick()).body.done; i++) await ctx.sleep(1000);
+  for (let attempt = 0; attempt < 70 && !(await tick()).body.done; attempt++) await ctx.sleep(1000);
 
   await ctx.waitFor(
     `[...document.querySelectorAll('#slist > .card')].pop()?.querySelector('.title')?.textContent === 'a minute ago'`,
@@ -128,7 +128,7 @@ export default async function (ctx) {
   );
 
   await ctx.settle();
-  out.done = (await strip(ctx)).map(x => (x.lane ? `[${x.lane}]` : x.sep ? x.day : x.card));
+  out.done = (await strip(ctx)).map(entry => (entry.lane ? `[${entry.lane}]` : entry.sep ? entry.day : entry.card));
 
   ctx.assert.deepEqual(
     out.done,
@@ -150,7 +150,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#slist > .gsep.lane[data-lane="ready"]').click()`);
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 1`, { what: 'the done card alone' });
   await ctx.settle(); // the ready cards fold out first; strip reads every child of the list
-  out.filtered = (await strip(ctx)).map(x => (x.lane ? `[${x.lane}]` : x.sep ? x.day : x.card));
+  out.filtered = (await strip(ctx)).map(entry => (entry.lane ? `[${entry.lane}]` : entry.sep ? entry.day : entry.card));
 
   ctx.assert.deepEqual(
     out.filtered,

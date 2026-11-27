@@ -23,7 +23,7 @@ export default async function (ctx) {
     'And a long one:',
     '',
     '```python',
-    ...Array.from({ length: 10 }, (_, i) => `x${i} = ${i} * 2  # line ${i + 1}`),
+    ...Array.from({ length: 10 }, (_, index) => `x${index} = ${index} * 2  # line ${index + 1}`),
     '```',
   ].join('\n');
 
@@ -54,13 +54,13 @@ export default async function (ctx) {
   );
 
   // under the pointer the bar comes out
-  const r = await ctx
+  const center = await ctx
     .evaluate(
       `JSON.stringify((b => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 }))(document.querySelector('#log .codebox').getBoundingClientRect()))`,
     )
     .then(JSON.parse);
 
-  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.x, y: r.y });
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: center.x, y: center.y });
 
   await ctx.waitFor(`getComputedStyle(document.querySelector('#log .codebox .cbar')).opacity === '1'`, {
     what: 'the bar under the pointer',

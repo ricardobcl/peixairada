@@ -27,8 +27,8 @@ import { pinned, projects, saveState, sessions } from './state.mjs';
 // `config` is read once more, to move it there.
 export let setup = {};
 
-export function setSetup(v) {
-  setup = v;
+export function setSetup(value) {
+  setup = value;
 } // for the modules that write it: an import is read-only
 
 // ---- the board's setup: CONFIG_FILE, the settings' Setup ------------------------------------------------------------
@@ -41,7 +41,7 @@ export function setSetup(v) {
 // root's org is what ＋ clone asks GitHub for — a root without one lists its folders and clones nothing.
 export const ORG_NAME = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/; // GitHub's rule for an account's name
 export const REPO_RE = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]{1,100}$/; // …and a repo's, as owner/name
-export const expandHome = p => p.trim().replace(/^~(?=\/|$)/, homedir());
+export const expandHome = path => path.trim().replace(/^~(?=\/|$)/, homedir());
 
 /**
  * The setup as the state file or a PUT hands it over, down to what the board uses. `strict` (a PUT) says what is wrong
@@ -49,24 +49,26 @@ export const expandHome = p => p.trim().replace(/^~(?=\/|$)/, homedir());
  * gone for a while (an unplugged disk) is not forgotten. Only the keys given come back: a PUT replaces those alone.
  * `toMake`: folders a PUT is to make (`create`), taken for there — made only once the whole of it holds (2026-11-27).
  */
-export function cleanSetup(c, strict = false, toMake = new Set()) {
+export function cleanSetup(config, strict = false, toMake = new Set()) {
   const out = {};
   const fail = error => ({ setup: null, error });
 
-  if (!c || typeof c !== 'object') return strict ? fail('expected {roots?, quick?, projects?, jira?}') : { setup: out };
+  if (!config || typeof config !== 'object') {
+    return strict ? fail('expected {roots?, quick?, projects?, jira?}') : { setup: out };
+  }
 
-  if ('roots' in c) {
-    if (!Array.isArray(c.roots)) {
+  if ('roots' in config) {
+    if (!Array.isArray(config.roots)) {
       if (strict) return fail('roots: expected a list of {dir, org}');
     } else {
       out.roots = [];
 
-      for (const r of c.roots.slice(0, 20)) {
-        const dir = typeof r?.dir === 'string' ? expandHome(r.dir) : '';
-        const org = typeof r?.org === 'string' ? r.org.trim() : '';
+      for (const root of config.roots.slice(0, 20)) {
+        const dir = typeof root?.dir === 'string' ? expandHome(root.dir) : '';
+        const org = typeof root?.org === 'string' ? root.org.trim() : '';
 
         const bad = !dir.startsWith('/')
-          ? `"${r?.dir ?? ''}" is not a path — /… or ~/…`
+          ? `"${root?.dir ?? ''}" is not a path — /… or ~/…`
           : org && !ORG_NAME.test(org)
             ? `"${org}" is not a GitHub org`
             : strict && !isDir(dir) && !toMake.has(resolve(dir))
@@ -80,28 +82,28 @@ export function cleanSetup(c, strict = false, toMake = new Set()) {
 
         const at = resolve(dir);
 
-        if (!out.roots.some(x => x.dir === at)) out.roots.push({ dir: at, org });
+        if (!out.roots.some(kept => kept.dir === at)) out.roots.push({ dir: at, org });
       }
     }
   }
 
-  if ('quick' in c) {
-    const q = typeof c.quick === 'string' ? c.quick.trim() : '';
+  if ('quick' in config) {
+    const quick = typeof config.quick === 'string' ? config.quick.trim() : '';
 
-    if (q.length > 200 || q.includes('/')) {
+    if (quick.length > 200 || quick.includes('/')) {
       if (strict) return fail("quick: a project's name, not a path");
-    } else out.quick = q || null;
+    } else out.quick = quick || null;
   }
 
-  if ('projects' in c) {
-    if (!c.projects || typeof c.projects !== 'object' || Array.isArray(c.projects)) {
+  if ('projects' in config) {
+    if (!config.projects || typeof config.projects !== 'object' || Array.isArray(config.projects)) {
       if (strict) return fail('projects: expected {name: {abbr?, color?}}');
     } else {
       out.projects = {};
 
-      for (const [name, v] of Object.entries(c.projects).slice(0, 200)) {
-        const abbr = typeof v?.abbr === 'string' ? v.abbr.trim() : '';
-        const color = typeof v?.color === 'string' ? v.color.trim().toLowerCase() : '';
+      for (const [name, project] of Object.entries(config.projects).slice(0, 200)) {
+        const abbr = typeof project?.abbr === 'string' ? project.abbr.trim() : '';
+        const color = typeof project?.color === 'string' ? project.color.trim().toLowerCase() : '';
 
         const bad =
           !name.trim() || name.length > 200
@@ -122,49 +124,49 @@ export function cleanSetup(c, strict = false, toMake = new Set()) {
     }
   }
 
-  if ('jira' in c) {
+  if ('jira' in config) {
     // the Jira Cloud site and your login there (2026-10-08) — the token is kept apart, never in this file
-    const j = c.jira;
-    const site = jiraSite(j?.site);
-    const email = typeof j?.email === 'string' ? j.email.trim() : '';
+    const jira = config.jira;
+    const site = jiraSite(jira?.site);
+    const email = typeof jira?.email === 'string' ? jira.email.trim() : '';
 
-    if (j === null || (!site && !email && (!j || typeof j === 'object'))) out.jira = null;
+    if (jira === null || (!site && !email && (!jira || typeof jira === 'object'))) out.jira = null;
     else if (!site) {
-      if (strict) return fail(`"${j?.site ?? ''}" is not a Jira site — https://acme.atlassian.net`);
+      if (strict) return fail(`"${jira?.site ?? ''}" is not a Jira site — https://acme.atlassian.net`);
     } else if (!/^[^\s"\\@]+@[^\s"\\@]+$/.test(email)) {
       if (strict) return fail(`"${email}" is not an email — the one you sign in to Jira with`);
     } else out.jira = { site, email };
   }
 
-  if ('chat' in c) {
+  if ('chat' in config) {
     // the chat's repo (2026-10-17): owner/name — or its address — or null, no chat
-    const v = c.chat;
+    const chat = config.chat;
 
     const repo =
-      typeof v?.repo === 'string'
-        ? v.repo
+      typeof chat?.repo === 'string'
+        ? chat.repo
             .trim()
             .replace(/^(https?:\/\/)?github\.com\//i, '')
             .replace(/(\.git)?\/*$/, '')
         : '';
 
-    if (v === null || (v && typeof v === 'object' && !repo)) out.chat = null;
+    if (chat === null || (chat && typeof chat === 'object' && !repo)) out.chat = null;
     else if (!REPO_RE.test(repo)) {
-      if (strict) return fail(`"${v?.repo ?? ''}" is not a GitHub repo — owner/name`);
+      if (strict) return fail(`"${chat?.repo ?? ''}" is not a GitHub repo — owner/name`);
     } else out.chat = { repo };
   }
 
-  if ('lunch' in c) {
+  if ('lunch' in config) {
     // lunch (2026-10-18): when, which days, the places and where their menus are read — or null, none
-    const v = c.lunch;
+    const lunch = config.lunch;
 
-    if (v === null) out.lunch = null;
+    if (lunch === null) out.lunch = null;
     else {
-      const r = cleanLunch(v);
+      const cleaned = cleanLunch(lunch);
 
-      if (r.error) {
-        if (strict) return fail(`lunch: ${r.error}`);
-      } else out.lunch = r.lunch;
+      if (cleaned.error) {
+        if (strict) return fail(`lunch: ${cleaned.error}`);
+      } else out.lunch = cleaned.lunch;
     }
   }
 
@@ -172,18 +174,18 @@ export function cleanSetup(c, strict = false, toMake = new Set()) {
 }
 
 /** A Jira site as its origin — https://acme.atlassian.net — or null; http only on this Mac (a test's fake). */
-export function jiraSite(v) {
-  if (typeof v !== 'string' || !v.trim()) return null;
-  let u;
+export function jiraSite(input) {
+  if (typeof input !== 'string' || !input.trim()) return null;
+  let url;
 
   try {
-    u = new URL(/^https?:\/\//i.test(v.trim()) ? v.trim() : `https://${v.trim()}`);
+    url = new URL(/^https?:\/\//i.test(input.trim()) ? input.trim() : `https://${input.trim()}`);
   } catch {
     return null;
   }
 
-  return u.protocol === 'https:' || (u.protocol === 'http:' && /^(127\.0\.0\.1|localhost)$/.test(u.hostname))
-    ? u.origin
+  return url.protocol === 'https:' || (url.protocol === 'http:' && /^(127\.0\.0\.1|localhost)$/.test(url.hostname))
+    ? url.origin
     : null;
 }
 
@@ -211,7 +213,8 @@ export const boardConfig = () => ({
   error: configError,
   ask: !configError && setup.roots === undefined && !envRoots().length,
 });
-export const tildePath = p => (p === homedir() || p.startsWith(`${homedir()}/`) ? `~${p.slice(homedir().length)}` : p);
+export const tildePath = path =>
+  path === homedir() || path.startsWith(`${homedir()}/`) ? `~${path.slice(homedir().length)}` : path;
 // The file is the user's as much as the board's: written with two spaces and `~/…` for a folder under the home, so it
 // reads by hand and travels with dotfiles; into the file as it stands, so a key the board does not know — a note, a
 // newer board's — stays (2026-10-14: a save wrote the board's four alone); beside its real path and renamed over it, so a
@@ -227,16 +230,16 @@ function readConfigFile() {
 
   try {
     txt = readFileSync(CONFIG_FILE, 'utf8');
-  } catch (e) {
-    return e.code === 'ENOENT' ? { missing: true } : { error: `${tildePath(CONFIG_FILE)}: ${e.message}` };
+  } catch (error) {
+    return error.code === 'ENOENT' ? { missing: true } : { error: `${tildePath(CONFIG_FILE)}: ${error.message}` };
   }
 
   try {
-    const c = JSON.parse(txt);
+    const config = JSON.parse(txt);
 
-    if (c && typeof c === 'object' && !Array.isArray(c)) return { setup: c };
-  } catch (e) {
-    return { error: `${tildePath(CONFIG_FILE)} does not parse — ${e.message}` };
+    if (config && typeof config === 'object' && !Array.isArray(config)) return { setup: config };
+  } catch (error) {
+    return { error: `${tildePath(CONFIG_FILE)} does not parse — ${error.message}` };
   }
 
   return { error: `${tildePath(CONFIG_FILE)} is not a JSON object` };
@@ -245,7 +248,7 @@ function readConfigFile() {
 export function saveConfig() {
   const out = {};
 
-  if (setup.roots) out.roots = setup.roots.map(r => ({ dir: tildePath(r.dir), org: r.org }));
+  if (setup.roots) out.roots = setup.roots.map(root => ({ dir: tildePath(root.dir), org: root.org }));
   if ('quick' in setup) out.quick = setup.quick;
   if (setup.projects) out.projects = setup.projects;
   if ('jira' in setup) out.jira = setup.jira;
@@ -279,13 +282,13 @@ export function saveConfig() {
     renameSync(tmp, real);
     configStamp = statSync(CONFIG_FILE).mtimeMs;
     return null;
-  } catch (e) {
+  } catch (error) {
     try {
       rmSync(tmp, { force: true });
     } catch {}
 
-    console.error('[peixairada] could not save the setup', e.message);
-    return e.message;
+    console.error('[peixairada] could not save the setup', error.message);
+    return error.message;
   }
 }
 
@@ -293,13 +296,13 @@ export function saveConfig() {
  *  import: test/agents.test.mjs imports this module with no STATE_FILE of its own, and ran the move against this
  *  Mac's real files the first time it was written at the top level. */
 export function loadConfig() {
-  const r = readConfigFile();
+  const read = readConfigFile();
 
-  if (r.setup) setup = cleanSetup(r.setup).setup;
-  else if (r.error) {
+  if (read.setup) setup = cleanSetup(read.setup).setup;
+  else if (read.error) {
     setup = {};
-    configError = r.error;
-    console.error(`[peixairada] ${r.error} — the setup waits for it to read`);
+    configError = read.error;
+    console.error(`[peixairada] ${read.error} — the setup waits for it to read`);
   } else if (Object.keys(setup).length && !saveConfig()) {
     console.log(`[peixairada] moved the setup to ${CONFIG_FILE}`);
     saveState();
@@ -326,13 +329,13 @@ export function reloadConfig() {
   const jiraWas = JSON.stringify(setup.jira ?? null);
   const chatWas = setup.chat?.repo ?? null;
   const lunchWas = JSON.stringify(setup.lunch ?? null);
-  const r = readConfigFile();
+  const read = readConfigFile();
 
-  if (r.error) {
-    if (r.error !== configError) console.error(`[peixairada] ${r.error}`);
-    configError = r.error;
+  if (read.error) {
+    if (read.error !== configError) console.error(`[peixairada] ${read.error}`);
+    configError = read.error;
   } else {
-    setup = r.setup ? cleanSetup(r.setup).setup : {};
+    setup = read.setup ? cleanSetup(read.setup).setup : {};
     configError = null;
   }
 
@@ -358,7 +361,10 @@ const HOME = homedir();
  *  commented-out colour won over the live one). A regex, not JSON.parse: settings.json allows comments and trailing
  *  commas. */
 const bareJsonc = txt =>
-  txt.replace(/("(?:[^"\\\n]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g, (m, str) => str ?? m.replace(/[^\n]/g, ' '));
+  txt.replace(
+    /("(?:[^"\\\n]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+    (match, str) => str ?? match.replace(/[^\n]/g, ' '),
+  );
 
 /** Peacock's colour for a folder: the nearest settings file at or above it, short of the home folder — "peacock.color",
  *  else the activity-bar colour Peacock derives from it. Null for none. */
@@ -372,11 +378,11 @@ function peacockOf(cwd) {
       continue;
     }
 
-    const m =
+    const match =
       txt.match(/"peacock\.color"\s*:\s*"(#[0-9a-fA-F]{6})/) ||
       txt.match(/"activityBar\.background"\s*:\s*"(#[0-9a-fA-F]{6})/);
 
-    return m ? m[1].toLowerCase() : null;
+    return match ? match[1].toLowerCase() : null;
   }
 
   return null;
@@ -387,32 +393,32 @@ function peacockOf(cwd) {
 export function movePeacock(cwds, projs = {}) {
   const out = { ...projs };
   const named = new Set();
-  const own = c => (projectDir(c) === c ? 0 : 1);
+  const own = cwd => (projectDir(cwd) === cwd ? 0 : 1);
 
-  for (const c of [...cwds].sort((a, b) => own(a) - own(b))) {
-    const name = basename(projectDir(c) || '');
+  for (const cwd of [...cwds].sort((left, right) => own(left) - own(right))) {
+    const name = basename(projectDir(cwd) || '');
 
     if (!name || named.has(name)) continue;
-    const color = peacockOf(c);
+    const color = peacockOf(cwd);
 
     if (!color) continue;
     named.add(name);
     if (out[name]?.color !== color) out[name] = { ...out[name], color };
   }
 
-  return Object.keys(out).some(n => out[n] !== projs[n]) ? out : null;
+  return Object.keys(out).some(name => out[name] !== projs[name]) ? out : null;
 }
 
 export function boardCwds() {
   const out = new Set();
 
-  for (const s of sessions.values()) {
-    const c = s.live?.cwd || s.cwd;
+  for (const session of sessions.values()) {
+    const cwd = session.live?.cwd || session.cwd;
 
-    if (c) out.add(c);
+    if (cwd) out.add(cwd);
   }
 
-  for (const p of Object.values(projects)) for (const c of p.cwds || []) out.add(c);
-  for (const k of pinned) if (k.startsWith('/')) out.add(k);
+  for (const project of Object.values(projects)) for (const cwd of project.cwds || []) out.add(cwd);
+  for (const key of pinned) if (key.startsWith('/')) out.add(key);
   return out;
 }

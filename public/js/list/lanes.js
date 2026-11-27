@@ -1,5 +1,5 @@
 function knownFolders() {
-  return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort();
+  return [...new Set([...state.sessions.values()].map(session => session.cwd).filter(Boolean))].sort();
 }
 
 // Claude's mark in pixels (2026-09-27; a school of ><> from
@@ -23,7 +23,8 @@ const PIX_SHEET = [
 ].map(row => row.replace(/ /g, ''));
 
 const PIX = `<span class="pix"><svg viewBox="0 0 ${PIX_SHEET[0].length} 9" shape-rendering="crispEdges" aria-hidden="true"><path d="${PIX_SHEET.flatMap(
-  (row, y) => [...row.matchAll(/#+/g)].map(m => `M${m.index} ${y}h${m[0].length}v1h-${m[0].length}z`),
+  (row, rowIndex) =>
+    [...row.matchAll(/#+/g)].map(match => `M${match.index} ${rowIndex}h${match[0].length}v1h-${match[0].length}z`),
 ).join('')}"/></svg></span>`;
 
 // Lanes (2026-10-09, the studies' C — Paseo's grouped sidebar; one divider between the clauding and the ready cards
@@ -48,7 +49,8 @@ const LANES = {
 // A word that shimmers while Claude works (2026-10-11, Claude Code's own spinner): a light runs across it — a window
 // as wide as the word, masked to a soft band, moving one way while the bright copy in it (its ::before, from
 // data-t, so the text is said once) moves the other; both transforms, so nothing repaints.
-const shim = t => `<span class="shim">${esc(t)}<span class="sw" data-t="${esc(t)}" aria-hidden="true"></span></span>`;
+const shim = text =>
+  `<span class="shim">${esc(text)}<span class="sw" data-t="${esc(text)}" aria-hidden="true"></span></span>`;
 
 // A long lane shows its newest LANE_CAP cards and a line for the rest (2026-10-13): every card in the page is restyled,
 // laid out and walked on each render — with every lane open here 400 cards, ~13,000 elements, and Idle and Done only
@@ -58,11 +60,11 @@ const LANE_CAP = 30;
 const CAPPED = new Set(['idle', 'done']);
 const laneMore = new Set();
 
-const moreHtml = (g, n) =>
-  `<div class="gsep more" data-more="${g}" role="button" tabindex="0" title="Show the other ${n} ${LANES[g][1]}"><span class="mn">${n} more ${LANES[g][0].toLowerCase()} chat${n === 1 ? '' : 's'}</span><span class="ms">+${n}</span></div>`;
+const moreHtml = (lane, count) =>
+  `<div class="gsep more" data-more="${lane}" role="button" tabindex="0" title="Show the other ${count} ${LANES[lane][1]}"><span class="mn">${count} more ${LANES[lane][0].toLowerCase()} chat${count === 1 ? '' : 's'}</span><span class="ms">+${count}</span></div>`;
 
-const laneHtml = (g, n, shut = false, still = false, extra = '') =>
-  `<div class="gsep lane ${g}${shut ? ' shut' : ''}${still ? ' still' : ''}" data-lane="${g}"${still ? '' : ` role="button" tabindex="0" aria-expanded="${!shut}"`} title="${n} ${LANES[g][1]}${still ? '' : ` — click to ${shut ? 'show' : 'fold'} them`}"><i aria-hidden="true"></i><span class="ln">${LANES[g][0]}</span>${extra}<b>${rn(`lane:${g}`, n)}</b><span class="lc" aria-hidden="true"></span></div>`;
+const laneHtml = (lane, count, shut = false, still = false, extra = '') =>
+  `<div class="gsep lane ${lane}${shut ? ' shut' : ''}${still ? ' still' : ''}" data-lane="${lane}"${still ? '' : ` role="button" tabindex="0" aria-expanded="${!shut}"`} title="${count} ${LANES[lane][1]}${still ? '' : ` — click to ${shut ? 'show' : 'fold'} them`}"><i aria-hidden="true"></i><span class="ln">${LANES[lane][0]}</span>${extra}<b>${rn(`lane:${lane}`, count)}</b><span class="lc" aria-hidden="true"></span></div>`;
 
 // …and when no lane waits on you, a still one that says so (renderSessionList); its mark is the clauding head's at
 // rest. Reached by a tick it earns a moment, once: the mark hops and throws a few sparks (caughtUp).
@@ -95,26 +97,29 @@ function caughtUp(now) {
   );
 
   const box = lane.getBoundingClientRect();
-  const r = pix.getBoundingClientRect();
-  const cx = r.left - box.left + r.width / 2;
-  const cy = r.top - box.top + r.height / 2;
+  const rect = pix.getBoundingClientRect();
+  const cx = rect.left - box.left + rect.width / 2;
+  const cy = rect.top - box.top + rect.height / 2;
 
   const tones = ['var(--accent)', 'var(--idle)', 'var(--working)', 'var(--watch)'];
 
-  for (let k = 0; k < 12; k++) {
+  for (let index = 0; index < 12; index++) {
     const sp = document.createElement('i');
 
     sp.className = 'spark';
-    sp.style.cssText = `left: ${cx - 1.5}px; top: ${cy - 1.5}px; background: ${tones[k % tones.length]}`;
+    sp.style.cssText = `left: ${cx - 1.5}px; top: ${cy - 1.5}px; background: ${tones[index % tones.length]}`;
     lane.append(sp);
 
-    const a = (k / 12) * Math.PI * 2 + Math.random() * 0.5;
-    const d = 16 + Math.random() * 18;
+    const angle = (index / 12) * Math.PI * 2 + Math.random() * 0.5;
+    const distance = 16 + Math.random() * 18;
 
     sp.animate(
       [
         { transform: 'none', opacity: 1 },
-        { transform: `translate(${Math.cos(a) * d}px, ${Math.sin(a) * d * 0.7}px) scale(.5)`, opacity: 0 },
+        {
+          transform: `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance * 0.7}px) scale(.5)`,
+          opacity: 0,
+        },
       ],
       {
         duration: 600 + Math.random() * 200,
@@ -132,24 +137,33 @@ function caughtUp(now) {
 // the bottom; the list is grouped first, so the done cards can bring a day back after older ready ones, and each run
 // gets its own line. The day stands alone, centred (2026-09-27; still fish either side before, and
 // hairlines for an hour) — nothing moves, plain markup.
-const pad2 = n => String(n).padStart(2, '0');
+const pad2 = number => String(number).padStart(2, '0');
+
 // How a date is written: DD-MM-YYYY, `short` without the year for the timeline's labels. The settings offered year
 // and month first for a day (2026-09-28), gone the same day.
-const fmtDate = (d, short) => `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}${short ? '' : `-${d.getFullYear()}`}`;
+const fmtDate = (date, short) =>
+  `${pad2(date.getDate())}-${pad2(date.getMonth() + 1)}${short ? '' : `-${date.getFullYear()}`}`;
+
 // A timestamp's day, the way the list and the transcript both write it: Today, Yesterday, the weekday within the week
 // (2026-10-12; `today`, else DD-MM-YYYY, before), then DD-MM-YYYY.
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const dayOf = ts => {
-  const d = new Date(ts);
+  const date = new Date(ts);
 
-  if (isNaN(d)) return '';
-  const back = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86_400_000);
+  if (isNaN(date)) return '';
+  const back = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(date).setHours(0, 0, 0, 0)) / 86_400_000);
 
-  return back === 0 ? 'Today' : back === 1 ? 'Yesterday' : back > 1 && back < 7 ? WEEKDAYS[d.getDay()] : fmtDate(d);
+  return back === 0
+    ? 'Today'
+    : back === 1
+      ? 'Yesterday'
+      : back > 1 && back < 7
+        ? WEEKDAYS[date.getDay()]
+        : fmtDate(date);
 };
 
-const dayName = s => dayOf(wordAt(s));
+const dayName = session => dayOf(wordAt(session));
 
 // Ages are written after the render, not into the markup (2026-09-27, night): a card's age in its markup made the
 // card's html change every minute and the node with it (and the review's 30 s tick rebuilt the list for the ages
@@ -160,30 +174,30 @@ const dayName = s => dayOf(wordAt(s));
 // chat's activity leaves its card's html, and its node, as they were; the time and the tooltip come from the chat here.
 function fillAges(root = document) {
   for (const el of root.querySelectorAll('.card .time')) {
-    const s = state.sessions.get(el.closest('.card')?.dataset.id);
+    const session = state.sessions.get(el.closest('.card')?.dataset.id);
 
-    if (!s) continue;
-    const at = s.lastActivity || s.startedAt || '';
+    if (!session) continue;
+    const at = session.lastActivity || session.startedAt || '';
 
     if (el.dataset.at !== at) el.dataset.at = at;
-    const tip = timeTip(s);
+    const tip = timeTip(session);
 
     if (el.title !== tip) el.title = tip;
   }
 
   for (const el of root.querySelectorAll('.chip.watch')) {
     // what runs behind the turn, a card's or the header's (2026-10-14)
-    const s = state.sessions.get(el.closest('.card')?.dataset.id || el.closest('#shead')?.dataset.sid);
+    const session = state.sessions.get(el.closest('.card')?.dataset.id || el.closest('#shead')?.dataset.sid);
 
-    if (!s) continue;
-    const tip = (s.tasks || []).map(taskLine).join('\n');
+    if (!session) continue;
+    const tip = (session.tasks || []).map(taskLine).join('\n');
 
     if (el.title !== tip) el.title = tip;
   }
 
   for (const el of root.querySelectorAll('.prrow[data-url]')) {
     // the open chat's PR rows (2026-10-14)
-    const pr = state.sessions.get(state.current)?.prs?.find(p => p.url === el.dataset.url);
+    const pr = state.sessions.get(state.current)?.prs?.find(chatPr => chatPr.url === el.dataset.url);
 
     if (!pr) continue;
     const tip = prTip(pr);
@@ -192,15 +206,15 @@ function fillAges(root = document) {
   }
 
   for (const el of root.querySelectorAll('[data-at]')) {
-    const t = rel(el.dataset.at);
+    const text = rel(el.dataset.at);
 
-    if (el.textContent !== t) el.textContent = t;
+    if (el.textContent !== text) el.textContent = text;
   }
 
   for (const el of root.querySelectorAll('[data-in]')) {
-    const t = relIn(el.dataset.in);
+    const text = relIn(el.dataset.in);
 
-    if (el.textContent !== t) el.textContent = t;
+    if (el.textContent !== text) el.textContent = text;
   } // a time to come: a wake-up's (2026-10-31)
 
   for (const el of root.querySelectorAll('.tvtrk3')) fillTracks(el); // the chat and its PRs on one clock (2026-10-17)

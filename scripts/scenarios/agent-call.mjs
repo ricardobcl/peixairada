@@ -94,10 +94,10 @@ export default async function (ctx) {
           input: { description: 'Refused at once', prompt: 'go' },
           result: 'Could not start it',
           at: at(23 * MIN),
-        }).map(l =>
-          l.type === 'user'
-            ? { ...l, message: { role: 'user', content: [{ ...l.message.content[0], is_error: true }] } }
-            : l,
+        }).map(line =>
+          line.type === 'user'
+            ? { ...line, message: { role: 'user', content: [{ ...line.message.content[0], is_error: true }] } }
+            : line,
         ),
         {
           type: 'assistant',
@@ -211,12 +211,12 @@ export default async function (ctx) {
   );
 
   ctx.assert.deepEqual(
-    folds.filter(t => /Agent/.test(t)),
+    folds.filter(text => /Agent/.test(text)),
     [],
     'no Agent left in a fold',
   );
 
-  ctx.assert.equal(folds.filter(t => /Skill/.test(t)).length, 2, 'a Skill’s call stays in its run');
+  ctx.assert.equal(folds.filter(text => /Skill/.test(text)).length, 2, 'a Skill’s call stays in its run');
 
   ctx.assert.equal(
     await ctx.evaluate(`[...document.querySelectorAll('${log('.tool')}')].some(t => /launched/.test(t.textContent))`),

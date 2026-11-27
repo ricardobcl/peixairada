@@ -29,14 +29,14 @@ async function stream(url, key) {
 
       if (done) break;
       buf += dec.decode(value, { stream: true });
-      let i;
+      let index;
 
-      while ((i = buf.indexOf('\n\n')) >= 0) {
-        const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i));
+      while ((index = buf.indexOf('\n\n')) >= 0) {
+        const match = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, index));
 
-        buf = buf.slice(i + 2);
-        if (m?.[1] === 'snapshot') resolve();
-        else if (m) got.push({ event: m[1], data: JSON.parse(m[2]) });
+        buf = buf.slice(index + 2);
+        if (match?.[1] === 'snapshot') resolve();
+        else if (match) got.push({ event: match[1], data: JSON.parse(match[2]) });
       }
     }
   })().catch(() => {});
@@ -44,15 +44,16 @@ async function stream(url, key) {
   await snapshot;
   return {
     got,
-    entries: id => got.filter(e => e.event === 'entries' && e.data.sessionId === id).map(e => e.data),
+    entries: id =>
+      got.filter(message => message.event === 'entries' && message.data.sessionId === id).map(message => message.data),
     stop: () => reader.cancel().catch(() => {}),
   };
 }
 
 const lines = (id, cwd, prompt, reply) =>
   chatLines({ id, cwd, prompt, reply, at: new Date() })
-    .filter(l => l.type !== 'ai-title')
-    .map(l => `${JSON.stringify(l)}\n`)
+    .filter(line => line.type !== 'ai-title')
+    .map(line => `${JSON.stringify(line)}\n`)
     .join('');
 
 test(
@@ -70,34 +71,34 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir, env: { TAIL_BYTES: '64' } }); // the boot tails every chat: none is loaded
 
     try {
-      const a = await srv.api(`api/sessions/${chat.id}/messages`);
+      const first = await srv.api(`api/sessions/${chat.id}/messages`);
 
-      assert.equal(a.status, 200);
-      const gen = a.body.gen;
+      assert.equal(first.status, 200);
+      const gen = first.body.gen;
 
       assert.ok(Number.isInteger(gen) && gen > 0);
-      assert.equal(a.body.upto, 2);
-      assert.equal(a.body.entries.length, 2);
-      const b = await srv.api(`api/sessions/${chat.id}/messages`);
+      assert.equal(first.body.upto, 2);
+      assert.equal(first.body.entries.length, 2);
+      const again = await srv.api(`api/sessions/${chat.id}/messages`);
 
-      assert.deepEqual([b.body.gen, b.body.upto], [gen, 2], 'fetched again, the same reading');
+      assert.deepEqual([again.body.gen, again.body.upto], [gen, 2], 'fetched again, the same reading');
 
-      const s = await stream(srv.url, srv.key);
+      const feed = await stream(srv.url, srv.key);
 
       appendFileSync(chat.file, lines(chat.id, cwd, 'second', 'second done'));
       appendFileSync(other.file, lines(other.id, cwd, 'unseen', 'unseen done'));
 
-      const got = await waitFor(() => s.entries(chat.id).at(-1)?.upto === 4 && s.entries(chat.id), {
+      const got = await waitFor(() => feed.entries(chat.id).at(-1)?.upto === 4 && feed.entries(chat.id), {
         what: 'the appended entries on the stream',
       });
 
       assert.ok(
-        got.every(e => e.gen === gen),
+        got.every(batch => batch.gen === gen),
         'an append is the same reading',
       );
 
       assert.deepEqual(
-        got.flatMap(e => e.entries).map(e => [e.role, e.text]),
+        got.flatMap(batch => batch.entries).map(entry => [entry.role, entry.text]),
         [
           ['user', 'second'],
           ['assistant', 'second done'],
@@ -105,30 +106,37 @@ test(
       );
 
       assert.ok(
-        got.every((e, i) => e.upto === 2 + got.slice(0, i + 1).reduce((n, x) => n + x.entries.length, 0)),
+        got.every(
+          (batch, index) =>
+            batch.upto === 2 + got.slice(0, index + 1).reduce((total, earlier) => total + earlier.entries.length, 0),
+        ),
         'each event ends where its entries do',
       );
 
-      const c = await srv.api(`api/sessions/${chat.id}/messages`);
+      const later = await srv.api(`api/sessions/${chat.id}/messages`);
 
-      assert.deepEqual([c.body.gen, c.body.upto, c.body.entries.length], [gen, 4, 4]);
+      assert.deepEqual([later.body.gen, later.body.upto, later.body.entries.length], [gen, 4, 4]);
 
       assert.deepEqual(
-        c.body.entries.slice(2),
-        got.flatMap(e => e.entries),
+        later.body.entries.slice(2),
+        got.flatMap(batch => batch.entries),
         'the fetch has what the stream said',
       );
 
       await waitFor(
-        () => s.got.some(e => e.event === 'session' && e.data.id === other.id && e.data.lastReply === 'unseen done'),
+        () =>
+          feed.got.some(
+            message =>
+              message.event === 'session' && message.data.id === other.id && message.data.lastReply === 'unseen done',
+          ),
         { what: "the other chat's append" },
       );
 
-      assert.deepEqual(s.entries(other.id), [], 'a chat nobody opened streams no entries');
-      const o = await srv.api(`api/sessions/${other.id}/messages`);
+      assert.deepEqual(feed.entries(other.id), [], 'a chat nobody opened streams no entries');
+      const otherMessages = await srv.api(`api/sessions/${other.id}/messages`);
 
       assert.deepEqual(
-        [o.body.upto, o.body.entries.map(e => e.text)],
+        [otherMessages.body.upto, otherMessages.body.entries.map(entry => entry.text)],
         [4, ['other', 'other done', 'unseen', 'unseen done']],
         'its first fetch reads it whole',
       );
@@ -137,18 +145,18 @@ test(
 
       writeFileSync(chat.file, two); // shorter than what was read: read again, whole
 
-      const d = await waitFor(
+      const reread = await waitFor(
         async () => {
-          const r = await srv.api(`api/sessions/${chat.id}/messages`);
+          const fetched = await srv.api(`api/sessions/${chat.id}/messages`);
 
-          return r.body.gen !== gen && r;
+          return fetched.body.gen !== gen && fetched;
         },
         { what: 'the file read again' },
       );
 
-      assert.ok(d.body.gen > gen, 'another reading, numbered after');
-      assert.deepEqual([d.body.upto, d.body.entries.map(e => e.text)], [2, ['first', 'first done']]);
-      s.stop();
+      assert.ok(reread.body.gen > gen, 'another reading, numbered after');
+      assert.deepEqual([reread.body.upto, reread.body.entries.map(entry => entry.text)], [2, ['first', 'first done']]);
+      feed.stop();
     } finally {
       await srv.stop();
     }

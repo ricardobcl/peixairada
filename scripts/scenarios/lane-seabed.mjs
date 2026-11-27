@@ -55,11 +55,11 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`window.__todayAsks`), asks, 'the day not asked again');
 
   // the hover says the hour
-  const r = await ctx.evaluate(
+  const point = await ctx.evaluate(
     `(r => ({ x: r.left + r.width * (10.5 / 96), y: r.top + r.height / 2 }))(document.querySelector('#sbSwim').getBoundingClientRect())`,
   );
 
-  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.x, y: r.y });
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y });
 
   await ctx.waitFor(`/^09:\\d\\d: \\d at work/.test(document.querySelector('#sbSwim').title)`, {
     what: 'the hour in the tooltip',

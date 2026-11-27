@@ -93,7 +93,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#ksNews').click()`);
   await ctx.waitFor(`document.querySelector('#news').open`, { what: 'from the keys’ sheet' });
   ctx.assert.equal(await ctx.evaluate(`document.activeElement.id`), 'newsNext', 'asked for: the keys on Next');
-  for (let i = 0; i < 3; i++) await key('ArrowRight', 'ArrowRight', 39);
+  for (let index = 0; index < 3; index++) await key('ArrowRight', 'ArrowRight', 39);
   out.last = await page();
 
   ctx.assert.deepEqual(

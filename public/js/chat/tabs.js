@@ -1,13 +1,16 @@
-const termLive = s => !!(s?.terminal && s.terminal.exited === null);
+const termLive = session => !!(session?.terminal && session.terminal.exited === null);
+
 /** The chat's zsh tabs (2026-10-13: ⌘T opens another beside the first): every live one, oldest first — the server's
       `shells`, each its tab `shell:<terminal id>`. */
-const shellsOf = s => (s?.shells || (s?.shell ? [s.shell] : [])).filter(t => t.exited === null);
+const shellsOf = session =>
+  (session?.shells || (session?.shell ? [session.shell] : [])).filter(term => term.exited === null);
+
 // …and a vim of the in-app editor's is one of those tabs (2026-10-21, `editor`), never the chat's zsh
-const zshsOf = s => shellsOf(s).filter(t => !t.editor);
-const shellLive = s => zshsOf(s).length > 0;
-const isShellTab = k => /^shell:/.test(k || '');
-const shellOfTab = (s, k) => shellsOf(s).find(t => `shell:${t.id}` === k) || null;
-const isVimTab = (s, k) => !!shellOfTab(s, k)?.editor;
+const zshsOf = session => shellsOf(session).filter(term => !term.editor);
+const shellLive = session => zshsOf(session).length > 0;
+const isShellTab = key => /^shell:/.test(key || '');
+const shellOfTab = (session, key) => shellsOf(session).find(term => `shell:${term.id}` === key) || null;
+const isVimTab = (session, key) => !!shellOfTab(session, key)?.editor;
 // Which tab a chat is on — page state, per chat: 'chat' (the claude session while it runs here, else the rendered
 // chat), 'shell:<id>' while a zsh of it lives, or one of its pages in the app's pane — 'gh:<url>' a GitHub page (a PR each),
 // 'ide:<url>' its folder's editor (2026-09-20). The pages a chat opened are remembered here (state.paneGh per chat,
@@ -18,36 +21,38 @@ const tabs = new Map();
 // moved, and forgotten with the split — the next one starts from claude on the left again.
 const homes = new Map(); // chat id → Map(tab → half), while that chat is split
 
-const homeOf = (s, k) => {
-  const h = homes.get(s.id)?.get(k) ?? (k === 'chat' ? 0 : 1);
+const homeOf = (session, key) => {
+  const half = homes.get(session.id)?.get(key) ?? (key === 'chat' ? 0 : 1);
 
-  if (!isTiled(s)) return h;
-  const gs = groupsOf(s); // a tile that went: its tabs went to the one beside it (closeTile), anything else to the first but the chat's
+  if (!isTiled(session)) return half;
+  const gs = groupsOf(session); // a tile that went: its tabs went to the one beside it (closeTile), anything else to the first but the chat's
 
-  if (gs.includes(h)) return h;
-  const chatAt = k === 'chat' ? null : homeOf(s, 'chat');
+  if (gs.includes(half)) return half;
+  const chatAt = key === 'chat' ? null : homeOf(session, 'chat');
 
-  return gs.find(g => g !== chatAt) ?? gs[0];
+  return gs.find(group => group !== chatAt) ?? gs[0];
 };
 
 /** The tabs a half's strip lists: every one of the chat's with one half, its own with two. */
-const keysIn = (s, g) => (!isSplit(s) ? (g ? [] : tabKeys(s)) : tabKeys(s).filter(k => homeOf(s, k) === g));
-const isPaneTab = t => /^(gh\d*|ide):/.test(t || '');
-const isPageTab = t => /^gh\d*:/.test(t || ''); // a web page's: gh:<url>, or gh2:<url>… for the same page again
+const keysIn = (session, half) =>
+  !isSplit(session) ? (half ? [] : tabKeys(session)) : tabKeys(session).filter(key => homeOf(session, key) === half);
+
+const isPaneTab = key => /^(gh\d*|ide):/.test(key || '');
+const isPageTab = key => /^gh\d*:/.test(key || ''); // a web page's: gh:<url>, or gh2:<url>… for the same page again
 
 /** What each half is showing, read against the tabs it actually has now: a key that is gone falls away, and a
       half whose tab went shows the first of its own that is left — or nothing, which is what an emptied half says. */
-function placeOf(s) {
-  if (!s) return [null, null];
+function placeOf(session) {
+  if (!session) return [null, null];
 
-  const p = tabs.get(s.id) || [];
-  const gs = groupsOf(s);
+  const place = tabs.get(session.id) || [];
+  const gs = groupsOf(session);
 
-  return Array.from({ length: Math.max(2, ...gs.map(g => g + 1)) }, (_, g) => {
-    if (!gs.includes(g)) return null;
-    const ks = keysIn(s, g);
+  return Array.from({ length: Math.max(2, ...gs.map(half => half + 1)) }, (_, half) => {
+    if (!gs.includes(half)) return null;
+    const ks = keysIn(session, half);
 
-    return ks.includes(p[g]) ? p[g] : ks[0] || null;
+    return ks.includes(place[half]) ? place[half] : ks[0] || null;
   });
 }
 
@@ -57,66 +62,66 @@ function placeOf(s) {
 // message, which is what gives it back after a board reload.
 const paneUrls = new Map();
 let addrEdit = null; // a page's address being edited, { sid, key, q } (addrEditAt)
-const bareUrl = u => u.replace(/^https?:\/\//, '');
+const bareUrl = url => url.replace(/^https?:\/\//, '');
 
 /** An address as the strip shows it: no scheme, the host quieter than the rest (2026-10-11). */
-const urlHtml = u => {
-  const b = bareUrl(u);
-  const i = b.indexOf('/');
+const urlHtml = url => {
+  const bare = bareUrl(url);
+  const slash = bare.indexOf('/');
 
-  return i < 0
-    ? `<span class="h">${esc(b)}</span>`
-    : `<span class="h">${esc(b.slice(0, i + 1))}</span>${esc(b.slice(i + 1))}`;
+  return slash < 0
+    ? `<span class="h">${esc(bare)}</span>`
+    : `<span class="h">${esc(bare.slice(0, slash + 1))}</span>${esc(bare.slice(slash + 1))}`;
 };
 
 // The editor's address is its folder (2026-10-12): VS Code Web's is 127.0.0.1:7332/?folder=%2FUsers%2F… — it says
 // VS Code · storefront, the URL in its tooltip, and a click still copies the URL.
-const ideName = u => {
+const ideName = url => {
   try {
-    const f = new URL(u).searchParams.get('folder');
+    const folder = new URL(url).searchParams.get('folder');
 
-    return f ? f.replace(/\/+$/, '').split('/').pop() : '';
+    return folder ? folder.replace(/\/+$/, '').split('/').pop() : '';
   } catch {
     return '';
   }
 };
 
 const ideLabels = new Map(); // a worktree's editor (2026-10-13): its URL → `<repo> @ <branch>`, the name of its tab
-const ideLabel = k => ideLabels.get(pageUrl(k)) || null;
+const ideLabel = key => ideLabels.get(pageUrl(key)) || null;
 
-const addrHtml = (k, u) =>
-  k.startsWith('ide:') && (ideLabel(k) || ideName(u))
-    ? `<span class="h">VS Code · </span>${esc(ideLabel(k) || ideName(u))}`
-    : urlHtml(u);
+const addrHtml = (key, url) =>
+  key.startsWith('ide:') && (ideLabel(key) || ideName(url))
+    ? `<span class="h">VS Code · </span>${esc(ideLabel(key) || ideName(url))}`
+    : urlHtml(url);
 
-const pageUrl = k => k.slice(k.indexOf(':') + 1); // where a tab was opened — all the shell reads of its key
-const purlTip = (k, u) => `${u} — ${/^gh\d*:/.test(k) ? 'click to change it' : 'click to copy'}`; // a page's address is edited, the editor's copied (2026-10-27)
-const paneUrl = k => paneUrls.get(k) || pageUrl(k);
+const pageUrl = key => key.slice(key.indexOf(':') + 1); // where a tab was opened — all the shell reads of its key
+const purlTip = (key, url) => `${url} — ${/^gh\d*:/.test(key) ? 'click to change it' : 'click to copy'}`; // a page's address is edited, the editor's copied (2026-10-27)
+const paneUrl = key => paneUrls.get(key) || pageUrl(key);
 
 /** An address at a page: the page, or further into it — a PR's files, a comment on it, its checks. */
 const atPage = (addr, url) => {
-  const u = url.replace(/\/+$/, '');
+  const trimmed = url.replace(/\/+$/, '');
 
-  return addr === url || (addr.startsWith(u) && /^([/?#]|$)/.test(addr.slice(u.length)));
+  return addr === url || (addr.startsWith(trimmed) && /^([/?#]|$)/.test(addr.slice(trimmed.length)));
 };
 
 /** The chat's tab for a page (2026-10-13): the one opened at it while it is still there, else any that is there now.
  *  A tab followed somewhere else is that somewhere's — opening the page again gives it a tab of its own. */
-const pageTab = (s, url) => {
-  const at = (state.paneGh.get(s.id) || []).filter(k => atPage(paneUrl(k), url));
+const pageTab = (session, url) => {
+  const at = (state.paneGh.get(session.id) || []).filter(key => atPage(paneUrl(key), url));
 
-  return at.find(k => pageUrl(k) === url) || at[0] || null;
+  return at.find(key => pageUrl(key) === url) || at[0] || null;
 };
 
 /** A new tab's key for a page: gh:<url>, else gh2:<url>, gh3:<url>… — none a tab of the chat has, nor one whose view
  *  the shell keeps somewhere else (a closed tab's lingers where it was left, and a key is shown as its view stands). */
-function pageKey(s, url) {
-  const had = new Set(state.paneGh.get(s.id) || []);
+function pageKey(session, url) {
+  const had = new Set(state.paneGh.get(session.id) || []);
 
-  for (let n = 1; ; n++) {
-    const k = `gh${n > 1 ? n : ''}:${url}`;
+  for (let copy = 1; ; copy++) {
+    const key = `gh${copy > 1 ? copy : ''}:${url}`;
 
-    if (!had.has(k) && (!paneUrls.has(k) || atPage(paneUrls.get(k), url))) return k;
+    if (!had.has(key) && (!paneUrls.has(key) || atPage(paneUrls.get(key), url))) return key;
   }
 }
 
@@ -135,15 +140,16 @@ window.peixPaneUrl = (key, url) => {
   }
 };
 
-const ideKey = s => (inApp && s?.cwd && state.paneIde.get(s.cwd) ? `ide:${state.paneIde.get(s.cwd)}` : null);
+const ideKey = session =>
+  inApp && session?.cwd && state.paneIde.get(session.cwd) ? `ide:${state.paneIde.get(session.cwd)}` : null;
 
-const paneKeys = s =>
-  !inApp || !s
+const paneKeys = session =>
+  !inApp || !session
     ? []
     : [
-        ...(state.paneGh.get(s.id) || []),
-        ...(ideKey(s) ? [ideKey(s)] : []),
-        ...(state.paneWt.get(s.id) || []).map(u => `ide:${u}`),
+        ...(state.paneGh.get(session.id) || []),
+        ...(ideKey(session) ? [ideKey(session)] : []),
+        ...(state.paneWt.get(session.id) || []).map(url => `ide:${url}`),
       ];
 
 // A blank tab (2026-10-13, ⌘T on a page): a browser's new tab — nothing on it yet, its address a box with the keys in
@@ -151,41 +157,43 @@ const paneKeys = s =>
 // takes its place (fillBlank). Page state only, as the changes tab is.
 const blanks = new Map(); // chat id → [{ n, q, sel }]: the box's text and the row ⏎ opens
 let blankSeq = 0;
-const isBlankTab = k => /^new:/.test(k || '');
-const blankOf = (s, k) => ((s && blanks.get(s.id)) || []).find(b => `new:${b.n}` === k) || null;
+const isBlankTab = key => /^new:/.test(key || '');
 
-const tabKeys = s => [
+const blankOf = (session, key) =>
+  ((session && blanks.get(session.id)) || []).find(blank => `new:${blank.n}` === key) || null;
+
+const tabKeys = session => [
   'chat',
-  ...shellsOf(s).map(t => `shell:${t.id}`),
-  ...(s && changesOpen.has(s.id) ? ['changes'] : []),
-  ...(s && timelineOpen.has(s.id) ? ['timeline'] : []),
-  ...(s ? (agentTabs.get(s.id) || []).map(a => `agent:${a.id}`) : []),
-  ...paneKeys(s),
-  ...((s && blanks.get(s.id)) || []).map(b => `new:${b.n}`),
+  ...shellsOf(session).map(term => `shell:${term.id}`),
+  ...(session && changesOpen.has(session.id) ? ['changes'] : []),
+  ...(session && timelineOpen.has(session.id) ? ['timeline'] : []),
+  ...(session ? (agentTabs.get(session.id) || []).map(agent => `agent:${agent.id}`) : []),
+  ...paneKeys(session),
+  ...((session && blanks.get(session.id)) || []).map(blank => `new:${blank.n}`),
 ];
 
-const tabOf = s => placeOf(s)[focusG];
+const tabOf = session => placeOf(session)[focusG];
 
 /** A tab put on show, in the half whose strip lists it — the one there is, unsplit — and the keys go with it.
       There is one transcript, one xterm per half and one web view per page, so a tab lives in exactly one half;
       choosing it never pulls it across (that is a drag, moveTab). */
-function setTab(s, k) {
-  const g = isSplit(s) ? homeOf(s, k) : 0;
-  const p = placeOf(s);
+function setTab(session, key) {
+  const half = isSplit(session) ? homeOf(session, key) : 0;
+  const place = placeOf(session);
 
-  p[g] = k;
-  tabs.set(s.id, p);
-  focusG = g;
+  place[half] = key;
+  tabs.set(session.id, place);
+  focusG = half;
 }
 
 /** A tab dragged onto the other half: its strip is that half's now, and it is on show there. The half it left
       shows the next of its own, or nothing — and a split the board made itself folds away then (syncTerm). */
-function moveTab(s, k, g) {
-  if (!isSplit(s)) return;
+function moveTab(session, key, half) {
+  if (!isSplit(session)) return;
   haptic('generic'); // the tab let go in the other half: felt as it lands
-  if (!homes.has(s.id)) homes.set(s.id, new Map());
-  homes.get(s.id).set(k, g);
-  setTab(s, k);
+  if (!homes.has(session.id)) homes.set(session.id, new Map());
+  homes.get(session.id).set(key, half);
+  setTab(session, key);
 }
 
 /** A tab that has just come into being — a zsh, a GitHub page, the editor — opens in the *second* half, and
@@ -195,38 +203,38 @@ function moveTab(s, k, g) {
  *  its own, in syncTerm, once the chat is down to one tab — an empty half is what ⌘2 is for, not what a zsh's exit
  *  leaves. Claude keeps the first half (2026-09-25): a split puts the chat on the left whatever the column was
  *  showing, and a new tab goes into the half the chat is not in — so it never takes the chat's place. */
-function openNewTab(s, k, cut) {
+function openNewTab(session, key, cut) {
   if (cut === 'here') {
     // ⌥⌘⇧T: in the keys' strip, as if dragged there; one half stays one
-    if (isSplit(s)) {
-      if (!homes.has(s.id)) homes.set(s.id, new Map());
-      homes.get(s.id).set(k, focusG);
+    if (isSplit(session)) {
+      if (!homes.has(session.id)) homes.set(session.id, new Map());
+      homes.get(session.id).set(key, focusG);
     }
 
-    return setTab(s, k);
+    return setTab(session, key);
   }
 
-  if (prefs.autoTile && isShellTab(k) && tileTerm(s, k, cut)) return;
+  if (prefs.autoTile && isShellTab(key) && tileTerm(session, key, cut)) return;
 
-  if (!isSplit(s) && prefs.autoTile && isShellTab(k)) {
-    if (cut ? cut === 'col' : tallOf('#groups')) stacked.add(s.id);
-    else stacked.delete(s.id);
+  if (!isSplit(session) && prefs.autoTile && isShellTab(key)) {
+    if (cut ? cut === 'col' : tallOf('#groups')) stacked.add(session.id);
+    else stacked.delete(session.id);
   } // the first split too, by the column's shape or ⌘D's
 
-  if (!isSplit(s)) splitChat(s, true);
-  homes.get(s.id).set(k, besideChat(s));
-  setTab(s, k);
+  if (!isSplit(session)) splitChat(session, true);
+  homes.get(session.id).set(key, besideChat(session));
+  setTab(session, key);
 }
 
 /** Where a tab opened beside the chat goes: the other half; tiled, the tile the keys are in when the chat is not
  *  there, else the first that is not the chat's. */
-function besideChat(s) {
-  const c = homeOf(s, 'chat');
+function besideChat(session) {
+  const chatAt = homeOf(session, 'chat');
 
-  if (!isTiled(s)) return 1 - c;
-  const gs = groupsOf(s);
+  if (!isTiled(session)) return 1 - chatAt;
+  const gs = groupsOf(session);
 
-  return focusG !== c && gs.includes(focusG) ? focusG : (gs.find(g => g !== c) ?? gs[0]);
+  return focusG !== chatAt && gs.includes(focusG) ? focusG : (gs.find(group => group !== chatAt) ?? gs[0]);
 }
 
 // A terminal a tile of its own (2026-11-25, prefs.autoTile; zsh and vim — pages, the changes, the timeline and the
@@ -237,32 +245,32 @@ function besideChat(s) {
 // A part under TILE_MIN is no tile: false, a tab beside the chat. ⌘D / ⇧⌘D (`cut`, 2026-11-25) name the direction, and
 // always cut: no empty tile takes the terminal, and no room is said.
 const tallOf = sel => {
-  const r = $(sel).getBoundingClientRect();
+  const rect = $(sel).getBoundingClientRect();
 
-  return r.height > r.width;
+  return rect.height > rect.width;
 };
 
-/** Whether tile g is taller than wide as the tree lays it out (2026-11-26): zoomed, its own shape, not the column's. */
-const tallTile = (s, g) => (z => z.h > z.w)(tileSizes(s, treeOf(s))[g]);
+/** Whether tile `group` is taller than wide as the tree lays it out (2026-11-26): zoomed, its own shape, not the column's. */
+const tallTile = (session, group) => (size => size.h > size.w)(tileSizes(session, treeOf(session))[group]);
 const TILE_MIN = { cols: 24, rows: 6 }; // the least a tile is for: a half side by side is under 80 already
 
-function tileTerm(s, k, cut) {
-  if (!isSplit(s)) return false;
-  if (!homes.has(s.id)) homes.set(s.id, new Map());
+function tileTerm(session, key, cut) {
+  if (!isSplit(session)) return false;
+  if (!homes.has(session.id)) homes.set(session.id, new Map());
 
-  const gs = groupsOf(s);
-  const empty = cut ? undefined : [focusG, ...gs].find(g => gs.includes(g) && !keysIn(s, g).length);
+  const gs = groupsOf(session);
+  const empty = cut ? undefined : [focusG, ...gs].find(group => gs.includes(group) && !keysIn(session, group).length);
 
   if (empty !== undefined) {
-    homes.get(s.id).set(k, empty);
-    setTab(s, k);
+    homes.get(session.id).set(key, empty);
+    setTab(session, key);
     return true;
   }
 
   const at = gs.includes(focusG) ? focusG : gs[0];
-  const d = cut || (tallTile(s, at) ? 'col' : 'row');
+  const direction = cut || (tallTile(session, at) ? 'col' : 'row');
 
-  if (!roomFor(s, at, d)) {
+  if (!roomFor(session, at, direction)) {
     if (cut) {
       note(
         $('#shead'),
@@ -273,71 +281,72 @@ function tileTerm(s, k, cut) {
     return false;
   }
 
-  cutTile(s, k, at, d, false);
+  cutTile(session, key, at, direction, false);
   return true;
 }
 
-/** Tile `at` cut in two along d, tab k alone in the new part — its second, or its first (`before`: the left or top). */
-function cutTile(s, k, at, d, before) {
-  if (!trees.has(s.id)) trees.set(s.id, halvesTree(s)); // the halves as they stand
-  const have = leavesOf(trees.get(s.id));
-  let g = 1;
+/** Tile `at` cut in two along `direction`, tab `key` alone in the new part — its second, or its first (`before`: the left or top). */
+function cutTile(session, key, at, direction, before) {
+  if (!trees.has(session.id)) trees.set(session.id, halvesTree(session)); // the halves as they stand
+  const have = leavesOf(trees.get(session.id));
+  let group = 1;
 
-  while (have.includes(g)) g++;
-  ensureGroups(g + 1);
-  const p = tabs.get(s.id);
+  while (have.includes(group)) group++;
+  ensureGroups(group + 1);
+  const place = tabs.get(session.id);
 
-  if (p) p[g] = null; // whatever a tile there before showed
+  if (place) place[group] = null; // whatever a tile there before showed
 
   trees.set(
-    s.id,
-    treeMap(trees.get(s.id), at, leaf =>
-      before ? { d, r: 0.5, a: { g }, b: leaf } : { d, r: 0.5, a: leaf, b: { g } },
+    session.id,
+    treeMap(trees.get(session.id), at, leaf =>
+      before ? { d: direction, r: 0.5, a: { g: group }, b: leaf } : { d: direction, r: 0.5, a: leaf, b: { g: group } },
     ),
   );
 
-  zoomed.delete(s.id);
-  homes.get(s.id).set(k, g);
-  setTab(s, k);
+  zoomed.delete(session.id);
+  homes.get(session.id).set(key, group);
+  setTab(session, key);
 }
 
 /** A tab put in a tile of its own at a side of tile `at` (2026-11-25; a drag to a tile's edge): the tile cut there. One
  *  half: the split, that side the tab's, the rest the other's. */
-function tabToSide(s, k, at, side) {
-  const d = side === 'left' || side === 'right' ? 'row' : 'col';
+function tabToSide(session, key, at, side) {
+  const direction = side === 'left' || side === 'right' ? 'row' : 'col';
   const before = side === 'left' || side === 'top';
 
-  if (isSplit(s)) return cutTile(s, k, at, d, before);
-  if (d === 'col') stacked.add(s.id);
-  else stacked.delete(s.id);
+  if (isSplit(session)) return cutTile(session, key, at, direction, before);
+  if (direction === 'col') stacked.add(session.id);
+  else stacked.delete(session.id);
 
-  const here = keysIn(s, 0);
-  const rest = here.filter(x => x !== k);
+  const here = keysIn(session, 0);
+  const rest = here.filter(tab => tab !== key);
   const mine = before ? 0 : 1;
 
-  splitChat(s, false);
-  for (const x of here) homes.get(s.id).set(x, x === k ? mine : 1 - mine);
-  const p = [null, null];
+  splitChat(session, false);
+  for (const tab of here) homes.get(session.id).set(tab, tab === key ? mine : 1 - mine);
+  const place = [null, null];
 
-  p[mine] = k;
-  p[1 - mine] = rest.includes(placeOf(s)[0]) ? placeOf(s)[0] : rest[0];
-  tabs.set(s.id, p);
+  place[mine] = key;
+  place[1 - mine] = rest.includes(placeOf(session)[0]) ? placeOf(session)[0] : rest[0];
+  tabs.set(session.id, place);
   focusG = mine;
 }
 
-/** Whether both parts of group g, cut in two along d, hold a terminal of TILE_MIN — read off the tree (tileSizes). */
-function roomFor(s, g, d) {
+/** Whether both parts of `group`, cut in two along `direction`, hold a terminal of TILE_MIN — read off the tree (tileSizes). */
+function roomFor(session, group, direction) {
   const NEW = -1; // the part to come: no group yet
 
   return tilesFit(
-    s,
-    treeMap(treeOf(s), g, leaf => ({ d, r: 0.5, a: leaf, b: { g: NEW } })),
-    [g, NEW],
+    session,
+    treeMap(treeOf(session), group, leaf => ({ d: direction, r: 0.5, a: leaf, b: { g: NEW } })),
+    [group, NEW],
   );
 }
 
 /** The chat's column as a tree: its tiles, its two halves, or its one. */
-const treeOf = s => (isTiled(s) ? trees.get(s.id) : isSplit(s) ? halvesTree(s) : { g: 0 });
+const treeOf = session =>
+  isTiled(session) ? trees.get(session.id) : isSplit(session) ? halvesTree(session) : { g: 0 };
 
 const TILE_GAP = 5; // #groups.tiled's gap, #gsplit's width (layout.css, sidebar.css)
 const TILE_EDGE = 2; // a tile's border, a pixel a side (sidebar.css)
@@ -347,140 +356,147 @@ const STRIP_H = 38; // .ptabs' height, where none is drawn to read it off
  *  pads down under the floating header — cut along the tree's lines, less the gaps between tiles, each one's border,
  *  and its strip when its tabs give it one. The tree's reading, not the boxes': zoomed, a tile's box is the column's,
  *  and a tile to come has none. A group the chat does not show yet has no strip: a terminal alone in its tile. */
-function tileSizes(s, tree) {
+function tileSizes(session, tree) {
   const box = $('#groups');
   const cs = getComputedStyle(box);
-  const px = v => parseFloat(v) || 0;
-  const split = isSplit(s);
+  const px = value => parseFloat(value) || 0;
+  const split = isSplit(session);
   const top = split ? px(cs.paddingTop) : px($('#chat').style.getPropertyValue('--float-h')); // one half pads its tile, not #groups
-  const W = box.clientWidth - (split ? px(cs.paddingLeft) + px(cs.paddingRight) : 0);
-  const H = box.clientHeight - top - (split ? px(cs.paddingBottom) : 0);
+  const boxWidth = box.clientWidth - (split ? px(cs.paddingLeft) + px(cs.paddingRight) : 0);
+  const boxHeight = box.clientHeight - top - (split ? px(cs.paddingBottom) : 0);
 
   const rects = tileRects(tree);
-  const q = v => Math.round(v * 1e4);
-  const lines = i => [...new Set(Object.values(rects).flatMap(r => [q(r[i]), q(r[i + 2])]))].sort((a, b) => a - b);
+  const quantize = value => Math.round(value * 1e4);
+
+  const lines = axis =>
+    [...new Set(Object.values(rects).flatMap(rect => [quantize(rect[axis]), quantize(rect[axis + 2])]))].sort(
+      (left, right) => left - right,
+    );
+
   const xs = lines(0);
   const ys = lines(1);
-  const span = (l, a, b) => l.indexOf(q(b)) - l.indexOf(q(a));
-  const fw = W - (xs.length - 2) * TILE_GAP;
-  const fh = H - (ys.length - 2) * TILE_GAP;
+  const span = (cuts, from, to) => cuts.indexOf(quantize(to)) - cuts.indexOf(quantize(from));
+  const fw = boxWidth - (xs.length - 2) * TILE_GAP;
+  const fh = boxHeight - (ys.length - 2) * TILE_GAP;
 
-  const stripH = Math.max(0, ...terms.map(t => $(t.el.tabs).offsetHeight)) || STRIP_H;
-  const gs = groupsOf(s);
+  const stripH = Math.max(0, ...terms.map(term => $(term.el.tabs).offsetHeight)) || STRIP_H;
+  const gs = groupsOf(session);
 
-  const strip = g => {
-    if (!gs.includes(g)) return false;
-    const ks = keysIn(s, g);
+  const strip = group => {
+    if (!gs.includes(group)) return false;
+    const ks = keysIn(session, group);
 
     return ks.length !== 1 || isPageTab(ks[0]) || isBlankTab(ks[0]); // renderTabs' .lone, the other way round
   };
 
   const out = {};
 
-  for (const [g, r] of Object.entries(rects)) {
-    const w = (r[2] - r[0]) * fw + (span(xs, r[0], r[2]) - 1) * TILE_GAP;
-    const h = (r[3] - r[1]) * fh + (span(ys, r[1], r[3]) - 1) * TILE_GAP;
+  for (const [group, rect] of Object.entries(rects)) {
+    const width = (rect[2] - rect[0]) * fw + (span(xs, rect[0], rect[2]) - 1) * TILE_GAP;
+    const height = (rect[3] - rect[1]) * fh + (span(ys, rect[1], rect[3]) - 1) * TILE_GAP;
 
-    out[g] = { w, h, bw: w - TILE_EDGE, bh: h - TILE_EDGE - (strip(+g) ? stripH : 0) };
+    out[group] = { w: width, h: height, bw: width - TILE_EDGE, bh: height - TILE_EDGE - (strip(+group) ? stripH : 0) };
   }
 
   return out;
 }
 
 /** Whether the tiles `gs` of a tree (all of them, by default) each hold a terminal of TILE_MIN, by the cell of one drawn now. */
-function tilesFit(s, tree, gs = null) {
-  const z = tileSizes(s, tree);
+function tilesFit(session, tree, gs = null) {
+  const sizes = tileSizes(session, tree);
   const { cw, ch } = termCell();
 
-  return (gs || Object.keys(z)).every(g => z[g].bw / cw >= TILE_MIN.cols && z[g].bh / ch >= TILE_MIN.rows);
+  return (gs || Object.keys(sizes)).every(
+    group => sizes[group].bw / cw >= TILE_MIN.cols && sizes[group].bh / ch >= TILE_MIN.rows,
+  );
 }
 
 /** A terminal's cell in px, read off a drawn terminal's screen (2026-11-26): its body is no measure — a TUI that has
  *  not filled it (claude's 14 rows in a tile of 30) made a row twice its height, and tiles that fit were refused. */
 function termCell() {
-  for (const t of terms) {
-    const sc = t.xt?.cols && $(t.el.tbody)?.querySelector('.xterm-screen')?.getBoundingClientRect();
+  for (const term of terms) {
+    const sc = term.xt?.cols && $(term.el.tbody)?.querySelector('.xterm-screen')?.getBoundingClientRect();
 
-    if (sc?.width && sc.height) return { cw: sc.width / t.xt.cols, ch: sc.height / t.xt.rows };
+    if (sc?.width && sc.height) return { cw: sc.width / term.xt.cols, ch: sc.height / term.xt.rows };
   }
 
   return { cw: 8, ch: 17 };
 }
 
-/** Tile g closed (⌘W on it, its ⨯): its tabs go to the tile it was split from, and the room with them. */
-function closeTile(s, g) {
-  const to = backOf(trees.get(s.id), g);
+/** Tile `group` closed (⌘W on it, its ⨯): its tabs go to the tile it was split from, and the room with them. */
+function closeTile(session, group) {
+  const to = backOf(trees.get(session.id), group);
 
   if (to === null) return;
-  for (const k of keysIn(s, g)) homes.get(s.id).set(k, to);
-  if (focusG === g) focusG = to;
-  dropLeaf(s, g);
+  for (const key of keysIn(session, group)) homes.get(session.id).set(key, to);
+  if (focusG === group) focusG = to;
+  dropLeaf(session, group);
 }
 
-/** Leaf g out of the chat's tree, its sibling taking its place; down to one, the column is one again. */
-function dropLeaf(s, g) {
-  const back = backOf(trees.get(s.id), g);
-  const t = treeMap(trees.get(s.id), g, () => null);
+/** Leaf `group` out of the chat's tree, its sibling taking its place; down to one, the column is one again. */
+function dropLeaf(session, group) {
+  const back = backOf(trees.get(session.id), group);
+  const tree = treeMap(trees.get(session.id), group, () => null);
 
-  if (zoomed.get(s.id) === g) zoomed.delete(s.id);
+  if (zoomed.get(session.id) === group) zoomed.delete(session.id);
 
-  if (t && !('g' in t)) {
-    trees.set(s.id, t);
-    if (!leavesOf(t).includes(focusG)) focusG = back ?? leavesOf(t)[0];
+  if (tree && !('g' in tree)) {
+    trees.set(session.id, tree);
+    if (!leavesOf(tree).includes(focusG)) focusG = back ?? leavesOf(tree)[0];
     return;
   }
 
-  const left = t ? placeOf(s)[t.g] : null;
+  const left = tree ? placeOf(session)[tree.g] : null;
 
-  unsplit(s, left || 'chat');
+  unsplit(session, left || 'chat');
   focusG = 0;
 }
 
 /** A tile emptied — its zsh exited, its last tab dragged away — goes, as a split the board made goes with its half.
  *  Down to two tiles, they are a split's halves (2026-11-26): one asked for by hand keeps its empty half, moved or not. */
-function foldTiles(s) {
-  while (isTiled(s) && (autoSplit.has(s.id) || groupsOf(s).length > 2)) {
-    const g = groupsOf(s).find(x => !keysIn(s, x).length);
+function foldTiles(session) {
+  while (isTiled(session) && (autoSplit.has(session.id) || groupsOf(session).length > 2)) {
+    const group = groupsOf(session).find(tile => !keysIn(session, tile).length);
 
-    if (g === undefined) return;
-    dropLeaf(s, g);
+    if (group === undefined) return;
+    dropLeaf(session, group);
   }
 }
 
 /** The chat tab brought forward — Esc from a page, ⌥⌘C, the focus view's row: into its own half, the left one
  *  unless it was dragged, and the keys go there rather than the chat coming into the half they were in. */
-const showChat = s => setTab(s, 'chat');
+const showChat = session => setTab(session, 'chat');
 
 /** The column in two for this chat: the chat on the left and every other tab on the right, showing what the
  *  column was when that was not the chat — so ⌘2 over a zsh puts claude beside it rather than the other way round. */
-function splitChat(s, auto) {
-  const was = placeOf(s)[0];
+function splitChat(session, auto) {
+  const was = placeOf(session)[0];
 
-  splits.add(s.id);
-  trees.delete(s.id);
-  if (auto) autoSplit.add(s.id);
-  else autoSplit.delete(s.id);
-  homes.set(s.id, new Map());
-  tabs.set(s.id, ['chat', was !== 'chat' ? was : null]);
+  splits.add(session.id);
+  trees.delete(session.id);
+  if (auto) autoSplit.add(session.id);
+  else autoSplit.delete(session.id);
+  homes.set(session.id, new Map());
+  tabs.set(session.id, ['chat', was !== 'chat' ? was : null]);
 }
 
 /** One half again: every tab back in the one strip, the one showing being what `keep` says. */
-function unsplit(s, keep) {
-  splits.delete(s.id);
-  autoSplit.delete(s.id);
-  homes.delete(s.id);
-  trees.delete(s.id);
-  tabs.set(s.id, [keep, null]);
+function unsplit(session, keep) {
+  splits.delete(session.id);
+  autoSplit.delete(session.id);
+  homes.delete(session.id);
+  trees.delete(session.id);
+  tabs.set(session.id, [keep, null]);
 }
 
 /** A page's tab is named for where it is (2026-10-13; where it was opened before): a PR as repo#n, else its host. */
-const paneLabel = u => {
-  const m = /github\.com\/[^/]+\/([^/]+)\/pull\/(\d+)/.exec(u);
+const paneLabel = url => {
+  const match = /github\.com\/[^/]+\/([^/]+)\/pull\/(\d+)/.exec(url);
 
-  if (m) return `${m[1]}#${m[2]}`;
+  if (match) return `${match[1]}#${match[2]}`;
 
   try {
-    return new URL(u).hostname.replace(/^www\./, '');
+    return new URL(url).hostname.replace(/^www\./, '');
   } catch {
     return 'page';
   }
@@ -490,21 +506,29 @@ const paneLabel = u => {
 // it runs here (attached under a page's tab too: the native pane covers it, nothing re-attaches on the way back), the
 // transcript otherwise — then the strip, then the shell's word (postPane). Runs on every open and SSE update, so it
 // never re-attaches what it shows.
-function syncTerm(s) {
+function syncTerm(session) {
   // the zsh exited, the page was forgotten, the last tab was dragged out: a split of the board's own goes with its half
-  if (isTiled(s)) foldTiles(s);
-  else if (s && autoSplit.has(s.id) && (!keysIn(s, 0).length || !keysIn(s, 1).length)) {
-    const p = placeOf(s);
+  if (isTiled(session)) foldTiles(session);
+  else if (session && autoSplit.has(session.id) && (!keysIn(session, 0).length || !keysIn(session, 1).length)) {
+    const shown = placeOf(session);
 
-    unsplit(s, p[0] || p[1]);
+    unsplit(session, shown[0] || shown[1]);
   }
 
   applySplit(); // the split belongs to the chat, so the column follows whichever is open
-  const p = placeOf(s);
+  const place = placeOf(session);
 
   for (const tm of terms) {
-    const k = p[tm.g];
-    const want = !s || !k ? null : isShellTab(k) ? shellOfTab(s, k) : k === 'chat' && termLive(s) ? s.terminal : null;
+    const key = place[tm.g];
+
+    const want =
+      !session || !key
+        ? null
+        : isShellTab(key)
+          ? shellOfTab(session, key)
+          : key === 'chat' && termLive(session)
+            ? session.terminal
+            : null;
 
     if (want) {
       if (tm.id !== want.id || tm.lost) attachTerm(tm, want);
@@ -514,25 +538,25 @@ function syncTerm(s) {
     }
   }
 
-  placeLog(s, p);
-  placeChanges(s, p);
-  placeTimeline(s, p);
-  placeAgent(s, p);
-  renderTabs(s, p);
-  placeBlanks(s, p);
-  postPane(s, p);
+  placeLog(session, place);
+  placeChanges(session, place);
+  placeTimeline(session, place);
+  placeAgent(session, place);
+  renderTabs(session, place);
+  placeBlanks(session, place);
+  postPane(session, place);
   keepTabsSoon(); // the tabs as they stand outlive a reload (2026-10-16)
 }
 
 // There is one transcript and it goes to whichever half holds the chat tab — moved, not copied, so the renderer
 // and its scroll position stay put. A live drawer is that half's body, so the transcript hides under it rather
 // than move; a half with no tab at all says what would fill it.
-function placeLog(s, p) {
+function placeLog(session, place) {
   const el = $('#log');
-  const at = s ? p.indexOf('chat') : 0;
-  const g = at < 0 ? 0 : at; // shown nowhere: parked in the left half
+  const at = session ? place.indexOf('chat') : 0;
+  const half = at < 0 ? 0 : at; // shown nowhere: parked in the left half
 
-  const host = $(GEL[g].body);
+  const host = $(GEL[half].body);
 
   if (el.parentElement !== host) {
     const top = el.scrollTop;
@@ -543,14 +567,14 @@ function placeLog(s, p) {
 
   const was = el.hidden;
 
-  el.hidden = at < 0 || !!terms[g].id;
+  el.hidden = at < 0 || !!terms[half].id;
   for (const tm of terms) $(tm.el.body).classList.toggle('haslog', !el.hidden && el.parentElement === $(tm.el.body)); // as .nostrip
   if (was && !el.hidden) el.scrollTop = el.scrollHeight; // out from under the drawer: what came while it was hidden was never scrolled to
 
   for (const tm of terms) {
     const host = $(tm.el.body);
     const had = host.querySelector('.gempty');
-    const want = isSplit(s) && !p[tm.g] && groupsOf(s).includes(tm.g);
+    const want = isSplit(session) && !place[tm.g] && groupsOf(session).includes(tm.g);
 
     if (want && !had) {
       host.insertAdjacentHTML(
@@ -569,29 +593,29 @@ function placeLog(s, p) {
 // its view at the right, and the address it is at. A half whose one tab is not a web page — claude, the zsh, the
 // editor — has no strip at all (.lone, 2026-09-28): ⌥⌘W and the ··· menu close what its × would
 // have, ⌘W and ⌘0 the half, and ⌥⌘1 / ⌥⌘2 against ⌘1 / ⌘2 turn it.
-function renderTabs(s, p = placeOf(s)) {
-  const two = isSplit(s);
+function renderTabs(session, place = placeOf(session)) {
+  const two = isSplit(session);
 
-  if (s && two) {
-    const l = tileSeen.get(s.id) || [];
+  if (session && two) {
+    const recent = tileSeen.get(session.id) || [];
 
-    if (l[0] !== focusG) tileSeen.set(s.id, [focusG, ...l.filter(x => x !== focusG)]);
+    if (recent[0] !== focusG) tileSeen.set(session.id, [focusG, ...recent.filter(group => group !== focusG)]);
   } // where the keys are, drawn: the arrows' memory
 
   for (const tm of terms) {
-    const g = tm.g;
+    const group = tm.g;
     const el = $(tm.el.tabs);
-    const cur = p[g];
-    const keys = s ? keysIn(s, g) : g ? [] : ['chat'];
+    const cur = place[group];
+    const keys = session ? keysIn(session, group) : group ? [] : ['chat'];
 
     const lone = two && keys.length === 1 && !isPageTab(keys[0]) && !isBlankTab(keys[0]); // a page's or a blank tab's strip is its address
 
-    $(tm.el.grp).classList.toggle('on', g === focusG);
-    el.hidden = g === 0 ? !two && keys.length < 2 : false;
+    $(tm.el.grp).classList.toggle('on', group === focusG);
+    el.hidden = group === 0 ? !two && keys.length < 2 : false;
     $(tm.el.grp).classList.toggle('nostrip', el.hidden); // the floating header's rules read it — a class, not :has() (2026-10-13)
     el.classList.toggle('lone', lone);
 
-    if (el.hidden || lone || (s ? !groupsOf(s).includes(g) : g > 0)) {
+    if (el.hidden || lone || (session ? !groupsOf(session).includes(group) : group > 0)) {
       setHtml(el, '');
       el._on = null;
       continue;
@@ -603,31 +627,31 @@ function renderTabs(s, p = placeOf(s)) {
     // shell's prompt, a PR's or a page's, VS Code's; its × drawn over the mark, under the pointer (2026-10-11, Q1); the
     // page in front its own address, with ‹ › ↻ ↗ in it (Q5) and a copy of the address (2026-10-20) — a div, since it
     // holds buttons
-    const tab = (k, label, title, x, icon = '') => {
-      const close = x ? `<span class="x" title="${esc(x)}">${ICON.close}</span>` : '';
+    const tab = (key, label, title, closeTip, icon = '') => {
+      const close = closeTip ? `<span class="x" title="${esc(closeTip)}">${ICON.close}</span>` : '';
 
-      if (cur === k && isBlankTab(k)) {
-        return `<div class="ptab on addr blank" role="tab" aria-selected="true" data-tab="${esc(k)}" title="${esc(`A new tab — type an address, or words to search${tip}`)}">${icon}<input class="paddr" type="text" placeholder="Search or enter an address" aria-label="Address" spellcheck="false" autocomplete="off" autocapitalize="off">${close}</div>`;
+      if (cur === key && isBlankTab(key)) {
+        return `<div class="ptab on addr blank" role="tab" aria-selected="true" data-tab="${esc(key)}" title="${esc(`A new tab — type an address, or words to search${tip}`)}">${icon}<input class="paddr" type="text" placeholder="Search or enter an address" aria-label="Address" spellcheck="false" autocomplete="off" autocapitalize="off">${close}</div>`;
       }
 
-      const editing = cur === k && addrEdit?.sid === s?.id && addrEdit.key === k; // a page's address, clicked: a box (2026-10-27)
+      const editing = cur === key && addrEdit?.sid === session?.id && addrEdit.key === key; // a page's address, clicked: a box (2026-10-27)
 
-      if (cur === k && isPaneTab(k)) {
+      if (cur === key && isPaneTab(key)) {
         return (
-          `<div class="ptab on pane addr${editing ? ' editing' : ''}" role="tab" aria-selected="true" tabindex="0" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}${
+          `<div class="ptab on pane addr${editing ? ' editing' : ''}" role="tab" aria-selected="true" tabindex="0" data-tab="${esc(key)}" title="${esc(title + tip)}">${icon}${
             editing
-              ? `<input class="pedit" type="text" data-key="${esc(k)}" aria-label="Address" spellcheck="false" autocomplete="off" autocapitalize="off">`
-              : `<span class="purl" data-key="${esc(k)}" data-url="${esc(paneUrl(k))}" title="${esc(purlTip(k, paneUrl(k)))}">${addrHtml(k, paneUrl(k))}</span>`
+              ? `<input class="pedit" type="text" data-key="${esc(key)}" aria-label="Address" spellcheck="false" autocomplete="off" autocapitalize="off">`
+              : `<span class="purl" data-key="${esc(key)}" data-url="${esc(paneUrl(key))}" title="${esc(purlTip(key, paneUrl(key)))}">${addrHtml(key, paneUrl(key))}</span>`
           }<span class="navs">` +
           `<button class="nav" data-nav="back" title="Back">${ICON.back}</button><button class="nav" data-nav="forward" title="Forward">${ICON.forward}</button><button class="nav" data-nav="reload" title="Reload">${ICON.reload}</button><button class="nav pcopy" title="Copy this page's address">${ICON.copyAddr}${ICON.copied}</button><button class="nav" data-nav="external" title="Open this page in your browser">${ICON.external}</button></span>${close}</div>`
         );
       }
 
-      return `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" role="tab" aria-selected="${cur === k}" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}${esc(label)}${close}</button>`;
+      return `<button class="ptab${cur === key ? ' on' : ''}${isPaneTab(key) ? ' pane' : ''}" role="tab" aria-selected="${cur === key}" data-tab="${esc(key)}" title="${esc(title + tip)}">${icon}${esc(label)}${close}</button>`;
     };
 
     // the half's own, ◫ (or ⊟) and ⨯, behind a ⋯ at the strip's end (Q5)
-    const over = isTiled(s) ? parentOf(trees.get(s.id), g)?.d === 'col' : stackNow(); // tiled: the split this tile is half of
+    const over = isTiled(session) ? parentOf(trees.get(session.id), group)?.d === 'col' : stackNow(); // tiled: the split this tile is half of
 
     const half = two
       ? `<button class="gmore" title="This half: turn the split, close it">${ICON.more}</button><span class="gacts">` +
@@ -639,86 +663,86 @@ function renderTabs(s, p = placeOf(s)) {
       : '';
 
     const html = `<div class="ptrack">${keys
-      .map(k =>
-        k === 'chat'
+      .map(key =>
+        key === 'chat'
           ? tab(
-              k,
-              termLive(s) ? 'claude' : 'chat',
-              `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`,
+              key,
+              termLive(session) ? 'claude' : 'chat',
+              `${termLive(session) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`,
               '',
               ICON.claude,
             )
-          : isVimTab(s, k)
+          : isVimTab(session, key)
             ? tab(
-                k,
-                shLabel(s, k),
-                `Vim in ${shellOfTab(s, k).cwd || s.cwd || 'its folder'} · ⌥⌘E`,
+                key,
+                shLabel(session, key),
+                `Vim in ${shellOfTab(session, key).cwd || session.cwd || 'its folder'} · ⌥⌘E`,
                 'Quit vim — it stays, saying so, over unsaved work',
                 ICON.vim,
               )
-            : isShellTab(k)
+            : isShellTab(key)
               ? tab(
-                  k,
-                  shLabel(s, k),
-                  `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T · ⌘T another`,
+                  key,
+                  shLabel(session, key),
+                  `A ${shName()} in ${session.cwd || 'its folder'} · ⌥⌘T · ⌘T another`,
                   'End this shell',
                   ICON.term,
                 )
-              : k === 'changes'
+              : key === 'changes'
                 ? tab(
-                    k,
+                    key,
                     'changes',
-                    `What this chat changed in ${s.cwd || 'its folder'} · ⌥⌘D`,
+                    `What this chat changed in ${session.cwd || 'its folder'} · ⌥⌘D`,
                     'Close the changes',
                     ICON.diff,
                   )
-                : k === 'timeline'
+                : key === 'timeline'
                   ? tab(
-                      k,
+                      key,
                       'timeline',
                       'This chat and its PRs in the order things happened · ⌥⌘J',
                       'Close the timeline',
                       ICON.timeline,
                     )
-                  : isAgentTab(k)
+                  : isAgentTab(key)
                     ? tab(
-                        k,
-                        agTabName(s, k),
-                        `${agTabName(s, k, true)} · an agent of this chat's, read-only`,
+                        key,
+                        agTabName(session, key),
+                        `${agTabName(session, key, true)} · an agent of this chat's, read-only`,
                         'Close this tab — the agent carries on',
                         ICON.lock,
                       )
-                    : isPageTab(k)
+                    : isPageTab(key)
                       ? tab(
-                          k,
-                          paneLabel(paneUrl(k)),
-                          GH_PR.test(paneUrl(k)) ? `${paneUrl(k)} · ⌥⌘G` : paneUrl(k),
+                          key,
+                          paneLabel(paneUrl(key)),
+                          GH_PR.test(paneUrl(key)) ? `${paneUrl(key)} · ⌥⌘G` : paneUrl(key),
                           'Close this page',
-                          GH_PR.test(paneUrl(k)) ? ICON.pr : ICON.globe,
+                          GH_PR.test(paneUrl(key)) ? ICON.pr : ICON.globe,
                         )
-                      : isBlankTab(k)
-                        ? tab(k, 'New tab', 'A new tab, nothing on it yet · ⌘T', 'Close this tab', ICON.globe)
-                        : ideLabel(k)
+                      : isBlankTab(key)
+                        ? tab(key, 'New tab', 'A new tab, nothing on it yet · ⌘T', 'Close this tab', ICON.globe)
+                        : ideLabel(key)
                           ? tab(
-                              k,
-                              ideLabel(k),
-                              `${ideName(pageUrl(k))} — a worktree — in VS Code Web`,
+                              key,
+                              ideLabel(key),
+                              `${ideName(pageUrl(key))} — a worktree — in VS Code Web`,
                               'Close the editor',
                               ICON.vscode,
                             )
-                          : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor', ICON.vscode),
+                          : tab(key, 'VS Code', `${session.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor', ICON.vscode),
       )
       .join('')}${two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : ''}</div>${half}`;
 
     // the strip moves (2026-10-11): what it held is read before it is drawn anew, for tabMotion — only when it will be
     const prev =
-      el._drawn !== html && el._sid === s?.id && !REDUCED.matches
-        ? [...el.querySelectorAll('.ptab[data-tab]')].map(b => ({
-            k: b.dataset.tab,
-            l: b.offsetLeft,
-            w: b.offsetWidth,
-            on: b.classList.contains('on'),
-            html: b.innerHTML,
+      el._drawn !== html && el._sid === session?.id && !REDUCED.matches
+        ? [...el.querySelectorAll('.ptab[data-tab]')].map(element => ({
+            k: element.dataset.tab,
+            l: element.offsetLeft,
+            w: element.offsetWidth,
+            on: element.classList.contains('on'),
+            html: element.innerHTML,
           }))
         : null;
 
@@ -736,17 +760,17 @@ function renderTabs(s, p = placeOf(s)) {
     // the tab in front scrolled to when it is another (2026-10-30) — not on every draw, which would undo a swipe —,
     // once it has grown in if it is new: a box still growing is scrolled short of it (and may be drawn anew meanwhile)
     const on = track?.querySelector('.ptab.on[data-tab]');
-    const at = `${s?.id} ${cur}`;
+    const at = `${session?.id} ${cur}`;
     const smooth = !!prev;
 
     if (on && el._on !== at) {
       el._on = at;
 
       const go = () => {
-        const t = el.querySelector('.ptrack');
-        const b = t?.querySelector('.ptab.on[data-tab]');
+        const trackNow = el.querySelector('.ptrack');
+        const front = trackNow?.querySelector('.ptab.on[data-tab]');
 
-        if (b && el._on === at) revealTab(t, b, smooth);
+        if (front && el._on === at) revealTab(trackNow, front, smooth);
       };
 
       if (grow) grow.finished.then(go, go);
@@ -757,7 +781,7 @@ function renderTabs(s, p = placeOf(s)) {
     const nb = drew && el.querySelector('.ptab.blank .paddr, .ptab.editing .pedit'); // not a closed one's stand-in, folding
 
     if (nb) {
-      nb.value = nb.matches('.pedit') ? addrEdit.q : blankOf(s, nb.closest('.ptab').dataset.tab)?.q || '';
+      nb.value = nb.matches('.pedit') ? addrEdit.q : blankOf(session, nb.closest('.ptab').dataset.tab)?.q || '';
 
       if (typing) {
         nb.focus();
@@ -766,7 +790,7 @@ function renderTabs(s, p = placeOf(s)) {
     }
 
     if (el._drawn === html) fadeSoon();
-    el._sid = s?.id;
+    el._sid = session?.id;
   }
 
   if (addrEdit && !document.querySelector('.ptabs .ptab.editing')) addrEdit = null; // its tab gone from the front: let go
@@ -782,59 +806,59 @@ function tabMotion(el, prev) {
   const track = el.querySelector('.ptrack');
 
   const now = [...el.querySelectorAll('.ptab[data-tab]')];
-  const had = new Set(prev.map(p => p.k));
-  const has = new Set(now.map(b => b.dataset.tab));
+  const had = new Set(prev.map(old => old.k));
+  const has = new Set(now.map(element => element.dataset.tab));
 
   let grow = null;
 
-  for (const b of now) {
-    if (!had.has(b.dataset.tab)) {
-      const cs = getComputedStyle(b);
-      const w = b.offsetWidth;
+  for (const element of now) {
+    if (!had.has(element.dataset.tab)) {
+      const cs = getComputedStyle(element);
+      const width = element.offsetWidth;
 
-      const a = b.animate(
+      const animation = element.animate(
         [
           { width: '0px', paddingLeft: '0px', paddingRight: '0px', opacity: 0 },
-          { width: `${w}px`, paddingLeft: cs.paddingLeft, paddingRight: cs.paddingRight, opacity: 1 },
+          { width: `${width}px`, paddingLeft: cs.paddingLeft, paddingRight: cs.paddingRight, opacity: 1 },
         ],
         { duration: 200, easing: EASE_OUT, id: 'tabgrow' },
       );
 
-      if (b.classList.contains('on')) grow = a;
-      noteMotion(b.dataset.tab, 'tabgrow');
+      if (element.classList.contains('on')) grow = animation;
+      noteMotion(element.dataset.tab, 'tabgrow');
     }
   }
 
-  prev.forEach((p, i) => {
-    if (has.has(p.k)) return;
+  prev.forEach((old, index) => {
+    if (has.has(old.k)) return;
 
     const after = prev
-      .slice(i + 1)
-      .map(q => now.find(b => b.dataset.tab === q.k))
+      .slice(index + 1)
+      .map(later => now.find(element => element.dataset.tab === later.k))
       .find(Boolean);
 
-    const g = html2el(`<span class="ptabgone" aria-hidden="true">${p.html}</span>`);
+    const gone = html2el(`<span class="ptabgone" aria-hidden="true">${old.html}</span>`);
 
-    g.querySelector('.x')?.remove();
-    track.insertBefore(g, after || track.querySelector('.pdrop'));
+    gone.querySelector('.x')?.remove();
+    track.insertBefore(gone, after || track.querySelector('.pdrop'));
 
-    g.animate(
+    gone.animate(
       [
-        { width: `${p.w}px`, opacity: 1 },
+        { width: `${old.w}px`, opacity: 1 },
         { width: '0px', paddingLeft: '0px', paddingRight: '0px', marginLeft: '-4px', opacity: 0 },
       ],
       { duration: 180, easing: EASE_OUT, fill: 'forwards', id: 'tabfold' },
-    ).onfinish = () => g.remove();
+    ).onfinish = () => gone.remove();
 
-    noteMotion(p.k, 'tabfold');
+    noteMotion(old.k, 'tabfold');
   });
 
-  const was = prev.find(p => p.on);
+  const was = prev.find(old => old.on);
   const on = el.querySelector('.ptab.on[data-tab]');
 
   if (!was || !on || was.k === on.dataset.tab) return grow;
 
-  const from = now.find(b => b.dataset.tab === was.k);
+  const from = now.find(element => element.dataset.tab === was.k);
   const fl = from ? from.offsetLeft : was.l;
   const fw = from ? from.offsetWidth : was.w;
 
@@ -865,36 +889,41 @@ function tabMotion(el, prev) {
  *  whole — its start where it is wider than the box —, gliding when the strip moves (`smooth`), else at once. */
 const TRACK_FADE = 24;
 
-function revealTab(track, b, smooth) {
-  const l = b.offsetLeft - TRACK_FADE;
-  const r = b.offsetLeft + b.offsetWidth + TRACK_FADE;
-  const x = track.scrollLeft;
-  const w = track.clientWidth;
+function revealTab(track, tab, smooth) {
+  const start = tab.offsetLeft - TRACK_FADE;
+  const end = tab.offsetLeft + tab.offsetWidth + TRACK_FADE;
+  const scrolled = track.scrollLeft;
+  const width = track.clientWidth;
 
-  const to = l < x ? l : r > x + w ? Math.min(l, r - w) : null;
+  const to = start < scrolled ? start : end > scrolled + width ? Math.min(start, end - width) : null;
 
   if (to !== null) track.scrollTo({ left: Math.max(0, to), behavior: smooth && !REDUCED.matches ? 'smooth' : 'auto' });
   trackEdges(track);
 }
 
 /** Which ends of the tabs' box have tabs past them, faded out: on a draw, a scroll and a resize of the strip. */
-function trackEdges(t) {
-  const x = t.scrollLeft;
-  const l = x > 1;
-  const r = x + t.clientWidth < t.scrollWidth - 1;
+function trackEdges(track) {
+  const scrolled = track.scrollLeft;
+  const moreLeft = scrolled > 1;
+  const moreRight = scrolled + track.clientWidth < track.scrollWidth - 1;
 
-  t.classList.toggle('ofl', l);
-  t.classList.toggle('ofr', r);
+  track.classList.toggle('ofl', moreLeft);
+  track.classList.toggle('ofr', moreRight);
 }
 
 // The shell's word: the chat's pages, the ones to show and where each one goes — a half's body, in CSS px
 // (points in the app). The overlay covers the whole window and each web view is placed inside it, so the two
 // halves can each have a page up. `show`/`left`/`top` repeat the first of them for a shell built before the
 // split existed. Sent by syncTerm, and again whenever that geometry moves.
-const groupRect = g => {
-  const r = $(GEL[g].body).getBoundingClientRect();
+const groupRect = half => {
+  const rect = $(GEL[half].body).getBoundingClientRect();
 
-  return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) };
+  return {
+    left: Math.round(rect.left),
+    top: Math.round(rect.top),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+  };
 };
 
 // A dialog open puts the pane down for as long as it is up (2026-09-22): a
@@ -903,23 +932,26 @@ const groupRect = g => {
 // dialog belongs — the middle of the window, over a dimmed board — and hands the keyboard back on the way down.
 // Nothing reloads: the shell only hides the web view, and the tab comes back with the dialog's close — the settings
 // are a dialog too since 2026-09-28.
-function postPane(s, p = placeOf(s)) {
+function postPane(session, place = placeOf(session)) {
   if (!inApp) return;
   const shut = !!document.querySelector('dialog[open]');
 
   const panes = shut
     ? []
-    : p.map((k, g) => (isPaneTab(k) && !$(GEL[g].grp).hidden ? { key: k, ...groupRect(g) } : null)).filter(Boolean); // not behind a half filling the column
+    : place
+        .map((key, half) => (isPaneTab(key) && !$(GEL[half].grp).hidden ? { key, ...groupRect(half) } : null))
+        .filter(Boolean); // not behind a half filling the column
 
   // the page with the keys, or null when they are the board's — claude, a zsh, the changes — with a page beside them
   // (2026-10-14): the first page stood in for them, so the shell gave that page the keys on its next change, and as
   // the message did not change between the two, a move from claude back to the page was never posted
-  const focus = !shut && isPaneTab(p[focusG]) && panes.some(x => x.key === p[focusG]) ? p[focusG] : null;
+  const focus =
+    !shut && isPaneTab(place[focusG]) && panes.some(pane => pane.key === place[focusG]) ? place[focusG] : null;
 
   const msg = {
     type: 'pane',
-    id: s?.id || null,
-    keys: paneKeys(s),
+    id: session?.id || null,
+    keys: paneKeys(session),
     panes,
     focus,
     show: focus || panes[0]?.key || null,
@@ -938,9 +970,9 @@ const repostPane = () => postPane(state.sessions.get(state.current) || null);
 
 if (inApp) {
   const repost = () => {
-    const s = state.sessions.get(state.current);
+    const session = state.sessions.get(state.current);
 
-    if (s && placeOf(s).some(isPaneTab)) postPane(s);
+    if (session && placeOf(session).some(isPaneTab)) postPane(session);
   };
 
   const ro = new ResizeObserver(repost);
@@ -948,82 +980,82 @@ if (inApp) {
   for (const id of ['#chat', '#groups']) ro.observe($(id));
   onGroup(tm => ro.observe($(tm.el.body)));
   window.addEventListener('resize', repost);
-  for (const d of document.querySelectorAll('dialog')) d.addEventListener('close', repostPane); // the pane comes back up
+  for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('close', repostPane); // the pane comes back up
 }
 
 // Both strips, one handler: which half a click landed in is the strip it came from.
-$('#groups').addEventListener('click', e => {
-  const strip = e.target.closest('.ptabs');
+$('#groups').addEventListener('click', event => {
+  const strip = event.target.closest('.ptabs');
 
   if (!strip) return;
-  const g = +strip.closest('.grp').dataset.g;
+  const half = +strip.closest('.grp').dataset.g;
 
-  if (e.target.closest('.gmore')) return void strip.classList.toggle('gopen');
-  if (e.target.closest('.gclose')) return closeHalf(g);
-  const s = state.sessions.get(state.current);
+  if (event.target.closest('.gmore')) return void strip.classList.toggle('gopen');
+  if (event.target.closest('.gclose')) return closeHalf(half);
+  const session = state.sessions.get(state.current);
 
-  if (!s) return;
+  if (!session) return;
 
-  if (e.target.closest('.gtidy')) {
-    focusGroup(g);
+  if (event.target.closest('.gtidy')) {
+    focusGroup(half);
     return hotTidy();
   } // the tile whose ⋯ it is: the keys' tile, next after claude's
 
-  if (e.target.closest('.gturn')) {
-    if (!isTiled(s)) return stackSplit(s, !stacked.has(s.id));
-    focusGroup(g);
-    return stackSplit(s, parentOf(trees.get(s.id), g)?.d !== 'col');
+  if (event.target.closest('.gturn')) {
+    if (!isTiled(session)) return stackSplit(session, !stacked.has(session.id));
+    focusGroup(half);
+    return stackSplit(session, parentOf(trees.get(session.id), half)?.d !== 'col');
   }
 
-  const cp = e.target.closest('.pcopy');
+  const cp = event.target.closest('.pcopy');
 
   if (cp) {
-    const k = cp.closest('.ptab').dataset.tab;
+    const tabKey = cp.closest('.ptab').dataset.tab;
 
-    if (addrEdit) addrLeave(s);
-    return copyPaneUrl(strip.querySelector(`.ptab[data-tab="${CSS.escape(k)}"] .purl`), cp);
+    if (addrEdit) addrLeave(session);
+    return copyPaneUrl(strip.querySelector(`.ptab[data-tab="${CSS.escape(tabKey)}"] .purl`), cp);
   } // the page's address, not what is typed over it
 
-  const nav = e.target.closest('.nav');
+  const nav = event.target.closest('.nav');
 
   if (nav) {
-    focusGroup(g);
-    if (addrEdit) addrLeave(s);
+    focusGroup(half);
+    if (addrEdit) addrLeave(session);
     post({ type: 'nav', what: nav.dataset.nav });
     return;
   }
 
-  const url = e.target.closest('.purl');
+  const url = event.target.closest('.purl');
 
-  if (url) return isPageTab(url.dataset.key) ? addrEditAt(s, url.dataset.key, g) : copyPaneUrl(url);
-  if (e.target.closest('.paddr, .pedit')) return; // a blank tab's address, a page's being edited: typed into, not a tab to open
-  const b = e.target.closest('.ptab');
+  if (url) return isPageTab(url.dataset.key) ? addrEditAt(session, url.dataset.key, half) : copyPaneUrl(url);
+  if (event.target.closest('.paddr, .pedit')) return; // a blank tab's address, a page's being edited: typed into, not a tab to open
+  const tab = event.target.closest('.ptab');
 
-  if (!b) return;
-  const k = b.dataset.tab;
+  if (!tab) return;
+  const key = tab.dataset.tab;
 
-  if (e.target.closest('.x')) return closeTab(s, k);
-  openTab(s, k);
+  if (event.target.closest('.x')) return closeTab(session, key);
+  openTab(session, key);
 });
 
-onGroup(tm => $(tm.el.tabs).addEventListener('pointerleave', e => e.currentTarget.classList.remove('gopen'))); // ⋯'s ◫ ⨯ fold again
+onGroup(tm => $(tm.el.tabs).addEventListener('pointerleave', event => event.currentTarget.classList.remove('gopen'))); // ⋯'s ◫ ⨯ fold again
 
 // The tabs past the strip's ends (2026-10-30): a sideways swipe scrolls their box by itself; a wheel turned over the
 // strip, or a swipe down it, scrolls it too — down is further along — rather than nothing. Each strip's own listener,
 // non-passive: nothing else scrolls under it. The box is drawn anew with the strip, so its scroll is heard in capture.
-const tabsWheel = e => {
-  const t = e.currentTarget.querySelector('.ptrack');
+const tabsWheel = event => {
+  const track = event.currentTarget.querySelector('.ptrack');
 
-  if (!t || t.scrollWidth <= t.clientWidth || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
-  e.preventDefault();
-  t.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? t.clientWidth : 1);
+  if (!track || track.scrollWidth <= track.clientWidth || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+  event.preventDefault();
+  track.scrollLeft += event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? track.clientWidth : 1);
 };
 
 const stripRo = new ResizeObserver(es => {
-  for (const e of es) {
-    const t = e.target.querySelector('.ptrack');
+  for (const entry of es) {
+    const track = entry.target.querySelector('.ptrack');
 
-    if (t) trackEdges(t);
+    if (track) trackEdges(track);
   }
 });
 
@@ -1034,8 +1066,8 @@ onGroup(tm => {
 
   el.addEventListener(
     'scroll',
-    e => {
-      if (e.target.classList?.contains('ptrack')) trackEdges(e.target);
+    event => {
+      if (event.target.classList?.contains('ptrack')) trackEdges(event.target);
     },
     { capture: true, passive: true },
   );
@@ -1048,9 +1080,9 @@ onGroup(tm => {
 // the button out from under the click that followed it.
 $('#groups').addEventListener(
   'mousedown',
-  e => {
-    if (e.target.closest('.ptabs')) return;
-    const grp = e.target.closest('.grp');
+  event => {
+    if (event.target.closest('.ptabs')) return;
+    const grp = event.target.closest('.grp');
 
     if (grp) focusGroup(+grp.dataset.g);
   },
@@ -1060,19 +1092,19 @@ $('#groups').addEventListener(
 // …and a click on a page in the pane, which the shell reports (2026-09-28): a native view over the half, so the page
 // never saw it, and ⌘W and ⌥⌘W went on acting on the half the keys had been in before.
 window.peixPaneFocus = key => {
-  const s = state.sessions.get(state.current);
-  const g = s ? placeOf(s).indexOf(key) : -1;
+  const session = state.sessions.get(state.current);
+  const half = session ? placeOf(session).indexOf(key) : -1;
 
-  if (addrEdit) addrLeave(s);
-  if (g >= 0) focusGroup(g);
+  if (addrEdit) addrLeave(session);
+  if (half >= 0) focusGroup(half);
 }; // an address being edited is put back, as a click in a browser's page does
 
 // …and ⌘W in VS Code Web with no editor open (2026-10-14), which the editor keeps from the Window menu: the shell
 // hears it from the page and names the view's tab, which goes as ⌘W's would — by that key, not the half's.
 window.peixPaneClose = key => {
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (s && tabKeys(s).includes(key)) dropTab(s, key);
+  if (session && tabKeys(session).includes(key)) dropTab(session, key);
 };
 
 // …and a new window a page asks for (2026-10-21): a link with target=_blank, VS Code Web's every link out — a tab of
@@ -1080,10 +1112,10 @@ window.peixPaneClose = key => {
 // strip: GitHub filled its half with no address and no way back. False — a view not the open chat's, not a web
 // page — and the shell loads it there still.
 window.peixPaneOpen = (key, url) => {
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (!s || !IN_PANE.test(url) || !paneKeys(s).includes(key)) return false;
-  openExternal(url, { s });
+  if (!session || !IN_PANE.test(url) || !paneKeys(session).includes(key)) return false;
+  openExternal(url, { s: session });
   return true;
 };
 
@@ -1096,75 +1128,77 @@ window.peixPaneOpen = (key, url) => {
 {
   let drag = null;
 
-  const halfAt = (x, y) => {
-    const g = document.elementFromPoint(x, y)?.closest('.grp');
+  const halfAt = (clientX, clientY) => {
+    const group = document.elementFromPoint(clientX, clientY)?.closest('.grp');
 
-    return g ? +g.dataset.g : null;
+    return group ? +group.dataset.g : null;
   };
 
-  const lit = g => {
-    for (const tm of terms) $(tm.el.grp).classList.toggle('drop', g === tm.g && g !== drag?.from);
+  const lit = half => {
+    for (const tm of terms) $(tm.el.grp).classList.toggle('drop', half === tm.g && half !== drag?.from);
   };
 
   // a tile's edge (2026-11-25, Auto-tiling on): the outer quarter of its body that way is a tile of its own
   // there — shown as the half it would take (#tdrop) —, its middle or its strip the tile as ever. No room: no edge.
   const EDGE = 0.25;
 
-  const edgeAt = (x, y) => {
+  const edgeAt = (clientX, clientY) => {
     if (!prefs.autoTile) return null;
 
-    const el = document.elementFromPoint(x, y);
+    const el = document.elementFromPoint(clientX, clientY);
     const grp = el?.closest('.grp');
 
     if (!grp || el.closest('.ptabs')) return null;
 
-    const g = +grp.dataset.g;
-    const s = state.sessions.get(state.current);
+    const group = +grp.dataset.g;
+    const session = state.sessions.get(state.current);
 
-    if (!s) return null;
-    if (g === drag.from && keysIn(s, isSplit(s) ? g : 0).length < 2) return null; // its only tab: it is a tile of its own
+    if (!session) return null;
+    if (group === drag.from && keysIn(session, isSplit(session) ? group : 0).length < 2) return null; // its only tab: it is a tile of its own
 
-    const r = $(GEL[g].body).getBoundingClientRect();
-    const fx = (x - r.left) / r.width;
-    const fy = (y - r.top) / r.height;
+    const rect = $(GEL[group].body).getBoundingClientRect();
+    const fx = (clientX - rect.left) / rect.width;
+    const fy = (clientY - rect.top) / rect.height;
 
     const [side, near] = [
       ['left', fx],
       ['right', 1 - fx],
       ['top', fy],
       ['bottom', 1 - fy],
-    ].sort((a, b) => a[1] - b[1])[0];
+    ].sort((first, second) => first[1] - second[1])[0];
 
-    if (near > EDGE || near < 0 || !roomFor(s, g, side === 'left' || side === 'right' ? 'row' : 'col')) return null;
+    if (near > EDGE || near < 0 || !roomFor(session, group, side === 'left' || side === 'right' ? 'row' : 'col')) {
+      return null;
+    }
 
     const half =
       side === 'left'
-        ? [r.left, r.top, r.width / 2, r.height]
+        ? [rect.left, rect.top, rect.width / 2, rect.height]
         : side === 'right'
-          ? [r.left + r.width / 2, r.top, r.width / 2, r.height]
+          ? [rect.left + rect.width / 2, rect.top, rect.width / 2, rect.height]
           : side === 'top'
-            ? [r.left, r.top, r.width, r.height / 2]
-            : [r.left, r.top + r.height / 2, r.width, r.height / 2];
+            ? [rect.left, rect.top, rect.width, rect.height / 2]
+            : [rect.left, rect.top + rect.height / 2, rect.width, rect.height / 2];
 
-    return { g, side, half };
+    return { g: group, side, half };
   };
 
   const zone =
     $('#tdrop') ||
     document.body.appendChild(Object.assign(document.createElement('div'), { id: 'tdrop', hidden: true }));
 
-  const showZone = z => {
-    zone.hidden = !z;
-    if (drag) drag.zone = z;
+  const showZone = edge => {
+    zone.hidden = !edge;
+    if (drag) drag.zone = edge;
 
-    if (z) {
+    if (edge) {
       (Object.assign(zone.style, {
-        left: `${z.half[0]}px`,
-        top: `${z.half[1]}px`,
-        width: `${z.half[2]}px`,
-        height: `${z.half[3]}px`,
+        left: `${edge.half[0]}px`,
+        top: `${edge.half[1]}px`,
+        width: `${edge.half[2]}px`,
+        height: `${edge.half[3]}px`,
       }),
-        (zone.dataset.side = z.side));
+        (zone.dataset.side = edge.side));
     }
   };
 
@@ -1178,28 +1212,28 @@ window.peixPaneOpen = (key, url) => {
     drag = null;
   };
 
-  $('#groups').addEventListener('pointerdown', e => {
-    const b = e.target.closest('.ptab');
+  $('#groups').addEventListener('pointerdown', event => {
+    const tab = event.target.closest('.ptab');
 
-    if (!b || e.button !== 0 || e.target.closest('.x, .nav, .purl, .paddr, .pedit')) return; // the address and its buttons are not the tab's handle
+    if (!tab || event.button !== 0 || event.target.closest('.x, .nav, .purl, .paddr, .pedit')) return; // the address and its buttons are not the tab's handle
     if (!splitNow() && !prefs.autoTile) return; // one half: nowhere to go but a tile's edge
 
     drag = {
-      k: b.dataset.tab,
-      from: +b.closest('.grp').dataset.g,
-      x: e.clientX,
-      y: e.clientY,
-      b,
+      k: tab.dataset.tab,
+      from: +tab.closest('.grp').dataset.g,
+      x: event.clientX,
+      y: event.clientY,
+      b: tab,
       ghost: null,
       zone: null,
     };
   });
 
-  window.addEventListener('pointermove', e => {
+  window.addEventListener('pointermove', event => {
     if (!drag) return;
 
     if (!drag.ghost) {
-      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 5) return;
+      if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 5) return;
       drag.ghost = document.body.appendChild(drag.b.cloneNode(true));
       drag.ghost.classList.remove('on');
       drag.ghost.classList.add('ghost');
@@ -1207,19 +1241,19 @@ window.peixPaneOpen = (key, url) => {
       document.body.classList.add('tabdrag');
     }
 
-    drag.ghost.style.left = `${e.clientX}px`;
-    drag.ghost.style.top = `${e.clientY}px`;
-    const z = edgeAt(e.clientX, e.clientY);
+    drag.ghost.style.left = `${event.clientX}px`;
+    drag.ghost.style.top = `${event.clientY}px`;
+    const edge = edgeAt(event.clientX, event.clientY);
 
-    showZone(z);
-    lit(z ? null : splitNow() ? halfAt(e.clientX, e.clientY) : null);
+    showZone(edge);
+    lit(edge ? null : splitNow() ? halfAt(event.clientX, event.clientY) : null);
   });
 
-  window.addEventListener('pointerup', e => {
+  window.addEventListener('pointerup', event => {
     if (!drag) return;
 
-    const { k, from, ghost, zone: z } = drag;
-    const to = ghost ? halfAt(e.clientX, e.clientY) : null;
+    const { k: key, from, ghost, zone: edge } = drag;
+    const to = ghost ? halfAt(event.clientX, event.clientY) : null;
 
     end();
     if (!ghost) return;
@@ -1233,22 +1267,22 @@ window.peixPaneOpen = (key, url) => {
 
     window.addEventListener('click', swallow, { capture: true, once: true });
     setTimeout(() => window.removeEventListener('click', swallow, true), 0);
-    const s = state.sessions.get(state.current);
+    const session = state.sessions.get(state.current);
 
-    if (!s || !tabKeys(s).includes(k)) return;
-    if (z) {
+    if (!session || !tabKeys(session).includes(key)) return;
+    if (edge) {
       haptic('generic');
-      tabToSide(s, k, z.g, z.side);
+      tabToSide(session, key, edge.g, edge.side);
       fitTerm();
     } else if (to === null || to === from || !splitNow()) return;
-    else moveTab(s, k, to);
+    else moveTab(session, key, to);
 
-    if (isPageTab(k)) {
-      shownPr.url = pageUrl(k);
-      syncTerm(s);
+    if (isPageTab(key)) {
+      shownPr.url = pageUrl(key);
+      syncTerm(session);
     } else {
-      syncTerm(s);
-      renderHead(s);
+      syncTerm(session);
+      renderHead(session);
       focusBoard();
       focusTerm();
     }
@@ -1300,21 +1334,21 @@ function addrSay(el, text, err) {
 
   if (!tab) return note(el, text, err);
 
-  const x = el.offsetLeft;
+  const left = el.offsetLeft;
   const wd = el.offsetWidth; // where the address is, read before anything is written
 
-  let w = tab.querySelector(':scope > .psaid');
+  let said = tab.querySelector(':scope > .psaid');
 
-  if (!w) {
-    w = document.createElement('span');
-    w.className = 'psaid';
-    w.setAttribute('role', 'status');
-    el.after(w);
+  if (!said) {
+    said = document.createElement('span');
+    said.className = 'psaid';
+    said.setAttribute('role', 'status');
+    el.after(said);
   }
 
-  w.style.left = `${x}px`;
-  w.style.width = `${wd}px`;
-  w.textContent = text;
+  said.style.left = `${left}px`;
+  said.style.width = `${wd}px`;
+  said.textContent = text;
   tab.classList.toggle('cperr', !!err);
   tab.classList.add('copied');
   clearTimeout(tab._said);
@@ -1327,11 +1361,11 @@ function addrSay(el, text, err) {
       gives the page the keys; the box left any other way puts it back too. What is typed is addrEdit's, not the
       markup's, so a redraw of the strip keeps it (renderTabs). In the app the board's view takes the keys from the page
       for it ({type: 'focus'}), and 'keys' gives them back. */
-function addrEditAt(s, k, g) {
-  focusGroup(g);
+function addrEditAt(session, key, half) {
+  focusGroup(half);
   post({ type: 'focus' });
-  addrEdit = { sid: s.id, key: k, q: paneUrl(k) };
-  renderTabs(s);
+  addrEdit = { sid: session.id, key, q: paneUrl(key) };
+  renderTabs(session);
   const box = document.querySelector('.ptabs .ptab.editing .pedit');
 
   if (box) {
@@ -1341,54 +1375,63 @@ function addrEditAt(s, k, g) {
   }
 }
 
-function addrLeave(s, keys) {
-  const k = addrEdit?.key;
+function addrLeave(session, keys) {
+  const key = addrEdit?.key;
 
   addrEdit = null;
-  if (s) renderTabs(s);
-  if (k && keys) post({ type: 'nav', what: 'keys', key: k });
+  if (session) renderTabs(session);
+  if (key && keys) post({ type: 'nav', what: 'keys', key });
 }
 
-function addrGo(s, raw) {
-  const k = addrEdit?.key;
+function addrGo(session, raw) {
+  const key = addrEdit?.key;
   const url = raw.trim() && typedPage(raw.trim()).url;
 
-  if (!url) return addrLeave(s, true);
+  if (!url) return addrLeave(session, true);
   addrEdit = null;
-  renderTabs(s);
-  if (!IN_PANE.test(url)) return openExternal(url, { s });
-  post({ type: 'nav', what: 'go', key: k, url });
+  renderTabs(session);
+  if (!IN_PANE.test(url)) return openExternal(url, { s: session });
+  post({ type: 'nav', what: 'go', key, url });
 }
 
 {
   const at = () => state.sessions.get(state.current);
 
-  $('#groups').addEventListener('input', e => {
-    if (e.target.matches?.('.pedit') && addrEdit) addrEdit.q = e.target.value;
+  $('#groups').addEventListener('input', event => {
+    if (event.target.matches?.('.pedit') && addrEdit) addrEdit.q = event.target.value;
   });
 
-  $('#groups').addEventListener('keydown', e => {
-    if (!e.target.matches?.('.pedit') || !addrEdit || e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return;
+  $('#groups').addEventListener('keydown', event => {
+    if (
+      !event.target.matches?.('.pedit') ||
+      !addrEdit ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey ||
+      event.isComposing
+    ) {
+      return;
+    }
 
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addrGo(at(), e.target.value);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      addrGo(at(), event.target.value);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
       addrLeave(at(), true);
     }
   });
 
   // a press elsewhere on the strips keeps the keys in the box, so what it presses is not drawn away under its click
   // (the box put back at the blur would redraw the strip): its click lets go of the box itself
-  $('#groups').addEventListener('mousedown', e => {
-    if (addrEdit && e.target.closest?.('.ptabs') && !e.target.closest('.pedit')) e.preventDefault();
+  $('#groups').addEventListener('mousedown', event => {
+    if (addrEdit && event.target.closest?.('.ptabs') && !event.target.closest('.pedit')) event.preventDefault();
   });
 
   // the box left: put back, unless a redraw of the strip has just given the keys to the box drawn in its place
-  $('#groups').addEventListener('focusout', e => {
-    if (!e.target.matches?.('.pedit')) return;
+  $('#groups').addEventListener('focusout', event => {
+    if (!event.target.matches?.('.pedit')) return;
 
     setTimeout(() => {
       if (addrEdit && !document.activeElement?.matches?.('.pedit')) addrLeave(at());
@@ -1398,14 +1441,14 @@ function addrGo(s, raw) {
 
 /** A tab chosen — by a click or ⌥⌘←/→: it comes up in its own half, which becomes the one the keys are in.
       A page is shown as it stands, wherever it was followed to, and keeps the keys; the rest, the keyboard follows. */
-function openTab(s, k) {
-  setTab(s, k);
+function openTab(session, key) {
+  setTab(session, key);
 
-  if (isPageTab(k)) {
-    shownPr.url = pageUrl(k);
-    syncTerm(s);
+  if (isPageTab(key)) {
+    shownPr.url = pageUrl(key);
+    syncTerm(session);
   } else {
-    syncTerm(s);
+    syncTerm(session);
     focusBoard();
     focusTerm();
   }

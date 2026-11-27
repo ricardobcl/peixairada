@@ -27,10 +27,10 @@ import {
 } from './text.mjs';
 import { noteWakeCall, startWake, WAKE_TOOLS, wakeFired } from '../wakes.mjs';
 
-function setStatus(s, status, ts) {
-  if (s.status !== status) {
-    s.status = status;
-    s.statusSince = ts || new Date().toISOString();
+function setStatus(session, status, ts) {
+  if (session.status !== status) {
+    session.status = status;
+    session.statusSince = ts || new Date().toISOString();
   }
 }
 
@@ -38,45 +38,48 @@ function setStatus(s, status, ts) {
  *  tiles show of one with no drawer here — its tool calls with their results, its words — short. */
 const RECENT_MAX = 16;
 
-function noteRecent(s, e) {
-  if (!['tool_use', 'tool_result', 'text', 'interrupt'].includes(e.kind)) return;
+function noteRecent(session, entry) {
+  if (!['tool_use', 'tool_result', 'text', 'interrupt'].includes(entry.kind)) return;
 
-  const r = {
-    role: e.role,
-    kind: e.kind,
-    ts: e.ts,
-    text: e.kind === 'text' ? plainSnippet(e.text, 220) : snippet(e.text, e.kind === 'tool_result' ? 120 : 220),
+  const row = {
+    role: entry.role,
+    kind: entry.kind,
+    ts: entry.ts,
+    text:
+      entry.kind === 'text'
+        ? plainSnippet(entry.text, 220)
+        : snippet(entry.text, entry.kind === 'tool_result' ? 120 : 220),
   };
 
-  if (e.name) r.name = e.name;
-  if (e.toolUseId) r.toolUseId = e.toolUseId;
-  if (e.isError) r.isError = true;
-  (s.recent ||= []).push(r);
-  if (s.recent.length > RECENT_MAX) s.recent.splice(0, s.recent.length - RECENT_MAX);
+  if (entry.name) row.name = entry.name;
+  if (entry.toolUseId) row.toolUseId = entry.toolUseId;
+  if (entry.isError) row.isError = true;
+  (session.recent ||= []).push(row);
+  if (session.recent.length > RECENT_MAX) session.recent.splice(0, session.recent.length - RECENT_MAX);
 }
 
 /** What a turn at work is doing now (2026-10-11), for the card's live line: the newest tool call since your last word
  *  — its tool and what it was given, as the transcript summarizes it — or null when the turn has called none yet. */
-export function doingOf(s) {
-  const r = s.recent || [];
+export function doingOf(session) {
+  const recent = session.recent || [];
 
-  for (let i = r.length - 1; i >= 0; i--) {
-    const x = r[i];
+  for (let index = recent.length - 1; index >= 0; index--) {
+    const row = recent[index];
 
-    if (x.role === 'user' && (x.kind === 'text' || x.kind === 'interrupt')) return null;
-    if (x.kind === 'tool_use') return { name: x.name || 'tool', text: x.text || '', ts: x.ts || null };
+    if (row.role === 'user' && (row.kind === 'text' || row.kind === 'interrupt')) return null;
+    if (row.kind === 'tool_use') return { name: row.name || 'tool', text: row.text || '', ts: row.ts || null };
   }
 
   return null;
 }
 
-export function pushEntry(s, entry) {
-  s.entryCount++;
-  noteRecent(s, entry);
-  if (!s.loaded) return;
-  s.entries.push(entry);
-  if (s.entries.length > MAX_ENTRIES) s.entries.splice(0, s.entries.length - MAX_ENTRIES);
-  if (!s.reading) s.newEntries.push(entry); // a whole read is nothing new — every entry of it was kept twice until its end
+export function pushEntry(session, entry) {
+  session.entryCount++;
+  noteRecent(session, entry);
+  if (!session.loaded) return;
+  session.entries.push(entry);
+  if (session.entries.length > MAX_ENTRIES) session.entries.splice(0, session.entries.length - MAX_ENTRIES);
+  if (!session.reading) session.newEntries.push(entry); // a whole read is nothing new — every entry of it was kept twice until its end
 }
 
 const NEEDS_INPUT_TOOLS = new Set(['AskUserQuestion', 'ExitPlanMode']);
@@ -85,20 +88,24 @@ const TURN_ENDS = new Set(['end_turn', 'stop_sequence', 'max_tokens', 'refusal']
 /** An assistant message that ends its turn — a chat's, or a sub-agent's (agentRunning): end_turn, or max_tokens or a
  *  refusal (2026-10-03: a turn that ran out of tokens stayed working and its reply was never alerted), unless what ran
  *  out was a tool call Claude Code goes on with. */
-export const endsTurn = m =>
-  TURN_ENDS.has(m?.stop_reason) &&
-  !(m.stop_reason === 'max_tokens' && Array.isArray(m.content) && m.content.some(b => b?.type === 'tool_use'));
+export const endsTurn = message =>
+  TURN_ENDS.has(message?.stop_reason) &&
+  !(
+    message.stop_reason === 'max_tokens' &&
+    Array.isArray(message.content) &&
+    message.content.some(block => block?.type === 'tool_use')
+  );
 
 /** A turn that ended on something other than an answer (2026-10-31, round XIII's S4), or null: an API error Claude Code
  *  wrote after its retries — a `<synthetic>` line flagged `isApiErrorMessage`, its words "API Error: …", `error` a kind
  *  (server_error, authentication_failed, invalid_request…) —, a reply the token limit cut, a refusal. */
-export function stopOf(line, m, text, ts) {
+export function stopOf(line, message, text, ts) {
   if (line.isApiErrorMessage) {
-    const t = String(text || '').replace(/^API Error:\s*/i, '');
-    const code = /^(\d{3})\b/.exec(t)?.[1];
-    const msg = /"message"\s*:\s*"([^"]+)"/.exec(t)?.[1];
+    const detail = String(text || '').replace(/^API Error:\s*/i, '');
+    const code = /^(\d{3})\b/.exec(detail)?.[1];
+    const msg = /"message"\s*:\s*"([^"]+)"/.exec(detail)?.[1];
 
-    const why = msg || t.replace(/^\d{3}\s*/, '').split(/(?<=[.!?])\s/)[0];
+    const why = msg || detail.replace(/^\d{3}\s*/, '').split(/(?<=[.!?])\s/)[0];
 
     return {
       why: 'api',
@@ -108,36 +115,36 @@ export function stopOf(line, m, text, ts) {
     };
   }
 
-  if (m.stop_reason === 'max_tokens') return { why: 'max_tokens', text: null, kind: null, at: ts };
-  if (m.stop_reason === 'refusal') return { why: 'refusal', text: null, kind: null, at: ts };
+  if (message.stop_reason === 'max_tokens') return { why: 'max_tokens', text: null, kind: null, at: ts };
+  if (message.stop_reason === 'refusal') return { why: 'refusal', text: null, kind: null, at: ts };
   return null;
 }
 
 /** Fold one JSONL line into the session. Returns true if the session summary changed. */
-export function fold(s, line) {
+export function fold(session, line) {
   const ts = line.timestamp || null;
 
   switch (line.type) {
     case 'ai-title':
-      if (line.aiTitle) s.title = line.aiTitle;
+      if (line.aiTitle) session.title = line.aiTitle;
       return true;
     case 'continued-in':
-      if (line.continuedInSessionId) noteContinued(s, line.continuedInSessionId, ts);
+      if (line.continuedInSessionId) noteContinued(session, line.continuedInSessionId, ts);
       return false;
     case 'custom-title':
-      s.customTitle = line.customTitle || line.title || null;
+      session.customTitle = line.customTitle || line.title || null;
       return true;
     case 'agent-setting':
-      s.agent = typeof line.agentSetting === 'string' && line.agentSetting ? line.agentSetting : null;
+      session.agent = typeof line.agentSetting === 'string' && line.agentSetting ? line.agentSetting : null;
       return true; // the agent it runs as (2026-11-06): --agent, or its folder's setting
     case 'last-prompt':
-      if (!s.lastPrompt && line.lastPrompt) s.lastPrompt = plainSnippet(line.lastPrompt, 200);
+      if (!session.lastPrompt && line.lastPrompt) session.lastPrompt = plainSnippet(line.lastPrompt, 200);
       return true; // whole, it was a card's and a search's to carry
 
     case 'pr-link': {
       const url = line.prUrl || line.url;
 
-      if (url) notePr(s, url, ts, null);
+      if (url) notePr(session, url, ts, null);
       return true;
     }
 
@@ -145,85 +152,85 @@ export function fold(s, line) {
       // Claude Code's own recap of where a chat stands, written as you come back to it (2026-10-31): a handoff's first
       // word on it — `{type: system, subtype: away_summary, content: <text>}`, measured on this Mac's transcripts
       if (line.subtype === 'away_summary' && typeof line.content === 'string' && line.content.trim()) {
-        s.away = { text: cut(line.content.trim(), HANDOFF_TEXT), at: ts };
+        session.away = { text: cut(line.content.trim(), HANDOFF_TEXT), at: ts };
         return false;
       }
 
       if (line.subtype !== 'compact_boundary') return false;
-      pushEntry(s, { role: 'system', kind: 'compact', text: 'Conversation compacted', ts });
-      if (!s.compacting) return false; // one Claude Code ran mid-turn on its own: the turn goes on
+      pushEntry(session, { role: 'system', kind: 'compact', text: 'Conversation compacted', ts });
+      if (!session.compacting) return false; // one Claude Code ran mid-turn on its own: the turn goes on
       // the /compact you typed is done (2026-10-14): no reply ever closes its turn, and the next prompt was taken for
       // part of it — "worked for 182 min", a day's span over the idle hours between
-      s.compacting = false;
-      noteSpan(s, 'w', s.turnStart, ts);
-      s.turnStart = null;
-      setStatus(s, 'idle', ts);
+      session.compacting = false;
+      noteSpan(session, 'w', session.turnStart, ts);
+      session.turnStart = null;
+      setStatus(session, 'idle', ts);
       return true;
 
     case 'user': {
       if (line.isSidechain) return false;
-      if (!s.truncatedHead) noteFirstLine(s, line); // a tail's first is not the chat's: headPrs read that
-      if (line.cwd) s.cwd = line.cwd;
+      if (!session.truncatedHead) noteFirstLine(session, line); // a tail's first is not the chat's: headPrs read that
+      if (line.cwd) session.cwd = line.cwd;
 
       if (line.entrypoint) {
-        s.entrypoint = line.entrypoint;
-        s.entrypointAt = ts;
+        session.entrypoint = line.entrypoint;
+        session.entrypointAt = ts;
       }
 
       if (line.gitBranch) {
-        s.gitBranch = line.gitBranch;
-        if (line.gitBranch !== s.ticketBranch) noteBranchTicket(s, line.gitBranch, ts);
+        session.gitBranch = line.gitBranch;
+        if (line.gitBranch !== session.ticketBranch) noteBranchTicket(session, line.gitBranch, ts);
       }
 
-      noteBranch(s, line, ts);
+      noteBranch(session, line, ts);
 
       if (line.isMeta) {
-        const p = peerOf(line);
+        const peer = peerOf(line);
 
-        if (p) return notePeer(s, p, ts);
+        if (peer) return notePeer(session, peer, ts);
       } // another chat's message (2026-10-31): drawn, never your word
 
-      const fired = line.turnOrigin === 'scheduled' && wakeFired(s, ts); // a wake-up it set itself went off (2026-10-31): its prompt is a meta line
+      const fired = line.turnOrigin === 'scheduled' && wakeFired(session, ts); // a wake-up it set itself went off (2026-10-31): its prompt is a meta line
 
       if (line.isMeta || line.isCompactSummary) return fired;
       const content = line.message?.content;
       const blocks = Array.isArray(content) ? content : null;
-      const toolResults = blocks ? blocks.filter(b => b?.type === 'tool_result') : [];
+      const toolResults = blocks ? blocks.filter(block => block?.type === 'tool_result') : [];
 
       if (toolResults.length) {
-        for (const b of toolResults) {
-          startTask(s, b, ts);
-          if (s.wakeCalls?.size) startWake(s, b, line.toolUseResult, ts);
+        for (const result of toolResults) {
+          startTask(session, result, ts);
+          if (session.wakeCalls?.size) startWake(session, result, line.toolUseResult, ts);
 
-          pushEntry(s, {
+          pushEntry(session, {
             role: 'user',
             kind: 'tool_result',
-            toolUseId: b.tool_use_id,
-            isError: !!b.is_error,
-            text: toolResultSnippet(b),
+            toolUseId: result.tool_use_id,
+            isError: !!result.is_error,
+            text: toolResultSnippet(result),
             ts,
             ...(toolResults.length === 1 && agentNamed(line.toolUseResult)),
           });
 
-          if (s.actsWait.size) noteActsDone(s, b);
-          if (s.opening.size) noteOpened(s, b);
-          if (s.sends?.size) noteSent(s, b, line.toolUseResult, ts);
+          if (session.actsWait.size) noteActsDone(session, result);
+          if (session.opening.size) noteOpened(session, result);
+          if (session.sends?.size) noteSent(session, result, line.toolUseResult, ts);
 
-          if (s.askOpen?.id === b.tool_use_id) {
-            noteSpan(s, 'a', s.askOpen.from, ts);
-            s.askOpen = null;
+          if (session.askOpen?.id === result.tool_use_id) {
+            noteSpan(session, 'a', session.askOpen.from, ts);
+            session.askOpen = null;
           } // a question and its answer: the time it waited on you
         }
 
-        s.lastActivity = ts;
+        session.lastActivity = ts;
 
-        if (s.status === 'needs-input') {
+        if (session.status === 'needs-input') {
           // question answered — that was you
-          s.lastUserAt = ts;
-          s.woke = null;
-          setStatus(s, 'working', ts);
+          session.lastUserAt = ts;
+          session.woke = null;
+          setStatus(session, 'working', ts);
           // …and the question's line arrived with its answer (see waitingOn): an alert for it now would be after the fact
-          s.pendingNotify?.delete('needs-input');
+          session.pendingNotify?.delete('needs-input');
         }
 
         return true;
@@ -232,16 +239,16 @@ export function fold(s, line) {
       const raw = textOf(content);
 
       if (raw.startsWith('[Request interrupted')) {
-        pushEntry(s, { role: 'user', kind: 'interrupt', text: raw, ts });
-        s.lastActivity = ts;
-        s.lastUserAt = ts; // Escape is you acting on the chat too
-        noteSpan(s, 'w', s.turnStart, ts);
-        s.askOpen = null;
-        s.turnStart = null;
-        s.compacting = false;
-        s.woke = null;
-        s.stopped = null; // stopped by you: no error
-        setStatus(s, 'idle', ts);
+        pushEntry(session, { role: 'user', kind: 'interrupt', text: raw, ts });
+        session.lastActivity = ts;
+        session.lastUserAt = ts; // Escape is you acting on the chat too
+        noteSpan(session, 'w', session.turnStart, ts);
+        session.askOpen = null;
+        session.turnStart = null;
+        session.compacting = false;
+        session.woke = null;
+        session.stopped = null; // stopped by you: no error
+        setStatus(session, 'idle', ts);
         return true;
       }
 
@@ -254,179 +261,182 @@ export function fold(s, line) {
       if (TASK_NOTE_RE.test(text)) {
         // a monitor's event, or the end of one
         // …and, between turns, what wakes the next one (2026-10-31): a turn begun by the chat's own task stays Watching
-        const was = s.woke;
+        const was = session.woke;
 
-        if (!s.turnStart) s.woke = ts;
-        const ended = noteAgentNotices(s, text, ts); // an agent's: how it ended (2026-11-02)
+        if (!session.turnStart) session.woke = ts;
+        const ended = noteAgentNotices(session, text, ts); // an agent's: how it ended (2026-11-02)
 
-        return noteTaskEvent(s, text, ts) || was !== s.woke || ended;
+        return noteTaskEvent(session, text, ts) || was !== session.woke || ended;
       }
 
       if (CLEAR_RE.test(text)) {
-        s.clearedAt = ts;
-        tickCleared(s);
+        session.clearedAt = ts;
+        tickCleared(session);
       } // a chat born of /clear: the one it left is done
 
       if (text.startsWith('<bash-input>')) {
-        noteGitCmd(s.gitCmds, /<bash-input>([\s\S]*?)<\/bash-input>/.exec(text)?.[1], ts);
+        noteGitCmd(session.gitCmds, /<bash-input>([\s\S]*?)<\/bash-input>/.exec(text)?.[1], ts);
       } // a `!` command of yours: the chat's own
 
       if (SYNTHETIC_RE.test(text)) return false;
-      pushEntry(s, { role: 'user', kind: 'text', text, ts, uuid: line.uuid });
-      notePrs(s, text, ts, 'user');
-      noteTickets(s, text, ts, 'user');
-      s.lastPrompt = plainSnippet(text, 200);
-      s.firstPrompt ??= plainSnippet(text, 400);
-      branchHeard(s);
+      pushEntry(session, { role: 'user', kind: 'text', text, ts, uuid: line.uuid });
+      notePrs(session, text, ts, 'user');
+      noteTickets(session, text, ts, 'user');
+      session.lastPrompt = plainSnippet(text, 200);
+      session.firstPrompt ??= plainSnippet(text, 400);
+      branchHeard(session);
 
       // A prompt starts the turn; one typed mid-turn is part of it — and the files it edits (the changes tab's `turn`). Not
       // a turn the claude that began it never closed (2026-10-14): killed or crashed mid-way, and this prompt typed into
       // the claude that resumed the chat since — begun before it started, the prompt after.
-      const born = Number(s.live?.startedAt);
-      const orphan = s.turnStart && born > Date.parse(s.turnStart) && born <= Date.parse(ts);
+      const born = Number(session.live?.startedAt);
+      const orphan = session.turnStart && born > Date.parse(session.turnStart) && born <= Date.parse(ts);
 
-      if (orphan) noteSpan(s, 'w', s.turnStart, s.lastActivity); // the turn as far as it went
+      if (orphan) noteSpan(session, 'w', session.turnStart, session.lastActivity); // the turn as far as it went
 
-      if (!s.turnStart || s.status !== 'working' || orphan) {
-        s.turnStart = ts;
-        s.turnFiles = new Set();
+      if (!session.turnStart || session.status !== 'working' || orphan) {
+        session.turnStart = ts;
+        session.turnFiles = new Set();
       }
 
-      s.compacting = /^\/compact(\s|$)/.test(text);
-      s.lastActivity = ts;
-      s.lastUserAt = ts;
-      s.woke = null;
-      s.stopped = null; // your word: the turn is yours, and whatever stopped the last is behind it
-      setStatus(s, 'working', ts);
+      session.compacting = /^\/compact(\s|$)/.test(text);
+      session.lastActivity = ts;
+      session.lastUserAt = ts;
+      session.woke = null;
+      session.stopped = null; // your word: the turn is yours, and whatever stopped the last is behind it
+      setStatus(session, 'working', ts);
       return true;
     }
 
     case 'assistant': {
       if (line.isSidechain) {
-        for (const c of bashCmds(line)) noteGitCmd(s.gitCmds, c, ts, line.message?.id);
+        for (const command of bashCmds(line)) noteGitCmd(session.gitCmds, command, ts, line.message?.id);
         return false;
       } // a sub-agent's git is the chat's own
 
-      if (line.cwd) s.cwd = line.cwd;
+      if (line.cwd) session.cwd = line.cwd;
 
       if (line.entrypoint) {
-        s.entrypoint = line.entrypoint;
-        s.entrypointAt = ts;
+        session.entrypoint = line.entrypoint;
+        session.entrypointAt = ts;
       }
 
-      const m = line.message || {};
-      const blocks = Array.isArray(m.content) ? m.content : [];
+      const message = line.message || {};
+      const blocks = Array.isArray(message.content) ? message.content : [];
 
-      if (m.model && m.model !== '<synthetic>') s.model = m.model; // an API error's line, not what the chat runs on
+      if (message.model && message.model !== '<synthetic>') session.model = message.model; // an API error's line, not what the chat runs on
 
       let needsInput = false;
       let said = null;
 
-      s.turnStart ??= ts; // a turn no word of yours began — a task's notice woke it — starts at its first line
+      session.turnStart ??= ts; // a turn no word of yours began — a task's notice woke it — starts at its first line
 
-      for (const b of blocks) {
-        if (b.type === 'text' && b.text?.trim()) {
-          pushEntry(s, (said = { role: 'assistant', kind: 'text', text: b.text, ts, msgId: m.id }));
-          notePrs(s, b.text, ts, 'claude');
-          noteTickets(s, b.text, ts, 'claude');
-        } else if (b.type === 'tool_use') {
-          const e = {
+      for (const block of blocks) {
+        if (block.type === 'text' && block.text?.trim()) {
+          pushEntry(session, (said = { role: 'assistant', kind: 'text', text: block.text, ts, msgId: message.id }));
+          notePrs(session, block.text, ts, 'claude');
+          noteTickets(session, block.text, ts, 'claude');
+        } else if (block.type === 'tool_use') {
+          const entry = {
             role: 'assistant',
             kind: 'tool_use',
-            name: b.name,
-            text: summarizeToolInput(b.name, b.input),
-            toolUseId: b.id,
+            name: block.name,
+            text: summarizeToolInput(block.name, block.input),
+            toolUseId: block.id,
             ts,
           };
 
-          if (b.name === 'SendMessage') noteSend(s, e, b);
-          if (b.name === 'Agent' && pstr(b.input?.name)) e.who = b.input.name;
-          if (SPAWN_TOOLS.has(b.name) && pstr(b.input?.name)) noteMateType(s, b.input);
-          if (b.name === 'Skill' && pstr(b.input?.args)) e.args = snippet(b.input.args, 140); // a fork's words: which PR this review is of
-          pushEntry(s, e);
+          if (block.name === 'SendMessage') noteSend(session, entry, block);
+          if (block.name === 'Agent' && pstr(block.input?.name)) entry.who = block.input.name;
+          if (SPAWN_TOOLS.has(block.name) && pstr(block.input?.name)) noteMateType(session, block.input);
+          if (block.name === 'Skill' && pstr(block.input?.args)) entry.args = snippet(block.input.args, 140); // a fork's words: which PR this review is of
+          pushEntry(session, entry);
 
-          if (EDIT_TOOLS.has(b.name) && (b.input?.file_path || b.input?.notebook_path)) {
-            (s.turnFiles ||= new Set()).add(b.input.file_path || b.input.notebook_path);
+          if (EDIT_TOOLS.has(block.name) && (block.input?.file_path || block.input?.notebook_path)) {
+            (session.turnFiles ||= new Set()).add(block.input.file_path || block.input.notebook_path);
           }
 
-          if (NEEDS_INPUT_TOOLS.has(b.name)) {
-            const opts = b.input?.questions?.[0]?.options;
+          if (NEEDS_INPUT_TOOLS.has(block.name)) {
+            const opts = block.input?.questions?.[0]?.options;
             const list = Array.isArray(opts) ? opts : []; // a model's own input: options as a string once (2026-10-14)
 
-            s.askOpen = { id: b.id, from: ts };
+            session.askOpen = { id: block.id, from: ts };
             needsInput = true;
 
-            s.ask = {
-              tool: b.name,
-              text: summarizeToolInput(b.name, b.input),
+            session.ask = {
+              tool: block.name,
+              text: summarizeToolInput(block.name, block.input),
               options: list.length,
-              labels: list.slice(0, 9).map(o => snippet(o?.label, 40)),
+              labels: list.slice(0, 9).map(option => snippet(option?.label, 40)),
             };
           }
 
-          if (b.name === 'Monitor' || (b.name === 'Bash' && b.input?.run_in_background)) noteTaskCall(s, b);
-          if (WAKE_TOOLS.has(b.name)) noteWakeCall(s, b, ts);
-
-          if (b.name === 'Bash') {
-            noteGitCmd(s.gitCmds, b.input?.command, ts, m.id);
-            noteActsCalled(s, b, ts, line.gitBranch);
-            noteOpening(s, b, ts);
+          if (block.name === 'Monitor' || (block.name === 'Bash' && block.input?.run_in_background)) {
+            noteTaskCall(session, block);
           }
 
-          if (b.name === 'TaskStop' && s.tasks?.size) {
-            const j = JSON.stringify(b.input || '');
+          if (WAKE_TOOLS.has(block.name)) noteWakeCall(session, block, ts);
 
-            for (const id of [...s.tasks.keys()]) if (j.includes(id)) s.tasks.delete(id);
+          if (block.name === 'Bash') {
+            noteGitCmd(session.gitCmds, block.input?.command, ts, message.id);
+            noteActsCalled(session, block, ts, line.gitBranch);
+            noteOpening(session, block, ts);
+          }
+
+          if (block.name === 'TaskStop' && session.tasks?.size) {
+            const inputJson = JSON.stringify(block.input || '');
+
+            for (const id of [...session.tasks.keys()]) if (inputJson.includes(id)) session.tasks.delete(id);
           }
         }
       }
 
-      noteBranch(s, line, ts);
-      s.lastActivity = ts;
+      noteBranch(session, line, ts);
+      session.lastActivity = ts;
 
-      if (endsTurn(m)) {
+      if (endsTurn(message)) {
         const text = textOf(blocks).trim();
 
         if (text) {
-          s.lastReply = plainSnippet(text, 300);
-          s.lastReplyAt = ts;
-          s.replyText = cut(text, HANDOFF_TEXT);
+          session.lastReply = plainSnippet(text, 300);
+          session.lastReplyAt = ts;
+          session.replyText = cut(text, HANDOFF_TEXT);
         }
 
         // the reply that ends the turn, and how long since your last word it took — the transcript's footer under it
         // (2026-10-08); pushed in this same tick, so the page gets it marked
         if (said) {
           said.turnEnd = true;
-          const ms = Date.parse(ts) - Date.parse(s.turnStart);
+          const ms = Date.parse(ts) - Date.parse(session.turnStart);
 
           if (ms > 0) said.worked = ms;
         }
 
-        noteSpan(s, 'w', s.turnStart, ts); // the day's timeline (2026-10-10): the turn, prompt to reply
-        s.turnStart = null;
-        s.compacting = false;
-        s.woke = null;
-        s.stopped = stopOf(line, m, text, ts);
-        setStatus(s, 'idle', ts);
-        if (!s.agentsRunning) queueNotify(s, 'reply'); // a turn that ends with agents still at work is not the reply yet
+        noteSpan(session, 'w', session.turnStart, ts); // the day's timeline (2026-10-10): the turn, prompt to reply
+        session.turnStart = null;
+        session.compacting = false;
+        session.woke = null;
+        session.stopped = stopOf(line, message, text, ts);
+        setStatus(session, 'idle', ts);
+        if (!session.agentsRunning) queueNotify(session, 'reply'); // a turn that ends with agents still at work is not the reply yet
       } else if (needsInput) {
-        setStatus(s, 'needs-input', ts);
-        queueNotify(s, 'needs-input');
-      } else if (m.stop_reason === 'tool_use') {
-        setStatus(s, 'working', ts);
+        setStatus(session, 'needs-input', ts);
+        queueNotify(session, 'needs-input');
+      } else if (message.stop_reason === 'tool_use') {
+        setStatus(session, 'working', ts);
       }
 
       return true;
     }
 
     case 'attachment': {
-      const p = !line.isSidechain && peerOf(line);
+      const peer = !line.isSidechain && peerOf(line);
 
-      return p ? notePeer(s, p, ts) : false;
+      return peer ? notePeer(session, peer, ts) : false;
     } // a message taken in mid-turn (2026-10-31)
 
     case 'queue-operation':
-      return notePeerQueue(s, line, ts);
+      return notePeerQueue(session, line, ts);
     default:
       return false;
   }

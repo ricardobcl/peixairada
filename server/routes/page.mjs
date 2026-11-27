@@ -23,7 +23,7 @@ const SAFE_HOST = /^[\w.-]+(:\d+)?$|^\[[0-9a-f:.]+\](:\d+)?$/i;
 
 export function pageCsp(html, host) {
   const hashes = [...html.matchAll(PAGE_SCRIPTS)].map(
-    m => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`,
+    match => `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`,
   );
 
   const ws = SAFE_HOST.test(host || '') ? ` ws://${host}` : ''; // 'self' covers ws: in CSP 3; an older WebKit wants it named
@@ -46,8 +46,8 @@ export function pageCsp(html, host) {
 }
 
 /** The page, put together and stamped, under its policy. */
-export async function pageRoute(req, res, url, p) {
-  if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
+export async function pageRoute(req, res, url, path) {
+  if (req.method === 'GET' && (path === '/' || path === '/index.html')) {
     const html = readPage();
 
     const body = html.replace(
@@ -69,17 +69,17 @@ export async function pageRoute(req, res, url, p) {
 }
 
 /** The vendored libraries, from public/vendor/. */
-export async function vendorRoute(req, res, url, p) {
-  let m;
+export async function vendorRoute(req, res, url, path) {
+  let match;
 
-  if (req.method === 'GET' && (m = p.match(/^\/vendor\/([\w.-]+\.(js|css))$/))) {
-    const f = join(ROOT, 'public', 'vendor', m[1]);
+  if (req.method === 'GET' && (match = path.match(/^\/vendor\/([\w.-]+\.(js|css))$/))) {
+    const file = join(ROOT, 'public', 'vendor', match[1]);
 
-    if (!existsSync(f)) return json(res, 404, { error: 'not found' });
-    const body = readFileSync(f);
+    if (!existsSync(file)) return json(res, 404, { error: 'not found' });
+    const body = readFileSync(file);
 
     res.writeHead(200, {
-      'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8',
+      'content-type': match[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8',
       'cache-control': 'public, max-age=86400',
     });
 

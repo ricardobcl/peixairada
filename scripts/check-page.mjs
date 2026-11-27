@@ -12,72 +12,75 @@ const { html, parts, where } = assemblePage(file);
 // per match, was most of the check's time — 0.9 s of 1.4 on a page with twice the lines.
 const starts = [0];
 
-for (let i = html.indexOf('\n'); i >= 0; i = html.indexOf('\n', i + 1)) starts.push(i + 1);
+for (let offset = html.indexOf('\n'); offset >= 0; offset = html.indexOf('\n', offset + 1)) starts.push(offset + 1);
 
-const lineAt = i => {
+const lineAt = offset => {
   let lo = 0;
   let hi = starts.length - 1;
 
   while (lo < hi) {
     const mid = (lo + hi + 1) >> 1;
 
-    if (starts[mid] <= i) lo = mid;
+    if (starts[mid] <= offset) lo = mid;
     else hi = mid - 1;
   }
 
   return lo + 1;
 };
 
-const at = n => {
-  const w = where(n);
+const at = line => {
+  const place = where(line);
 
-  return `${w.file}:${w.line}`;
+  return `${place.file}:${place.line}`;
 }; // the part's path as the page's was given
 
-let n = 0;
+let count = 0;
 let bad = 0;
 
-for (const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)) {
-  n++;
-  const lineOffset = lineAt(m.index) - 1;
+for (const match of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)) {
+  count++;
+  const lineOffset = lineAt(match.index) - 1;
 
   try {
-    new vm.Script(m[1], { filename: file, lineOffset });
-  } catch (e) {
+    new vm.Script(match[1], { filename: file, lineOffset });
+  } catch (error) {
     bad++;
-    const l = Number(/:(\d+)$/m.exec(e.stack?.split('\n')[0] || '')?.[1]);
+    const line = Number(/:(\d+)$/m.exec(error.stack?.split('\n')[0] || '')?.[1]);
 
-    console.error(`${l ? where(l).file : file}: ${e.message}${l ? `\n  ${at(l)}` : ''}`);
+    console.error(`${line ? where(line).file : file}: ${error.message}${line ? `\n  ${at(line)}` : ''}`);
   }
 }
 
-if (!n) {
+if (!count) {
   console.error(`${file}: no inline script found`);
   process.exit(1);
 }
 
 if (bad) process.exit(1);
-console.log(`${file}: ${n} inline script${n === 1 ? '' : 's'} compile, put together from ${parts.length} parts`);
+
+console.log(
+  `${file}: ${count} inline script${count === 1 ? '' : 's'} compile, put together from ${parts.length} parts`,
+);
 
 // Every part is the page's once, and nothing in its folders is left out (2026-11-25): a file there that no include names
 // would be code that never runs, and one named twice would run twice.
 {
   const dir = join(file, '..');
-  const named = parts.map(p => relative(dir, p));
+  const named = parts.map(part => relative(dir, part));
 
-  const twice = named.filter((p, i) => named.indexOf(p) !== i);
+  const twice = named.filter((part, index) => named.indexOf(part) !== index);
 
   const files = sub => {
     try {
       return readdirSync(join(dir, sub), { recursive: true })
-        .filter(f => /\.(css|js)$/.test(f))
-        .map(f => join(sub, f));
+        .filter(path => /\.(css|js)$/.test(path))
+        .map(path => join(sub, path));
     } catch {
       return [];
     }
   };
 
-  const left = [...files('css'), ...files('js')].filter(f => !named.includes(f));
+  const left = [...files('css'), ...files('js')].filter(path => !named.includes(path));
 
   if (twice.length) {
     console.error(`${file}: a part included twice: ${twice.join(', ')}`);
@@ -92,7 +95,7 @@ console.log(`${file}: ${n} inline script${n === 1 ? '' : 's'} compile, put toget
 
 // An attribute's value in single quotes is never built from `${…}` (2026-10-14): esc() escapes `"` and not `'`, so a
 // value with a quote in it would close the attribute and run on into the markup. Double quotes, as everywhere else.
-const quoted = [...html.matchAll(/=\s*'\$\{/g)].map(m => at(lineAt(m.index)));
+const quoted = [...html.matchAll(/=\s*'\$\{/g)].map(match => at(lineAt(match.index)));
 
 if (quoted.length) {
   console.error(`an attribute in single quotes built from \${…} (esc() leaves ' alone) at ${quoted.join(', ')}`);
@@ -107,8 +110,8 @@ if (quoted.length) {
 // it, and Chrome, with no view there, shows nothing wrong. Each opener says so within the two lines after it (2026-11-25:
 // formatted, a statement a line).
 const unlowered = [...html.matchAll(/^.*\.showModal\(\).*$(?:\n.*){0,2}/gm)]
-  .filter(m => !/\.showModal\(\);[\s\S]*\brepostPane\(\)/.test(m[0]))
-  .map(m => at(lineAt(m.index)));
+  .filter(match => !/\.showModal\(\);[\s\S]*\brepostPane\(\)/.test(match[0]))
+  .map(match => at(lineAt(match.index)));
 
 if (unlowered.length) {
   console.error(
@@ -124,15 +127,15 @@ if (unlowered.length) {
 {
   const seen = new Map();
 
-  for (const m of html.matchAll(/^(?:async )?function\*? ?(\w+)\s*\(/gm)) {
-    (seen.get(m[1]) || seen.set(m[1], []).get(m[1])).push(at(lineAt(m.index)));
+  for (const match of html.matchAll(/^(?:async )?function\*? ?(\w+)\s*\(/gm)) {
+    (seen.get(match[1]) || seen.set(match[1], []).get(match[1])).push(at(lineAt(match.index)));
   }
 
   const twice = [...seen].filter(([, at]) => at.length > 1);
 
   if (twice.length) {
     console.error(
-      `a function declared twice, the later one silently replacing the first: ${twice.map(([n, where]) => `${n} at ${where.join(', ')}`).join('; ')}`,
+      `a function declared twice, the later one silently replacing the first: ${twice.map(([name, where]) => `${name} at ${where.join(', ')}`).join('; ')}`,
     );
 
     process.exit(1);
@@ -141,9 +144,9 @@ if (unlowered.length) {
 
 if (file.endsWith('public/index.html')) {
   const keysOf = name => {
-    const m = html.match(new RegExp(`const ${name} = \\{([\\s\\S]*?)\\};`));
+    const match = html.match(new RegExp(`const ${name} = \\{([\\s\\S]*?)\\};`));
 
-    return m ? [...m[1].matchAll(/(?:^\s*|[,{]\s*)(\w+):/g)].map(x => x[1]) : null;
+    return match ? [...match[1].matchAll(/(?:^\s*|[,{]\s*)(\w+):/g)].map(keyMatch => keyMatch[1]) : null;
   };
 
   const hot = keysOf('HOTKEYS');
@@ -161,54 +164,60 @@ if (file.endsWith('public/index.html')) {
 
   if (!hot || !cmd || !table) fail('HOTKEYS, CMDKEYS or KEYS not found');
   else {
-    const rows = [...table[1].matchAll(/'((?:alt|cmdshift|cmd|shift|ctrlalt|ctrl):\w+)'/g)].map(x => x[1]);
+    const rows = [...table[1].matchAll(/'((?:alt|cmdshift|cmd|shift|ctrlalt|ctrl):\w+)'/g)].map(match => match[1]);
 
-    for (const c of hot) if (!rows.includes(`alt:${c}`)) fail(`⌥⌘ ${c} is in HOTKEYS but has no row in KEYS`);
-    for (const c of cmd) if (!rows.includes(`cmd:${c}`)) fail(`⌘ ${c} is in CMDKEYS but has no row in KEYS`);
-    for (const c of shift) if (!rows.includes(`shift:${c}`)) fail(`⌥⌘⇧ ${c} is in SHIFTKEYS but has no row in KEYS`); // (2026-11-24) Top priority's ⌥⌘⇧↑↓
+    for (const code of hot) if (!rows.includes(`alt:${code}`)) fail(`⌥⌘ ${code} is in HOTKEYS but has no row in KEYS`);
+    for (const code of cmd) if (!rows.includes(`cmd:${code}`)) fail(`⌘ ${code} is in CMDKEYS but has no row in KEYS`);
 
-    for (const c of cmdShift) {
-      if (!rows.includes(`cmdshift:${c}`)) fail(`⇧⌘ ${c} is in CMDSHIFTKEYS but has no row in KEYS`);
+    for (const code of shift) {
+      if (!rows.includes(`shift:${code}`)) fail(`⌥⌘⇧ ${code} is in SHIFTKEYS but has no row in KEYS`);
+    } // (2026-11-24) Top priority's ⌥⌘⇧↑↓
+
+    for (const code of cmdShift) {
+      if (!rows.includes(`cmdshift:${code}`)) fail(`⇧⌘ ${code} is in CMDSHIFTKEYS but has no row in KEYS`);
     } // (2026-11-25) ⇧⌘D
 
-    for (const c of ctrl) if (!rows.includes(`ctrl:${c}`)) fail(`⌃⌘ ${c} is in CTRLKEYS but has no row in KEYS`); // (2026-11-25) a strip's tabs
+    for (const code of ctrl) {
+      if (!rows.includes(`ctrl:${code}`)) fail(`⌃⌘ ${code} is in CTRLKEYS but has no row in KEYS`);
+    } // (2026-11-25) a strip's tabs
 
-    for (const c of ctrlAlt) {
-      if (!rows.includes(`ctrlalt:${c}`)) fail(`⌃⌥⌘ ${c} is in CTRLALTKEYS but has no row in KEYS`);
+    for (const code of ctrlAlt) {
+      if (!rows.includes(`ctrlalt:${code}`)) fail(`⌃⌥⌘ ${code} is in CTRLALTKEYS but has no row in KEYS`);
     } // (2026-11-25) a tab out into a tile
 
-    for (const r of rows) {
-      const [m, c] = r.split(':');
+    for (const row of rows) {
+      const [modifiers, code] = row.split(':');
 
       if (
         !(
-          m === 'alt'
+          modifiers === 'alt'
             ? hot
-            : m === 'shift'
+            : modifiers === 'shift'
               ? shift
-              : m === 'cmdshift'
+              : modifiers === 'cmdshift'
                 ? cmdShift
-                : m === 'ctrl'
+                : modifiers === 'ctrl'
                   ? ctrl
-                  : m === 'ctrlalt'
+                  : modifiers === 'ctrlalt'
                     ? ctrlAlt
                     : cmd
-        ).includes(c)
+        ).includes(code)
       ) {
-        fail(`KEYS names ${r}, which no map answers`);
+        fail(`KEYS names ${row}, which no map answers`);
       }
     }
 
     // (2026-10-14) A row that promises the key "again from" its tab fills the column is answered by a hot…Key handler
     // (zoomAgain before the plain one), and every hot…Key the page defines is in HOTKEYS — ⌥⌘D's sat unbound, its
     // plain hotDiff in the map, and the promise was the row's alone.
-    const handler = c => html.match(new RegExp(`const HOTKEYS = \\{[\\s\\S]*?\\b${c}: (\\w+)\\s*[,}]`))?.[1] || null;
+    const handler = code =>
+      html.match(new RegExp(`const HOTKEYS = \\{[\\s\\S]*?\\b${code}: (\\w+)\\s*[,}]`))?.[1] || null;
 
-    for (const line of table[1].split('\n').filter(l => /\bagain from\b/.test(l))) {
-      for (const [, c] of line.matchAll(/'alt:(\w+)'/g)) {
-        if (!/^hot\w+Key$/.test(handler(c) || '')) {
+    for (const line of table[1].split('\n').filter(tableLine => /\bagain from\b/.test(tableLine))) {
+      for (const [, code] of line.matchAll(/'alt:(\w+)'/g)) {
+        if (!/^hot\w+Key$/.test(handler(code) || '')) {
           fail(
-            `⌥⌘ ${c}'s row says again from its tab fills the column, but HOTKEYS gives it ${handler(c) || 'no named handler'}, not a hot…Key`,
+            `⌥⌘ ${code}'s row says again from its tab fills the column, but HOTKEYS gives it ${handler(code) || 'no named handler'}, not a hot…Key`,
           );
         }
       }
@@ -216,16 +225,16 @@ if (file.endsWith('public/index.html')) {
 
     const bound = hot.map(handler);
 
-    for (const [, f] of html.matchAll(/function (hot\w+Key)\(/g)) {
-      if (!bound.includes(f)) fail(`${f} is defined but no key in HOTKEYS calls it`);
+    for (const [, name] of html.matchAll(/function (hot\w+Key)\(/g)) {
+      if (!bound.includes(name)) fail(`${name} is defined but no key in HOTKEYS calls it`);
     }
 
     const src = readFileSync(new URL('../mac/Sources/Keys.swift', import.meta.url), 'utf8');
 
     const set = name => {
-      const m = src.match(new RegExp(`static let ${name}: Set<String> = \\[([^\\]]*)\\]`));
+      const match = src.match(new RegExp(`static let ${name}: Set<String> = \\[([^\\]]*)\\]`));
 
-      return m ? [...m[1].matchAll(/"(\w)"/g)].map(x => x[1]) : null;
+      return match ? [...match[1].matchAll(/"(\w)"/g)].map(keyMatch => keyMatch[1]) : null;
     };
 
     const fwd = set('boardKeys');
@@ -233,44 +242,44 @@ if (file.endsWith('public/index.html')) {
 
     if (!fwd || !cmdFwd) fail('Keys.swift: boardKeys or cmdKeys not found');
     else {
-      for (const c of hot.filter(c => /^Key[A-Z]$/.test(c))) {
-        if (!fwd.includes(c.slice(3).toLowerCase())) {
-          fail(`⌥⌘${c.slice(3)} is the board's, but the app does not forward it from the pane (boardKeys)`);
+      for (const code of hot.filter(entry => /^Key[A-Z]$/.test(entry))) {
+        if (!fwd.includes(code.slice(3).toLowerCase())) {
+          fail(`⌥⌘${code.slice(3)} is the board's, but the app does not forward it from the pane (boardKeys)`);
         }
       }
 
-      for (const c of cmd.filter(c => /^(Key[A-Z]|Digit\d)$/.test(c) && c !== 'KeyW')) {
-        if (!cmdFwd.includes(c.slice(-1).toLowerCase())) {
-          fail(`⌘${c.slice(-1)} is the board's, but the app does not forward it from the pane (cmdKeys)`);
+      for (const code of cmd.filter(entry => /^(Key[A-Z]|Digit\d)$/.test(entry) && entry !== 'KeyW')) {
+        if (!cmdFwd.includes(code.slice(-1).toLowerCase())) {
+          fail(`⌘${code.slice(-1)} is the board's, but the app does not forward it from the pane (cmdKeys)`);
         }
       }
 
       // …and the other way (2026-10-14): what the app forwards, the board answers — a letter it takes from a page and the
       // board drops is a key the page never got
-      for (const l of fwd) {
-        if (!hot.includes(`Key${l.toUpperCase()}`)) {
-          fail(`Keys.swift forwards ⌥⌘${l.toUpperCase()} (boardKeys), which HOTKEYS does not answer`);
+      for (const char of fwd) {
+        if (!hot.includes(`Key${char.toUpperCase()}`)) {
+          fail(`Keys.swift forwards ⌥⌘${char.toUpperCase()} (boardKeys), which HOTKEYS does not answer`);
         }
       }
 
-      for (const l of cmdFwd) {
-        if (!cmd.includes((/\d/.test(l) ? 'Digit' : 'Key') + l.toUpperCase())) {
-          fail(`Keys.swift forwards ⌘${l.toUpperCase()} (cmdKeys), which CMDKEYS does not answer`);
+      for (const char of cmdFwd) {
+        if (!cmd.includes((/\d/.test(char) ? 'Digit' : 'Key') + char.toUpperCase())) {
+          fail(`Keys.swift forwards ⌘${char.toUpperCase()} (cmdKeys), which CMDKEYS does not answer`);
         }
       }
 
       // ⇧⌘ letters (2026-11-25): forwarded both ways, as cmdKeys are
       const csFwd = set('cmdShiftKeys') || [];
 
-      for (const c of cmdShift) {
-        if (!csFwd.includes(c.slice(-1).toLowerCase())) {
-          fail(`⇧⌘${c.slice(-1)} is the board's, but the app does not forward it from the pane (cmdShiftKeys)`);
+      for (const code of cmdShift) {
+        if (!csFwd.includes(code.slice(-1).toLowerCase())) {
+          fail(`⇧⌘${code.slice(-1)} is the board's, but the app does not forward it from the pane (cmdShiftKeys)`);
         }
       }
 
-      for (const l of csFwd) {
-        if (!cmdShift.includes(`Key${l.toUpperCase()}`)) {
-          fail(`Keys.swift forwards ⇧⌘${l.toUpperCase()} (cmdShiftKeys), which CMDSHIFTKEYS does not answer`);
+      for (const char of csFwd) {
+        if (!cmdShift.includes(`Key${char.toUpperCase()}`)) {
+          fail(`Keys.swift forwards ⇧⌘${char.toUpperCase()} (cmdShiftKeys), which CMDSHIFTKEYS does not answer`);
         }
       }
     }
@@ -300,92 +309,94 @@ if (file.endsWith('public/index.html')) {
 
     if (!fn) fail('Keys.swift: hotkeyCode not found');
     else {
-      const byCode = [...fn.matchAll(/e\.keyCode == (\d+) \{ return \("(\w+)", "altcmd"\) \}/g)].map(([, n, c]) => [
-        +n,
-        c,
-      ]);
+      const byCode = [...fn.matchAll(/e\.keyCode == (\d+) \{ return \("(\w+)", "altcmd"\) \}/g)].map(
+        ([, keyCode, code]) => [+keyCode, code],
+      );
 
-      for (const [n, c] of byCode) {
-        if (KVK[n] !== c) {
+      for (const [keyCode, code] of byCode) {
+        if (KVK[keyCode] !== code) {
           fail(
-            `Keys.swift's hotkeyCode sends key code ${n} as ${c}, but ${n} is ${KVK[n] || 'neither a digit, an arrow nor Return'}`,
+            `Keys.swift's hotkeyCode sends key code ${keyCode} as ${code}, but ${keyCode} is ${KVK[keyCode] || 'neither a digit, an arrow nor Return'}`,
           );
         }
 
-        if (!hot.includes(c)) fail(`Keys.swift forwards ⌥⌘ ${c} (key code ${n}), which HOTKEYS does not answer`);
+        if (!hot.includes(code)) {
+          fail(`Keys.swift forwards ⌥⌘ ${code} (key code ${keyCode}), which HOTKEYS does not answer`);
+        }
       }
 
-      for (const c of hot.filter(c => /^(Digit\d|Arrow\w+|Enter)$/.test(c))) {
-        if (!byCode.some(([, x]) => x === c)) {
-          fail(`⌥⌘ ${c} is the board's, but the app does not forward it from the pane (hotkeyCode's key codes)`);
+      for (const code of hot.filter(entry => /^(Digit\d|Arrow\w+|Enter)$/.test(entry))) {
+        if (!byCode.some(([, forwarded]) => forwarded === code)) {
+          fail(`⌥⌘ ${code} is the board's, but the app does not forward it from the pane (hotkeyCode's key codes)`);
         }
       }
 
       // …and ⌥⌘⇧ (2026-11-24): each forwarded by its key code as "shift", each answered by SHIFTKEYS
-      const byShift = [...fn.matchAll(/e\.keyCode == (\d+) \{ return \("(\w+)", "shift"\) \}/g)].map(([, n, c]) => [
-        +n,
-        c,
-      ]);
+      const byShift = [...fn.matchAll(/e\.keyCode == (\d+) \{ return \("(\w+)", "shift"\) \}/g)].map(
+        ([, keyCode, code]) => [+keyCode, code],
+      );
 
-      for (const [n, c] of byShift) {
-        if (KVK[n] !== c) {
+      for (const [keyCode, code] of byShift) {
+        if (KVK[keyCode] !== code) {
           fail(
-            `Keys.swift's hotkeyCode sends ⌥⌘⇧ key code ${n} as ${c}, but ${n} is ${KVK[n] || 'neither a digit, an arrow nor Return'}`,
+            `Keys.swift's hotkeyCode sends ⌥⌘⇧ key code ${keyCode} as ${code}, but ${keyCode} is ${KVK[keyCode] || 'neither a digit, an arrow nor Return'}`,
           );
         }
 
-        if (!shift.includes(c)) fail(`Keys.swift forwards ⌥⌘⇧ ${c} (key code ${n}), which SHIFTKEYS does not answer`);
+        if (!shift.includes(code)) {
+          fail(`Keys.swift forwards ⌥⌘⇧ ${code} (key code ${keyCode}), which SHIFTKEYS does not answer`);
+        }
       }
 
-      for (const c of shift) {
-        if (!byShift.some(([, x]) => x === c)) {
-          fail(`⌥⌘⇧ ${c} is the board's, but the app does not forward it from the pane (hotkeyCode's key codes)`);
+      for (const code of shift) {
+        if (!byShift.some(([, forwarded]) => forwarded === code)) {
+          fail(`⌥⌘⇧ ${code} is the board's, but the app does not forward it from the pane (hotkeyCode's key codes)`);
         }
       }
 
       // …and ⌃⌘ (2026-11-25) the same way, as "ctrlcmd", each answered by CTRLKEYS
-      const byCtrl = [...fn.matchAll(/e\.keyCode == (\d+) \{ return \("(\w+)", "ctrlcmd"\) \}/g)].map(([, n, c]) => [
-        +n,
-        c,
-      ]);
+      const byCtrl = [...fn.matchAll(/e\.keyCode == (\d+) \{ return \("(\w+)", "ctrlcmd"\) \}/g)].map(
+        ([, keyCode, code]) => [+keyCode, code],
+      );
 
-      for (const [n, c] of byCtrl) {
-        if (KVK[n] !== c) {
+      for (const [keyCode, code] of byCtrl) {
+        if (KVK[keyCode] !== code) {
           fail(
-            `Keys.swift's hotkeyCode sends ⌃⌘ key code ${n} as ${c}, but ${n} is ${KVK[n] || 'neither a digit, an arrow nor Return'}`,
+            `Keys.swift's hotkeyCode sends ⌃⌘ key code ${keyCode} as ${code}, but ${keyCode} is ${KVK[keyCode] || 'neither a digit, an arrow nor Return'}`,
           );
         }
 
-        if (!ctrl.includes(c)) fail(`Keys.swift forwards ⌃⌘ ${c} (key code ${n}), which CTRLKEYS does not answer`);
+        if (!ctrl.includes(code)) {
+          fail(`Keys.swift forwards ⌃⌘ ${code} (key code ${keyCode}), which CTRLKEYS does not answer`);
+        }
       }
 
-      for (const c of ctrl) {
-        if (!byCtrl.some(([, x]) => x === c)) {
-          fail(`⌃⌘ ${c} is the board's, but the app does not forward it from the pane (hotkeyCode's key codes)`);
+      for (const code of ctrl) {
+        if (!byCtrl.some(([, forwarded]) => forwarded === code)) {
+          fail(`⌃⌘ ${code} is the board's, but the app does not forward it from the pane (hotkeyCode's key codes)`);
         }
       }
 
       // …and ⌃⌥⌘ (2026-11-25), as "ctrlalt", answered by CTRLALTKEYS
-      const byCtrlAlt = [...fn.matchAll(/e\.keyCode == (\d+) \{ return \("(\w+)", "ctrlalt"\) \}/g)].map(([, n, c]) => [
-        +n,
-        c,
-      ]);
+      const byCtrlAlt = [...fn.matchAll(/e\.keyCode == (\d+) \{ return \("(\w+)", "ctrlalt"\) \}/g)].map(
+        ([, keyCode, code]) => [+keyCode, code],
+      );
 
-      for (const [n, c] of byCtrlAlt) {
-        if (KVK[n] !== c) {
+      for (const [keyCode, code] of byCtrlAlt) {
+        if (KVK[keyCode] !== code) {
           fail(
-            `Keys.swift's hotkeyCode sends ⌃⌥⌘ key code ${n} as ${c}, but ${n} is ${KVK[n] || 'neither a digit, an arrow nor Return'}`,
+            `Keys.swift's hotkeyCode sends ⌃⌥⌘ key code ${keyCode} as ${code}, but ${keyCode} is ${KVK[keyCode] || 'neither a digit, an arrow nor Return'}`,
           );
         }
 
-        if (!ctrlAlt.includes(c)) {
-          fail(`Keys.swift forwards ⌃⌥⌘ ${c} (key code ${n}), which CTRLALTKEYS does not answer`);
+        if (!ctrlAlt.includes(code)) {
+          fail(`Keys.swift forwards ⌃⌥⌘ ${code} (key code ${keyCode}), which CTRLALTKEYS does not answer`);
         }
       }
 
-      for (const c of ctrlAlt) {
-        if (!byCtrlAlt.some(([, x]) => x === c)) {
-          fail(`⌃⌥⌘ ${c} is the board's, but the app does not forward it from the pane (hotkeyCode's key codes)`);
+      for (const code of ctrlAlt) {
+        if (!byCtrlAlt.some(([, forwarded]) => forwarded === code)) {
+          fail(`⌃⌥⌘ ${code} is the board's, but the app does not forward it from the pane (hotkeyCode's key codes)`);
         }
       }
     }

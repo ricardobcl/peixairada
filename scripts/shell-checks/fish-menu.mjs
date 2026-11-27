@@ -12,23 +12,23 @@ export default async function (ctx) {
   await ctx.board();
 
   const fish = () => ctx.ask('fish');
-  const titles = f => f.rows.map(r => r.title);
+  const titles = menu => menu.rows.map(row => row.title);
 
   const rest = await fish();
 
   ctx.assert.deepEqual(titles(rest), ['Show Board', 'Quit peixAIrada'], 'nothing asking: the board and Quit alone');
   ctx.assert.equal(rest.title, '', 'no number');
   // a reply lights the fish, and adds no number nor a row
-  const [a] = ctx.fixture.chats;
+  const [chat] = ctx.fixture.chats;
 
   appendFileSync(
-    a.file,
-    `${replyLines({ id: a.id, cwd: a.cwd, text: 'Done, have a look.', at: new Date() })
-      .map(l => JSON.stringify(l))
+    chat.file,
+    `${replyLines({ id: chat.id, cwd: chat.cwd, text: 'Done, have a look.', at: new Date() })
+      .map(line => JSON.stringify(line))
       .join('\n')}\n`,
   );
 
-  const lit = await waitFor(async () => (f => (f.dim ? null : f))(await fish()), {
+  const lit = await waitFor(async () => (menu => (menu.dim ? null : menu))(await fish()), {
     what: 'the fish lit by a reply',
   });
 
@@ -40,7 +40,7 @@ export default async function (ctx) {
 
   try {
     const cwd = realpathSync(tmpdir());
-    const ago = m => Date.now() - m * 60_000;
+    const ago = minutes => Date.now() - minutes * 60_000;
 
     makeFixture(ctx.fixture.dir, [
       {
@@ -53,7 +53,7 @@ export default async function (ctx) {
       },
     ]);
 
-    const asked = await waitFor(async () => (f => (f.title === ' 1' ? f : null))(await fish()), {
+    const asked = await waitFor(async () => (menu => (menu.title === ' 1' ? menu : null))(await fish()), {
       what: 'the question on the fish',
     });
 

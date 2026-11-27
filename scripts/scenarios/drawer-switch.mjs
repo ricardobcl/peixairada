@@ -14,8 +14,8 @@ export default async function (ctx) {
     await ctx.key('KeyC'); // ⌥⌘C: its claude in the drawer
     await ctx.waitPrompt(15000);
 
-    for (let i = 0; i < 3; i++) {
-      await ctx.type(`line ${i} of ${id.slice(0, 4)}\r`);
+    for (let index = 0; index < 3; index++) {
+      await ctx.type(`line ${index} of ${id.slice(0, 4)}\r`);
       await ctx.sleep(400);
     }
   }
@@ -42,14 +42,14 @@ export default async function (ctx) {
     const seen = frames();
 
     await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${to.id}"] .title').click()`);
-    const f = (await seen).filter(x => x.sid === to.id && x.last >= 0);
+    const drawn = (await seen).filter(frame => frame.sid === to.id && frame.last >= 0);
 
-    ctx.assert.ok(f.length > 10, `${label}: the drawer drew (${f.length} frames)`);
+    ctx.assert.ok(drawn.length > 10, `${label}: the drawer drew (${drawn.length} frames)`);
 
-    const end = f.at(-1).last;
-    const off = f.filter(x => x.last !== end);
+    const end = drawn.at(-1).last;
+    const off = drawn.filter(frame => frame.last !== end);
 
-    (out.switches ||= []).push({ label, end, rows: [...new Set(f.map(x => x.last))] });
+    (out.switches ||= []).push({ label, end, rows: [...new Set(drawn.map(frame => frame.last))] });
 
     ctx.assert.deepEqual(
       off,
@@ -61,7 +61,7 @@ export default async function (ctx) {
   const screen = await ctx.screen();
 
   ctx.assert.ok(
-    screen.some(r => /^❯/.test(r)) && screen.some(r => /fake mode on/.test(r)),
+    screen.some(row => /^❯/.test(row)) && screen.some(row => /fake mode on/.test(row)),
     'the prompt and the status bar, whole',
   );
 

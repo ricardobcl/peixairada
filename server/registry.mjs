@@ -42,8 +42,8 @@ export function scanProjects() {
 
       try {
         indexFile(join(dir, name));
-      } catch (e) {
-        console.error(`[peixairada] ${join(dir, name)} could not be read — ${e?.message || e}`);
+      } catch (error) {
+        console.error(`[peixairada] ${join(dir, name)} could not be read — ${error?.message || error}`);
       } // one chat, never the boot (2026-10-14)
     }
   }
@@ -55,8 +55,8 @@ export function pidAlive(pid) {
   try {
     process.kill(pid, 0);
     return true;
-  } catch (e) {
-    return e.code === 'EPERM';
+  } catch (error) {
+    return error.code === 'EPERM';
   }
 }
 
@@ -65,8 +65,8 @@ export function pidAlive(pid) {
  *  409 and Done left the claude running). One ps for all of them; a pid gone is not in the map. */
 const PS_ENV = { ...process.env, LC_ALL: 'C', TZ: 'UTC' };
 
-export const squash = t =>
-  String(t || '')
+export const squash = text =>
+  String(text || '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -79,16 +79,16 @@ export function procStarts(pids) {
       env: PS_ENV,
       timeout: 5000,
     });
-  } catch (e) {
-    out = String(e.stdout || '');
+  } catch (error) {
+    out = String(error.stdout || '');
   } // a pid not there is ps's exit 1, the rest still printed
 
   return new Map(
     out
       .split('\n')
-      .map(l => /^\s*(\d+)\s+(\S.*)$/.exec(l))
+      .map(line => /^\s*(\d+)\s+(\S.*)$/.exec(line))
       .filter(Boolean)
-      .map(m => [Number(m[1]), squash(m[2])]),
+      .map(match => [Number(match[1]), squash(match[2])]),
   );
 }
 
@@ -98,35 +98,35 @@ export function procStarts(pids) {
  *  ps once (`learnStarts`, every new entry of a registry read in one); an entry with no procStart (an older claude, the
  *  fake) is taken at its pid. */
 const startsSeen = new Map(); // `${pid}:${procStart}` -> whether that pid is still the process that wrote it
-const startKey = l => `${l.pid}:${l.procStart}`;
+const startKey = entry => `${entry.pid}:${entry.procStart}`;
 
 function learnStarts(ls) {
-  const want = ls.filter(l => l?.procStart && !startsSeen.has(startKey(l)) && pidAlive(l.pid));
+  const want = ls.filter(entry => entry?.procStart && !startsSeen.has(startKey(entry)) && pidAlive(entry.pid));
 
   if (!want.length) return;
-  const at = procStarts([...new Set(want.map(l => l.pid))]);
+  const at = procStarts([...new Set(want.map(entry => entry.pid))]);
 
-  for (const l of want) startsSeen.set(startKey(l), at.get(Number(l.pid)) === squash(l.procStart));
+  for (const entry of want) startsSeen.set(startKey(entry), at.get(Number(entry.pid)) === squash(entry.procStart));
 }
 
-function procAlive(l) {
-  if (!l) return false;
+function procAlive(entry) {
+  if (!entry) return false;
 
-  if (!pidAlive(l.pid)) {
-    startsSeen.delete(startKey(l));
+  if (!pidAlive(entry.pid)) {
+    startsSeen.delete(startKey(entry));
     return false;
   } // gone: a pid handed on later is asked about anew
 
-  if (!l.procStart) return true;
-  learnStarts([l]);
-  return startsSeen.get(startKey(l));
+  if (!entry.procStart) return true;
+  learnStarts([entry]);
+  return startsSeen.get(startKey(entry));
 }
 
-export function applyLiveness(s) {
-  const wasAlive = s.alive;
+export function applyLiveness(session) {
+  const wasAlive = session.alive;
 
-  s.alive = procAlive(s.live);
-  return wasAlive !== s.alive;
+  session.alive = procAlive(session.live);
+  return wasAlive !== session.alive;
 }
 
 // /clear is the chat finished (2026-10-10): the same claude goes on under a new id, in a transcript of its own, and the
@@ -136,14 +136,14 @@ export function applyLiveness(s) {
 // into another chat, even one a /clear once began, and a fork leave the chat they left as it was.
 const clearedFrom = new Map(); // a chat a process moved to -> the chat it left, until the move is judged
 
-export function tickCleared(s) {
-  const was = sessions.get(clearedFrom.get(s.id));
+export function tickCleared(session) {
+  const was = sessions.get(clearedFrom.get(session.id));
 
-  if (!was || !s.clearedAt) return; // not moved to, or its transcript not read yet: the other half calls again
-  clearedFrom.delete(s.id);
-  if (isDone(was) || (was.lastActivity && s.clearedAt < was.lastActivity)) return;
+  if (!was || !session.clearedAt) return; // not moved to, or its transcript not read yet: the other half calls again
+  clearedFrom.delete(session.id);
+  if (isDone(was) || (was.lastActivity && session.clearedAt < was.lastActivity)) return;
   doneMarks[was.id] = new Date().toISOString();
-  console.log(`[peixairada] chat ${was.id}: cleared into ${s.id} — done`);
+  console.log(`[peixairada] chat ${was.id}: cleared into ${session.id} — done`);
   saveState();
   schedulePush(was);
 }
@@ -153,8 +153,10 @@ export function loadRegistry() {
   // which chat each process was on at the last look, to see one move (/clear, /resume)
   const held = new Map();
 
-  for (const s of sessions.values()) {
-    if (s.live) for (const l of [s.live, ...s.rivals]) held.set(`${l.pid}:${l.procStart}`, s);
+  for (const session of sessions.values()) {
+    if (session.live) {
+      for (const entry of [session.live, ...session.rivals]) held.set(`${entry.pid}:${entry.procStart}`, session);
+    }
   }
 
   const found = new Map(); // sessionId -> its registry entries, one per pid
@@ -198,35 +200,35 @@ export function loadRegistry() {
   const entries = [...found.values()].flat();
   const keys = new Set(entries.map(startKey));
 
-  for (const k of startsSeen.keys()) if (!keys.has(k)) startsSeen.delete(k); // a file gone takes its verdict with it
+  for (const key of startsSeen.keys()) if (!keys.has(key)) startsSeen.delete(key); // a file gone takes its verdict with it
   learnStarts(entries); // one ps for every entry new to the board
 
-  const ppids = [...terms.values()].some(t => untied(t, regPids))
+  const ppids = [...terms.values()].some(term => untied(term, regPids))
     ? parentPids(
         [...found.values()]
           .flat()
-          .map(l => l.pid)
+          .map(entry => entry.pid)
           .filter(pidAlive),
       )
     : null; // a launcher's or a wrapper's claude is below the PTY's pid
 
   for (const [id, lives] of found) {
-    let s = sessions.get(id);
+    let session = sessions.get(id);
 
-    if (!s) {
-      s = newSession(id, null);
-      sessions.set(id, s);
+    if (!session) {
+      session = newSession(id, null);
+      sessions.set(id, session);
     }
 
-    for (const l of lives) {
-      if (pstr(l.name) && procAlive(l)) peerNames.set(l.name, id); // the name another chat's SendMessage reaches it by (2026-10-31)
-      linkTermToRegistry(l.pid, s, ppids, regPids); // a new chat's terminal learns its session id here
-      const was = held.get(`${l.pid}:${l.procStart}`);
+    for (const entry of lives) {
+      if (pstr(entry.name) && procAlive(entry)) peerNames.set(entry.name, id); // the name another chat's SendMessage reaches it by (2026-10-31)
+      linkTermToRegistry(entry.pid, session, ppids, regPids); // a new chat's terminal learns its session id here
+      const was = held.get(`${entry.pid}:${entry.procStart}`);
 
-      if (was && was !== s && procAlive(l)) {
-        clearedFrom.set(s.id, was.id);
-        tickCleared(s);
-        carryPriority(was, s);
+      if (was && was !== session && procAlive(entry)) {
+        clearedFrom.set(session.id, was.id);
+        tickCleared(session);
+        carryPriority(was, session);
       }
     }
 
@@ -236,28 +238,29 @@ export function loadRegistry() {
     // else the newest live one, else whatever is left (a dead pid's file lingers until claude's housekeeping). The rest,
     // live only, are its rivals.
     const mine = [...terms.values()]
-      .filter(t => t.sessionId === id && !t.shell && t.exited === null)
-      .map(t => t.claudePid || t.pid)[0];
+      .filter(term => term.sessionId === id && !term.shell && term.exited === null)
+      .map(term => term.claudePid || term.pid)[0];
 
-    const alive = lives.filter(procAlive).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+    const alive = lives.filter(procAlive).sort((left, right) => (right.startedAt || 0) - (left.startedAt || 0));
 
     const live =
-      alive.find(l => l.pid === mine) ||
-      alive.find(l => l.entrypoint !== 'claude-vscode' && l.kind !== 'bg') ||
-      alive.find(l => l.entrypoint !== 'claude-vscode') ||
+      alive.find(entry => entry.pid === mine) ||
+      alive.find(entry => entry.entrypoint !== 'claude-vscode' && entry.kind !== 'bg') ||
+      alive.find(entry => entry.entrypoint !== 'claude-vscode') ||
       alive[0] ||
       lives[0];
 
-    const rivals = alive.filter(l => l !== live);
+    const rivals = alive.filter(entry => entry !== live);
 
     const changed =
-      JSON.stringify(live) !== JSON.stringify(s.live) || JSON.stringify(rivals) !== JSON.stringify(s.rivals);
+      JSON.stringify(live) !== JSON.stringify(session.live) ||
+      JSON.stringify(rivals) !== JSON.stringify(session.rivals);
 
-    const wasWaiting = waitingOn(s);
+    const wasWaiting = waitingOn(session);
 
-    s.live = live;
-    s.rivals = rivals;
-    if (!s.cwd && live.cwd) s.cwd = live.cwd;
+    session.live = live;
+    session.rivals = rivals;
+    if (!session.cwd && live.cwd) session.cwd = live.cwd;
 
     // A chat with no transcript yet still gets a card (2026-09-27), and the card needs a time: the moment the board
     // first saw the id. Not the registry's startedAt — /clear keeps the process, and its start, and gives it a new id;
@@ -265,28 +268,28 @@ export function loadRegistry() {
     // word yet, not no file: /clear writes its own lines into the new transcript at once — a caveat, the command, its
     // output, none of them a word — and a chat with a file had no start, so its card sank to the bottom of the list
     // (2026-09-28).
-    if (!s.startedAt && !s.lastActivity) {
-      s.startedAt = new Date(
+    if (!session.startedAt && !session.lastActivity) {
+      session.startedAt = new Date(
         indexing && Number(live.startedAt) > 0 ? Number(live.startedAt) : Date.now(),
       ).toISOString();
     }
 
-    if (applyLiveness(s) || changed) schedulePush(s);
-    if (waitingOn(s) && !wasWaiting) queueNotify(s, 'needs-input'); // the moment a prompt goes up — the transcript hears of it only with the answer
+    if (applyLiveness(session) || changed) schedulePush(session);
+    if (waitingOn(session) && !wasWaiting) queueNotify(session, 'needs-input'); // the moment a prompt goes up — the transcript hears of it only with the answer
   }
 
-  for (const s of sessions.values()) {
-    if (s.live && !found.has(s.id)) {
-      s.live = null;
-      s.rivals = [];
-      if (applyLiveness(s)) schedulePush(s);
-    } else if (s.live && applyLiveness(s)) schedulePush(s);
+  for (const session of sessions.values()) {
+    if (session.live && !found.has(session.id)) {
+      session.live = null;
+      session.rivals = [];
+      if (applyLiveness(session)) schedulePush(session);
+    } else if (session.live && applyLiveness(session)) schedulePush(session);
   }
 
   // a claude started on a chat deleted from the board (2026-11-04): it is at work again, and shown
   for (const id of Object.keys(removedMarks)) {
-    const s = sessions.get(id);
+    const session = sessions.get(id);
 
-    if (s?.alive && !removing.has(id)) putBackOnBoard(s);
+    if (session?.alive && !removing.has(id)) putBackOnBoard(session);
   }
 }

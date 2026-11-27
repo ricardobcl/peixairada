@@ -101,7 +101,7 @@ export default async function (ctx) {
   ]);
 
   // the cards by the fixture's names (a chat on a PR is titled by it once GitHub answers)
-  const names = Object.fromEntries(chats.map((c, i) => [c.id, ['On one', 'On two', 'On none'][i]]));
+  const names = Object.fromEntries(chats.map((chat, index) => [chat.id, ['On one', 'On two', 'On none'][index]]));
 
   const titles = () =>
     ctx
@@ -239,7 +239,7 @@ export default async function (ctx) {
   appendFileSync(
     two.file,
     `${replyLines({ id: two.id, cwd: two.cwd, text: 'Done, have a look.', at: new Date() })
-      .map(l => JSON.stringify(l))
+      .map(line => JSON.stringify(line))
       .join('\n')}\n`,
   );
 
@@ -251,13 +251,13 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#fBtn').click()`);
     await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: "the funnel's menu" });
 
-    const m = await ctx.evaluate(
+    const rows = await ctx.evaluate(
       `[...document.querySelectorAll('#ctxm button')].map(b => b.textContent).filter(t => /^New replies\\d+$/.test(t))`,
     );
 
     await ctx.evaluate(`document.querySelector('#ctxm').close()`);
     await ctx.sleep(200);
-    return m;
+    return rows;
   };
 
   out.funnelAna = await funnel();

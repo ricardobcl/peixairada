@@ -21,7 +21,7 @@ export default async function (ctx) {
 
   try {
     const {
-      chats: [w],
+      chats: [chat],
     } = makeFixture(ctx.fixture.dir, [
       {
         cwd,
@@ -52,14 +52,20 @@ export default async function (ctx) {
       },
     ]);
 
-    const card = `document.querySelector('#slist > .card[data-id="${w.id}"]')`;
+    const card = `document.querySelector('#slist > .card[data-id="${chat.id}"]')`;
     const tip = `${card}?.querySelector('.chip.watch')?.title`;
 
     const event = text =>
       appendFileSync(
-        w.file,
+        chat.file,
         `${JSON.stringify(
-          taskNoteLine({ id: w.id, cwd, taskId: mon, summary: 'Monitor event: "CI checks on PR #382"', event: text }),
+          taskNoteLine({
+            id: chat.id,
+            cwd,
+            taskId: mon,
+            summary: 'Monitor event: "CI checks on PR #382"',
+            event: text,
+          }),
         )}\n`,
       );
 
@@ -110,7 +116,7 @@ export default async function (ctx) {
     );
 
     // the header's chip, the open chat's
-    await ctx.openChat(w.id);
+    await ctx.openChat(chat.id);
 
     await ctx.waitFor(`/ · 2 events$/.test(document.querySelector('#shead .chip.watch')?.title || '')`, {
       what: "the header's chip and its tooltip",

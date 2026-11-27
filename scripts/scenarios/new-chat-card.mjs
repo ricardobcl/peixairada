@@ -21,14 +21,14 @@ const cardOf = (ctx, id) =>
 
 export default async function (ctx) {
   const out = {};
-  const [a, b] = ctx.fixture.chats; // b's folder is the temp dir: no Taskfile, so ⌥⌘N ⏎ ⏎ starts claude without a question
-  const known = [a.id, b.id];
+  const [chatA, chatB] = ctx.fixture.chats; // chatB's folder is the temp dir: no Taskfile, so ⌥⌘N ⏎ ⏎ starts claude without a question
+  const known = [chatA.id, chatB.id];
 
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 2`, { what: 'the two fixture cards' });
 
-  // ⌥⌘N opens on the project in view (＋ went on 2026-09-28): select b's folder the way the page remembers it, and load again
+  // ⌥⌘N opens on the project in view (＋ went on 2026-09-28): select chatB's folder the way the page remembers it, and load again
   await ctx.evaluate(
-    `(() => { const p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'); p.project = ${JSON.stringify(b.cwd)}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })()`,
+    `(() => { const p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'); p.project = ${JSON.stringify(chatB.cwd)}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })()`,
   );
 
   await ctx.reload();
@@ -76,13 +76,13 @@ export default async function (ctx) {
 
   out.fresh = await cardOf(ctx, id);
 
-  out.session = await ctx.peix(`session(${JSON.stringify(id)})`).then(s => ({
-    title: s.title,
-    startedAt: s.startedAt,
-    lastActivity: s.lastActivity,
-    alive: s.alive,
-    status: s.status,
-    file: s.file,
+  out.session = await ctx.peix(`session(${JSON.stringify(id)})`).then(session => ({
+    title: session.title,
+    startedAt: session.startedAt,
+    lastActivity: session.lastActivity,
+    alive: session.alive,
+    status: session.status,
+    file: session.file,
   }));
 
   out.ready1 = Number(await ctx.evaluate(`(document.querySelector('#slist > .gsep.lane.ready b')?.textContent || 0)`));
@@ -119,9 +119,12 @@ export default async function (ctx) {
   await ctx.sleep(300);
   out.spoken = await cardOf(ctx, id);
 
-  out.after = await ctx
-    .peix(`session(${JSON.stringify(id)})`)
-    .then(s => ({ title: s.title, startedAt: s.startedAt, lastActivity: s.lastActivity, file: s.file }));
+  out.after = await ctx.peix(`session(${JSON.stringify(id)})`).then(session => ({
+    title: session.title,
+    startedAt: session.startedAt,
+    lastActivity: session.lastActivity,
+    file: session.file,
+  }));
 
   await ctx.shot('spoken', { x: 0, y: 0, width: 1270, height: 600 });
   ctx.assert.equal(out.spoken.n, 1, 'still one card');
@@ -164,10 +167,13 @@ export default async function (ctx) {
     timeout: 5000,
   });
 
-  await waitFor(async () => (await ctx.server.terminals()).every(t => t.sessionId !== id2 || t.exited !== null), {
-    what: "the ticked chat's drawer ended",
-    timeout: 10_000,
-  });
+  await waitFor(
+    async () => (await ctx.server.terminals()).every(term => term.sessionId !== id2 || term.exited !== null),
+    {
+      what: "the ticked chat's drawer ended",
+      timeout: 10_000,
+    },
+  );
 
   await ctx.waitFor(`(s => s && !s.alive && s.done)(window.peix.session(${JSON.stringify(id2)}))`, {
     what: 'its claude gone, the chat done',

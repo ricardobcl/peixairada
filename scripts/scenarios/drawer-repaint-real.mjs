@@ -58,24 +58,24 @@ export default async function (ctx) {
 
       const seen = looks(frames)
         .slice(1)
-        .filter(f => f.t + t0 - at < 500);
+        .filter(frame => frame.t + t0 - at < 500);
 
-      const part = frames.filter(f => f.n < fin * 0.6);
+      const part = frames.filter(frame => frame.n < fin * 0.6);
 
       (out.chrome[label] ||= []).push(`${seen.length} look(s)${part.length ? `, ${part.length} partial` : ''}`);
       assert.equal(part.length, 0, `${label}: no frame with part of a screen: ${JSON.stringify(part.slice(0, 2))}`);
 
       assert.ok(
         seen.length <= 2,
-        `${label}: one new screen, not ${seen.length}: ${JSON.stringify(seen.map(f => [f.t, f.cols, f.rows, f.n]))}`,
+        `${label}: one new screen, not ${seen.length}: ${JSON.stringify(seen.map(frame => [frame.t, frame.cols, frame.rows, frame.n]))}`,
       );
     }
   }
 
   const total = Object.values(out.chrome)
     .flat()
-    .map(s => +s[0])
-    .reduce((a, b) => a + b, 0);
+    .map(entry => +entry[0])
+    .reduce((sum, count) => sum + count, 0);
 
   // the code before drew two a change, 16 here; the CLI changes a hint on its own now and then, inside the half second
   assert.ok(
@@ -105,7 +105,7 @@ export default async function (ctx) {
     }
     return JSON.stringify(out);`;
 
-  const r = spawnSync('node', ['scripts/webkit.mjs', '--hash', id, body], {
+  const result = spawnSync('node', ['scripts/webkit.mjs', '--hash', id, body], {
     encoding: 'utf8',
     timeout: 90000,
     env: {
@@ -118,30 +118,34 @@ export default async function (ctx) {
     },
   });
 
-  if (/the page is hidden/.test(r.stderr + r.stdout)) {
+  if (/the page is hidden/.test(result.stderr + result.stdout)) {
     ctx.log('the screen is locked: WebKit runs no frames, its half not checked');
     return { ...out, webkit: 'skipped: the screen is locked' };
   }
 
-  const line = r.stdout.split('\n').find(l => l.startsWith('"{'));
+  const line = result.stdout.split('\n').find(outputLine => outputLine.startsWith('"{'));
 
-  assert.ok(line, `an answer from WebKit: ${(r.stderr + r.stdout).slice(-600)}`);
+  assert.ok(line, `an answer from WebKit: ${(result.stderr + result.stdout).slice(-600)}`);
   const wk = JSON.parse(JSON.parse(line));
 
   for (const [label, runs] of Object.entries(wk)) {
-    out.webkit[label] = runs.map(f => f.map(x => x.split(' ')[0]).join(' ')); // when each new frame came, the burst's clock (the key at about 120 ms)
+    out.webkit[label] = runs.map(run => run.map(frame => frame.split(' ')[0]).join(' ')); // when each new frame came, the burst's clock (the key at about 120 ms)
 
     // a frame whose bottom third is bare, between two that are not, is half a repaint; frames alike in where their ink is
     // are one look (an edge's colour easing makes frames that differ by a shade)
     for (const all of runs) {
-      const f = all.filter((x, i) => !i || x.split(' ')[1] !== all[i - 1].split(' ')[1]);
+      const changes = all.filter((frame, index) => !index || frame.split(' ')[1] !== all[index - 1].split(' ')[1]);
 
-      const torn = f
+      const torn = changes
         .slice(1, -1)
-        .filter(x => /\.{4,}-?$/.test(x.split(' ')[1]) && !/\.{4,}-?$/.test(f.at(-1).split(' ')[1]));
+        .filter(frame => /\.{4,}-?$/.test(frame.split(' ')[1]) && !/\.{4,}-?$/.test(changes.at(-1).split(' ')[1]));
 
-      assert.equal(torn.length, 0, `${label} in WebKit: no frame with its bottom gone: ${JSON.stringify(f)}`);
-      assert.ok(f.length - 1 <= 2, `${label} in WebKit: one new screen, not ${f.length - 1}: ${JSON.stringify(f)}`);
+      assert.equal(torn.length, 0, `${label} in WebKit: no frame with its bottom gone: ${JSON.stringify(changes)}`);
+
+      assert.ok(
+        changes.length - 1 <= 2,
+        `${label} in WebKit: one new screen, not ${changes.length - 1}: ${JSON.stringify(changes)}`,
+      );
     }
   }
 

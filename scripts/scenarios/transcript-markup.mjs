@@ -57,7 +57,7 @@ export default async function (ctx) {
     { cwd, title: 'Links', prompt: 'where is it', reply: links, at: new Date(now - 3000) },
   ]);
 
-  const [veilId, hotId, pasteId, linksId] = chats.map(c => c.id);
+  const [veilId, hotId, pasteId, linksId] = chats.map(chat => chat.id);
 
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', {
     source: `window.webkit = { messageHandlers: { hub: { postMessage: m => { (window.__posts ||= []).push(JSON.parse(JSON.stringify(m))); } } } };`,
@@ -123,7 +123,7 @@ export default async function (ctx) {
   await ctx.evaluate(`window.__posts = []`);
   await ctx.evaluate(`window.peixKey('KeyE')`);
   await ctx.sleep(600);
-  out.hotkeyPosts = (await posted()).filter(m => /x-apple|file:/.test(m.url || ''));
+  out.hotkeyPosts = (await posted()).filter(post => /x-apple|file:/.test(post.url || ''));
   ctx.assert.deepEqual(out.hotkeyPosts, [], "⌥⌘E opens the editor, never the reply's URL");
   await ctx.key('Escape');
 
@@ -132,8 +132,8 @@ export default async function (ctx) {
   await ctx.send('Browser.grantPermissions', { permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] });
   out.copied = [];
 
-  for (const i of [0, 1]) {
-    await ctx.evaluate(`document.querySelectorAll('#log .codebox .copy')[${i}].click()`);
+  for (const index of [0, 1]) {
+    await ctx.evaluate(`document.querySelectorAll('#log .codebox .copy')[${index}].click()`);
     await ctx.sleep(300);
     out.copied.push(await ctx.evaluate(`navigator.clipboard.readText()`));
   }

@@ -23,18 +23,18 @@ import {
 import { broadcast } from '../sse.mjs';
 
 /** The setup and what hangs off it: the config, the first run's guess, Jira and its token, the chat, lunch. */
-export async function setupRoutes(req, res, url, p) {
-  let m;
+export async function setupRoutes(req, res, url, path) {
+  let match;
 
-  if (req.method === 'GET' && p === '/api/config') return json(res, 200, boardConfig());
-  if (req.method === 'GET' && p === '/api/config/suggest') return json(res, 200, { roots: suggestRoots() });
-  if (req.method === 'GET' && p === '/api/jira') return json(res, 200, await jiraInfo());
-  if (p === '/api/chat') return chatRoute(req, res, null, url); // the chat (2026-10-17): its own routes
-  if (p === '/api/chat/pic' || p === '/api/chat/upload') return chatPicRoute(req, res, url, p); // its pictures (2026-11-25): fetched for the page, yours uploaded
-  if ((m = p.match(/^\/api\/chat\/(\w+)$/))) return chatRoute(req, res, m[1], url);
-  if (p === '/api/lunch') return lunchRoute(req, res, url); // lunch (2026-10-18)
+  if (req.method === 'GET' && path === '/api/config') return json(res, 200, boardConfig());
+  if (req.method === 'GET' && path === '/api/config/suggest') return json(res, 200, { roots: suggestRoots() });
+  if (req.method === 'GET' && path === '/api/jira') return json(res, 200, await jiraInfo());
+  if (path === '/api/chat') return chatRoute(req, res, null, url); // the chat (2026-10-17): its own routes
+  if (path === '/api/chat/pic' || path === '/api/chat/upload') return chatPicRoute(req, res, url, path); // its pictures (2026-11-25): fetched for the page, yours uploaded
+  if ((match = path.match(/^\/api\/chat\/(\w+)$/))) return chatRoute(req, res, match[1], url);
+  if (path === '/api/lunch') return lunchRoute(req, res, url); // lunch (2026-10-18)
 
-  if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/jira/token') {
+  if ((req.method === 'PUT' || req.method === 'DELETE') && path === '/api/jira/token') {
     // the Setup's token box: into the keychain, or out of it
     const body = req.method === 'PUT' ? await jsonBody(req) : {};
     const token = req.method === 'PUT' ? (typeof body.token === 'string' ? body.token.trim() : '') : '';
@@ -45,14 +45,14 @@ export async function setupRoutes(req, res, url, p) {
 
     try {
       await saveJiraToken(token);
-    } catch (e) {
-      return json(res, 400, { error: e.message });
+    } catch (error) {
+      return json(res, 400, { error: error.message });
     }
 
     return json(res, 200, await jiraInfo());
   }
 
-  if (req.method === 'PUT' && p === '/api/config') {
+  if (req.method === 'PUT' && path === '/api/config') {
     // the settings' Setup: the keys given replace theirs, the rest stand
     reloadConfig(); // a hand edit since the last poll first: merged into, not saved over — nor a broken one written over
     if (configError) return json(res, 409, { error: `${configError} — fix it by hand, or delete it to start over` });
@@ -64,8 +64,8 @@ export async function setupRoutes(req, res, url, p) {
     const toMake = new Set();
 
     if (body.create === true && Array.isArray(body.roots)) {
-      for (const r of body.roots) {
-        const dir = typeof r?.dir === 'string' && r.dir.trim() ? resolve(expandHome(r.dir)) : '';
+      for (const root of body.roots) {
+        const dir = typeof root?.dir === 'string' && root.dir.trim() ? resolve(expandHome(root.dir)) : '';
 
         if (!dir.startsWith(`${homedir()}/`) || existsSync(dir)) continue;
 
@@ -79,15 +79,15 @@ export async function setupRoutes(req, res, url, p) {
       }
     }
 
-    const r = cleanSetup(body, true, toMake);
+    const result = cleanSetup(body, true, toMake);
 
-    if (r.error) return json(res, 400, { error: r.error });
+    if (result.error) return json(res, 400, { error: result.error });
 
     for (const dir of toMake) {
       try {
         mkdirSync(dir, { recursive: true });
-      } catch (e) {
-        return json(res, 400, { error: `${tildePath(dir)}: ${e.message}` });
+      } catch (error) {
+        return json(res, 400, { error: `${tildePath(dir)}: ${error.message}` });
       }
     }
 
@@ -95,7 +95,7 @@ export async function setupRoutes(req, res, url, p) {
     const chatWas = setup.chat?.repo ?? null;
     const lunchWas = JSON.stringify(setup.lunch ?? null);
 
-    setSetup({ ...setup, ...r.setup });
+    setSetup({ ...setup, ...result.setup });
     folderCache.clear();
     if (JSON.stringify(setup.jira ?? null) !== jiraWas) jiraReset();
     if ((setup.chat?.repo ?? null) !== chatWas) chatReset();

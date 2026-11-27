@@ -20,7 +20,7 @@ const SETUP = `window.__posts = []; window.webkit = { messageHandlers: { hub: { 
 export default async function (ctx) {
   const out = {};
   const cwd = realpathSync(tmpdir());
-  const ago = m => new Date(Date.now() - m * 60_000);
+  const ago = minutes => new Date(Date.now() - minutes * 60_000);
 
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: SETUP });
   await ctx.reload();
@@ -30,7 +30,13 @@ export default async function (ctx) {
     [
       ['Release notes for 4.2', 30],
       ['Checkout copy for 4.2', 45],
-    ].map(([title, m]) => ({ cwd, title, prompt: `Work on: ${title}`, reply: 'Done, have a look.', at: ago(m) })),
+    ].map(([title, minutes]) => ({
+      cwd,
+      title,
+      prompt: `Work on: ${title}`,
+      reply: 'Done, have a look.',
+      at: ago(minutes),
+    })),
   );
 
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 4`, {
@@ -59,11 +65,11 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-  const summary = async cid => (await ctx.server.api('api/sessions')).body.sessions.find(s => s.id === cid);
+  const summary = async cid => (await ctx.server.api('api/sessions')).body.sessions.find(session => session.id === cid);
 
-  const digit = n =>
+  const digit = number =>
     ctx.evaluate(
-      `document.querySelector('#ctxm').dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit${n}', key: '${n}', bubbles: true, cancelable: true }))`,
+      `document.querySelector('#ctxm').dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit${number}', key: '${number}', bubbles: true, cancelable: true }))`,
     );
 
   const lastState = () =>
@@ -75,7 +81,7 @@ export default async function (ctx) {
     appendFileSync(
       file,
       `${replyLines({ id: cid, cwd, text: 'More done.', at: new Date() })
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
   };
@@ -89,17 +95,17 @@ export default async function (ctx) {
   ctx.assert.match(out.menu[0], /^1In 1 hour\d\d:\d\d$/, 'a digit, the time and when');
 
   ctx.assert.ok(
-    out.menu.some(r => /^3(Tomorrow|This) morning/.test(r)),
+    out.menu.some(label => /^3(Tomorrow|This) morning/.test(label)),
     'the morning',
   );
 
   ctx.assert.ok(
-    out.menu.some(r => /^5Pick a time…/.test(r)),
+    out.menu.some(label => /^5Pick a time…/.test(label)),
     'a time of your own',
   );
 
   ctx.assert.ok(
-    out.menu.some(r => /^Until something happens/.test(r)),
+    out.menu.some(label => /^Until something happens/.test(label)),
     'nothing to wait for in a quiet chat, said',
   );
 
@@ -109,11 +115,11 @@ export default async function (ctx) {
   // ---- 1 picks: the card goes to Snoozed, saying when ----
   await digit(1);
   await ctx.waitFor(`${card(notes)}?.dataset.rank === 'snoozed'`, { what: 'the card in Snoozed', timeout: 8000 });
-  const z = (await summary(notes)).snooze;
+  const snooze = (await summary(notes)).snooze;
 
   ctx.assert.ok(
-    z?.until && Math.abs(Date.parse(z.until) - Date.now() - 3_600_000) < 60_000,
-    `an hour on: ${JSON.stringify(z)}`,
+    snooze?.until && Math.abs(Date.parse(snooze.until) - Date.now() - 3_600_000) < 60_000,
+    `an hour on: ${JSON.stringify(snooze)}`,
   );
 
   out.lane = await ctx.evaluate(
@@ -136,7 +142,7 @@ export default async function (ctx) {
   await ctx.sleep(600);
   const st = await lastState();
 
-  ctx.assert.ok(!(st?.replied || []).some(r => r.id === notes), "not in the app's new replies");
+  ctx.assert.ok(!(st?.replied || []).some(chat => chat.id === notes), "not in the app's new replies");
 
   ctx.assert.equal(
     await ctx.evaluate(`${card(notes)}.dataset.rank`),
@@ -186,7 +192,7 @@ export default async function (ctx) {
   await ctx.sleep(400);
 
   ctx.assert.ok(
-    ((await lastState())?.replied || []).some(r => r.id === old),
+    ((await lastState())?.replied || []).some(chat => chat.id === old),
     "counted a new reply, the Dock's",
   );
 
@@ -218,7 +224,7 @@ export default async function (ctx) {
 
   // ---- a banner's In an hour (the app's peixSnooze): the chat snoozed an hour ----
   await ctx.evaluate(`window.peixSnooze(${JSON.stringify(copy)})`);
-  for (let i = 0; i < 40 && !(await summary(copy)).snooze; i++) await ctx.sleep(100);
+  for (let attempt = 0; attempt < 40 && !(await summary(copy)).snooze; attempt++) await ctx.sleep(100);
   const zz = (await summary(copy)).snooze;
 
   ctx.assert.ok(

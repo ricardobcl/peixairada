@@ -82,25 +82,25 @@ export default async function (ctx) {
   out.rows = await bar(ctx);
 
   ctx.assert.deepEqual(
-    out.rows.rows.map(r => r.pct),
+    out.rows.rows.map(row => row.pct),
     ['42%', '75%', '95%', '12%'],
   );
 
   ctx.assert.deepEqual(
-    out.rows.rows.map(r => r.colour),
+    out.rows.rows.map(row => row.colour),
     ['var(--spend)', 'var(--spend)', 'var(--ink)', 'var(--spend)'],
     "orange, the ink from 90: red is for asking (round XIX's S3)",
   );
 
   // 12 h left of a day, 3 d 12 h of seven days: both clocks stand half way; a credit grant has no clock
   ctx.assert.deepEqual(
-    out.rows.rows.map(r => r.tick),
+    out.rows.rows.map(row => row.tick),
     [50, 50, 50, null],
     'a tick where the clock stands, where the window has one',
   );
 
   ctx.assert.deepEqual(
-    out.rows.rows.map(r => r.reset),
+    out.rows.rows.map(row => row.reset),
     ['12h 0m', '3d 12h', '3d 12h', ''],
   );
 
@@ -139,7 +139,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.cap.meters, ['$54%'], 'the cap, its tag a $');
 
   ctx.assert.deepEqual(
-    out.cap.rows.map(r => [r.label, r.pct]),
+    out.cap.rows.map(row => [row.label, row.pct]),
     [['spend · this month', '54%']],
   );
 

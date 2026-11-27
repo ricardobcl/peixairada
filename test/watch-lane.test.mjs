@@ -16,84 +16,84 @@ const { fold, newSession, summary, cronNext, pruneWakes } = await import('../ser
 
 // judged against the real clock, as tasks are: the lines date from a few minutes ago
 const t0 = Date.now() - 5 * 60_000;
-const at = i => new Date(t0 + i * 1000).toISOString();
+const at = seconds => new Date(t0 + seconds * 1000).toISOString();
 
 const live = id => {
-  const s = newSession(id, `/x/${id}.jsonl`);
+  const session = newSession(id, `/x/${id}.jsonl`);
 
-  s.alive = true;
-  s.live = { pid: 1, startedAt: t0 - 3600_000 };
-  return s;
+  session.alive = true;
+  session.live = { pid: 1, startedAt: t0 - 3600_000 };
+  return session;
 };
 
-const user = (text, i, extra = {}) => ({
+const user = (text, seconds, extra = {}) => ({
   type: 'user',
   message: { role: 'user', content: [{ type: 'text', text }] },
-  timestamp: at(i),
+  timestamp: at(seconds),
   cwd: '/tmp/repo',
   ...extra,
 });
 
-const said = (blocks, stop, i, extra = {}) => ({
+const said = (blocks, stop, seconds, extra = {}) => ({
   type: 'assistant',
-  message: { role: 'assistant', model: 'claude-opus-5', id: `m${i}`, content: blocks, stop_reason: stop },
-  timestamp: at(i),
+  message: { role: 'assistant', model: 'claude-opus-5', id: `m${seconds}`, content: blocks, stop_reason: stop },
+  timestamp: at(seconds),
   cwd: '/tmp/repo',
   ...extra,
 });
 
-const call = (id, name, input, i) => said([{ type: 'tool_use', id, name, input }], 'tool_use', i);
+const call = (id, name, input, seconds) => said([{ type: 'tool_use', id, name, input }], 'tool_use', seconds);
 
-const result = (id, content, i, toolUseResult) => ({
+const result = (id, content, seconds, toolUseResult) => ({
   type: 'user',
   message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content }] },
-  timestamp: at(i),
+  timestamp: at(seconds),
   cwd: '/tmp/repo',
   ...(toolUseResult && { toolUseResult }),
 });
 
-const note = (task, i, status) =>
+const note = (task, seconds, status) =>
   user(
     `<task-notification>\n<task-id>${task}</task-id>\n${status ? `<status>${status}</status>\n` : ''}<summary>Monitor event</summary>\n<event>Build: pass</event>\n</task-notification>`,
-    i,
+    seconds,
     { origin: { kind: 'task-notification' }, promptSource: 'system' },
   );
 
 test("a turn the chat's own monitor woke is woken; your word, its end and the reply are not", () => {
-  const s = live('w1');
+  const session = live('w1');
 
-  fold(s, user('watch the CI', 0));
-  fold(s, call('tm', 'Monitor', { description: 'CI on #382', timeout_ms: 1800_000 }, 1));
-  fold(s, result('tm', 'Monitor started (task mon1abc, expires in 30m).', 2));
-  fold(s, said([{ type: 'text', text: 'watching' }], 'end_turn', 3));
-  assert.equal(summary(s).woken, false, 'your turn, ended');
-  assert.equal(fold(s, note('mon1abc', 10)), true, 'the notice between turns is news');
-  fold(s, call('tb', 'Bash', { command: 'gh pr checks' }, 11));
-  let sum = summary(s);
+  fold(session, user('watch the CI', 0));
+  fold(session, call('tm', 'Monitor', { description: 'CI on #382', timeout_ms: 1800_000 }, 1));
+  fold(session, result('tm', 'Monitor started (task mon1abc, expires in 30m).', 2));
+  fold(session, said([{ type: 'text', text: 'watching' }], 'end_turn', 3));
+  assert.equal(summary(session).woken, false, 'your turn, ended');
+  assert.equal(fold(session, note('mon1abc', 10)), true, 'the notice between turns is news');
+  fold(session, call('tb', 'Bash', { command: 'gh pr checks' }, 11));
+  let sum = summary(session);
 
   assert.equal(sum.status, 'working');
   assert.equal(sum.woken, true, "the turn it woke is the monitor's");
   assert.equal(sum.tasks.length, 1);
-  fold(s, note('mon1abc', 12)); // another event mid-turn: still the same woken turn
-  assert.equal(summary(s).woken, true);
-  fold(s, said([{ type: 'text', text: 'still waiting' }], 'end_turn', 13));
-  assert.equal(summary(s).woken, false, 'ended: idle, and Watching by its task');
-  fold(s, note('mon1abc', 20));
-  fold(s, call('tc', 'Bash', { command: 'ls' }, 21));
-  assert.equal(summary(s).woken, true);
-  fold(s, user('and the lint?', 22));
-  assert.equal(summary(s).woken, false, 'your word mid-turn makes it yours');
-  fold(s, said([{ type: 'text', text: 'clean' }], 'end_turn', 23));
+  fold(session, note('mon1abc', 12)); // another event mid-turn: still the same woken turn
+  assert.equal(summary(session).woken, true);
+  fold(session, said([{ type: 'text', text: 'still waiting' }], 'end_turn', 13));
+  assert.equal(summary(session).woken, false, 'ended: idle, and Watching by its task');
+  fold(session, note('mon1abc', 20));
+  fold(session, call('tc', 'Bash', { command: 'ls' }, 21));
+  assert.equal(summary(session).woken, true);
+  fold(session, user('and the lint?', 22));
+  assert.equal(summary(session).woken, false, 'your word mid-turn makes it yours');
+  fold(session, said([{ type: 'text', text: 'clean' }], 'end_turn', 23));
   // a notice mid-turn of yours does not make your turn the monitor's
-  fold(s, user('deploy it', 30));
-  fold(s, note('mon1abc', 31));
-  fold(s, call('td', 'Bash', { command: 'make deploy' }, 32));
-  assert.equal(summary(s).woken, false, 'a notice inside your turn is no wake');
-  fold(s, said([{ type: 'text', text: 'deployed' }], 'end_turn', 33));
+  fold(session, user('deploy it', 30));
+  fold(session, note('mon1abc', 31));
+  fold(session, call('td', 'Bash', { command: 'make deploy' }, 32));
+  assert.equal(summary(session).woken, false, 'a notice inside your turn is no wake');
+  fold(session, said([{ type: 'text', text: 'deployed' }], 'end_turn', 33));
   // the last task ending: the woken turn is plain work (the page: Clauding)
-  fold(s, note('mon1abc', 40, 'completed'));
-  fold(s, call('te', 'Bash', { command: 'ls' }, 41));
-  sum = summary(s);
+  fold(session, note('mon1abc', 40, 'completed'));
+  fold(session, call('te', 'Bash', { command: 'ls' }, 41));
+  sum = summary(session);
 
   assert.deepEqual(
     [sum.woken, sum.tasks.length],
@@ -103,13 +103,13 @@ test("a turn the chat's own monitor woke is woken; your word, its end and the re
 });
 
 test('ScheduleWakeup: a wake-up at its time, until it fires, is stopped or its grace runs out', () => {
-  const s = live('w2');
+  const session = live('w2');
   const when = Date.now() + 20 * 60_000;
 
-  fold(s, user('/loop check the deploy', 0));
+  fold(session, user('/loop check the deploy', 0));
 
   fold(
-    s,
+    session,
     call(
       'sw',
       'ScheduleWakeup',
@@ -118,10 +118,10 @@ test('ScheduleWakeup: a wake-up at its time, until it fires, is stopped or its g
     ),
   );
 
-  fold(s, result('sw', 'Scheduled.', 2, { scheduledFor: when, clampedDelaySeconds: 1200, wasClamped: false }));
-  fold(s, said([{ type: 'text', text: 'back in twenty' }], 'end_turn', 3));
+  fold(session, result('sw', 'Scheduled.', 2, { scheduledFor: when, clampedDelaySeconds: 1200, wasClamped: false }));
+  fold(session, said([{ type: 'text', text: 'back in twenty' }], 'end_turn', 3));
 
-  assert.deepEqual(summary(s).wake, {
+  assert.deepEqual(summary(session).wake, {
     at: new Date(when).toISOString(),
     kind: 'loop',
     recurring: false,
@@ -129,14 +129,19 @@ test('ScheduleWakeup: a wake-up at its time, until it fires, is stopped or its g
   });
 
   // set again: one wake-up a chat, the newer
-  fold(s, call('sx', 'ScheduleWakeup', { delaySeconds: 600, prompt: 'p', reason: 'sooner' }, 4));
-  fold(s, result('sx', 'Scheduled.', 5, { scheduledFor: when - 600_000, clampedDelaySeconds: 600, wasClamped: false }));
-  assert.equal(summary(s).wake.what, 'sooner');
-  // stopped
-  fold(s, call('sy', 'ScheduleWakeup', { stop: true }, 6));
+  fold(session, call('sx', 'ScheduleWakeup', { delaySeconds: 600, prompt: 'p', reason: 'sooner' }, 4));
 
   fold(
-    s,
+    session,
+    result('sx', 'Scheduled.', 5, { scheduledFor: when - 600_000, clampedDelaySeconds: 600, wasClamped: false }),
+  );
+
+  assert.equal(summary(session).wake.what, 'sooner');
+  // stopped
+  fold(session, call('sy', 'ScheduleWakeup', { stop: true }, 6));
+
+  fold(
+    session,
     result('sy', 'Stopped.', 7, {
       scheduledFor: 0,
       clampedDelaySeconds: 0,
@@ -146,15 +151,15 @@ test('ScheduleWakeup: a wake-up at its time, until it fires, is stopped or its g
     }),
   );
 
-  assert.equal(summary(s).wake, null, 'stopped');
+  assert.equal(summary(session).wake, null, 'stopped');
   // a result with no toolUseResult: the call's own delay, from its time
-  fold(s, call('sz', 'ScheduleWakeup', { delaySeconds: 1800, prompt: 'p', reason: 'later' }, 8));
-  fold(s, result('sz', 'Scheduled.', 9));
-  assert.equal(Date.parse(summary(s).wake.at), Date.parse(at(8)) + 1800_000);
+  fold(session, call('sz', 'ScheduleWakeup', { delaySeconds: 1800, prompt: 'p', reason: 'later' }, 8));
+  fold(session, result('sz', 'Scheduled.', 9));
+  assert.equal(Date.parse(summary(session).wake.at), Date.parse(at(8)) + 1800_000);
   // its claude gone: no wake
-  s.alive = false;
-  assert.equal(summary(s).wake, null);
-  s.alive = true;
+  session.alive = false;
+  assert.equal(summary(session).wake, null);
+  session.alive = true;
 
   // fired: the scheduled turn's meta line spends it
   const s2 = live('w2b');
@@ -188,13 +193,13 @@ test('ScheduleWakeup: a wake-up at its time, until it fires, is stopped or its g
 });
 
 test("CronCreate: a job's next run, moved on as it fires, gone with CronDelete", () => {
-  const s = live('w3');
+  const session = live('w3');
   const next = Date.now() + 4 * 60_000;
 
-  fold(s, call('cc', 'CronCreate', { cron: '*/5 * * * *', prompt: '/babysit-prs', recurring: true }, 0));
+  fold(session, call('cc', 'CronCreate', { cron: '*/5 * * * *', prompt: '/babysit-prs', recurring: true }, 0));
 
   fold(
-    s,
+    session,
     result(
       'cc',
       'Scheduled recurring job 7f3a2b (every 5 minutes). Session-only (not written to disk, dies when Claude exits) Next run: soon.',
@@ -203,14 +208,14 @@ test("CronCreate: a job's next run, moved on as it fires, gone with CronDelete",
     ),
   );
 
-  assert.deepEqual(summary(s).wake, {
+  assert.deepEqual(summary(session).wake, {
     at: new Date(next).toISOString(),
     kind: 'cron',
     recurring: true,
     what: '/babysit-prs',
   });
 
-  fold(s, {
+  fold(session, {
     type: 'user',
     turnOrigin: 'scheduled',
     promptSource: 'system',
@@ -218,43 +223,43 @@ test("CronCreate: a job's next run, moved on as it fires, gone with CronDelete",
     timestamp: new Date(next).toISOString(),
   });
 
-  assert.equal(Date.parse(summary(s).wake.at), cronNext('*/5 * * * *', next), 'fired: the next match');
-  fold(s, call('cd', 'CronDelete', { id: '7f3a2b' }, 2));
-  fold(s, result('cd', 'Cancelled job 7f3a2b.', 3));
-  assert.equal(summary(s).wake, null);
+  assert.equal(Date.parse(summary(session).wake.at), cronNext('*/5 * * * *', next), 'fired: the next match');
+  fold(session, call('cd', 'CronDelete', { id: '7f3a2b' }, 2));
+  fold(session, result('cd', 'Cancelled job 7f3a2b.', 3));
+  assert.equal(summary(session).wake, null);
   // the id from the words, the time from the expression, when the result has neither as fields
-  fold(s, call('ce', 'CronCreate', { cron: '30 14 * * *', prompt: 'look at the canary', recurring: false }, 4));
-  fold(s, result('ce', 'Scheduled one-shot task 9c1d (at 14:30). It will fire once then auto-delete.', 5));
-  assert.equal(Date.parse(summary(s).wake.at), cronNext('30 14 * * *', Date.parse(at(5))));
-  assert.equal(summary(s).wake.recurring, false);
+  fold(session, call('ce', 'CronCreate', { cron: '30 14 * * *', prompt: 'look at the canary', recurring: false }, 4));
+  fold(session, result('ce', 'Scheduled one-shot task 9c1d (at 14:30). It will fire once then auto-delete.', 5));
+  assert.equal(Date.parse(summary(session).wake.at), cronNext('30 14 * * *', Date.parse(at(5))));
+  assert.equal(summary(session).wake.recurring, false);
 });
 
 test('cronNext reads the five fields in local time', () => {
   const base = new Date(2026, 9, 31, 10, 7, 30).getTime(); // Saturday 31-10-2026 10:07:30
 
-  const t = ms => {
-    const d = new Date(ms);
+  const dayTime = ms => {
+    const date = new Date(ms);
 
-    return `${d.getDate()}/${d.getMonth() + 1} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return `${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
   };
 
-  assert.equal(t(cronNext('*/5 * * * *', base)), '31/10 10:10');
-  assert.equal(t(cronNext('30 14 * * *', base)), '31/10 14:30');
-  assert.equal(t(cronNext('0 9 * * 1-5', base)), '2/11 9:00', 'the weekdays: Monday next');
-  assert.equal(t(cronNext('15 8 1 * *', base)), '1/11 8:15');
-  assert.equal(t(cronNext('0 0 * * 7', base)), '1/11 0:00', '7 is Sunday');
-  assert.equal(t(cronNext('0 12 15 * 1', base)), '2/11 12:00', 'a day of the month or of the week, either');
+  assert.equal(dayTime(cronNext('*/5 * * * *', base)), '31/10 10:10');
+  assert.equal(dayTime(cronNext('30 14 * * *', base)), '31/10 14:30');
+  assert.equal(dayTime(cronNext('0 9 * * 1-5', base)), '2/11 9:00', 'the weekdays: Monday next');
+  assert.equal(dayTime(cronNext('15 8 1 * *', base)), '1/11 8:15');
+  assert.equal(dayTime(cronNext('0 0 * * 7', base)), '1/11 0:00', '7 is Sunday');
+  assert.equal(dayTime(cronNext('0 12 15 * 1', base)), '2/11 12:00', 'a day of the month or of the week, either');
   assert.ok(Number.isNaN(cronNext('every five minutes', base)));
   assert.ok(Number.isNaN(cronNext('61 * * * *', base)));
 });
 
 test('a turn that stopped short says why; your next word clears it', () => {
-  const s = live('w4');
+  const session = live('w4');
 
-  fold(s, user('migrate the ledger', 0));
+  fold(session, user('migrate the ledger', 0));
 
   fold(
-    s,
+    session,
     said(
       [{ type: 'text', text: 'API Error: Connection lost mid-response. The response may be incomplete.' }],
       'stop_sequence',
@@ -273,7 +278,7 @@ test('a turn that stopped short says why; your next word clears it', () => {
     ),
   );
 
-  const sum = summary(s);
+  const sum = summary(session);
 
   assert.equal(sum.status, 'idle');
 
@@ -282,12 +287,12 @@ test('a turn that stopped short says why; your next word clears it', () => {
     { why: 'api', text: 'Connection lost mid-response.', kind: 'server_error', at: null },
   );
 
-  assert.equal(s.model, null, 'a synthetic line is no model');
-  fold(s, user('go on', 2));
-  assert.equal(summary(s).stopped, null, 'your word: working, and the stop behind it');
+  assert.equal(session.model, null, 'a synthetic line is no model');
+  fold(session, user('go on', 2));
+  assert.equal(summary(session).stopped, null, 'your word: working, and the stop behind it');
 
   fold(
-    s,
+    session,
     said(
       [
         {
@@ -301,22 +306,22 @@ test('a turn that stopped short says why; your next word clears it', () => {
     ),
   );
 
-  assert.equal(summary(s).stopped.text, '529 · Overloaded');
-  fold(s, user('again', 4));
-  fold(s, said([{ type: 'text', text: 'half a rep' }], 'max_tokens', 5));
-  assert.equal(summary(s).stopped.why, 'max_tokens');
-  fold(s, user('and?', 6));
-  fold(s, said([{ type: 'text', text: "I can't help with that." }], 'refusal', 7));
-  assert.equal(summary(s).stopped.why, 'refusal');
-  fold(s, user('fine', 8));
-  fold(s, said([{ type: 'text', text: 'Done.' }], 'end_turn', 9));
-  assert.equal(summary(s).stopped, null, 'an answer');
-  fold(s, user('more', 10));
-  fold(s, said([{ type: 'text', text: 'API Error: x' }], 'stop_sequence', 11, { isApiErrorMessage: true }));
-  fold(s, user('[Request interrupted by user]', 12));
-  assert.equal(summary(s).stopped, null, 'an interrupt is yours, not an error');
+  assert.equal(summary(session).stopped.text, '529 · Overloaded');
+  fold(session, user('again', 4));
+  fold(session, said([{ type: 'text', text: 'half a rep' }], 'max_tokens', 5));
+  assert.equal(summary(session).stopped.why, 'max_tokens');
+  fold(session, user('and?', 6));
+  fold(session, said([{ type: 'text', text: "I can't help with that." }], 'refusal', 7));
+  assert.equal(summary(session).stopped.why, 'refusal');
+  fold(session, user('fine', 8));
+  fold(session, said([{ type: 'text', text: 'Done.' }], 'end_turn', 9));
+  assert.equal(summary(session).stopped, null, 'an answer');
+  fold(session, user('more', 10));
+  fold(session, said([{ type: 'text', text: 'API Error: x' }], 'stop_sequence', 11, { isApiErrorMessage: true }));
+  fold(session, user('[Request interrupted by user]', 12));
+  assert.equal(summary(session).stopped, null, 'an interrupt is yours, not an error');
   // a max_tokens that cut a tool call is no stop: Claude Code goes on with it
-  fold(s, user('more', 13));
-  fold(s, said([{ type: 'tool_use', id: 'tz', name: 'Bash', input: {} }], 'max_tokens', 14));
-  assert.equal(summary(s).stopped, null);
+  fold(session, user('more', 13));
+  fold(session, said([{ type: 'tool_use', id: 'tz', name: 'Bash', input: {} }], 'max_tokens', 14));
+  assert.equal(summary(session).stopped, null);
 });

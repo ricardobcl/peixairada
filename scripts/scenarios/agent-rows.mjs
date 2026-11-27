@@ -18,7 +18,7 @@ export default async function (ctx) {
   const root = realpathSync(tmpDir('peix-ag-'));
   const sleeps = [spawn('sleep', ['300'], { stdio: 'ignore' }), spawn('sleep', ['300'], { stdio: 'ignore' })];
 
-  const live = i => ({ pid: sleeps[i].pid, startedAt: now - 60 * MIN });
+  const live = index => ({ pid: sleeps[index].pid, startedAt: now - 60 * MIN });
   const card = id => `#slist > .card[data-id="${id}"]`;
 
   const rowsOf = id =>
@@ -26,16 +26,16 @@ export default async function (ctx) {
       `[...document.querySelectorAll('${card(id)} .agl .agr')].map(r => ({ k: r.dataset.k, st: r.dataset.st, a: r.querySelector('.aga').textContent, t: r.querySelector('.agt').textContent, n: r.querySelector('.agn').textContent }))`,
     );
 
-  const ids = async id => (await rowsOf(id)).map(r => r.k);
+  const ids = async id => (await rowsOf(id)).map(row => row.k);
 
   const chip = id =>
     ctx.evaluate(
       `document.querySelector('${card(id)} .chip.agents')?.hidden ? '' : document.querySelector('${card(id)} .chip.agents')?.textContent.trim()`,
     );
 
-  const step = (f, text) =>
+  const step = (agentFile, text) =>
     appendFileSync(
-      f,
+      agentFile,
       `${JSON.stringify({
         isSidechain: true,
         type: 'assistant',
@@ -55,9 +55,9 @@ export default async function (ctx) {
       })}\n`,
     );
 
-  const report = (f, text) => {
+  const report = (agentFile, text) => {
     appendFileSync(
-      f,
+      agentFile,
       `${JSON.stringify({
         isSidechain: true,
         type: 'assistant',
@@ -71,7 +71,7 @@ export default async function (ctx) {
     );
 
     appendFileSync(
-      f,
+      agentFile,
       `${JSON.stringify({
         isSidechain: true,
         type: 'user',
@@ -81,9 +81,9 @@ export default async function (ctx) {
     );
   };
 
-  const finish = (f, meta) =>
+  const finish = (agentFile, meta) =>
     writeFileSync(
-      f.replace(/\.jsonl$/, '.meta.json'),
+      agentFile.replace(/\.jsonl$/, '.meta.json'),
       JSON.stringify({ agentType: 'general-purpose', finished: true, ...meta }),
     );
 
@@ -146,7 +146,7 @@ export default async function (ctx) {
     const rows = await rowsOf(lead.id);
 
     ctx.assert.deepEqual(
-      rows.map(r => [r.a, r.st, r.n]),
+      rows.map(row => [row.a, row.st, row.n]),
       [
         ['Review the plan for security', 'run', 'Parse the plan for ingress rules'],
         ['Price the NAT gateways', 'run', 'Count the gateways by zone'],
@@ -329,7 +329,7 @@ export default async function (ctx) {
     const ended = await rowsOf(lead.id);
 
     ctx.assert.deepEqual(
-      ended.map(r => r.k),
+      ended.map(row => row.k),
       ['blast', '_sum'],
     );
 
@@ -382,7 +382,7 @@ export default async function (ctx) {
     const five = await rowsOf(other.id);
 
     ctx.assert.deepEqual(
-      five.map(r => r.k),
+      five.map(row => row.k),
       ['a', 'b', 'c', 'd', 'e'],
       'all of them',
     );
@@ -457,6 +457,6 @@ export default async function (ctx) {
 
     return out;
   } finally {
-    for (const p of sleeps) p.kill();
+    for (const child of sleeps) child.kill();
   }
 }

@@ -15,15 +15,15 @@ export const meta = {
 
 const rng = seed => () => {
   seed = (seed + 0x6d2b79f5) | 0;
-  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  let bits = Math.imul(seed ^ (seed >>> 15), 1 | seed);
 
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  bits = (bits + Math.imul(bits ^ (bits >>> 7), 61 | bits)) ^ bits;
+  return ((bits ^ (bits >>> 14)) >>> 0) / 4294967296;
 };
 
 // With the transcript in the scrollback, the page's xterm and the holder's reflow what is above the live region their own
 // ways, the code before this soak as now (2026-11-05, an open item): only the region the app draws is compared there (LIVE_ONLY).
-const clean = rows => rows.map(r => r.replace(/\d+m \d\ds/, 'T').replace(/\s+$/, ''));
+const clean = rows => rows.map(row => row.replace(/\d+m \d\ds/, 'T').replace(/\s+$/, ''));
 
 export default async function (ctx) {
   const LIVE_ONLY = ctx.server.env.FAKE_TUI !== 'fullscreen';
@@ -31,20 +31,20 @@ export default async function (ctx) {
   const { assert } = ctx;
   const seed = Number(ctx.args[0] ?? 7);
   const ops = Number(ctx.args[1] ?? 40);
-  const r = rng(seed);
-  const pick = a => a[Math.floor(r() * a.length)];
+  const random = rng(seed);
+  const pick = choices => choices[Math.floor(random() * choices.length)];
 
-  const [a, b] = ctx.fixture.chats;
+  const [chatA, chatB] = ctx.fixture.chats;
 
   const typed = new Map([
-    [a.id, []],
-    [b.id, []],
+    [chatA.id, []],
+    [chatB.id, []],
   ]);
 
   const trail = [];
 
-  for (const c of [a, b]) {
-    await ctx.openChat(c.id);
+  for (const chat of [chatA, chatB]) {
+    await ctx.openChat(chat.id);
     await ctx.key('KeyC');
     await ctx.waitPrompt();
     await ctx.sleep(400);
@@ -52,19 +52,19 @@ export default async function (ctx) {
 
   const typeNow = async text => {
     // no Enter, into the half holding the chat's own claude; nothing there, nothing typed
-    const s = await ctx
+    const where = await ctx
       .evaluate(
         `(() => { const st = window.peix.state(); return JSON.stringify({ id: st.current, g: st.halves.indexOf('chat') }); })()`,
       )
       .then(JSON.parse);
 
-    if (s.g < 0 || !(await ctx.peix('session()'))?.terminal) return;
+    if (where.g < 0 || !(await ctx.peix('session()'))?.terminal) return;
 
     const sent = await ctx.evaluate(
-      `(() => { const x = document.querySelector('#termBody${s.g ? 'B' : ''} textarea'), g = window.peix.grid(${s.g}); if (!x || !g.id) return false; x.dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(text)}, inputType: 'insertText', bubbles: true })); return true; })()`,
+      `(() => { const x = document.querySelector('#termBody${where.g ? 'B' : ''} textarea'), g = window.peix.grid(${where.g}); if (!x || !g.id) return false; x.dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(text)}, inputType: 'insertText', bubbles: true })); return true; })()`,
     );
 
-    if (sent) typed.get(s.id)?.push(text);
+    if (sent) typed.get(where.id)?.push(text);
   };
 
   const OPS = {
@@ -79,14 +79,14 @@ export default async function (ctx) {
     zoomed: () => ctx.key('KeyC'),
     window: () =>
       ctx.send('Emulation.setDeviceMetricsOverride', {
-        width: 1100 + Math.floor(r() * 700),
-        height: 700 + Math.floor(r() * 400),
+        width: 1100 + Math.floor(random() * 700),
+        height: 700 + Math.floor(random() * 400),
         deviceScaleFactor: 0,
         mobile: false,
       }),
     chat: async () => {
       const cur = await ctx.peix('state().current');
-      const to = cur === a.id ? b : a;
+      const to = cur === chatA.id ? chatB : chatA;
 
       await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${to.id}"] .title')?.click()`);
     },
@@ -97,26 +97,33 @@ export default async function (ctx) {
     drag: async () => {
       const sel = pick(['#splitter', '#gsplit']);
 
-      const p = await ctx.evaluate(
+      const center = await ctx.evaluate(
         `(e => { if (!e || !e.getClientRects().length) return null; const r = e.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })(document.querySelector(${JSON.stringify(sel)}))`,
       );
 
-      if (!p) return;
+      if (!center) return;
 
-      const dx = Math.round((r() - 0.5) * 240);
+      const dx = Math.round((random() - 0.5) * 240);
 
-      const mouse = (type, x, buttons) =>
-        ctx.send('Input.dispatchMouseEvent', { type, x, y: p.y, button: 'left', buttons, clickCount: 1 });
+      const mouse = (type, pointerX, buttons) =>
+        ctx.send('Input.dispatchMouseEvent', {
+          type,
+          x: pointerX,
+          y: center.y,
+          button: 'left',
+          buttons,
+          clickCount: 1,
+        });
 
-      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y });
-      await mouse('mousePressed', p.x, 1);
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: center.x, y: center.y });
+      await mouse('mousePressed', center.x, 1);
 
-      for (let i = 1; i <= 6; i++) {
-        await mouse('mouseMoved', p.x + Math.round((dx * i) / 6), 1);
+      for (let step = 1; step <= 6; step++) {
+        await mouse('mouseMoved', center.x + Math.round((dx * step) / 6), 1);
         await ctx.sleep(16);
       }
 
-      await mouse('mouseReleased', p.x + dx, 0);
+      await mouse('mouseReleased', center.x + dx, 0);
     },
     type: () => typeNow(`k${trail.length}.`),
     reload: async () => {
@@ -162,50 +169,63 @@ export default async function (ctx) {
     await ctx.sleep(450);
     await ctx.settle();
 
-    for (const g of [0, 1]) {
-      const d = await ctx.peix(`term(${g})`);
+    for (const half of [0, 1]) {
+      const term = await ctx.peix(`term(${half})`);
 
       const shown = await ctx.evaluate(
-        `!document.querySelector('${g ? '#termB' : '#term'}').hidden && !document.querySelector('${g ? '#grpB' : '#grp'}').hidden`,
+        `!document.querySelector('${half ? '#termB' : '#term'}').hidden && !document.querySelector('${half ? '#grpB' : '#grp'}').hidden`,
       );
 
-      if (!d.id || !shown || d.exited !== null) continue;
-      const at = `${why}, half ${g}, seed ${seed}, after ${trail.slice(-8).join(' ')}`;
+      if (!term.id || !shown || term.exited !== null) continue;
+      const at = `${why}, half ${half}, seed ${seed}, after ${trail.slice(-8).join(' ')}`;
 
-      if (d.cols !== d.propose.cols || d.rows !== d.propose.rows) {
-        ctx.log(`FITS ${JSON.stringify(await ctx.peix(`fits?.(${g})`))}`);
+      if (term.cols !== term.propose.cols || term.rows !== term.propose.rows) {
+        ctx.log(`FITS ${JSON.stringify(await ctx.peix(`fits?.(${half})`))}`);
       }
 
-      assert.deepEqual([d.cols, d.rows], [d.propose.cols, d.propose.rows], `the grid is what the body holds: ${at}`);
-      const t = (await ctx.server.terminals()).find(x => x.id === d.id);
+      assert.deepEqual(
+        [term.cols, term.rows],
+        [term.propose.cols, term.propose.rows],
+        `the grid is what the body holds: ${at}`,
+      );
 
-      assert.deepEqual([t.cols, t.rows], [Math.max(20, d.cols), d.rows], `the holder's PTY is that size: ${at}`);
+      const holder = (await ctx.server.terminals()).find(entry => entry.id === term.id);
+
+      assert.deepEqual(
+        [holder.cols, holder.rows],
+        [Math.max(20, term.cols), term.rows],
+        `the holder's PTY is that size: ${at}`,
+      );
+
       // the timer's cells and a repaint on its way aside, three looks for it to come out the same
       let page;
       let held;
 
-      for (let i = 0; i < 4; i++) {
-        [page, held] = [clean(await ctx.peix(`screen(${g})`)), clean((await holderRows(ctx.server, d.id)).rows)].map(
-          rows => (LIVE_ONLY ? rows.slice(-6) : rows),
-        );
+      for (let attempt = 0; attempt < 4; attempt++) {
+        [page, held] = [
+          clean(await ctx.peix(`screen(${half})`)),
+          clean((await holderRows(ctx.server, term.id)).rows),
+        ].map(rows => (LIVE_ONLY ? rows.slice(-6) : rows));
 
         if (JSON.stringify(page) === JSON.stringify(held)) break;
         await ctx.sleep(400);
       }
 
-      const diff = page.map((row, y) => (row === held[y] ? null : { y, page: row, holder: held[y] })).filter(Boolean);
+      const diff = page
+        .map((row, line) => (row === held[line] ? null : { y: line, page: row, holder: held[line] }))
+        .filter(Boolean);
 
-      if (diff.length) ctx.log(`FITS ${JSON.stringify(await ctx.peix(`fits?.(${g})`))}`);
+      if (diff.length) ctx.log(`FITS ${JSON.stringify(await ctx.peix(`fits?.(${half})`))}`);
 
       if (diff.length) {
         ctx.log(
-          `VIEW ${JSON.stringify(await ctx.evaluate(`(v => ({ top: v.scrollTop, height: v.scrollHeight, client: v.clientHeight }))(document.querySelector("${g ? '#termBodyB' : '#termBody'} .xterm-viewport"))`))} TAIL ${JSON.stringify((await ctx.peix(`buffer(${g})`)).slice(-12))}`,
+          `VIEW ${JSON.stringify(await ctx.evaluate(`(v => ({ top: v.scrollTop, height: v.scrollHeight, client: v.clientHeight }))(document.querySelector("${half ? '#termBodyB' : '#termBody'} .xterm-viewport"))`))} TAIL ${JSON.stringify((await ctx.peix(`buffer(${half})`)).slice(-12))}`,
         );
       }
 
       if (diff.length) {
         ctx.log(
-          `DIFF ${at}\nPAGE ${JSON.stringify(page)}\nHELD ${JSON.stringify(held)}\nBYTES ${JSON.stringify((await holderRows(ctx.server, d.id)).raw)}`,
+          `DIFF ${at}\nPAGE ${JSON.stringify(page)}\nHELD ${JSON.stringify(held)}\nBYTES ${JSON.stringify((await holderRows(ctx.server, term.id)).raw)}`,
         );
       }
 
@@ -217,7 +237,7 @@ export default async function (ctx) {
   const when = []; // each step's time on the page's clock, so a frame that went wrong names the step before it
   const mark = async op => when.push({ op, i: trail.length - 1, t: await ctx.evaluate('performance.now()') });
 
-  for (let i = 0; i < ops; i++) {
+  for (let step = 0; step < ops; step++) {
     const op = pick(WEIGHTS);
 
     trail.push(op);
@@ -230,27 +250,27 @@ export default async function (ctx) {
     }
 
     await ctx.sleep(pick([0, 0, 0, 16, 40, 90, 150, 300, 700]));
-    if (i % 7 === 6) await check(`step ${i}`);
+    if (step % 7 === 6) await check(`step ${step}`);
   }
 
   await check('the end');
 
-  const w = await ctx.frames();
-  const bad = frameTrouble(w.frames, { top: !LIVE_ONLY });
+  const recorded = await ctx.frames();
+  const bad = frameTrouble(recorded.frames, { top: !LIVE_ONLY });
 
-  const after = f => {
-    const t = w.t0 + f.t;
-    const s = when.filter(x => x.t <= t).at(-1);
+  const after = frame => {
+    const time = recorded.t0 + frame.t;
+    const marked = when.filter(entry => entry.t <= time).at(-1);
 
-    return s ? `${s.op}#${s.i}+${Math.round(t - s.t)}ms` : '?';
+    return marked ? `${marked.op}#${marked.i}+${Math.round(time - marked.t)}ms` : '?';
   };
 
-  for (const [k, list] of Object.entries(bad)) {
+  for (const [kind, list] of Object.entries(bad)) {
     if (list.length) {
       ctx.log(
-        `${k}: ${list
+        `${kind}: ${list
           .slice(0, 12)
-          .map(f => `${after(f)} ${f.cols}x${f.rows} top ${f.top} bottom ${f.bottom}`)
+          .map(frame => `${after(frame)} ${frame.cols}x${frame.rows} top ${frame.top} bottom ${frame.bottom}`)
           .join(' | ')}`,
       );
     }
@@ -260,10 +280,10 @@ export default async function (ctx) {
   await ctx.cmd('Digit1').catch(() => {});
   const words = {};
 
-  for (const c of [a, b]) {
-    if (!typed.get(c.id).length) continue;
-    await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${c.id}"] .title')?.click()`);
-    await ctx.waitFor(`window.peix.state().current === '${c.id}'`, { what: 'the chat' });
+  for (const chat of [chatA, chatB]) {
+    if (!typed.get(chat.id).length) continue;
+    await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${chat.id}"] .title')?.click()`);
+    await ctx.waitFor(`window.peix.state().current === '${chat.id}'`, { what: 'the chat' });
     await ctx.key('KeyC');
 
     await ctx.waitFor(`window.peix.state().halves.includes('chat') && window.peix.session()?.terminal`, {
@@ -271,30 +291,30 @@ export default async function (ctx) {
     });
 
     await ctx.sleep(700);
-    const g = await ctx.evaluate(`window.peix.state().halves.indexOf('chat')`);
+    const half = await ctx.evaluate(`window.peix.state().halves.indexOf('chat')`);
 
     await ctx.evaluate(
-      `document.querySelector('#termBody${g ? 'B' : ''} textarea').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))`,
+      `document.querySelector('#termBody${half ? 'B' : ''} textarea').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))`,
     );
 
-    const want = typed.get(c.id).join('');
+    const want = typed.get(chat.id).join('');
 
     await ctx.waitFor(
-      `(async () => { const r = await window.fetch('api/sessions/${c.id}/messages', { headers: { 'x-peix-key': window.PEIX_KEY } }); const j = await r.json(); return JSON.stringify(j).includes(${JSON.stringify(want)}); })()`,
-      { timeout: 6000, what: `what was typed in ${c.id.slice(0, 8)} (${want}), seed ${seed}` },
+      `(async () => { const r = await window.fetch('api/sessions/${chat.id}/messages', { headers: { 'x-peix-key': window.PEIX_KEY } }); const j = await r.json(); return JSON.stringify(j).includes(${JSON.stringify(want)}); })()`,
+      { timeout: 6000, what: `what was typed in ${chat.id.slice(0, 8)} (${want}), seed ${seed}` },
     );
 
-    words[c.id.slice(0, 8)] = typed.get(c.id).length;
+    words[chat.id.slice(0, 8)] = typed.get(chat.id).length;
   }
 
   ctx.log(
-    `seed ${seed}: ${ops} steps quiet; frames ${w.frames.length}, stale ${bad.stale.length}, torn ${bad.torn.length}, blank ${bad.blank.length}; keys ${JSON.stringify(words)}`,
+    `seed ${seed}: ${ops} steps quiet; frames ${recorded.frames.length}, stale ${bad.stale.length}, torn ${bad.torn.length}, blank ${bad.blank.length}; keys ${JSON.stringify(words)}`,
   );
 
   return {
     seed,
     ops,
-    frames: w.frames.length,
+    frames: recorded.frames.length,
     stale: bad.stale.length,
     torn: bad.torn.length,
     blank: bad.blank.length,

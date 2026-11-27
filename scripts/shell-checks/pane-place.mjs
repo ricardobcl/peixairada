@@ -28,9 +28,9 @@ export default async function (ctx) {
       for (const [url, hex] of pages) seen[`${label}, ${word}`] = await placed(`${label}, ${word}`, url, hex);
     }
 
-    const w = await ctx.win();
+    const win = await ctx.win();
 
-    ctx.assert.ok(w.titled && !w.fill, 'back to a normal window');
+    ctx.assert.ok(win.titled && !win.fill, 'back to a normal window');
   };
 
   await ctx.board();
@@ -54,11 +54,11 @@ export default async function (ctx) {
   );
 
   // The window dragged smaller, and back.
-  const { w, h } = await ctx.win();
+  const { w: width, h: height } = await ctx.win();
 
   await ctx.size(1100, 700);
   await placed('a smaller window', one, MAGENTA);
-  await ctx.size(w, h);
+  await ctx.size(width, height);
   await placed('the size it was', one, MAGENTA);
 
   // The rects are the page's CSS px × the zoom.
@@ -80,7 +80,7 @@ export default async function (ctx) {
   await placed("a page's new window", next, GREEN);
 
   ctx.assert.equal(
-    (await ctx.js(`return peix.state().tabs`)).filter(k => /^gh\d*:/.test(k)).length,
+    (await ctx.js(`return peix.state().tabs`)).filter(tab => /^gh\d*:/.test(tab)).length,
     2,
     'two pages, on two tabs',
   );
@@ -99,7 +99,7 @@ export default async function (ctx) {
   const low = await ctx.win();
 
   ctx.assert.ok(
-    Object.values(low.panes).every(p => !p.up),
+    Object.values(low.panes).every(pane => !pane.up),
     'no page over a dialog',
   );
 

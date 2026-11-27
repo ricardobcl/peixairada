@@ -36,25 +36,25 @@ export default async function (ctx) {
   const out = {};
 
   try {
-    const q = sel => `document.querySelector(${JSON.stringify(sel)})`;
-    const msg = id => `${q(`#rmlog .rmmsg[data-id="${id}"]`)}`;
+    const query = sel => `document.querySelector(${JSON.stringify(sel)})`;
+    const msg = id => `${query(`#rmlog .rmmsg[data-id="${id}"]`)}`;
 
     const rect = sel =>
       ctx.evaluate(
-        `(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${q(sel)}.getBoundingClientRect())`,
+        `(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${query(sel)}.getBoundingClientRect())`,
       );
 
-    const key = (k, sel = '#rmbox', more = '') =>
+    const key = (keyName, sel = '#rmbox', more = '') =>
       ctx.evaluate(
-        `${q(sel)}.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true${more} }))`,
+        `${query(sel)}.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(keyName)}, bubbles: true, cancelable: true${more} }))`,
       );
 
     const type = text =>
       ctx.evaluate(
-        `(b => { b.focus(); b.setRangeText(${JSON.stringify(text)}, b.selectionStart, b.selectionEnd, 'end'); b.dispatchEvent(new InputEvent('input', { bubbles: true })); })(${q('#rmbox')})`,
+        `(b => { b.focus(); b.setRangeText(${JSON.stringify(text)}, b.selectionStart, b.selectionEnd, 'end'); b.dispatchEvent(new InputEvent('input', { bubbles: true })); })(${query('#rmbox')})`,
       );
 
-    const box = () => ctx.evaluate(`${q('#rmbox')}.value`);
+    const box = () => ctx.evaluate(`${query('#rmbox')}.value`);
 
     await ctx.server.api('api/config', {
       method: 'PUT',
@@ -62,8 +62,11 @@ export default async function (ctx) {
       body: JSON.stringify({ chat: { repo: 'acme-chat/room' } }),
     });
 
-    await ctx.waitFor(`!!${q('#sbChat')} && !/still being read/.test(${q('#sbChat')}.title)`, { what: 'the chat' });
-    await ctx.evaluate(`${q('#sbChat')}.click()`);
+    await ctx.waitFor(`!!${query('#sbChat')} && !/still being read/.test(${query('#sbChat')}.title)`, {
+      what: 'the chat',
+    });
+
+    await ctx.evaluate(`${query('#sbChat')}.click()`);
     await ctx.waitFor(`document.querySelectorAll('#rmlog .rmmsg').length === 3`, { what: 'the messages' });
 
     // GitHub's names drawn as their emoji — not in code, its own picture's name left as words
@@ -88,15 +91,18 @@ export default async function (ctx) {
       what: 'mine, at once',
     });
 
-    await waitFor(() => gh.repo('acme-chat/room').issues[0].comments.find(c => c.id === hers).reactions.length === 2, {
-      what: 'mine on GitHub',
-    });
+    await waitFor(
+      () => gh.repo('acme-chat/room').issues[0].comments.find(comment => comment.id === hers).reactions.length === 2,
+      {
+        what: 'mine on GitHub',
+      },
+    );
 
     await ctx.evaluate(`${msg(hers)}.querySelector('.rmacts [data-rm="rxpick"]').click()`);
-    await ctx.waitFor(`!${q('#rmrxp')}.hidden`, { what: 'the React row' });
+    await ctx.waitFor(`!${query('#rmrxp')}.hidden`, { what: 'the React row' });
     await ctx.settle();
     await ctx.shot('1-react-row', await rect('#room'));
-    await ctx.evaluate(`${q('#rmrxp [data-rx="rocket"]')}.click()`);
+    await ctx.evaluate(`${query('#rmrxp [data-rx="rocket"]')}.click()`);
     await ctx.waitFor(`!!${msg(hers)}.querySelector('.rmrc[data-r="rocket"]')`, { what: 'the rocket' });
     await ctx.evaluate(`${msg(hers)}.querySelector('.rmrc[data-r="heart"]').click()`);
 
@@ -104,8 +110,8 @@ export default async function (ctx) {
       () =>
         gh
           .repo('acme-chat/room')
-          .issues[0].comments.find(c => c.id === hers)
-          .reactions.map(x => `${x.user.login}:${x.content}`)
+          .issues[0].comments.find(comment => comment.id === hers)
+          .reactions.map(reaction => `${reaction.user.login}:${reaction.content}`)
           .sort()
           .join() === 'ana:heart,me:rocket',
       { what: 'the heart taken back on GitHub' },
@@ -124,21 +130,24 @@ export default async function (ctx) {
 
     // ↑ in the empty box takes my last; esc puts back what the box held (nothing); then my first, by its Edit button:
     // its words in the box, its picture kept
-    await ctx.evaluate(`${q('#rmbox')}.focus()`);
+    await ctx.evaluate(`${query('#rmbox')}.focus()`);
     await key('ArrowUp');
-    await ctx.waitFor(`!${q('#rmediting')}.hidden && ${q('#rmbox')}.value === 'later'`, { what: '↑ editing my last' });
+
+    await ctx.waitFor(`!${query('#rmediting')}.hidden && ${query('#rmbox')}.value === 'later'`, {
+      what: '↑ editing my last',
+    });
 
     await ctx.evaluate(
       `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }))`,
     );
 
-    await ctx.waitFor(`${q('#rmediting')}.hidden && ${q('#rmbox')}.value === '' && ${q('#room')}.open`, {
+    await ctx.waitFor(`${query('#rmediting')}.hidden && ${query('#rmbox')}.value === '' && ${query('#room')}.open`, {
       what: 'esc: the edit let go, the panel still up',
     });
 
     await ctx.evaluate(`${msg(mine)}.querySelector('[data-rm="editmsg"]').click()`);
 
-    await ctx.waitFor(`${q('#rmbox')}.value === 'teh fix' && ${msg(mine)}.classList.contains('editing')`, {
+    await ctx.waitFor(`${query('#rmbox')}.value === 'teh fix' && ${msg(mine)}.classList.contains('editing')`, {
       what: 'my message in the box',
     });
 
@@ -149,14 +158,15 @@ export default async function (ctx) {
 
     await waitFor(
       () =>
-        gh.repo('acme-chat/room').issues[0].comments.find(c => c.id === mine).body === `the fix\n\n![shot](${shot})`,
+        gh.repo('acme-chat/room').issues[0].comments.find(comment => comment.id === mine).body ===
+        `the fix\n\n![shot](${shot})`,
       {
         what: 'the edit on GitHub, its picture kept',
       },
     );
 
     await ctx.waitFor(
-      `${q('#rmediting')}.hidden && ${q('#rmbox')}.value === '' && !!${msg(mine)}.querySelector('.edited') && !!${msg(mine)}.querySelector('.rmpic')`,
+      `${query('#rmediting')}.hidden && ${query('#rmbox')}.value === '' && !!${msg(mine)}.querySelector('.edited') && !!${msg(mine)}.querySelector('.rmpic')`,
       {
         what: 'edited, said',
       },
@@ -166,24 +176,24 @@ export default async function (ctx) {
 
     // the picker: searched, a pick into the box where the caret is
     await type('lunch ');
-    await ctx.evaluate(`${q('#rmEmoBtn')}.click()`);
+    await ctx.evaluate(`${query('#rmEmoBtn')}.click()`);
 
-    await ctx.waitFor(`!${q('#rmemo')}.hidden && document.querySelectorAll('#rmemog .rmeb').length > 3`, {
+    await ctx.waitFor(`!${query('#rmemo')}.hidden && document.querySelectorAll('#rmemog .rmeb').length > 3`, {
       what: 'the picker',
     });
 
     await ctx.settle();
     await ctx.shot('3-picker', await rect('#room'));
     await ctx.fill('#rmemoq', 'ram');
-    await ctx.waitFor(`${q('#rmemog .rmeb')}?.dataset.emo === 'ramen'`, { what: 'ramen found' });
+    await ctx.waitFor(`${query('#rmemog .rmeb')}?.dataset.emo === 'ramen'`, { what: 'ramen found' });
     await key('Enter', '#rmemoq');
-    await ctx.waitFor(`${q('#rmemo')}.hidden`, { what: 'the picker let go' });
+    await ctx.waitFor(`${query('#rmemo')}.hidden`, { what: 'the picker let go' });
     ctx.assert.equal(await box(), 'lunch 🍜');
 
     // the box's suggestions: ":sm" offers, ↓ and ⇥ take the second; ":fish:" closed by its colon is its emoji
     await type(' :sm');
 
-    await ctx.waitFor(`!${q('#rmsug')}.hidden && document.querySelectorAll('#rmsug .rmsi').length >= 2`, {
+    await ctx.waitFor(`!${query('#rmsug')}.hidden && document.querySelectorAll('#rmsug .rmsi').length >= 2`, {
       what: 'the suggestions',
     });
 
@@ -194,7 +204,7 @@ export default async function (ctx) {
     await key('ArrowDown');
     await key('Tab');
     ctx.assert.equal(await box(), 'lunch 🍜 😃 ');
-    ctx.assert.equal(await ctx.evaluate(`${q('#rmsug')}.hidden`), true);
+    ctx.assert.equal(await ctx.evaluate(`${query('#rmsug')}.hidden`), true);
     await type('at :fish:');
     ctx.assert.equal(await box(), 'lunch 🍜 😃 at 🐟');
     await key('Enter');

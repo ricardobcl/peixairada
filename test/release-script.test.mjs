@@ -39,15 +39,15 @@ test(
 
     const run = (...args) =>
       new Promise(res =>
-        execFile(process.execPath, [SCRIPT, ...args], { cwd: repo, env, timeout: 30_000 }, (e, out, err) =>
-          res({ code: e ? e.code : 0, out: out + err }),
+        execFile(process.execPath, [SCRIPT, ...args], { cwd: repo, env, timeout: 30_000 }, (error, out, err) =>
+          res({ code: error ? error.code : 0, out: out + err }),
         ),
       );
 
     const write = files => {
-      for (const [f, body] of Object.entries(files)) {
-        mkdirSync(join(repo, f, '..'), { recursive: true });
-        writeFileSync(join(repo, f), body);
+      for (const [file, body] of Object.entries(files)) {
+        mkdirSync(join(repo, file, '..'), { recursive: true });
+        writeFileSync(join(repo, file), body);
       }
     };
 
@@ -63,13 +63,13 @@ test(
     mkdirSync(repo);
     git(repo, 'init', '-q', '-b', 'main');
 
-    for (const [k, v] of [
+    for (const [setting, value] of [
       ['gpg.format', 'ssh'],
       ['user.signingkey', `${key}.pub`],
       ['commit.gpgsign', 'true'],
       ['core.hooksPath', '/dev/null'],
     ]) {
-      git(repo, 'config', k, v);
+      git(repo, 'config', setting, value);
     }
 
     commit(
@@ -91,23 +91,23 @@ test(
     commit({ 'README.md': 'tiny\n' }, 'the readme');
 
     // the draft's inputs
-    let r = await run('--since', '2026-01-01');
+    let result = await run('--since', '2026-01-01');
 
-    assert.equal(r.code, 0, r.out);
-    assert.match(r.out, /^peixAIrada: the last release 0\.1 \([0-9a-f]{7}, \d{4}-\d{2}-\d{2}\); the next 0\.2$/m);
-    assert.match(r.out, /^3 commits since 2026-01-01 — 2 touch the page, the server or the app$/m);
-    assert.match(r.out, /^DECISIONS\.md, 1 entry since 2026-01-01:\n {2}2026-11-26 {2}Space$/m);
-    assert.match(r.out, /^ {2}\d{4}-\d{2}-\d{2} [0-9a-f]{7} \[page\] Space on the page$/m);
-    assert.match(r.out, /\[notes\] the readme$/m);
+    assert.equal(result.code, 0, result.out);
+    assert.match(result.out, /^peixAIrada: the last release 0\.1 \([0-9a-f]{7}, \d{4}-\d{2}-\d{2}\); the next 0\.2$/m);
+    assert.match(result.out, /^3 commits since 2026-01-01 — 2 touch the page, the server or the app$/m);
+    assert.match(result.out, /^DECISIONS\.md, 1 entry since 2026-01-01:\n {2}2026-11-26 {2}Space$/m);
+    assert.match(result.out, /^ {2}\d{4}-\d{2}-\d{2} [0-9a-f]{7} \[page\] Space on the page$/m);
+    assert.match(result.out, /\[notes\] the readme$/m);
 
     // the cut: the notes at the top of a new CHANGELOG.md, the version in both files, one commit, a signed tag
     const notes = join(root, 'notes.md');
 
     writeFileSync(notes, '### New\n\n- **Space** shows every chat as a node.\n');
     write({ 'scratch.txt': 'not mine to commit\n' });
-    r = await run('cut', notes, '--date', '27 November 2026');
-    assert.equal(r.code, 0, r.out);
-    assert.match(r.out, /^cut 0\.2: [0-9a-f]{7} Release 0\.2, tagged v0\.2\.0$/m);
+    result = await run('cut', notes, '--date', '27 November 2026');
+    assert.equal(result.code, 0, result.out);
+    assert.match(result.out, /^cut 0\.2: [0-9a-f]{7} Release 0\.2, tagged v0\.2\.0$/m);
     assert.equal(git(repo, 'log', '-1', '--format=%s'), 'Release 0.2');
 
     assert.deepEqual(
@@ -138,14 +138,14 @@ test(
     );
 
     write({ 'package.json': '{ "name": "tiny", "version": "0.2.0", "private": true }\n' });
-    r = await run('cut', notes);
-    assert.equal(r.code, 1, r.out);
-    assert.match(r.out, /^not cut: 1 of package\.json, package-lock\.json, CHANGELOG\.md changed here$/m);
+    result = await run('cut', notes);
+    assert.equal(result.code, 1, result.out);
+    assert.match(result.out, /^not cut: 1 of package\.json, package-lock\.json, CHANGELOG\.md changed here$/m);
     git(repo, 'checkout', '--', 'package.json');
 
     // publish: main and the tag on origin, the release made from the same notes
-    r = await run('publish');
-    assert.equal(r.code, 0, r.out);
+    result = await run('publish');
+    assert.equal(result.code, 0, result.out);
     assert.equal(git(origin, 'rev-parse', 'main'), git(repo, 'rev-parse', 'HEAD'));
     assert.equal(git(origin, 'rev-parse', 'v0.2.0^{commit}'), git(repo, 'rev-parse', 'HEAD'));
     const asked = readFileSync(ghLog, 'utf8');
@@ -156,11 +156,11 @@ test(
     // a release no trusted key signed is not pushed: no board would take it
     git(repo, 'config', 'commit.gpgsign', 'false');
     writeFileSync(notes, '- three\n');
-    r = await run('cut', notes);
-    assert.equal(r.code, 0, r.out);
-    r = await run('publish');
-    assert.equal(r.code, 1, r.out);
-    assert.match(r.out, /^not published: [0-9a-f]{7} is not signed by a key in \.github\/allowed_signers/m);
+    result = await run('cut', notes);
+    assert.equal(result.code, 0, result.out);
+    result = await run('publish');
+    assert.equal(result.code, 1, result.out);
+    assert.match(result.out, /^not published: [0-9a-f]{7} is not signed by a key in \.github\/allowed_signers/m);
     assert.notEqual(git(origin, 'rev-parse', 'main'), git(repo, 'rev-parse', 'HEAD'), 'nothing pushed');
   },
 );

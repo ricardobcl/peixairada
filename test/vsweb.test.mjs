@@ -26,7 +26,7 @@ test(
       res.end(JSON.stringify(newest));
     });
 
-    await new Promise(r => upd.listen(0, '127.0.0.1', r));
+    await new Promise(resolve => upd.listen(0, '127.0.0.1', resolve));
 
     const srv = await startTestServer({
       env: {
@@ -91,31 +91,33 @@ test(
     const srv = await startTestServer();
 
     try {
-      const r = await srv.post('api/vscode-web', {});
+      const response = await srv.post('api/vscode-web', {});
 
-      assert.equal(r.status, 200, JSON.stringify(r.body));
+      assert.equal(response.status, 200, JSON.stringify(response.body));
       const file = join(srv.dir, 'vsweb-token');
 
       assert.equal(statSync(file).mode & 0o777, 0o600, "the token is this user's alone");
-      assert.match(r.body.token, /^[0-9a-f]{64}$/);
-      assert.equal(r.body.token, readFileSync(file, 'utf8').trim(), "the page is given the file's");
+      assert.match(response.body.token, /^[0-9a-f]{64}$/);
+      assert.equal(response.body.token, readFileSync(file, 'utf8').trim(), "the page is given the file's");
 
       assert.equal(
-        (await fetch(r.body.url, { redirect: 'manual' })).status,
+        (await fetch(response.body.url, { redirect: 'manual' })).status,
         403,
         'serve-web was started with it: no token, no editor',
       );
 
-      const traded = await fetch(`${r.body.url}?folder=%2Ftmp&tkn=${r.body.token}`, { redirect: 'manual' });
+      const traded = await fetch(`${response.body.url}?folder=%2Ftmp&tkn=${response.body.token}`, {
+        redirect: 'manual',
+      });
 
       assert.equal(traded.status, 302);
       assert.equal(traded.headers.get('location'), '/?folder=%2Ftmp', 'the address without it');
-      assert.match(traded.headers.get('set-cookie'), new RegExp(`^vscode-tkn=${r.body.token};`));
+      assert.match(traded.headers.get('set-cookie'), new RegExp(`^vscode-tkn=${response.body.token};`));
       await srv.restart();
       const again = await srv.post('api/vscode-web', {});
 
       assert.equal(again.status, 200, JSON.stringify(again.body));
-      assert.equal(again.body.token, r.body.token, "a restart keeps it — the pane's cookie with it");
+      assert.equal(again.body.token, response.body.token, "a restart keeps it — the pane's cookie with it");
     } finally {
       await srv.stop();
     }
@@ -135,18 +137,18 @@ test(
       res.end();
     }); // refuses as serve-web does, and keeps what it is sent
 
-    await new Promise(r => squat.listen(port, '127.0.0.1', r));
+    await new Promise(resolve => squat.listen(port, '127.0.0.1', resolve));
     const srv = await startTestServer({ env: { VSWEB_PORT: String(port) } });
 
     try {
-      const r = await srv.post('api/vscode-web', {});
+      const response = await srv.post('api/vscode-web', {});
 
-      assert.equal(r.status, 409, JSON.stringify(r.body));
-      assert.match(r.body.error, /listens on port \d+, not VS Code Web/);
-      assert.equal(r.body.token, undefined);
+      assert.equal(response.status, 409, JSON.stringify(response.body));
+      assert.match(response.body.error, /listens on port \d+, not VS Code Web/);
+      assert.equal(response.body.token, undefined);
 
       assert.ok(
-        got.length >= 1 && got.every(c => !/vscode-tkn/.test(c)),
+        got.length >= 1 && got.every(cookie => !/vscode-tkn/.test(cookie)),
         `no cookie went to it: ${JSON.stringify(got)}`,
       );
     } finally {
@@ -182,17 +184,17 @@ test(
       await waitFor(
         () =>
           fetch(`http://127.0.0.1:${port}/`).then(
-            r => r.status === 200,
+            answer => answer.status === 200,
             () => false,
           ),
         { what: 'the editor with no token answering' },
       );
 
-      const r = await srv.post('api/vscode-web', {});
+      const response = await srv.post('api/vscode-web', {});
 
-      assert.equal(r.status, 409, JSON.stringify(r.body));
-      assert.match(r.body.error, /serves VS Code Web with no token — not this board's/);
-      assert.equal(r.body.token, undefined, 'nor is the token handed out for it');
+      assert.equal(response.status, 409, JSON.stringify(response.body));
+      assert.match(response.body.error, /serves VS Code Web with no token — not this board's/);
+      assert.equal(response.body.token, undefined, 'nor is the token handed out for it');
     } finally {
       await srv.stop();
       old.kill();
@@ -209,7 +211,7 @@ test(
 
     const up = () =>
       fetch(`http://127.0.0.1:${port}/`).then(
-        r => r.status,
+        response => response.status,
         () => 0,
       );
 
@@ -238,10 +240,10 @@ test(
 
     try {
       await waitFor(async () => (await up()) === 403, { what: 'a serve-web the board did not start' });
-      const r = await srv.post('api/vscode-web', {});
+      const response = await srv.post('api/vscode-web', {});
 
-      assert.equal(r.status, 200, JSON.stringify(r.body));
-      assert.equal(r.body.started, false, 'adopted, not started');
+      assert.equal(response.status, 200, JSON.stringify(response.body));
+      assert.equal(response.body.started, false, 'adopted, not started');
       adopted.kill();
       await waitFor(async () => (await up()) === 0, { what: 'the adopted one gone' });
       await new Promise(res => squat.listen(port, '127.0.0.1', res));
@@ -251,7 +253,7 @@ test(
       assert.match(again.body.error, /not VS Code Web/);
 
       assert.ok(
-        got.length >= 1 && got.every(c => !c.includes(token)),
+        got.length >= 1 && got.every(cookie => !cookie.includes(token)),
         `the token went nowhere: ${JSON.stringify(got)}`,
       );
     } finally {

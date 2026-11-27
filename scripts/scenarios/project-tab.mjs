@@ -67,7 +67,8 @@ export default async function (ctx) {
   const root = realpathSync(tmpDir('peix-tab-'));
   const sleeper = spawn('sleep', ['300'], { stdio: 'ignore' });
 
-  const near = (a, b, what, by = 0.6) => ctx.assert.ok(Math.abs(a - b) <= by, `${what}: ${a} against ${b}`);
+  const near = (actual, expected, what, by = 0.6) =>
+    ctx.assert.ok(Math.abs(actual - expected) <= by, `${what}: ${actual} against ${expected}`);
 
   const read = id =>
     ctx.evaluate(`(c => {
@@ -78,10 +79,11 @@ export default async function (ctx) {
       act: box('.act'), pin: box('.top .ax.pin'), zz: box('.top .ax.zz'), time: box('.time'), where: box('.chip.elsewhere'), tmx: box('.tmx'), lastSquare: last ? last.right : null, ymove: box('.ymove'), trowEnd: [...c.querySelectorAll('.trow > *')].filter(e => e.getClientRects().length).pop().getBoundingClientRect().right };
   })(document.querySelector('#slist > .card[data-id="${id}"]'))`);
 
-  const point = (x, y) => ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+  const point = (pointerX, pointerY) =>
+    ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: pointerX, y: pointerY });
 
-  const over = async c => {
-    await point(c.l + c.w / 2, c.b - 4);
+  const over = async box => {
+    await point(box.l + box.w / 2, box.b - 4);
     await ctx.sleep(250);
   };
 
@@ -96,13 +98,13 @@ export default async function (ctx) {
     return { head: { l: hb.left, t: hb.top, b: hb.bottom }, tab: { l: rb.left, t: rb.top, b: rb.bottom }, round: getComputedStyle(r).borderRadius, wordsL: rw.left, wordsMid: mid(rw), titleMid: mid(tw), moreMid: mid(m.getBoundingClientRect()), clipped: h.querySelector('h2').getBoundingClientRect().top <= rb.top };
   })()`);
 
-  const tabInToolbar = (h, what) => {
-    near(h.tab.l, h.head.l, `${what}: the tab at the toolbar's left`);
-    near(h.tab.t, h.head.t, `${what}: at its top`);
-    near(h.tab.b, h.head.b - 1, `${what}: down to the hairline`);
-    near(h.wordsMid, h.titleMid, `${what}: its words level with the title`, 1);
-    near(h.titleMid, h.moreMid, `${what}: the title on the row's line`, 1);
-    near(h.wordsL, h.head.l + 12, `${what}: its words at the toolbar's padding`);
+  const tabInToolbar = (header, what) => {
+    near(header.tab.l, header.head.l, `${what}: the tab at the toolbar's left`);
+    near(header.tab.t, header.head.t, `${what}: at its top`);
+    near(header.tab.b, header.head.b - 1, `${what}: down to the hairline`);
+    near(header.wordsMid, header.titleMid, `${what}: its words level with the title`, 1);
+    near(header.titleMid, header.moreMid, `${what}: the title on the row's line`, 1);
+    near(header.wordsL, header.head.l + 12, `${what}: its words at the toolbar's padding`);
   };
 
   try {
@@ -152,46 +154,46 @@ export default async function (ctx) {
     await ctx.settle();
 
     // the row's tab
-    const L = (out.live = await read(live.id));
-    const M = (out.moved = await read(moved.id));
+    const liveCard = (out.live = await read(live.id));
+    const movedCard = (out.moved = await read(moved.id));
 
-    for (const [what, c] of [
-      ['live', L],
-      ['with a PR', M],
+    for (const [what, reading] of [
+      ['live', liveCard],
+      ['with a PR', movedCard],
     ]) {
-      near(c.tab.l, c.card.l, `${what}: the tab at the row's left`);
-      near(c.tab.t, c.card.t, `${what}: at its top`);
-      ctx.assert.equal(c.tab.h, 26, `${what}: its height`);
-      ctx.assert.equal(c.tab.round, '7px 0px 8px', `${what}: the row's corner, then its free one`);
-      near(c.tabWords, c.titleWords, `${what}: its words on the title's edge`);
+      near(reading.tab.l, reading.card.l, `${what}: the tab at the row's left`);
+      near(reading.tab.t, reading.card.t, `${what}: at its top`);
+      ctx.assert.equal(reading.tab.h, 26, `${what}: its height`);
+      ctx.assert.equal(reading.tab.round, '7px 0px 8px', `${what}: the row's corner, then its free one`);
+      near(reading.tabWords, reading.titleWords, `${what}: its words on the title's edge`);
     }
 
-    ctx.assert.equal(L.card.h, 79, 'one height at same height');
-    ctx.assert.equal(M.card.h, 79, 'a move line in the place it holds');
-    near(M.tmx.mid, M.tab.mid, 'the PRs on the tab’s line');
-    near(L.where.mid, L.tab.mid, 'the marks on the tab’s line');
+    ctx.assert.equal(liveCard.card.h, 79, 'one height at same height');
+    ctx.assert.equal(movedCard.card.h, 79, 'a move line in the place it holds');
+    near(movedCard.tmx.mid, movedCard.tab.mid, 'the PRs on the tab’s line');
+    near(liveCard.where.mid, liveCard.tab.mid, 'the marks on the tab’s line');
 
     // the right edge at rest, and under the pointer
-    const R = L.card.r - 12;
+    const rightEdge = liveCard.card.r - 12;
 
-    ctx.assert.deepEqual([L.time, L.act.w], [null, 0], 'the age and the ✓ keep no room at rest');
-    near(L.where.r, R, '>_ on the right edge');
-    near(M.lastSquare, R, 'the last PR on the right edge');
-    await over(L.card);
+    ctx.assert.deepEqual([liveCard.time, liveCard.act.w], [null, 0], 'the age and the ✓ keep no room at rest');
+    near(liveCard.where.r, rightEdge, '>_ on the right edge');
+    near(movedCard.lastSquare, rightEdge, 'the last PR on the right edge');
+    await over(liveCard.card);
     const LH = (out.liveHover = await read(live.id));
 
     ctx.assert.equal(LH.act.w, 22, 'the ✓ comes');
-    near(LH.act.r, R, 'on the right edge');
+    near(LH.act.r, rightEdge, 'on the right edge');
     near(LH.zz.r, LH.act.l - 2, 'the moon beside it, 2 px off (2026-11-25)');
     near(LH.pin.r, LH.zz.l - 2, 'the pin beside the moon');
     near(LH.where.r, LH.pin.l - 7, '>_ pushed left of the three');
     ctx.assert.ok(LH.time, 'the age comes');
-    near(LH.trowEnd, R, 'the title’s row still ends on the right edge');
-    ctx.assert.equal(LH.card.h, L.card.h, 'the row keeps its height');
-    await over(M.card);
+    near(LH.trowEnd, rightEdge, 'the title’s row still ends on the right edge');
+    ctx.assert.equal(LH.card.h, liveCard.card.h, 'the row keeps its height');
+    await over(movedCard.card);
     const MH = await read(moved.id);
 
-    near(MH.lastSquare, R, 'the PRs stay put: the ✓ comes left of them');
+    near(MH.lastSquare, rightEdge, 'the PRs stay put: the ✓ comes left of them');
     await away();
 
     await ctx.evaluate(
@@ -203,24 +205,24 @@ export default async function (ctx) {
 
     // no process: its row dimmed, its tab whole; open, nothing dimmed
     ctx.assert.deepEqual(
-      [M.card.op, M.tab.op, M.trow.op],
+      [movedCard.card.op, movedCard.tab.op, movedCard.trow.op],
       ['1', '1', '0.8'],
       'a chat with no process: the row dimmed, not its tab',
     );
 
-    ctx.assert.deepEqual([L.card.op, L.trow.op], ['1', '1'], 'a live one not at all');
-    ctx.assert.equal(M.ymove.round, '6px', 'the tag the chips’ corner');
-    ctx.assert.equal(L.where.round, '6px', 'a chip that corner');
+    ctx.assert.deepEqual([liveCard.card.op, liveCard.trow.op], ['1', '1'], 'a live one not at all');
+    ctx.assert.equal(movedCard.ymove.round, '6px', 'the tag the chips’ corner');
+    ctx.assert.equal(liveCard.where.round, '6px', 'a chip that corner');
 
     // the lane heads and the day lines on the rows' edges
     out.edges =
       await ctx.evaluate(`(() => { const lane = document.querySelector('.gsep.lane.ready'), text = e => { const g = document.createRange(); g.selectNodeContents(e); return g.getBoundingClientRect(); }; const day = document.querySelector('.gsep.day b');
       return { mark: lane.querySelector('i').getBoundingClientRect().left, name: text(lane.querySelector('.ln')).left, chevron: lane.querySelector('.lc').getBoundingClientRect().right, day: day && text(day).left }; })()`);
 
-    near(out.edges.mark, L.titleWords, 'the lane’s mark on the title’s edge');
-    near(out.edges.name, L.titleWords + 18, 'its name on an agent row’s words');
-    near(out.edges.chevron, R, 'its chevron on the right edge');
-    near(out.edges.day, L.titleWords, 'a day line on the title’s edge');
+    near(out.edges.mark, liveCard.titleWords, 'the lane’s mark on the title’s edge');
+    near(out.edges.name, liveCard.titleWords + 18, 'its name on an agent row’s words');
+    near(out.edges.chevron, rightEdge, 'its chevron on the right edge');
+    near(out.edges.day, liveCard.titleWords, 'a day line on the title’s edge');
 
     // rows apart; a head or a day line nearer the rows under it than those above (2026-11-03)
     out.apart =
@@ -228,8 +230,8 @@ export default async function (ctx) {
       kids.slice(1).forEach((e, i) => { const k = kind(kids[i]) + '>' + kind(e), d = Math.round((e.getBoundingClientRect().top - kids[i].getBoundingClientRect().bottom) * 10) / 10; (seen[k] ??= new Set()).add(d); });
       return Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, [...v]])); })()`);
 
-    for (const [k, want] of Object.entries({ 'card>card': 6, 'lane>card': 4, 'card>day': 8, 'day>card': 4 })) {
-      ctx.assert.deepEqual(out.apart[k], [want], `${k}: ${want} px, of ${JSON.stringify(out.apart)}`);
+    for (const [pair, want] of Object.entries({ 'card>card': 6, 'lane>card': 4, 'card>day': 8, 'day>card': 4 })) {
+      ctx.assert.deepEqual(out.apart[pair], [want], `${pair}: ${want} px, of ${JSON.stringify(out.apart)}`);
     }
 
     await ctx.shot('project-tab-dark');
@@ -240,9 +242,9 @@ export default async function (ctx) {
     out.head = await head();
     ctx.assert.equal(out.head.round, '0px 0px 8px', 'the sheet’s corner, then its free one');
     tabInToolbar(out.head, 'the toolbar');
-    const O = await read(moved.id);
+    const openCard = await read(moved.id);
 
-    ctx.assert.deepEqual([O.card.op, O.trow.op], ['1', '1'], 'open, nothing dimmed');
+    ctx.assert.deepEqual([openCard.card.op, openCard.trow.op], ['1', '1'], 'open, nothing dimmed');
     await ctx.evaluate(`document.querySelector('#shead').style.setProperty('--hdrop', '8px')`);
     tabInToolbar((out.dropped = await head()), 'lowered under the housing');
     await ctx.evaluate(`document.querySelector('#shead').style.removeProperty('--hdrop')`);
@@ -262,28 +264,28 @@ export default async function (ctx) {
     // a title that wraps keeps its room: the pointer never shortens a row under itself
     await ctx.evaluate(`document.querySelector('#cardsEven').click()`);
     await ctx.settle();
-    const U = await read(live.id);
+    const restCard = await read(live.id);
 
-    ctx.assert.equal(U.titleRoom, 28, 'at rest, the age’s room');
-    await over(U.card);
+    ctx.assert.equal(restCard.titleRoom, 28, 'at rest, the age’s room');
+    await over(restCard.card);
     const UH = await read(live.id);
 
-    near(UH.title.w, U.title.w, 'under the pointer the age has it: the same lines', 1);
+    near(UH.title.w, restCard.title.w, 'under the pointer the age has it: the same lines', 1);
     await away();
     await ctx.evaluate(`document.querySelector('#cardsEven').click()`);
     await ctx.settle();
 
     // one project in view: the same card, nothing on it moved (2026-11-04, round XXV)
-    const A = await read(moved.id);
+    const allCard = await read(moved.id);
 
     await ctx.evaluate(`document.querySelector('#shead .repo').click()`);
     await ctx.waitFor(`window.peix.prefs().project !== 'all'`, { what: 'the project in view' });
     await ctx.settle();
-    const P = (out.picked = await read(moved.id));
+    const pickedCard = (out.picked = await read(moved.id));
 
     ctx.assert.deepEqual(
-      [P.top.h, P.card.h, P.title.t - P.card.t, P.tab.w],
-      [A.top.h, A.card.h, A.title.t - A.card.t, A.tab.w],
+      [pickedCard.top.h, pickedCard.card.h, pickedCard.title.t - pickedCard.card.t, pickedCard.tab.w],
+      [allCard.top.h, allCard.card.h, allCard.title.t - allCard.card.t, allCard.tab.w],
       'the tab stays, and nothing on the card moves',
     );
 

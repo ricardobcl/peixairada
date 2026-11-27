@@ -23,7 +23,9 @@ const ZED_APPS = ['Zed.app', 'Zed Preview.app'];
 const ZED_INSTALL_MS = 15 * 60_000;
 
 const zedApp = () =>
-  APP_DIRS.flatMap(d => ZED_APPS.map(a => join(d, a))).find(p => existsSync(join(p, 'Contents', 'Info.plist'))) || null;
+  APP_DIRS.flatMap(dir => ZED_APPS.map(name => join(dir, name))).find(bundle =>
+    existsSync(join(bundle, 'Contents', 'Info.plist')),
+  ) || null;
 
 function brewBin() {
   return findBin('brew', 'Zed cannot be installed from the board');
@@ -32,15 +34,15 @@ function brewBin() {
 let zedInstall = null; // { line, at, child } while brew runs; { error } once it failed, until the next try
 
 export function editorState() {
-  const z = zedInstall;
+  const install = zedInstall;
 
   return {
     zed: {
       app: zedApp(),
       brew: !!brewBin(),
-      installing: !!z?.child,
-      line: z?.child ? z.line : null,
-      error: z?.error || null,
+      installing: !!install?.child,
+      line: install?.child ? install.line : null,
+      error: install?.error || null,
     },
   };
 }
@@ -51,12 +53,12 @@ export function installZed() {
   const brew = brewBin();
 
   if (!brew) return { code: 503, error: 'Homebrew not found — get Zed from zed.dev/download' };
-  const z = (zedInstall = { line: 'brew install --cask zed', at: 0, child: null });
+  const install = (zedInstall = { line: 'brew install --cask zed', at: 0, child: null });
 
   console.log('[peixairada] Zed: brew install --cask zed');
 
   const done = (err, _out, stderr) => {
-    z.child = null;
+    install.child = null;
     const app = zedApp();
 
     if (app) {
@@ -65,56 +67,56 @@ export function installZed() {
       const ls = findBin('lsregister', 'a zed:// link may wait for Zed to be opened once');
 
       if (ls) {
-        execFile(ls, ['-f', app], { timeout: 30_000 }, e => {
-          if (e) console.error(`[peixairada] Zed: lsregister ${e.message}`);
+        execFile(ls, ['-f', app], { timeout: 30_000 }, error => {
+          if (error) console.error(`[peixairada] Zed: lsregister ${error.message}`);
         });
       }
     } else {
       // brew says why on stderr (Error: …); one that ended well with no app to show is said as that
       const lines = String(stderr || '')
         .split(/[\r\n]+/)
-        .map(l => l.trim())
+        .map(line => line.trim())
         .filter(Boolean);
 
-      z.error =
-        lines.filter(l => /^Error:/.test(l)).pop() ||
+      install.error =
+        lines.filter(line => /^Error:/.test(line)).pop() ||
         (err ? lines.pop() || err.message : `brew is done, and there is no Zed.app in ${APP_DIRS.join(' or ')}`);
 
-      console.error(`[peixairada] Zed: ${z.error}`);
+      console.error(`[peixairada] Zed: ${install.error}`);
     }
 
     broadcast('editor', editorState());
   };
 
   try {
-    z.child = execFile(
+    install.child = execFile(
       brew,
       ['install', '--cask', 'zed'],
       { env: termEnv(), timeout: ZED_INSTALL_MS, maxBuffer: 16e6 },
       done,
     );
-  } catch (e) {
-    zedInstall = { error: e.message };
-    return { code: 500, error: e.message };
+  } catch (error) {
+    zedInstall = { error: error.message };
+    return { code: 500, error: error.message };
   }
 
   const said = chunk => {
-    const l = chunk
+    const latest = chunk
       .split(/[\r\n]+/)
-      .map(x => x.trim())
-      .filter(x => x.startsWith('==> '))
+      .map(line => line.trim())
+      .filter(line => line.startsWith('==> '))
       .pop();
 
-    if (!l) return;
-    z.line = l.slice(4);
+    if (!latest) return;
+    install.line = latest.slice(4);
 
-    if (Date.now() - z.at >= 150) {
-      z.at = Date.now();
+    if (Date.now() - install.at >= 150) {
+      install.at = Date.now();
       broadcast('editor', editorState());
     }
   };
 
-  for (const st of [z.child.stdout, z.child.stderr]) st?.on('data', said);
+  for (const st of [install.child.stdout, install.child.stderr]) st?.on('data', said);
   broadcast('editor', editorState());
   return editorState();
 }

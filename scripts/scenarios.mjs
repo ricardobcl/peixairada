@@ -26,16 +26,19 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const DIR = join(ROOT, 'scripts', 'scenarios');
 const args = process.argv.slice(2);
 const retry = !args.includes('--no-retry');
-const pats = args.filter(a => !a.startsWith('--'));
+const pats = args.filter(argument => !argument.startsWith('--'));
 
 const all = readdirSync(DIR)
-  .filter(f => f.endsWith('.mjs'))
+  .filter(file => file.endsWith('.mjs'))
   .sort();
 
-const names = all.filter(f => !pats.length || pats.some(p => f.includes(p)));
+const names = all.filter(file => !pats.length || pats.some(pattern => file.includes(pattern)));
 
 if (!names.length) {
-  console.error(`no scenario matches ${pats.join(' ')} — have: ${all.map(f => f.replace('.mjs', '')).join(', ')}`);
+  console.error(
+    `no scenario matches ${pats.join(' ')} — have: ${all.map(file => file.replace('.mjs', '')).join(', ')}`,
+  );
+
   process.exit(2);
 }
 
@@ -44,27 +47,27 @@ const run = file =>
     const t0 = Date.now();
 
     // past its own bail and cleanup, a scenario is ended (SIGTERM, which it cleans up on) rather than hang the suite
-    const p = spawn(process.execPath, [join(ROOT, 'scripts', 'scenario.mjs'), join(DIR, file)], {
+    const child = spawn(process.execPath, [join(ROOT, 'scripts', 'scenario.mjs'), join(DIR, file)], {
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 180_000,
     });
 
     let out = '';
 
-    p.stdout.on('data', d => {
-      out += d;
+    child.stdout.on('data', chunk => {
+      out += chunk;
     });
 
-    p.stderr.on('data', d => {
-      out += d;
+    child.stderr.on('data', chunk => {
+      out += chunk;
     });
 
-    p.on('close', code => resolve({ code, out, ms: Date.now() - t0 }));
+    child.on('close', code => resolve({ code, out, ms: Date.now() - t0 }));
   });
 
 /** The one line worth showing from a failed run — the assertion or the wait that gave up. */
 const why = out =>
-  (out.split('\n').find(l => /FAILED:/.test(l)) || out.split('\n').filter(Boolean).pop() || '')
+  (out.split('\n').find(line => /FAILED:/.test(line)) || out.split('\n').filter(Boolean).pop() || '')
     .replace(/^\[[^\]]+\]\s*/, '')
     .replace(/^(Error|AssertionError)[^:]*:\s*/, '')
     .slice(0, 120);
@@ -73,7 +76,7 @@ const why = out =>
  *  holders) or its Chrome's profile — read off the run's own log, looked for once the run has exited. A scenario's
  *  cleanup ends them all; one still there is the harness leaking, as three servers did from 2026-10-03 on. */
 const leftovers = out => {
-  const marks = [...out.matchAll(/\(state (\/[^\s,)]+)|chrome profile (\/\S+)/g)].map(m => m[1] || m[2]);
+  const marks = [...out.matchAll(/\(state (\/[^\s,)]+)|chrome profile (\/\S+)/g)].map(match => match[1] || match[2]);
 
   if (!marks.length) return [];
   let ps;
@@ -86,8 +89,8 @@ const leftovers = out => {
 
   return ps
     .split('\n')
-    .filter(l => marks.some(m => l.includes(m)))
-    .map(l => l.trim().slice(0, 160));
+    .filter(line => marks.some(mark => line.includes(mark)))
+    .map(line => line.trim().slice(0, 160));
 };
 
 const secs = ms => `${(ms / 1000).toFixed(1)}s`;
@@ -98,26 +101,28 @@ for (const file of names) {
   const name = file.replace('.mjs', '');
 
   process.stdout.write(`${name.padEnd(22)} … `);
-  let r = await run(file);
+  let result = await run(file);
   let flaky = null;
 
-  if (r.code !== 0 && r.code !== SKIP && retry) {
+  if (result.code !== 0 && result.code !== SKIP && retry) {
     process.stdout.write(`failed — again … `);
     const again = await run(file);
 
-    if (again.code === 0) flaky = why(r.out); // what it failed on the first time: a flake nobody can see is no use
-    r = { ...again, first: r.out };
+    if (again.code === 0) flaky = why(result.out); // what it failed on the first time: a flake nobody can see is no use
+    result = { ...again, first: result.out };
   }
 
-  const state = r.code === SKIP ? 'SKIP' : r.code !== 0 ? 'FAIL' : flaky ? 'FLAKY' : 'ok';
+  const state = result.code === SKIP ? 'SKIP' : result.code !== 0 ? 'FAIL' : flaky ? 'FLAKY' : 'ok';
 
-  console.log(`${state} ${secs(r.ms)}${r.code !== 0 ? ` — ${why(r.out)}` : flaky ? ` — first run: ${flaky}` : ''}`);
+  console.log(
+    `${state} ${secs(result.ms)}${result.code !== 0 ? ` — ${why(result.out)}` : flaky ? ` — first run: ${flaky}` : ''}`,
+  );
 
   if (state === 'FAIL') {
     console.log(
-      r.out
+      result.out
         .split('\n')
-        .filter(l => !/^\[peixairada\]/.test(l))
+        .filter(line => !/^\[peixairada\]/.test(line))
         .join('\n')
         .trimEnd()
         .split('\n')
@@ -127,26 +132,26 @@ for (const file of names) {
   }
 
   await new Promise(res => setTimeout(res, 500)); // a process on its way out is not a leak
-  const leaks = [...(r.first ? leftovers(r.first) : []), ...leftovers(r.out)];
+  const leaks = [...(result.first ? leftovers(result.first) : []), ...leftovers(result.out)];
 
-  for (const l of leaks) console.log(`  LEAK ${l}`);
-  results.push({ name, state, ms: r.ms, flaky, leaks: leaks.length });
+  for (const leak of leaks) console.log(`  LEAK ${leak}`);
+  results.push({ name, state, ms: result.ms, flaky, leaks: leaks.length });
 }
 
-const bad = results.filter(r => r.state === 'FAIL');
-const flaky = results.filter(r => r.state === 'FLAKY');
-const leaky = results.filter(r => r.leaks);
-const skipped = results.filter(r => r.state === 'SKIP');
-const total = results.reduce((n, r) => n + r.ms, 0);
+const bad = results.filter(result => result.state === 'FAIL');
+const flaky = results.filter(result => result.state === 'FLAKY');
+const leaky = results.filter(result => result.leaks);
+const skipped = results.filter(result => result.state === 'SKIP');
+const total = results.reduce((sum, result) => sum + result.ms, 0);
 
 console.log(
   `\n${results.length - skipped.length - bad.length}/${results.length - skipped.length} passed in ${secs(total)}${
     skipped.length
-      ? ` · skipped (need Chrome's newer headless mode, CHROME is chrome-headless-shell): ${skipped.map(r => r.name).join(', ')}`
+      ? ` · skipped (need Chrome's newer headless mode, CHROME is chrome-headless-shell): ${skipped.map(result => result.name).join(', ')}`
       : ''
-  }${flaky.length ? ` · flaky (passed on the second run): ${flaky.map(r => r.name).join(', ')}` : ''}${
-    bad.length ? ` · failed: ${bad.map(r => r.name).join(', ')}` : ''
-  }${leaky.length ? ` · left processes running: ${leaky.map(r => r.name).join(', ')}` : ''}`,
+  }${flaky.length ? ` · flaky (passed on the second run): ${flaky.map(result => result.name).join(', ')}` : ''}${
+    bad.length ? ` · failed: ${bad.map(result => result.name).join(', ')}` : ''
+  }${leaky.length ? ` · left processes running: ${leaky.map(result => result.name).join(', ')}` : ''}`,
 );
 
 process.exit(bad.length ? 1 : 0);

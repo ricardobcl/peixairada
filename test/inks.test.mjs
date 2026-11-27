@@ -45,8 +45,8 @@ test(
       assert.ok(
         worst[0].ratio >= 4.5,
         `the lowest: ${worst
-          .filter(w => w.ratio < 4.5)
-          .map(w => `${w.look} · ${w.ink} on ${w.on} ${w.ratio}`)
+          .filter(pair => pair.ratio < 4.5)
+          .map(pair => `${pair.look} · ${pair.ink} on ${pair.on} ${pair.ratio}`)
           .join('; ')}`,
       );
     } finally {

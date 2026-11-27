@@ -24,20 +24,27 @@ import {
 } from '../terminals/terms.mjs';
 
 /** ⌥⌘T and ⌘T: a zsh in the chat's folder. */
-export async function shellRoute(req, res, url, p) {
-  let m;
+export async function shellRoute(req, res, url, path) {
+  let match;
 
   // ⌥⌘T: a zsh in the chat's folder, in the pane's zsh tab — a holder like the claude one (`zsh -l -i` in the PTY),
   // alive until `exit` or a DELETE. The inline "new tab in iTerm" (2026-09-20): the chat's zsh, started once and
   // answered with ever after — and `fresh` (⌘T, 2026-10-13) another one beside it, every time: a second zsh harms
   // nothing, so it is not one spawn at a time as the first is.
-  if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/shell$/))) {
-    const s = sessions.get(m[1]);
+  if (req.method === 'POST' && (match = path.match(/^\/api\/sessions\/([\w-]+)\/shell$/))) {
+    const session = sessions.get(match[1]);
 
-    if (!s) return json(res, 404, { error: 'unknown session' });
+    if (!session) return json(res, 404, { error: 'unknown session' });
 
     const body = await jsonBody(req);
-    const spec = { cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, shell: true };
+
+    const spec = {
+      cwd: session.live?.cwd || session.cwd,
+      sessionId: session.id,
+      cols: body.cols,
+      rows: body.rows,
+      shell: true,
+    };
 
     // the in-app editor's vim (2026-10-21): in the chat's folder, or `dir` — a worktree of its PR's branch —, one start
     // per folder at a time; the page shows one it has before asking for another
@@ -47,31 +54,31 @@ export async function shellRoute(req, res, url, p) {
         spec.cwd = body.dir;
       }
 
-      const r = await spawnOnce(`${s.id}:vim:${spec.cwd}`, () => spawnTerm({ ...spec, editor: 'vim' }));
+      const spawned = await spawnOnce(`${session.id}:vim:${spec.cwd}`, () => spawnTerm({ ...spec, editor: 'vim' }));
 
-      return json(res, r.code, r);
+      return json(res, spawned.code, spawned);
     }
 
     if (body.fresh === true) {
-      const r = await spawnTerm(spec);
+      const spawned = await spawnTerm(spec);
 
-      return json(res, r.code, r);
+      return json(res, spawned.code, spawned);
     }
 
-    const have = shellOf(s);
+    const have = shellOf(session);
 
     if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });
-    const r = await spawnOnce(`${s.id}:shell`, () => spawnTerm(spec));
+    const result = await spawnOnce(`${session.id}:shell`, () => spawnTerm(spec));
 
-    return json(res, r.code, r);
+    return json(res, result.code, result);
   }
 
   return NEXT;
 }
 
 /** What a new chat can start with: the drawers, a folder's launchers and agents, the roots' folders, a clone. */
-export async function startRoutes(req, res, url, p) {
-  if (req.method === 'GET' && p === '/api/terminals') {
+export async function startRoutes(req, res, url, path) {
+  if (req.method === 'GET' && path === '/api/terminals') {
     return json(res, 200, {
       terminals: [...terms.values()].map(termSummary),
       available: termsAvailable(),
@@ -79,7 +86,7 @@ export async function startRoutes(req, res, url, p) {
     });
   }
 
-  if (req.method === 'GET' && p === '/api/launchers') {
+  if (req.method === 'GET' && path === '/api/launchers') {
     // the folder's Taskfile tasks that launch claude, if any (see launchersFor)
     const cwd = url.searchParams.get('cwd') || '';
 
@@ -91,7 +98,7 @@ export async function startRoutes(req, res, url, p) {
     }); // a Taskfile left unasked (2026-10-16)
   }
 
-  if (req.method === 'GET' && p === '/api/agents') {
+  if (req.method === 'GET' && path === '/api/agents') {
     // who a new chat there can start as (agentsFor), and whether its Taskfile starts it instead
     const cwd = url.searchParams.get('cwd') || '';
 
@@ -99,18 +106,21 @@ export async function startRoutes(req, res, url, p) {
     return json(res, 200, { cwd, ...agentsFor(cwd), launchers: (await launchersFor(cwd)).length });
   }
 
-  if (req.method === 'GET' && p === '/api/folders') {
+  if (req.method === 'GET' && path === '/api/folders') {
     return json(res, 200, { roots: boardConfig().roots, folders: rootFolders() });
   }
 
-  if (req.method === 'POST' && p === '/api/clone') {
+  if (req.method === 'POST' && path === '/api/clone') {
     // a repo of a root's org, cloned into that root — then the page starts a chat in it
     const body = await jsonBody(req);
 
     return cloneRepo(
       typeof body.name === 'string' ? body.name.trim() : '',
       typeof body.root === 'string' ? body.root : null,
-      r => (r.error ? json(res, r.code, { error: r.error }) : json(res, r.code, { cwd: r.cwd, cloned: r.cloned })),
+      result =>
+        result.error
+          ? json(res, result.code, { error: result.error })
+          : json(res, result.code, { cwd: result.cwd, cloned: result.cloned }),
     );
   }
 
@@ -118,19 +128,19 @@ export async function startRoutes(req, res, url, p) {
 }
 
 /** Drawers: a new chat, attach or resume, branch, take over, end. */
-export async function terminalRoutes(req, res, url, p) {
-  let m;
+export async function terminalRoutes(req, res, url, path) {
+  let match;
 
-  if (req.method === 'POST' && p === '/api/terminals') {
+  if (req.method === 'POST' && path === '/api/terminals') {
     // a new chat in a folder — `claude`, or `task <name>` when the folder launches it so
     const body = await jsonBody(req);
 
     const cwd = typeof body.cwd === 'string' ? body.cwd : null;
     const task = typeof body.task === 'string' && body.task ? body.task : null;
 
-    if (task && !(TASK_NAME.test(task) && (await launchersFor(cwd)).some(l => l.name === task))) {
+    if (task && !(TASK_NAME.test(task) && (await launchersFor(cwd)).some(launcher => launcher.name === task))) {
       return json(res, 400, {
-        error: `no launcher named ${task} in ${cwd || '(no folder)'} — its Taskfile has ${(await launchersFor(cwd)).map(l => l.name).join(', ') || 'none'}${cwd && !claudeTrusts(cwd) ? ' asked of it: Claude Code has not trusted the folder' : ''}`,
+        error: `no launcher named ${task} in ${cwd || '(no folder)'} — its Taskfile has ${(await launchersFor(cwd)).map(launcher => launcher.name).join(', ') || 'none'}${cwd && !claudeTrusts(cwd) ? ' asked of it: Claude Code has not trusted the folder' : ''}`,
       });
     }
 
@@ -155,155 +165,164 @@ export async function terminalRoutes(req, res, url, p) {
     if (
       agent &&
       (!AGENT_NAME.test(agent) ||
-        (cwd && (existsSync(cwd) || cwd === SCRATCH_DIR) && !agentsFor(cwd).agents.some(a => a.name === agent)))
+        (cwd && (existsSync(cwd) || cwd === SCRATCH_DIR) && !agentsFor(cwd).agents.some(known => known.name === agent)))
     ) {
       return json(res, 400, { error: `no agent named ${agent} for a chat in ${cwd ? tildePath(cwd) : 'no folder'}` });
     }
 
     if (!prompt && !from.length) {
-      const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, task, agent });
+      const spawned = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, task, agent });
 
-      return json(res, r.code, r);
+      return json(res, spawned.code, spawned);
     }
 
     const newId = randomUUID();
 
     placeholder(newId, cwd);
-    const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, prompt, newId, agent });
+    const result = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, prompt, newId, agent });
 
-    if (r.code !== 201) {
+    if (result.code !== 201) {
       sessions.delete(newId);
-      return json(res, r.code, r);
+      return json(res, result.code, result);
     }
 
     for (const id of from) addLink('merge', id, newId);
-    return json(res, r.code, { ...r, sessionId: newId });
+    return json(res, result.code, { ...result, sessionId: newId });
   }
 
-  if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/terminal$/))) {
+  if (req.method === 'POST' && (match = path.match(/^\/api\/sessions\/([\w-]+)\/terminal$/))) {
     // attach to, or resume, this chat
-    const s = sessions.get(m[1]);
+    const session = sessions.get(match[1]);
 
-    if (!s) return json(res, 404, { error: 'unknown session' });
+    if (!session) return json(res, 404, { error: 'unknown session' });
 
     // `prompt` (2026-10-31, Send to…): the words go in as the resumed claude's first prompt — `prompted` says they did;
     // a drawer already there, or a resume another ask started, has not had them, and the page types them in instead
     const body = await jsonBody(req);
     const prompt = typeof body.prompt === 'string' && body.prompt.trim() ? body.prompt : null;
 
-    if (removedMarks[s.id] && !removing.has(s.id)) putBackOnBoard(s); // resumed from where ⌥⌘K found it (2026-11-04)
-    const have = termOf(s);
+    if (removedMarks[session.id] && !removing.has(session.id)) putBackOnBoard(session); // resumed from where ⌥⌘K found it (2026-11-04)
+    const have = termOf(session);
 
     if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have), prompted: false });
     // In the background (2026-11-04): attached, not a second claude — the one running, in this drawer
-    const job = s.alive && s.live?.pid && jobOf(s.live);
+    const job = session.alive && session.live?.pid && jobOf(session.live);
 
     if (job) {
-      const r = await spawnOnce(`${s.id}:claude`, () =>
+      const spawned = await spawnOnce(`${session.id}:claude`, () =>
         spawnTerm({
-          cwd: s.live.cwd || s.cwd,
-          sessionId: s.id,
+          cwd: session.live.cwd || session.cwd,
+          sessionId: session.id,
           attach: job,
-          claudePid: s.live.pid,
+          claudePid: session.live.pid,
           cols: body.cols,
           rows: body.rows,
         }),
       );
 
-      return json(res, r.code, { ...r, prompted: false });
+      return json(res, spawned.code, { ...spawned, prompted: false });
     }
 
     // Live elsewhere: same rule as replies — a second claude on one transcript is how it gets mangled.
-    if (!s.alive && !s.file) {
+    if (!session.alive && !session.file) {
       return json(res, 409, { error: 'nothing in it to resume: its claude ended before a first word' });
     } // claude would say so and exit, on a drawer nobody sees (2026-11-04)
 
-    if (s.alive) {
+    if (session.alive) {
       return json(res, 409, {
-        error: `this chat is live in ${s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : 'another terminal'} — take it over, or continue it there`,
+        error: `this chat is live in ${session.live?.entrypoint === 'claude-vscode' ? 'VS Code' : 'another terminal'} — take it over, or continue it there`,
       });
     }
 
     let mine = false;
 
-    const r = await spawnOnce(`${s.id}:claude`, async () => {
+    const result = await spawnOnce(`${session.id}:claude`, async () => {
       mine = true;
-      return spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, prompt });
+      return spawnTerm({
+        cwd: session.live?.cwd || session.cwd,
+        sessionId: session.id,
+        cols: body.cols,
+        rows: body.rows,
+        prompt,
+      });
     });
 
-    return json(res, r.code, { ...r, prompted: !!prompt && mine && r.code === 201 });
+    return json(res, result.code, { ...result, prompted: !!prompt && mine && result.code === 201 });
   }
 
   // Branch from here (2026-10-31): a copy of the chat in a drawer of its own — `claude --resume <id> --fork-session
   // --session-id <new>`, the new id the board's, so the tie holds before Claude Code writes the copy. The chat itself is
   // read, not written to: a chat live anywhere, even elsewhere, can be branched.
-  if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/branch$/))) {
-    const s = sessions.get(m[1]);
+  if (req.method === 'POST' && (match = path.match(/^\/api\/sessions\/([\w-]+)\/branch$/))) {
+    const session = sessions.get(match[1]);
     const body = await jsonBody(req);
 
-    if (!s) return json(res, 404, { error: 'unknown session' });
-    if (!s.file) return json(res, 409, { error: 'nothing in it to branch yet' });
+    if (!session) return json(res, 404, { error: 'unknown session' });
+    if (!session.file) return json(res, 409, { error: 'nothing in it to branch yet' });
 
-    const cwd = s.live?.cwd || s.cwd;
+    const cwd = session.live?.cwd || session.cwd;
     const newId = randomUUID();
 
-    placeholder(newId, cwd, s.id);
-    const r = await spawnTerm({ cwd, fork: s.id, newId, cols: body.cols, rows: body.rows });
+    placeholder(newId, cwd, session.id);
+    const result = await spawnTerm({ cwd, fork: session.id, newId, cols: body.cols, rows: body.rows });
 
-    if (r.code !== 201) {
+    if (result.code !== 201) {
       sessions.delete(newId);
-      return json(res, r.code, r);
+      return json(res, result.code, result);
     }
 
-    addLink('branch', s.id, newId);
-    return json(res, r.code, { ...r, sessionId: newId });
+    addLink('branch', session.id, newId);
+    return json(res, result.code, { ...result, sessionId: newId });
   }
 
-  if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/takeover$/))) {
+  if (req.method === 'POST' && (match = path.match(/^\/api\/sessions\/([\w-]+)\/takeover$/))) {
     // end every claude it is live in elsewhere, resume it here
-    const s = sessions.get(m[1]);
+    const session = sessions.get(match[1]);
 
-    if (!s) return json(res, 404, { error: 'unknown session' });
+    if (!session) return json(res, 404, { error: 'unknown session' });
     const body = await jsonBody(req);
-    const have = termOf(s);
+    const have = termOf(session);
 
     if (have && have.exited === null) {
       // Already here: this ends the others — VS Code's, when the chat was opened there again after a take-over.
-      const others = s.rivals;
+      const others = session.rivals;
 
-      for (const p of others) {
-        const r = await endClaude(p);
+      for (const rival of others) {
+        const result = await endClaude(rival);
 
-        if (!r.ok) return json(res, r.code, { error: r.error });
+        if (!result.ok) return json(res, result.code, { error: result.error });
       }
 
       loadRegistry();
-      return json(res, 200, { terminal: termSummary(have), ended: others.map(p => p.pid) });
+      return json(res, 200, { terminal: termSummary(have), ended: others.map(rival => rival.pid) });
     }
 
-    if (!s.alive || !s.live?.pid) return json(res, 409, { error: 'not live anywhere — open a terminal on it instead' });
-    const cwd = s.live.cwd || s.cwd; // before the registry entry goes
+    if (!session.alive || !session.live?.pid) {
+      return json(res, 409, { error: 'not live anywhere — open a terminal on it instead' });
+    }
 
-    for (const p of [s.live, ...s.rivals]) {
-      const r = await endClaude(p);
+    const cwd = session.live.cwd || session.cwd; // before the registry entry goes
 
-      if (!r.ok) return json(res, r.code, { error: r.error });
+    for (const entry of [session.live, ...session.rivals]) {
+      const result = await endClaude(entry);
+
+      if (!result.ok) return json(res, result.code, { error: result.error });
     }
 
     loadRegistry();
 
-    const t = await spawnOnce(`${s.id}:claude`, () =>
-      spawnTerm({ cwd, sessionId: s.id, cols: body.cols, rows: body.rows }),
+    const term = await spawnOnce(`${session.id}:claude`, () =>
+      spawnTerm({ cwd, sessionId: session.id, cols: body.cols, rows: body.rows }),
     );
 
-    return json(res, t.code, t);
+    return json(res, term.code, term);
   }
 
-  if (req.method === 'DELETE' && (m = p.match(/^\/api\/terminals\/([\w-]+)$/))) {
-    const t = terms.get(m[1]);
+  if (req.method === 'DELETE' && (match = path.match(/^\/api\/terminals\/([\w-]+)$/))) {
+    const term = terms.get(match[1]);
 
-    if (!t) return json(res, 404, { error: 'unknown terminal' });
-    killTerm(t);
+    if (!term) return json(res, 404, { error: 'unknown terminal' });
+    killTerm(term);
     return json(res, 200, { ok: true });
   }
 

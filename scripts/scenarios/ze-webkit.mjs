@@ -21,7 +21,7 @@ export default async function (ctx) {
     }
     return JSON.stringify(out);`;
 
-  const r = spawnSync('node', ['scripts/webkit.mjs', body], {
+  const result = spawnSync('node', ['scripts/webkit.mjs', body], {
     encoding: 'utf8',
     timeout: 60000,
     env: {
@@ -34,22 +34,22 @@ export default async function (ctx) {
     },
   });
 
-  if (/the page is hidden/.test(r.stderr + r.stdout)) {
+  if (/the page is hidden/.test(result.stderr + result.stdout)) {
     ctx.log('the screen is locked: WebKit runs no frames, nothing checked');
     return { skipped: 'the screen is locked' };
   }
 
-  const line = r.stdout.split('\n').find(l => l.startsWith('"{'));
+  const line = result.stdout.split('\n').find(printed => printed.startsWith('"{'));
 
-  assert.ok(line, `an answer from WebKit: ${(r.stderr + r.stdout).slice(-600)}`);
+  assert.ok(line, `an answer from WebKit: ${(result.stderr + result.stdout).slice(-600)}`);
   const out = JSON.parse(JSON.parse(line));
 
   assert.equal(out.muted, true, 'the harness makes no sound');
 
-  for (const [i, o] of out.opened.entries()) {
-    assert.ok(o.gl && !o.off, `the stage at opening ${i + 1}: ${JSON.stringify(o)}`);
-    assert.ok(o.baked, `every sky baked ahead at opening ${i + 1}`);
-    assert.equal(o.err, 0, `no GL error at opening ${i + 1}`);
+  for (const [index, opening] of out.opened.entries()) {
+    assert.ok(opening.gl && !opening.off, `the stage at opening ${index + 1}: ${JSON.stringify(opening)}`);
+    assert.ok(opening.baked, `every sky baked ahead at opening ${index + 1}`);
+    assert.equal(opening.err, 0, `no GL error at opening ${index + 1}`);
   }
 
   assert.equal(out.err, 0, 'no GL error in a round');

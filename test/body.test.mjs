@@ -20,8 +20,8 @@ function send(srv, method, path, chunks, headers = {}) {
 
         res.setEncoding('utf8');
 
-        res.on('data', c => {
-          body += c;
+        res.on('data', chunk => {
+          body += chunk;
         });
 
         res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body || 'null') }));
@@ -31,9 +31,9 @@ function send(srv, method, path, chunks, headers = {}) {
     req.on('error', reject);
 
     (async () => {
-      for (const c of chunks) {
-        req.write(c);
-        await new Promise(r => setTimeout(r, 60));
+      for (const chunk of chunks) {
+        req.write(chunk);
+        await new Promise(done => setTimeout(done, 60));
       }
 
       req.end();
@@ -79,14 +79,14 @@ test(
     const srv = await startTestServer();
 
     try {
-      const padded = n => JSON.stringify({ pins: ['/big'], pad: 'x'.repeat(n) });
+      const padded = length => JSON.stringify({ pins: ['/big'], pad: 'x'.repeat(length) });
 
       const over = padded(1e6);
       const under = padded(1e6 - padded(0).length);
 
       assert.equal(Buffer.byteLength(under), 1e6);
       assert.deepEqual(await pins(srv, over, { 'content-length': Buffer.byteLength(over) }), EMPTY, 'said up front');
-      const halves = [over.slice(0, 600_000), over.slice(600_000)].map(s => Buffer.from(s));
+      const halves = [over.slice(0, 600_000), over.slice(600_000)].map(part => Buffer.from(part));
 
       assert.deepEqual(await send(srv, 'PUT', 'api/pins', halves), EMPTY, 'streamed');
       assert.deepEqual(await pins(srv, under), { status: 200, body: { ok: true, pins: ['/big'] } }, 'the limit itself');
@@ -104,11 +104,11 @@ test('a character split across two chunks is read whole', { timeout: 60_000 }, a
     const body = Buffer.from(JSON.stringify({ name: 'Ação — não', cwds: ['/work/ação'] }));
     const cut = body.indexOf(Buffer.from('ç')) + 1;
 
-    const r = await send(srv, 'POST', 'api/projects', [body.subarray(0, cut), body.subarray(cut)]);
+    const response = await send(srv, 'POST', 'api/projects', [body.subarray(0, cut), body.subarray(cut)]);
 
-    assert.equal(r.status, 201);
-    assert.equal(r.body.project.name, 'Ação — não');
-    assert.deepEqual(r.body.project.cwds, ['/work/ação']);
+    assert.equal(response.status, 201);
+    assert.equal(response.body.project.name, 'Ação — não');
+    assert.deepEqual(response.body.project.cwds, ['/work/ação']);
   } finally {
     await srv.stop();
   }

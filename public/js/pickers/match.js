@@ -33,11 +33,12 @@ const WORD_EDGE = /[^a-z0-9]/;
 function fuzzScore(text, at) {
   let score = -at[0] / 8; // an earlier start beats a later one, gently
 
-  for (let k = 0; k < at.length; k++) {
-    const c = at[k];
-    const gap = k ? c - at[k - 1] - 1 : 0; // what the matcher had to skip to get here
+  for (let index = 0; index < at.length; index++) {
+    const position = at[index];
+    const gap = index ? position - at[index - 1] - 1 : 0; // what the matcher had to skip to get here
 
-    score += 1 + (k && !gap ? 10 : 0) - Math.min(5, gap / 3) + (!c || WORD_EDGE.test(text[c - 1]) ? 8 : 0);
+    score +=
+      1 + (index && !gap ? 10 : 0) - Math.min(5, gap / 3) + (!position || WORD_EDGE.test(text[position - 1]) ? 8 : 0);
   }
 
   return score;
@@ -52,15 +53,15 @@ function fuzzWord(text, word) {
     start = text.indexOf(word[0], start + 1)
   ) {
     const at = [start];
-    let i = start;
+    let position = start;
 
-    for (let k = 1; k < word.length; k++) {
-      i = text.indexOf(word[k], i + 1);
-      if (i < 0) break;
-      at.push(i);
+    for (let index = 1; index < word.length; index++) {
+      position = text.indexOf(word[index], position + 1);
+      if (position < 0) break;
+      at.push(position);
     }
 
-    if (i < 0) break; // a later start's letters only land further on: what this one could not find, none can
+    if (position < 0) break; // a later start's letters only land further on: what this one could not find, none can
     const score = fuzzScore(text, at);
 
     if (!best || score > best.score) best = { score, at };
@@ -75,11 +76,11 @@ function fuzzWord(text, word) {
 // …/pull/69 does not find #693.
 const URL_WORD = /^(?:https?:\/\/|(?:www\.)?github\.com\/)/;
 
-function urlForms(w) {
-  const gh = /^(?:https?:\/\/)?(?:www\.)?github\.com\/[\w.-]+\/([\w.-]+)\/(?:pull|issues)\/(\d+)\b/.exec(w);
-  const jira = /^https?:\/\/[^/]+\/browse\/([a-z][a-z0-9_]*-\d+)\b/.exec(w);
+function urlForms(word) {
+  const gh = /^(?:https?:\/\/)?(?:www\.)?github\.com\/[\w.-]+\/([\w.-]+)\/(?:pull|issues)\/(\d+)\b/.exec(word);
+  const jira = /^https?:\/\/[^/]+\/browse\/([a-z][a-z0-9_]*-\d+)\b/.exec(word);
 
-  return gh ? [`${gh[1]}#${gh[2]}`, w] : jira ? [jira[1], w] : [w];
+  return gh ? [`${gh[1]}#${gh[2]}`, word] : jira ? [jira[1], word] : [word];
 }
 
 // A PR's link alone in ⌥⌘K's box (2026-11-03) is put to every transcript: the chips hold what the boot read of a long
@@ -100,12 +101,12 @@ function namedAsk() {
 
   api('GET', `/api/named?pr=${encodeURIComponent(`https://${link}`)}`)
     .then(
-      r => {
-        ask.ids = r.ids;
+      result => {
+        ask.ids = result.ids;
       },
-      e => {
+      error => {
         ask.ids = [];
-        ask.err = e.message;
+        ask.err = error.message;
       },
     )
     .then(() => {
@@ -118,9 +119,9 @@ function namedAsk() {
 /** The word as it stands, in no longer name (`acme-widgets#6`) or number (`widgets#650`) — scored as fuzzWord
  *  scores the same letters. */
 function wholeWord(text, word) {
-  for (let i = text.indexOf(word); i >= 0; i = text.indexOf(word, i + 1)) {
-    if (/[\w.-]/.test(text[i - 1] || '') || /[a-z0-9]/.test(text[i + word.length] || '')) continue;
-    const at = Array.from({ length: word.length }, (_, k) => i + k);
+  for (let index = text.indexOf(word); index >= 0; index = text.indexOf(word, index + 1)) {
+    if (/[\w.-]/.test(text[index - 1] || '') || /[a-z0-9]/.test(text[index + word.length] || '')) continue;
+    const at = Array.from({ length: word.length }, (_, offset) => index + offset);
 
     return { score: fuzzScore(text, at), at };
   }
@@ -129,11 +130,11 @@ function wholeWord(text, word) {
 }
 
 /** One word of the query hunted in one field: a web address whole, its best form; any other fuzzily. */
-function wordIn(text, w) {
-  if (!URL_WORD.test(w)) return fuzzWord(text, w);
-  return urlForms(w)
-    .map(f => wholeWord(text, f))
-    .reduce((a, m) => (m && (!a || m.score > a.score) ? m : a), null);
+function wordIn(text, word) {
+  if (!URL_WORD.test(word)) return fuzzWord(text, word);
+  return urlForms(word)
+    .map(form => wholeWord(text, form))
+    .reduce((best, match) => (match && (!best || match.score > best.score) ? match : best), null);
 }
 
 /**
@@ -145,18 +146,18 @@ function wordIn(text, w) {
  * word wanders into by accident — without the prompt ceasing to be searchable. A word that only just scraped a
  * match is worth nothing rather than something negative, which would have made the weighting work backwards.
  */
-function fuzzy(fields, q) {
+function fuzzy(fields, query) {
   let total = 0;
 
-  for (const w of q.split(/\s+/)) {
-    if (!w) continue;
+  for (const word of query.split(/\s+/)) {
+    if (!word) continue;
     let best = null;
 
-    for (let i = 0; i < fields.length; i++) {
-      const m = fields[i] && wordIn(fields[i].toLowerCase(), w);
+    for (let index = 0; index < fields.length; index++) {
+      const match = fields[index] && wordIn(fields[index].toLowerCase(), word);
 
-      if (!m) continue;
-      const score = Math.max(0, m.score) / (1 + i / 3);
+      if (!match) continue;
+      const score = Math.max(0, match.score) / (1 + index / 3);
 
       if (best === null || score > best) best = score;
     }
@@ -170,38 +171,38 @@ function fuzzy(fields, q) {
 
 /** Where the query's words landed in one string, for the bolding; a word that matched some other field is simply
  *  not marked here. Runs come back merged by `mark`. */
-function fuzzMarks(text, q) {
+function fuzzMarks(text, query) {
   const hay = text.toLowerCase();
   let at = [];
 
-  for (const w of q.split(/\s+/)) {
-    if (!w) continue;
-    const m = wordIn(hay, w);
+  for (const word of query.split(/\s+/)) {
+    if (!word) continue;
+    const match = wordIn(hay, word);
 
-    if (m) at = at.concat(m.at);
+    if (match) at = at.concat(match.at);
   }
 
-  return [...new Set(at)].sort((a, b) => a - b);
+  return [...new Set(at)].sort((left, right) => left - right);
 }
 
 /** The text, escaped, with the letters the query landed on in <b> — runs merged, so a word comes out as one <b> and
  *  not one per letter. The pickers' rows, and the cards under the magnifier's query. */
-function markHits(text, q) {
+function markHits(text, query) {
   text = String(text ?? '');
-  const at = q ? fuzzMarks(text, q) : [];
+  const at = query ? fuzzMarks(text, query) : [];
 
   if (!at.length) return esc(text);
 
   let out = '';
   let last = 0;
 
-  for (let k = 0; k < at.length; k++) {
-    const from = at[k];
+  for (let index = 0; index < at.length; index++) {
+    const from = at[index];
     let to = from + 1;
 
-    while (k + 1 < at.length && at[k + 1] === to) {
+    while (index + 1 < at.length && at[index + 1] === to) {
       to++;
-      k++;
+      index++;
     }
 
     out += `${esc(text.slice(last, from))}<b>${esc(text.slice(from, to))}</b>`;
@@ -242,11 +243,11 @@ const PICK_HINT = {
     `Pull request — type to filter · ↑↓ · ⏎ opens${ctx.zoom === 'fill' ? ' · ⌥⌘G fills the column' : ctx.zoom === 'back' ? ' · ⌥⌘G gives the column back' : ''} · esc`,
   chat: "A chat — every project · typed, done chats too · or a PR's link · ⏎ · esc",
   new: () =>
-    `New chat — a project${folders.roots.length ? `, a folder in ${folders.roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${
-      folders.roots.some(r => r.org)
+    `New chat — a project${folders.roots.length ? `, a folder in ${folders.roots.map(root => homePath(root.dir)).join(' or ')}` : ''}${
+      folders.roots.some(root => root.org)
         ? `, a name to clone from ${folders.roots
-            .filter(r => r.org)
-            .map(r => r.org)
+            .filter(root => root.org)
+            .map(root => root.org)
             .join(' or ')}`
         : ''
     }${state.about.scratch ? ', or no folder at all' : ''} · ↑↓ · ⏎ · esc`,
@@ -287,5 +288,7 @@ const PICK_NOUN = {
   agent: 'agent',
 }; // for "no … matches"; the rest are projects
 
-const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
-const chatState = s => (s.done ? 'done' : bucket(s) === 'working' ? 'clauding' : asking(s) ? 'asking' : 'ready');
+const homePath = path => path.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
+
+const chatState = session =>
+  session.done ? 'done' : bucket(session) === 'working' ? 'clauding' : asking(session) ? 'asking' : 'ready';

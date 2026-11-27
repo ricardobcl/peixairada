@@ -26,15 +26,15 @@ const setupNames = () =>
   [
     ...new Set(
       projectList()
-        .filter(p => p.key !== ALL)
-        .map(p => p.name),
+        .filter(project => project.key !== ALL)
+        .map(project => project.name),
     ),
-  ].sort((a, b) => a.localeCompare(b));
+  ].sort((left, right) => left.localeCompare(right));
 
 /** A project's square in the setup: its colour and the ink that reads on it. */
 function tileStyle(name, byName) {
-  const p = byName.get(name);
-  const color = (p && ownColor(p.cwds)) || projCfg(name).color;
+  const project = byName.get(name);
+  const color = (project && ownColor(project.cwds)) || projCfg(name).color;
 
   return color ? `background:${color};color:${inkOn(color)}` : '';
 }
@@ -42,14 +42,14 @@ function tileStyle(name, byName) {
 const setupByName = () =>
   new Map(
     projectList()
-      .filter(p => p.key !== ALL)
-      .map(p => [p.name, p]),
+      .filter(project => project.key !== ALL)
+      .map(project => [project.name, project]),
   );
 
 function renderSetup(force = false) {
   const box = $('#setup');
-  const c = state.config;
-  const roots = c.roots || [];
+  const config = state.config;
+  const roots = config.roots || [];
   const projs = cfgProjects();
   const byName = setupByName();
 
@@ -58,35 +58,35 @@ function renderSetup(force = false) {
 
   const text = 'type="text" spellcheck="false" autocomplete="off"';
 
-  const org = (v, ph) =>
-    `<label class="sorgw" title="The GitHub org ＋ clone asks for — empty, nothing is cloned into this folder">github.com/<input ${text} class="sorg" value="${esc(v)}" placeholder="${ph}"></label>`;
+  const org = (value, ph) =>
+    `<label class="sorgw" title="The GitHub org ＋ clone asks for — empty, nothing is cloned into this folder">github.com/<input ${text} class="sorg" value="${esc(value)}" placeholder="${ph}"></label>`;
 
-  const rootRow = (r, i) =>
-    `<div class="srow root" data-i="${i}"><span class="sic">${ICON.folder}</span><input ${text} class="sdir" value="${esc(homePath(r.dir))}" title="${esc(r.dir)}">${org(r.org, 'org')}<button class="sdel" title="Forget this folder — nothing in it is touched" aria-label="Forget ${esc(homePath(r.dir))}">×</button></div>`;
+  const rootRow = (root, index) =>
+    `<div class="srow root" data-i="${index}"><span class="sic">${ICON.folder}</span><input ${text} class="sdir" value="${esc(homePath(root.dir))}" title="${esc(root.dir)}">${org(root.org, 'org')}<button class="sdel" title="Forget this folder — nothing in it is touched" aria-label="Forget ${esc(homePath(root.dir))}">×</button></div>`;
 
   // a project's square is its short name on its colour, once (2026-10-16; a square, a short name's box and a colour's
   // circle side by side before): a click opens its colour under it (and the short name's box, until 2026-10-25)
-  const projRow = n => {
-    const p = projs[n] || {};
-    const bp = byName.get(n);
-    const open = setupUi.open === n;
+  const projRow = name => {
+    const setup = projs[name] || {};
+    const bp = byName.get(name);
+    const open = setupUi.open === name;
 
     return (
-      `<div class="srow proj${open ? ' open' : ''}" data-name="${esc(n)}"><button type="button" class="stile" style="${tileStyle(n, byName)}" aria-expanded="${open}" aria-label="The colour of ${esc(n)}" title="Its colour — click to change it">${esc(p.abbr || abbrRule(n))}</button>` +
-      `<span class="pn" title="${esc(bp ? bp.cwds.map(homePath).join('\n') : n)}"><b>${projIcon(n)}${esc(n)}</b>${bp ? `<small>${esc(bp.cwds.map(homePath).join(' · '))}</small>` : ''}</span>` +
-      `<button class="sdel" title="Forget the colour of ${esc(n)}" aria-label="Forget ${esc(n)}">×</button>` +
-      `<div class="sedit"><label class="ssw${p.color ? '' : ' none'}" style="${p.color ? `--c:${p.color}` : ''}" title="${p.color ? `${p.color} — click to change, ⌥-click to take it off` : 'A colour for it — click to pick'}"><input type="color" value="${esc(p.color || '#808080')}"></label><span class="sedc">${p.color ? 'Colour' : 'No colour'}</span></div></div>`
+      `<div class="srow proj${open ? ' open' : ''}" data-name="${esc(name)}"><button type="button" class="stile" style="${tileStyle(name, byName)}" aria-expanded="${open}" aria-label="The colour of ${esc(name)}" title="Its colour — click to change it">${esc(setup.abbr || abbrRule(name))}</button>` +
+      `<span class="pn" title="${esc(bp ? bp.cwds.map(homePath).join('\n') : name)}"><b>${projIcon(name)}${esc(name)}</b>${bp ? `<small>${esc(bp.cwds.map(homePath).join(' · '))}</small>` : ''}</span>` +
+      `<button class="sdel" title="Forget the colour of ${esc(name)}" aria-label="Forget ${esc(name)}">×</button>` +
+      `<div class="sedit"><label class="ssw${setup.color ? '' : ' none'}" style="${setup.color ? `--c:${setup.color}` : ''}" title="${setup.color ? `${setup.color} — click to change, ⌥-click to take it off` : 'A colour for it — click to pick'}"><input type="color" value="${esc(setup.color || '#808080')}"></label><span class="sedc">${setup.color ? 'Colour' : 'No colour'}</span></div></div>`
     );
   };
 
-  const quick = [...new Set([...(c.quick ? [c.quick] : []), ...all])];
+  const quick = [...new Set([...(config.quick ? [config.quick] : []), ...all])];
 
   const group = (title, kw, rows, foot) =>
     `<section class="sgrp" data-kw="${kw}"><h6 class="sgh">${title}</h6><div class="slist">${rows}</div>${foot ? `<p class="sgf">${foot}</p>` : ''}</section>`;
 
   const html =
-    (c.error
-      ? `<p class="sgf serr">${esc(c.error)} — the board keeps what it had and writes nothing over it until the file reads.</p>`
+    (config.error
+      ? `<p class="sgf serr">${esc(config.error)} — the board keeps what it had and writes nothing over it until the file reads.</p>`
       : '') +
     group(
       'Repository folders',
@@ -101,7 +101,7 @@ function renderSetup(force = false) {
     group(
       'Quick chat',
       'quick chat new oracle',
-      `<label class="srow quick"><kbd>⌥⌘O</kbd><span>starts a chat in</span><span class="ssel">${c.quick ? projIcon(c.quick) : ''}<select id="quickSel" title="The project ⌥⌘O starts a chat in — on its environments first, when its Taskfile launches Claude"><option value="">nothing — ⌥⌘N does it all</option>${quick.map(n => `<option${n === c.quick ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></span></label>`,
+      `<label class="srow quick"><kbd>⌥⌘O</kbd><span>starts a chat in</span><span class="ssel">${config.quick ? projIcon(config.quick) : ''}<select id="quickSel" title="The project ⌥⌘O starts a chat in — on its environments first, when its Taskfile launches Claude"><option value="">nothing — ⌥⌘N does it all</option>${quick.map(name => `<option${name === config.quick ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></span></label>`,
       'Its environments first, when its Taskfile launches claude.',
     ) +
     group(
@@ -112,8 +112,8 @@ function renderSetup(force = false) {
         .join(
           '',
         )}<div class="srow padd"><span class="sic">＋</span><select class="sadd" title="Give a project a colour"><option value="">Add a project…</option>${all
-        .filter(n => !names.includes(n))
-        .map(n => `<option>${esc(n)}</option>`)
+        .filter(name => !names.includes(name))
+        .map(name => `<option>${esc(name)}</option>`)
         .join('')}</select></div>`,
       'A colour for its cards, its chats’ header and their tiles; the chat header’s square sets it too.',
     );
@@ -121,20 +121,20 @@ function renderSetup(force = false) {
   // the two keys the setup names, for the ? sheet: one line each, the rest under it (2026-10-12; a list in the
   // settings' Keys pane until 2026-10-16)
   keyNotes.quickKey = {
-    html: c.quick ? `a new chat in ${esc(c.quick)}` : "a new chat in the setup's quick project — none yet",
-    title: c.quick
+    html: config.quick ? `a new chat in ${esc(config.quick)}` : "a new chat in the setup's quick project — none yet",
+    title: config.quick
       ? 'its environments first, when its Taskfile launches Claude, then their open chats'
       : 'Settings › Projects › Quick chat names it',
   };
 
   keyNotes.newKey = {
-    title: `or a project${roots.length ? `, a folder in ${roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${roots.some(r => r.org) ? ', or ＋ clone a repo' : ''} · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · @ or ＋’s chip: an agent to run it (claude --agent) · ✕ takes a row off the board`,
+    title: `or a project${roots.length ? `, a folder in ${roots.map(root => homePath(root.dir)).join(' or ')}` : ''}${roots.some(root => root.org) ? ', or ＋ clone a repo' : ''} · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · @ or ＋’s chip: an agent to run it (claude --agent) · ✕ takes a row off the board`,
   };
 
   $('#pextra').placeholder = `${roots[0] ? homePath(roots[0].dir) : '~/code'}/some-repo`;
-  $('#sfilePath').textContent = c.file ? homePath(c.file) : 'Kept by the server';
+  $('#sfilePath').textContent = config.file ? homePath(config.file) : 'Kept by the server';
   drawSetup(box, html, force);
-  drawSetup($('#jiraSet'), jiraSetup(c.jira, setupUi.jira), force);
+  drawSetup($('#jiraSet'), jiraSetup(config.jira, setupUi.jira), force);
 }
 
 /** A setup pane drawn anew — unless a box in it has the keys: then once they leave it (the focusout below). */
@@ -153,7 +153,7 @@ function drawSetup(el, html, force) {
 
 /** The Setup's Jira section (2026-10-08): the site and your login (the setup file's), the token (the keychain's — the
  *  box is write-only, and says where one is kept), and a line on how it went. */
-function jiraSetup(j, info) {
+function jiraSetup(jira, info) {
   const text = 'type="text" spellcheck="false" autocomplete="off"';
   const sug = info?.suggest || {};
 
@@ -165,7 +165,7 @@ function jiraSetup(j, info) {
     file: "a token in the board's file",
   }[tok];
 
-  const line = !j
+  const line = !jira
     ? sug.site
       ? `jira-cli's ${esc(sug.site)} is offered above — your email, then a token.`
       : 'A site and your email, then an API token.'
@@ -177,8 +177,8 @@ function jiraSetup(j, info) {
 
   return (
     `<section class="sgrp jira" data-kw="jira tickets atlassian site email token"><div class="slist">` +
-    `<div class="srow jsite"><span class="sic">${ICON.ticket}</span><input ${text} class="sjsite" value="${esc(j?.site || '')}" placeholder="${esc(sug.site || 'https://acme.atlassian.net')}" title="Your Jira Cloud site"><input ${text} class="sjmail" value="${esc(j?.email || '')}" placeholder="${esc(sug.email || 'you@acme.com')}" title="The email you sign in to Jira with"><span></span></div>` +
-    `<div class="srow jtok"><span class="sic">${ICON.key}</span><input type="password" class="sjtok" autocomplete="off" spellcheck="false"${j ? '' : ' disabled'} placeholder="${tok ? `${esc(from)} — paste another to replace it` : 'API token — id.atlassian.com → Security → API tokens'}" title="Kept in your keychain, never in the setup file; the page never sees it again">` +
+    `<div class="srow jsite"><span class="sic">${ICON.ticket}</span><input ${text} class="sjsite" value="${esc(jira?.site || '')}" placeholder="${esc(sug.site || 'https://acme.atlassian.net')}" title="Your Jira Cloud site"><input ${text} class="sjmail" value="${esc(jira?.email || '')}" placeholder="${esc(sug.email || 'you@acme.com')}" title="The email you sign in to Jira with"><span></span></div>` +
+    `<div class="srow jtok"><span class="sic">${ICON.key}</span><input type="password" class="sjtok" autocomplete="off" spellcheck="false"${jira ? '' : ' disabled'} placeholder="${tok ? `${esc(from)} — paste another to replace it` : 'API token — id.atlassian.com → Security → API tokens'}" title="Kept in your keychain, never in the setup file; the page never sees it again">` +
     `${tok === 'keychain' || tok === 'file' ? '<button class="sdel sjforget" title="Forget the token" aria-label="Forget the token">×</button>' : '<span></span>'}</div>` +
     `</div><p class="sgf sjst">${line}</p><p class="sgf">Tickets a chat names (ACME-12, a link to one, its branch) show their status on its card and header, as its PRs do.</p></section>`
   );
@@ -192,9 +192,9 @@ function configChanged() {
   welcomeSync();
   renderLunchSet();
   if ($('#settings').open) loadJira();
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (s) renderHead(s);
+  if (session) renderHead(session);
 }
 
 async function putConfig(part, anchor) {
@@ -202,12 +202,12 @@ async function putConfig(part, anchor) {
     state.config = (await api('PUT', '/api/config', part)).config;
     configChanged();
     return true;
-  } catch (e) {
+  } catch (error) {
     note(
       anchor,
-      e.status === 404
+      error.status === 404
         ? 'The running server predates the setup — scripts/launchd.sh restart'
-        : `Not saved: ${e.message}`,
+        : `Not saved: ${error.message}`,
       true,
     );
 
@@ -218,14 +218,14 @@ async function putConfig(part, anchor) {
 
 const rootsInBox = () =>
   [...$('#setup').querySelectorAll('.srow.root')]
-    .map(r => ({ dir: r.querySelector('.sdir').value.trim(), org: r.querySelector('.sorg').value.trim() }))
-    .filter(r => r.dir);
+    .map(row => ({ dir: row.querySelector('.sdir').value.trim(), org: row.querySelector('.sorg').value.trim() }))
+    .filter(root => root.dir);
 
 function setProject(name, patch, anchor) {
   const all = { ...cfgProjects() };
   const next = { ...all[name], ...patch };
 
-  for (const k of Object.keys(next)) if (!next[k]) delete next[k];
+  for (const key of Object.keys(next)) if (!next[key]) delete next[key];
   if (Object.keys(next).length) all[name] = next;
   else delete all[name];
   return putConfig({ projects: all }, anchor);
@@ -233,85 +233,85 @@ function setProject(name, patch, anchor) {
 
 for (const box of [$('#setup'), $('#jiraSet')]) {
   // the Projects pane and Jira's, one setup
-  box.addEventListener('focusout', e => {
-    if (box._stale && !box.contains(e.relatedTarget)) renderSetup();
+  box.addEventListener('focusout', event => {
+    if (box._stale && !box.contains(event.relatedTarget)) renderSetup();
   });
 
-  box.addEventListener('click', e => {
-    const f = e.target.closest('.sjforget');
+  box.addEventListener('click', event => {
+    const forget = event.target.closest('.sjforget');
 
-    if (!f) return;
+    if (!forget) return;
 
     api('DELETE', '/api/jira/token').then(
-      d => {
-        setupUi.jira = d;
+      result => {
+        setupUi.jira = result;
         renderSetup(true);
       },
-      err => note(f, `Not forgotten: ${err.message}`, true),
+      err => note(forget, `Not forgotten: ${err.message}`, true),
     );
   });
 
-  box.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && e.target.matches('.sjtok, .sjsite, .sjmail')) {
-      e.target.dispatchEvent(new Event('change', { bubbles: true }));
+  box.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && event.target.matches('.sjtok, .sjsite, .sjmail')) {
+      event.target.dispatchEvent(new Event('change', { bubbles: true }));
     }
   });
 
-  box.addEventListener('change', e => {
-    const t = e.target;
-    const row = t.closest('.srow');
+  box.addEventListener('change', event => {
+    const control = event.target;
+    const row = control.closest('.srow');
 
-    if (t.id === 'quickSel') return putConfig({ quick: t.value || null }, t);
+    if (control.id === 'quickSel') return putConfig({ quick: control.value || null }, control);
 
-    if (t.classList.contains('sjsite') || t.classList.contains('sjmail')) {
+    if (control.classList.contains('sjsite') || control.classList.contains('sjmail')) {
       // both, or neither: a site with no login is no setup
       const site = box.querySelector('.sjsite').value.trim();
       const email = box.querySelector('.sjmail').value.trim();
 
       if (!!site !== !!email) return;
-      return putConfig({ jira: site ? { site, email } : null }, t);
+      return putConfig({ jira: site ? { site, email } : null }, control);
     }
 
-    if (t.classList.contains('sjtok')) {
-      const token = t.value.trim();
+    if (control.classList.contains('sjtok')) {
+      const token = control.value.trim();
 
       if (!token) return;
-      t.value = '';
-      t.blur();
+      control.value = '';
+      control.blur();
       return api('PUT', '/api/jira/token', { token }).then(
-        d => {
-          setupUi.jira = d;
+        result => {
+          setupUi.jira = result;
           renderSetup(true);
         },
-        e => note(t, `Not saved: ${e.message}`, true),
+        error => note(control, `Not saved: ${error.message}`, true),
       );
     }
 
-    if (t.classList.contains('sadd')) {
-      if (!t.value) return;
-      setupUi.pending.add(t.value);
-      const n = t.value;
+    if (control.classList.contains('sadd')) {
+      if (!control.value) return;
+      setupUi.pending.add(control.value);
+      const name = control.value;
 
-      setupUi.open = n;
+      setupUi.open = name;
       renderSetup(true);
-      box.querySelector(`.srow.proj[data-name="${CSS.escape(n)}"] .ssw input`)?.focus();
+      box.querySelector(`.srow.proj[data-name="${CSS.escape(name)}"] .ssw input`)?.focus();
       return;
     }
 
     if (row?.classList.contains('root')) {
       if (row.classList.contains('add') && !row.querySelector('.sdir').value.trim()) return;
-      return putConfig({ roots: rootsInBox() }, t);
+      return putConfig({ roots: rootsInBox() }, control);
     }
 
     if (row?.classList.contains('proj')) {
       const name = row.dataset.name;
 
-      if (t.type === 'color') {
+      if (control.type === 'color') {
         clearTimeout(setupUi.colorTimer);
 
-        if (setupUi.colors.get(name) !== t.value) {
-          setupUi.colors.set(name, t.value);
-          setProject(name, { color: t.value }, row);
+        if (setupUi.colors.get(name) !== control.value) {
+          setupUi.colors.set(name, control.value);
+          setProject(name, { color: control.value }, row);
         }
       }
     }
@@ -319,14 +319,14 @@ for (const box of [$('#setup'), $('#jiraSet')]) {
 
   // A colour previews on the board as the panel moves and is written once it rests — the header's square's way; the
   // row's square follows it.
-  box.addEventListener('input', e => {
-    const t = e.target;
+  box.addEventListener('input', event => {
+    const control = event.target;
 
-    if (t.type !== 'color') return;
+    if (control.type !== 'color') return;
 
-    const row = t.closest('.srow.proj');
+    const row = control.closest('.srow.proj');
     const name = row.dataset.name;
-    const hex = t.value;
+    const hex = control.value;
 
     state.config.projects = { ...cfgProjects(), [name]: { ...cfgProjects()[name], color: hex } };
     row.querySelector('.ssw').style.setProperty('--c', hex);
@@ -351,38 +351,38 @@ for (const box of [$('#setup'), $('#jiraSet')]) {
     }, 350);
   });
 
-  box.addEventListener('click', e => {
-    const x = e.target.closest('.sdel');
-    const sw = e.target.closest('.ssw');
-    const row = e.target.closest('.srow');
+  box.addEventListener('click', event => {
+    const forget = event.target.closest('.sdel');
+    const sw = event.target.closest('.ssw');
+    const row = event.target.closest('.srow');
 
-    if (sw && e.altKey) {
-      e.preventDefault();
+    if (sw && event.altKey) {
+      event.preventDefault();
       setupUi.colors.delete(row.dataset.name);
       return setProject(row.dataset.name, { color: '' }, sw);
     }
 
-    if (!x) return;
+    if (!forget) return;
 
     if (row.classList.contains('root')) {
       row.remove();
-      return putConfig({ roots: rootsInBox() }, x);
+      return putConfig({ roots: rootsInBox() }, forget);
     }
 
     const name = row.dataset.name;
 
     setupUi.pending.delete(name);
-    if (cfgProjects()[name]) setProject(name, { abbr: '', color: '' }, x);
+    if (cfgProjects()[name]) setProject(name, { abbr: '', color: '' }, forget);
     else renderSetup(true);
   });
 
-  box.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && e.target.matches('input[type=text]')) e.target.blur();
+  box.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && event.target.matches('input[type=text]')) event.target.blur();
   });
 
   // a square clicked opens its colour under it, and closes another's
-  box.addEventListener('click', e => {
-    const tile = e.target.closest('.srow.proj .stile');
+  box.addEventListener('click', event => {
+    const tile = event.target.closest('.srow.proj .stile');
 
     if (!tile) return;
 
@@ -391,19 +391,19 @@ for (const box of [$('#setup'), $('#jiraSet')]) {
 
     setupUi.open = on ? row.dataset.name : null;
 
-    for (const r of box.querySelectorAll('.srow.proj')) {
-      const o = r.dataset.name === setupUi.open;
+    for (const other of box.querySelectorAll('.srow.proj')) {
+      const isOpen = other.dataset.name === setupUi.open;
 
-      r.classList.toggle('open', o);
-      r.querySelector('.stile').setAttribute('aria-expanded', String(o));
+      other.classList.toggle('open', isOpen);
+      other.querySelector('.stile').setAttribute('aria-expanded', String(isOpen));
     }
 
     if (on) row.querySelector('.ssw input').focus();
   });
 }
 
-$('#sfileCopy').onclick = e => {
-  const b = e.currentTarget;
+$('#sfileCopy').onclick = event => {
+  const button = event.currentTarget;
 
-  copyText(state.config.file || '').then(ok => note(b, ok ? 'Copied' : 'Could not copy it', !ok));
+  copyText(state.config.file || '').then(ok => note(button, ok ? 'Copied' : 'Could not copy it', !ok));
 };

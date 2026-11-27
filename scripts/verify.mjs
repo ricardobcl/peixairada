@@ -42,7 +42,7 @@ let cdp = null;
 
 const bail = setTimeout(async () => {
   console.error(`timed out after ${TIMEOUT}ms`);
-  await Promise.race([cdp?.close(), new Promise(r => setTimeout(r, 4000))]);
+  await Promise.race([cdp?.close(), new Promise(resolve => setTimeout(resolve, 4000))]);
   process.exit(1);
 }, TIMEOUT);
 
@@ -53,8 +53,8 @@ try {
 
   try {
     out = { value: await cdp.evaluate(expr) };
-  } catch (e) {
-    out = { error: e.message };
+  } catch (error) {
+    out = { error: error.message };
   }
 
   if (shot) {
@@ -71,8 +71,8 @@ try {
     console.error('page JS exceptions:', cdp.exceptions);
     process.exitCode = 1;
   }
-} catch (e) {
-  console.error(e.message);
+} catch (error) {
+  console.error(error.message);
   process.exitCode = 1;
 } finally {
   clearTimeout(bail);

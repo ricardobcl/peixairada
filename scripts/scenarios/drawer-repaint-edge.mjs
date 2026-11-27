@@ -15,55 +15,55 @@ export default async function (ctx) {
   const [other, chat] = ctx.fixture.chats;
   const out = {};
 
-  const grid = (g = 0) => ctx.peix(`grid(${g})`);
-  const term = (g = 0) => ctx.peix(`term(${g})`);
+  const grid = (half = 0) => ctx.peix(`grid(${half})`);
+  const term = (half = 0) => ctx.peix(`term(${half})`);
 
-  const fits = async (g = 0) => {
-    const d = await term(g);
+  const fits = async (half = 0) => {
+    const drawer = await term(half);
 
-    return d.cols === d.propose.cols && d.rows === d.propose.rows;
+    return drawer.cols === drawer.propose.cols && drawer.rows === drawer.propose.rows;
   };
 
   /** Let go and fitted within `ms` of now: the time it took. */
-  const letGo = async (what, ms, g = 0) => {
+  const letGo = async (what, ms, half = 0) => {
     const t0 = Date.now();
 
     await ctx.sleep(50); // the body's observer first: the change is the next frame's
 
     await ctx
       .waitFor(
-        `((x, d) => !x.hold && !x.refits && d.cols === d.propose.cols && d.rows === d.propose.rows)(window.peix.grid(${g}), window.peix.term(${g}))`,
+        `((x, d) => !x.hold && !x.refits && d.cols === d.propose.cols && d.rows === d.propose.rows)(window.peix.grid(${half}), window.peix.term(${half}))`,
         { timeout: ms, what: `${what}: the screen let go, at the body's size, within ${ms} ms` },
       )
       .catch(() => {});
 
-    if (!(await fits(g))) {
-      ctx.log(`FITS ${what} ${JSON.stringify(await term(g))} ${JSON.stringify(await ctx.peix(`fits(${g})`))}`);
+    if (!(await fits(half))) {
+      ctx.log(`FITS ${what} ${JSON.stringify(await term(half))} ${JSON.stringify(await ctx.peix(`fits(${half})`))}`);
     }
 
-    assert.ok(await fits(g), `${what}: the grid is what the body holds`);
+    assert.ok(await fits(half), `${what}: the grid is what the body holds`);
     return Date.now() - t0;
   };
 
   // a word to the fake, once its turn is over: the transcript says so (the screen may show the same words from before)
-  const said = k =>
+  const said = word =>
     ctx.evaluate(
-      `(async () => { const r = await window.fetch('api/sessions/' + window.peix.state().current + '/messages', { headers: { 'x-peix-key': window.PEIX_KEY } }); return (JSON.stringify(await r.json()).match(/You said: fake ${k}/g) || []).length; })()`,
+      `(async () => { const r = await window.fetch('api/sessions/' + window.peix.state().current + '/messages', { headers: { 'x-peix-key': window.PEIX_KEY } }); return (JSON.stringify(await r.json()).match(/You said: fake ${word}/g) || []).length; })()`,
     );
 
-  const knob = async k => {
+  const knob = async word => {
     await ctx.waitFor(
       `(r => r.findLastIndex(x => /Done in/.test(x)) >= r.findLastIndex(x => /You said/.test(x)))(window.peix.screen(0))`,
       { what: 'the turn before over' },
     ); // a word typed mid-turn is dropped
 
-    const n = await said(k);
+    const before = await said(word);
 
-    await ctx.type(`fake ${k}`);
+    await ctx.type(`fake ${word}`);
 
     await ctx.waitFor(
-      `(async () => (JSON.stringify(await (await window.fetch('api/sessions/' + window.peix.state().current + '/messages', { headers: { 'x-peix-key': window.PEIX_KEY } })).json()).match(/You said: fake ${k}/g) || []).length > ${n})()`,
-      { what: `the fake told ${k}` },
+      `(async () => (JSON.stringify(await (await window.fetch('api/sessions/' + window.peix.state().current + '/messages', { headers: { 'x-peix-key': window.PEIX_KEY } })).json()).match(/You said: fake ${word}/g) || []).length > ${before})()`,
+      { what: `the fake told ${word}` },
     );
 
     await ctx.waitFor(`window.peix.session().status !== 'working'`, { what: 'its turn over' });
@@ -71,10 +71,10 @@ export default async function (ctx) {
   };
 
   // the screen drawn for the grid it is on, once xterm has drawn what it was given (a frame or two)
-  const claims = (g = 0) =>
+  const claims = (half = 0) =>
     ctx
       .waitFor(
-        `(d => window.peix.screen(${g}).some(r => r.includes('<<' + d.cols + 'x' + d.rows + '>>')))(window.peix.grid(${g}))`,
+        `(d => window.peix.screen(${half}).some(r => r.includes('<<' + d.cols + 'x' + d.rows + '>>')))(window.peix.grid(${half}))`,
         { timeout: 1500, what: 'the screen drawn for its grid' },
       )
       .then(
@@ -122,8 +122,8 @@ export default async function (ctx) {
   out.stream20 = await letGo('a stream', 1000);
   await ctx.sleep(500);
 
-  const f = await ctx.frames();
-  const bad = frameTrouble(f.frames);
+  const recorded = await ctx.frames();
+  const bad = frameTrouble(recorded.frames);
 
   out.stream20 = { ms: out.stream20, stale: bad.stale.length, torn: bad.torn.length };
 
@@ -157,9 +157,9 @@ export default async function (ctx) {
   await knob('slow 120');
   await ctx.cmd('Digit2');
 
-  for (const k of 'held keys') {
+  for (const char of 'held keys') {
     await ctx.evaluate(
-      `document.querySelector('#termBody textarea').dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(k)}, inputType: 'insertText', bubbles: true }))`,
+      `document.querySelector('#termBody textarea').dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(char)}, inputType: 'insertText', bubbles: true }))`,
     );
   }
 
@@ -198,13 +198,13 @@ export default async function (ctx) {
   await ctx.sleep(900);
   assert.ok(await claims(), 'back: the screen is drawn for its grid');
 
-  const d = await grid(0);
-  const held = await holderRows(ctx.server, d.id);
+  const drawn = await grid(0);
+  const held = await holderRows(ctx.server, drawn.id);
   const mine = await ctx.peix('screen(0)');
 
   assert.deepEqual(
-    mine.map(r => r.replace(/elapsed\s+\S+\s+\S+/, '')),
-    held.rows.map(r => r.replace(/elapsed\s+\S+\s+\S+/, '')),
+    mine.map(row => row.replace(/elapsed\s+\S+\s+\S+/, '')),
+    held.rows.map(row => row.replace(/elapsed\s+\S+\s+\S+/, '')),
     "back: the page's screen is the holder's",
   );
 

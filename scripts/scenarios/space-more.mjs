@@ -34,14 +34,14 @@ export default async function (ctx) {
   const now = Date.now();
   const root = tmpDir('peix-spm-');
 
-  const dir = n => {
-    const d = join(root, n);
+  const dir = name => {
+    const path = join(root, name);
 
-    mkdirSync(d, { recursive: true });
-    return d;
+    mkdirSync(path, { recursive: true });
+    return path;
   };
 
-  const ago = m => new Date(now - m * 60_000);
+  const ago = minutes => new Date(now - minutes * 60_000);
 
   await ctx.server.api('api/config', {
     method: 'PUT',
@@ -116,13 +116,26 @@ export default async function (ctx) {
     );
 
   const mouse = async (sel, button = 'none') => {
-    const r = await at(sel);
+    const point = await at(sel);
 
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.x, y: r.y });
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y });
 
     if (button !== 'none') {
-      await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: r.x, y: r.y, button, clickCount: 1 });
-      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: r.x, y: r.y, button, clickCount: 1 });
+      await ctx.send('Input.dispatchMouseEvent', {
+        type: 'mousePressed',
+        x: point.x,
+        y: point.y,
+        button,
+        clickCount: 1,
+      });
+
+      await ctx.send('Input.dispatchMouseEvent', {
+        type: 'mouseReleased',
+        x: point.x,
+        y: point.y,
+        button,
+        clickCount: 1,
+      });
     }
   };
 
@@ -132,7 +145,7 @@ export default async function (ctx) {
     );
 
   await ctx.waitFor(
-    `${JSON.stringify([pay, grid, ledger, on].map(c => c.id))}.every(id => document.querySelector('#spgrid .spt[data-id="' + id + '"]'))`,
+    `${JSON.stringify([pay, grid, ledger, on].map(chat => chat.id))}.every(id => document.querySelector('#spgrid .spt[data-id="' + id + '"]'))`,
     { what: 'the nodes' },
   );
 
@@ -201,11 +214,11 @@ export default async function (ctx) {
   await mouse('#space .sphd h1');
 
   out.fade = await ctx.evaluate(
-    `[${[pay, grid, ledger].map(c => `'${c.id}'`).join(',')}].map(id => { const n = document.querySelector('#spgrid .spt[data-id="' + id + '"]'); return [n.style.getPropertyValue('--fade') || '1', n.querySelector('.spag')?.textContent || '', getComputedStyle(n).opacity]; })`,
+    `[${[pay, grid, ledger].map(chat => `'${chat.id}'`).join(',')}].map(id => { const n = document.querySelector('#spgrid .spt[data-id="' + id + '"]'); return [n.style.getPropertyValue('--fade') || '1', n.querySelector('.spag')?.textContent || '', getComputedStyle(n).opacity]; })`,
   );
 
   ctx.assert.deepEqual(
-    out.fade.map(f => f.slice(0, 2)),
+    out.fade.map(faded => faded.slice(0, 2)),
     [
       ['1', ''],
       ['0.8', ' · 3d'],
@@ -243,17 +256,17 @@ export default async function (ctx) {
     `(() => { const runs = []; for (const el of document.querySelector('#spgrid').children) { if (el.classList.contains('sphead')) runs.push([el.firstChild.nextSibling.textContent, +el.querySelector('b').textContent, []]); else runs.at(-1)[2].push(peix.session(el.dataset.id).project); } return runs; })()`,
   );
 
-  for (const [name, n, projs] of out.runs) {
-    ctx.assert.equal(projs.length, n, `${name}: its count`);
+  for (const [name, count, projs] of out.runs) {
+    ctx.assert.equal(projs.length, count, `${name}: its count`);
 
     ctx.assert.ok(
-      projs.every(p => p === name),
+      projs.every(project => project === name),
       `${name}: only its own`,
     );
   }
 
   ctx.assert.deepEqual(
-    out.runs.slice(0, 2).map(r => r[0]),
+    out.runs.slice(0, 2).map(run => run[0]),
     ['storefront', 'infra'],
     'the project with the newest word first',
   );

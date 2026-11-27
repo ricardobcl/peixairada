@@ -30,14 +30,14 @@ const env = {
   GIT_COMMITTER_EMAIL: 't@t',
 };
 
-const git = (cwd, ...a) =>
-  execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env })
+const git = (cwd, ...args) =>
+  execFileSync('git', ['-C', cwd, ...args], { stdio: 'pipe', env })
     .toString()
     .trim();
 
-const put = (dir, f, text) => {
-  mkdirSync(join(dir, f, '..'), { recursive: true });
-  writeFileSync(join(dir, f), text);
+const put = (dir, file, text) => {
+  mkdirSync(join(dir, file, '..'), { recursive: true });
+  writeFileSync(join(dir, file), text);
 };
 
 const md = front => `---\n${front}\n---\n\nYou do the thing.\n`;
@@ -111,7 +111,7 @@ put(
 put(claudeDir, 'settings.json', JSON.stringify({ enabledPlugins: { 'kit@market': true } }));
 
 const real = realpathSync(repo);
-const wt = n => join(real, '.claude', 'worktrees', n);
+const wt = name => join(real, '.claude', 'worktrees', name);
 
 const prsFile = join(root, 'prs.json');
 
@@ -150,12 +150,12 @@ const {
 
 {
   const { readFileSync } = await import('node:fs');
-  const f = join(claudeDir, 'projects', repo.replace(/[/.]/g, '-'), `${asAgent.id}.jsonl`);
+  const file = join(claudeDir, 'projects', repo.replace(/[/.]/g, '-'), `${asAgent.id}.jsonl`);
 
   writeFileSync(
-    f,
+    file,
     `${JSON.stringify({ type: 'agent-setting', agentSetting: 'reviewer', sessionId: asAgent.id })}\n${readFileSync(
-      f,
+      file,
       'utf8',
     )}`,
   );
@@ -175,23 +175,23 @@ export const meta = {
 
 export default async function (ctx) {
   const out = {};
-  const q = js => ctx.evaluate(js);
+  const evaluate = js => ctx.evaluate(js);
 
   const rows = () =>
-    q(
+    evaluate(
       `JSON.stringify([...document.querySelectorAll('#picklist > .pkrow')].map(r => ({ cls: r.className, n: (n => { const c = n.cloneNode(true); c.querySelector('.cur')?.remove(); return c.textContent.trim(); })(r.querySelector('.n')), src: r.querySelector('.src')?.textContent || null })))`,
     ).then(JSON.parse);
 
   const press = key =>
-    q(
+    evaluate(
       `document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: '${key}', bubbles: true, cancelable: true }))`,
     );
 
-  const holderWith = async (want, n = 1) => {
-    for (let i = 0; i < 150; i++) {
-      const h = ctx.server.holders().filter(h => !h.shell && want(h));
+  const holderWith = async (want, count = 1) => {
+    for (let attempt = 0; attempt < 150; attempt++) {
+      const holders = ctx.server.holders().filter(holder => !holder.shell && want(holder));
 
-      if (h.length >= n) return h;
+      if (holders.length >= count) return holders;
       await ctx.sleep(100);
     }
 
@@ -216,14 +216,14 @@ export default async function (ctx) {
     timeout: 15000,
   });
 
-  out.card = await q(
+  out.card = await evaluate(
     `(c => c.textContent + '|' + c.querySelector('.asdot').dataset.c)(document.querySelector('#slist > .card[data-id="${asAgent.id}"] .top .chip.runas'))`,
   );
 
   ctx.assert.equal(out.card, '@reviewer|purple');
 
   ctx.assert.equal(
-    await q(`document.querySelector('#slist > .card[data-id="${prChat.id}"] .chip.runas')`),
+    await evaluate(`document.querySelector('#slist > .card[data-id="${prChat.id}"] .chip.runas')`),
     null,
     'a plain chat has none',
   );
@@ -234,8 +234,8 @@ export default async function (ctx) {
     what: 'its header and resume bar',
   });
 
-  out.head = await q(`document.querySelector('#shead h2 .runas').textContent`);
-  out.resume = await q(`document.querySelector('#resumeGo').textContent`);
+  out.head = await evaluate(`document.querySelector('#shead h2 .runas').textContent`);
+  out.resume = await evaluate(`document.querySelector('#resumeGo').textContent`);
   ctx.assert.equal(out.head, '@reviewer');
   ctx.assert.match(out.resume, /^Resume as @reviewer/);
   await ctx.settle();
@@ -245,21 +245,21 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelector('#pick').open`, { what: '⌥⌘K' });
   await ctx.fill('#pickq', '@reviewer');
 
-  out.k = await q(
+  out.k = await evaluate(
     `[...document.querySelectorAll('#picklist .pkrow.chat')].map(r => r.querySelector('.runas')?.textContent || '-')`,
   );
 
   ctx.assert.deepEqual(out.k, ['@reviewer'], `⌥⌘K finds it by its agent: ${JSON.stringify(out.k)}`);
-  await q(`document.querySelector('#pick').close()`);
+  await evaluate(`document.querySelector('#pick').close()`);
 
   // A1: ⌥⌘N's ＋ ends its line with the chip, as Claude ▾; the foot says @
   await toChats();
-  out.chip = await q(`document.querySelector('#picklist .pkrow.new .pkag').textContent.trim()`);
+  out.chip = await evaluate(`document.querySelector('#picklist .pkrow.new .pkag').textContent.trim()`);
   ctx.assert.equal(out.chip, 'as Claude ▾');
-  ctx.assert.match(await q(`document.querySelector('#pickfoot').textContent`), /an agent to run it/);
+  ctx.assert.match(await evaluate(`document.querySelector('#pickfoot').textContent`), /an agent to run it/);
 
   ctx.assert.match(
-    await q(`document.querySelector('#picklist .pkrow.new .pkline .cur').textContent`),
+    await evaluate(`document.querySelector('#picklist .pkrow.new .pkline .cur').textContent`),
     /as it stands/,
     'the line still says where',
   );
@@ -271,27 +271,27 @@ export default async function (ctx) {
   out.list = await rows();
 
   ctx.assert.deepEqual(
-    out.list.map(r => r.n),
+    out.list.map(row => row.n),
     ['＋ new chat', 'Claude', '@a11y-auditor', '@reviewer', '@scout', '2 from kit', '4 of Claude Code’s own'],
     JSON.stringify(out.list),
   );
 
   ctx.assert.deepEqual(
-    out.list.slice(2, 5).map(r => r.src),
+    out.list.slice(2, 5).map(row => row.src),
     ['this folder', 'this folder', 'yours'],
   );
 
   ctx.assert.match(out.list[2].cls, /\bsel\b/, 'the first agent selected');
-  ctx.assert.match(await q(`document.querySelector('#pickfoot').textContent`), /takes the agent/);
+  ctx.assert.match(await evaluate(`document.querySelector('#pickfoot').textContent`), /takes the agent/);
   await ctx.settle();
   await ctx.shot('3-the-list');
   // → opens a folded row
   await press('ArrowDown');
   await press('ArrowDown');
   await press('ArrowDown');
-  await q(`(i => { i.setSelectionRange(1, 1); })(document.querySelector('#pickq'))`);
+  await evaluate(`(i => { i.setSelectionRange(1, 1); })(document.querySelector('#pickq'))`);
   await press('ArrowRight');
-  out.unfolded = (await rows()).map(r => r.n);
+  out.unfolded = (await rows()).map(row => row.n);
 
   ctx.assert.ok(
     out.unfolded.includes('@code-reviewer') && out.unfolded.includes('@silent-failure-hunter'),
@@ -306,7 +306,7 @@ export default async function (ctx) {
   await press('Enter');
   await ctx.waitFor(`document.querySelector('#picklist .pkrow.new .pkag.on')`, { what: 'the chip on @reviewer' });
 
-  out.taken = await q(
+  out.taken = await evaluate(
     `JSON.stringify({ chip: document.querySelector('#picklist .pkrow.new .pkag').textContent.trim(), line: document.querySelector('#picklist .pkrow.new .pkline').textContent, box: document.querySelector('#pickq').value, chats: document.querySelectorAll('#picklist .pkrow.chat:not(.new)').length })`,
   ).then(JSON.parse);
 
@@ -317,7 +317,7 @@ export default async function (ctx) {
   await ctx.shot('4-taken');
   // ⏎ on ＋: the fake claude with --agent reviewer, its card wearing it
   await press('Enter');
-  const [h1] = await holderWith(h => h.cwd === real && h.args?.includes('--agent'));
+  const [h1] = await holderWith(holder => holder.cwd === real && holder.args?.includes('--agent'));
 
   ctx.assert.deepEqual(h1?.args, ['--agent', 'reviewer'], JSON.stringify(h1));
 
@@ -328,17 +328,17 @@ export default async function (ctx) {
 
   // D1: the next ⌥⌘N starts on the agent taken; esc shuts the list and not the picker; ⏎ on Claude puts it back
   await toChats();
-  out.again = await q(`document.querySelector('#picklist .pkrow.new .pkline').textContent`);
+  out.again = await evaluate(`document.querySelector('#picklist .pkrow.new .pkline').textContent`);
   ctx.assert.match(out.again, /@reviewer ▾.*the last you took here/, out.again);
-  await q(`document.querySelector('#picklist .pkrow.new .pkag').click()`);
-  ctx.assert.equal(await q(`document.querySelector('#pickq').value`), '@', 'the chip opens the list');
+  await evaluate(`document.querySelector('#picklist .pkrow.new .pkag').click()`);
+  ctx.assert.equal(await evaluate(`document.querySelector('#pickq').value`), '@', 'the chip opens the list');
 
-  await q(
+  await evaluate(
     `document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))`,
   );
 
   ctx.assert.deepEqual(
-    await q(
+    await evaluate(
       `[document.querySelector('#pick').open, document.querySelector('#pickq').value, document.querySelectorAll('#picklist .pkrow.asrow').length]`,
     ),
     [true, '', 0],
@@ -356,7 +356,11 @@ export default async function (ctx) {
   );
 
   await press('Enter');
-  ctx.assert.equal(await q(`document.querySelector('#picklist .pkrow.new .pkag').textContent.trim()`), 'as Claude ▾');
+
+  ctx.assert.equal(
+    await evaluate(`document.querySelector('#picklist .pkrow.new .pkag').textContent.trim()`),
+    'as Claude ▾',
+  );
 
   // on "new worktree" the box takes the branch and the @: ⏎ takes the agent and leaves the branch; the chat starts in its worktree as it
   await press('ArrowRight');
@@ -364,7 +368,7 @@ export default async function (ctx) {
   await ctx.fill('#pickq', 'fix-cart @a11');
   ctx.assert.equal((await rows())[1].n, '@a11y-auditor');
   await press('Enter');
-  ctx.assert.equal(await q(`document.querySelector('#pickq').value`), 'fix-cart');
+  ctx.assert.equal(await evaluate(`document.querySelector('#pickq').value`), 'fix-cart');
 
   await ctx.waitFor(`/a new branch/.test(document.querySelector('#picklist .pkrow.new .pkline .cur').textContent)`, {
     what: 'the branch said',
@@ -381,7 +385,7 @@ export default async function (ctx) {
   );
 
   await press('Enter');
-  const [h2] = await holderWith(h => h.cwd === wt('fix-cart'));
+  const [h2] = await holderWith(holder => holder.cwd === wt('fix-cart'));
 
   ctx.assert.deepEqual(h2?.args, ['--agent', 'a11y-auditor'], JSON.stringify(h2));
 
@@ -395,9 +399,9 @@ export default async function (ctx) {
   const chatBtn = `document.querySelector('#prlist .pract[data-pract="chat"]')`;
 
   await ctx.waitFor(chatBtn, { what: 'Chat ▾ on #14', timeout: 20000 });
-  await q(`${chatBtn}.click()`);
+  await evaluate(`${chatBtn}.click()`);
   await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: 'its menu' });
-  out.menu = await q(`[...document.querySelectorAll('#ctxm button .ct')].map(b => b.textContent)`);
+  out.menu = await evaluate(`[...document.querySelectorAll('#ctxm button .ct')].map(b => b.textContent)`);
 
   ctx.assert.deepEqual(
     out.menu,
@@ -407,7 +411,10 @@ export default async function (ctx) {
 
   await ctx.settle();
   await ctx.shot('6-pr-chat-menu');
-  await q(`[...document.querySelectorAll('#ctxm button')].find(b => /another agent/.test(b.textContent)).click()`);
+
+  await evaluate(
+    `[...document.querySelectorAll('#ctxm button')].find(b => /another agent/.test(b.textContent)).click()`,
+  );
 
   await ctx.waitFor(`document.querySelector('#pick').open && document.querySelector('#picklist .pkrow.asrow')`, {
     what: 'the agent picker',
@@ -416,16 +423,16 @@ export default async function (ctx) {
   await ctx.fill('#pickq', 'code rev');
   ctx.assert.equal((await rows())[0].n, '@code-reviewer');
   await press('Enter');
-  const [h3] = await holderWith(h => h.cwd === wt('fix-grid'));
+  const [h3] = await holderWith(holder => holder.cwd === wt('fix-grid'));
 
   ctx.assert.deepEqual(h3?.args, ['--agent', 'kit:code-reviewer'], JSON.stringify(h3));
   await ctx.openChat(prChat.id);
   await ctx.waitFor(chatBtn, { what: 'Chat ▾ again', timeout: 20000 });
-  await q(`${chatBtn}.click()`);
+  await evaluate(`${chatBtn}.click()`);
   await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: 'its menu again' });
-  out.menu2 = await q(`[...document.querySelectorAll('#ctxm button')].slice(1, 2).map(b => b.textContent)`);
+  out.menu2 = await evaluate(`[...document.querySelectorAll('#ctxm button')].slice(1, 2).map(b => b.textContent)`);
   ctx.assert.match(out.menu2[0], /…as @code-reviewer.*the agent you last took for a PR/, JSON.stringify(out.menu2));
-  await q(`document.querySelector('#ctxm').close()`);
+  await evaluate(`document.querySelector('#ctxm').close()`);
 
   // E2: ⌥⌘L by an agent's name — a new chat as it, in the project of the chat open
   await ctx.key('KeyL');
@@ -437,14 +444,14 @@ export default async function (ctx) {
     { what: 'New chat as @reviewer', timeout: 10000 },
   );
 
-  out.launch = await q(
+  out.launch = await evaluate(
     `[...document.querySelectorAll('#picklist .pkrow.action .n')].map(n => n.textContent).filter(t => /^New chat as/.test(t))`,
   );
 
   ctx.assert.match(out.launch[0], /New chat as @reviewer — in storefront, on sonnet/, JSON.stringify(out.launch));
   await ctx.settle();
   await ctx.shot('7-launcher');
-  await q(`document.querySelector('#pick').close()`);
+  await evaluate(`document.querySelector('#pick').close()`);
 
   // ⌥⌘N's chat in no folder: its row ends with the chip too; @ lists yours, the plugin's and Claude Code's under it alone;
   // ⏎ takes one and puts no folder first again, ⏎ there starts it as it; the next ⌥⌘N starts on it
@@ -457,7 +464,7 @@ export default async function (ctx) {
     timeout: 10000,
   });
 
-  out.none = await q(
+  out.none = await evaluate(
     `JSON.stringify({ chip: ${noRow}.querySelector('.pkag').textContent.trim(), line: ${noRow}.querySelector('.pkline .cur').textContent })`,
   ).then(JSON.parse);
 
@@ -469,7 +476,7 @@ export default async function (ctx) {
   out.noneList = await rows();
 
   ctx.assert.deepEqual(
-    out.noneList.map(r => r.n),
+    out.noneList.map(row => row.n),
     ['＋ new chat — no folder', 'Claude', '@scout', '2 from kit', '4 of Claude Code’s own'],
     JSON.stringify(out.noneList),
   );
@@ -477,7 +484,7 @@ export default async function (ctx) {
   ctx.assert.match(out.noneList[2].cls, /\bsel\b/, 'the first agent selected');
 
   ctx.assert.match(
-    await q(`document.querySelector('#pickfoot').textContent`),
+    await evaluate(`document.querySelector('#pickfoot').textContent`),
     /takes the agent for a chat in no folder/,
   );
 
@@ -485,7 +492,7 @@ export default async function (ctx) {
   await ctx.shot('9-no-folder-list');
   await press('Enter');
 
-  out.noneTaken = await q(
+  out.noneTaken = await evaluate(
     `JSON.stringify({ chip: ${noRow}.querySelector('.pkag').textContent.trim(), sel: ${noRow}.classList.contains('sel'), box: document.querySelector('#pickq').value, rows: document.querySelectorAll('#picklist > .pkrow').length })`,
   ).then(JSON.parse);
 
@@ -497,7 +504,7 @@ export default async function (ctx) {
 
   ctx.assert.ok(out.noneTaken.rows > 1, 'the projects are back');
   await press('Enter');
-  const [h4] = await holderWith(h => /\/no folder$/.test(h.cwd || ''));
+  const [h4] = await holderWith(holder => /\/no folder$/.test(holder.cwd || ''));
 
   ctx.assert.deepEqual(h4?.args, ['--agent', 'scout'], JSON.stringify(h4));
   await ctx.key('KeyN');
@@ -507,7 +514,7 @@ export default async function (ctx) {
     timeout: 10000,
   });
 
-  ctx.assert.match(await q(`${noRow}.querySelector('.pkline').textContent`), /@scout ▾.*the last you took here/);
-  await q(`document.querySelector('#pick').close()`);
+  ctx.assert.match(await evaluate(`${noRow}.querySelector('.pkline').textContent`), /@scout ▾.*the last you took here/);
+  await evaluate(`document.querySelector('#pick').close()`);
   return out;
 }

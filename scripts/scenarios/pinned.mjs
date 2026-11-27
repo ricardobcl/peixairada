@@ -21,7 +21,7 @@ const SETUP = `window.__posts = []; window.webkit = { messageHandlers: { hub: { 
 export default async function (ctx) {
   const out = {};
   const cwd = realpathSync(tmpdir());
-  const ago = m => new Date(Date.now() - m * 60_000);
+  const ago = minutes => new Date(Date.now() - minutes * 60_000);
 
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: SETUP });
   await ctx.reload();
@@ -32,7 +32,13 @@ export default async function (ctx) {
       ['Release notes for 4.2', 30],
       ['Checkout copy for 4.2', 45],
       ['Cache the search suggestions', 60],
-    ].map(([title, m]) => ({ cwd, title, prompt: `Work on: ${title}`, reply: 'Done, have a look.', at: ago(m) })),
+    ].map(([title, minutes]) => ({
+      cwd,
+      title,
+      prompt: `Work on: ${title}`,
+      reply: 'Done, have a look.',
+      at: ago(minutes),
+    })),
   );
 
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 5`, {
@@ -77,7 +83,7 @@ export default async function (ctx) {
     );
 
   const until = async (fn, want, what) => {
-    for (let i = 0; i < 40; i++) {
+    for (let attempt = 0; attempt < 40; attempt++) {
       if (JSON.stringify(await fn()) === JSON.stringify(want)) return;
       await ctx.sleep(100);
     }
@@ -87,14 +93,14 @@ export default async function (ctx) {
 
   const rect = cid => ctx.evaluate(`JSON.stringify(${card(cid)}.getBoundingClientRect())`).then(JSON.parse);
 
-  const mouse = (type, x, y, buttons = 1) =>
-    ctx.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons, clickCount: 1 });
+  const mouse = (type, pointerX, pointerY, buttons = 1) =>
+    ctx.send('Input.dispatchMouseEvent', { type, x: pointerX, y: pointerY, button: 'left', buttons, clickCount: 1 });
 
   const lift = async cid => {
-    const r = await rect(cid);
+    const cardRect = await rect(cid);
 
-    await mouse('mousePressed', r.x + r.width / 2, r.y + 6);
-    await mouse('mouseMoved', r.x + r.width / 2, r.y + 20);
+    await mouse('mousePressed', cardRect.x + cardRect.width / 2, cardRect.y + 6);
+    await mouse('mouseMoved', cardRect.x + cardRect.width / 2, cardRect.y + 20);
     await ctx.sleep(50);
   };
 
@@ -136,11 +142,11 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelector('#slist > .gsep.pempty')`, { what: 'the empty section again' });
   await ctx.sleep(400);
 
-  const z = await ctx
+  const emptyRect = await ctx
     .evaluate(`JSON.stringify(document.querySelector('#slist > .gsep.pempty').getBoundingClientRect())`)
     .then(JSON.parse);
 
-  await mouse('mouseMoved', z.x + z.width / 2, z.y + z.height / 2);
+  await mouse('mouseMoved', emptyRect.x + emptyRect.width / 2, emptyRect.y + emptyRect.height / 2);
   await ctx.sleep(80);
 
   out.empty = await ctx.evaluate(
@@ -156,7 +162,7 @@ export default async function (ctx) {
   );
 
   await ctx.shot('empty', { x: 0, y: 0, width: 460, height: 420 });
-  await mouse('mouseReleased', z.x + z.width / 2, z.y + z.height / 2, 0);
+  await mouse('mouseReleased', emptyRect.x + emptyRect.width / 2, emptyRect.y + emptyRect.height / 2, 0);
   await until(order, [notes], 'dropped there, pinned');
   await ctx.waitFor(`!document.querySelector('#slist > .gsep.pempty, #cdghost')`, { what: 'the empty line gone' });
 
@@ -207,7 +213,7 @@ export default async function (ctx) {
     appendFileSync(
       file,
       `${replyLines({ id: cid, cwd, text: 'More done.', at: new Date() })
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 
@@ -223,7 +229,7 @@ export default async function (ctx) {
   await ctx.settle();
 
   ctx.assert.deepEqual(
-    (await sec()).map(x => x[0]),
+    (await sec()).map(slot => slot[0]),
     [copy, notes],
     'its slot holds',
   );
@@ -264,7 +270,7 @@ export default async function (ctx) {
   await ctx.waitFor(`${card(notes)}?.classList.contains('pdone')`, { what: 'the ticked card dimmed in its slot' });
 
   ctx.assert.deepEqual(
-    (await sec()).map(x => x[0]),
+    (await sec()).map(slot => slot[0]),
     [cache, copy, notes],
     'it keeps its slot',
   );
@@ -357,7 +363,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#ctxm').close()`);
   await ctx.evaluate(`document.querySelector('#prioOn').click()`);
   await ctx.settle();
-  await until(async () => (await sec()).map(x => x[0]), [cache, copy], 'on again, as it was');
+  await until(async () => (await sec()).map(slot => slot[0]), [cache, copy], 'on again, as it was');
   await ctx.reload();
 
   await ctx.waitFor(`document.querySelectorAll('#slist > .card.inprio').length === 2`, {
@@ -365,7 +371,7 @@ export default async function (ctx) {
   });
 
   ctx.assert.deepEqual(
-    (await sec()).map(x => x[0]),
+    (await sec()).map(slot => slot[0]),
     [cache, copy],
     'a reload keeps it',
   );
@@ -374,7 +380,7 @@ export default async function (ctx) {
 
   // ---- snoozed, a chat keeps its slot out of sight, the head saying so; awake, it is back in it ----
   await ctx.server.post(`api/sessions/${cache}/snooze`, { until: new Date(Date.now() + 3_600_000).toISOString() });
-  await until(async () => (await sec()).map(x => x[0]), [copy], 'snoozed, out of sight');
+  await until(async () => (await sec()).map(slot => slot[0]), [copy], 'snoozed, out of sight');
 
   out.zz = await ctx.evaluate(
     `document.querySelector('#slist > .gsep.lane.prio').textContent.replace(/\\s+/g, ' ').trim()`,
@@ -382,6 +388,6 @@ export default async function (ctx) {
 
   ctx.assert.match(out.zz, /\+1 snoozed/, 'the head says so');
   await ctx.server.post(`api/sessions/${cache}/snooze`, { undo: true });
-  await until(async () => (await sec()).map(x => x[0]), [cache, copy], 'awake, back in its slot');
+  await until(async () => (await sec()).map(slot => slot[0]), [cache, copy], 'awake, back in its slot');
   return out;
 }

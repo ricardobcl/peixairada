@@ -29,14 +29,14 @@ const env = {
   GIT_COMMITTER_EMAIL: 't@t',
 };
 
-const git = (cwd, ...a) =>
-  execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env })
+const git = (cwd, ...args) =>
+  execFileSync('git', ['-C', cwd, ...args], { stdio: 'pipe', env })
     .toString()
     .trim();
 
-const put = (dir, f, text) => {
-  mkdirSync(join(dir, f, '..'), { recursive: true });
-  writeFileSync(join(dir, f), text);
+const put = (dir, file, text) => {
+  mkdirSync(join(dir, file, '..'), { recursive: true });
+  writeFileSync(join(dir, file), text);
 };
 
 execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin]);
@@ -50,12 +50,12 @@ git(seed, 'add', '.');
 git(seed, 'commit', '-q', '-m', 'base');
 git(seed, 'push', '-q', origin, 'main');
 
-const pr = (n, branch, files) => {
+const pr = (number, branch, files) => {
   git(seed, 'checkout', '-q', '-b', branch, 'main');
-  for (const [f, t] of Object.entries(files)) put(seed, f, t);
+  for (const [file, text] of Object.entries(files)) put(seed, file, text);
   git(seed, 'add', '.');
   git(seed, 'commit', '-q', '-m', branch);
-  git(seed, 'push', '-q', origin, `${branch}:refs/pull/${n}/head`, `${branch}:refs/heads/${branch}`);
+  git(seed, 'push', '-q', origin, `${branch}:refs/pull/${number}/head`, `${branch}:refs/heads/${branch}`);
 };
 
 pr(14, 'feat/tax-rounding', { 'src/round.js': 'export const round2 = x => Math.round(x * 100) / 100;\n' });
@@ -84,7 +84,7 @@ mkdirSync(join(repo, 'node_modules', 'left-pad'), { recursive: true });
 put(repo, 'README.md', '# widgets\n\nnot committed\n');
 
 const real = realpathSync(repo);
-const wt = n => join(real, '.claude', 'worktrees', n);
+const wt = name => join(real, '.claude', 'worktrees', name);
 
 const prsFile = join(root, 'prs.json');
 
@@ -172,8 +172,8 @@ export default async function (ctx) {
 
   await ctx.openChat(chat.id);
 
-  const u = n => `https://github.com/acme/widgets/pull/${n}`;
-  const ed = n => `#prlist .pract[data-pract="editor"][data-url="${u(n)}"]`;
+  const prUrl = number => `https://github.com/acme/widgets/pull/${number}`;
+  const ed = number => `#prlist .pract[data-pract="editor"][data-url="${prUrl(number)}"]`;
 
   await ctx.waitFor(`document.querySelector('${ed(14)}') && document.querySelector('${ed(15)}')`, {
     what: 'Editor ▾ on both rows',
@@ -187,26 +187,26 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-  const openMenu = async n => {
-    await ctx.evaluate(`document.querySelector('${ed(n)}').click()`);
+  const openMenu = async number => {
+    await ctx.evaluate(`document.querySelector('${ed(number)}').click()`);
 
     await ctx.waitFor(`document.querySelector('#ctxm').open && document.querySelectorAll('#ctxm button').length`, {
-      what: `#${n}'s editor menu`,
+      what: `#${number}'s editor menu`,
     });
 
     return menu();
   };
 
-  const pick = t =>
+  const pick = label =>
     ctx.evaluate(
-      `[...document.querySelectorAll('#ctxm button')].find(b => (b.querySelector('.ct')?.textContent ?? b.textContent).startsWith(${JSON.stringify(t)})).click()`,
+      `[...document.querySelectorAll('#ctxm button')].find(b => (b.querySelector('.ct')?.textContent ?? b.textContent).startsWith(${JSON.stringify(label)})).click()`,
     );
 
   // #15: its worktree, review only, node_modules linked, and why the folder is not switched
   out.menu15 = await openMenu(15);
 
   ctx.assert.deepEqual(
-    out.menu15.map(r => r[0]),
+    out.menu15.map(row => row[0]),
     [
       'Open worktree feat-rates in VS Code Web',
       '…or in VS Code, its own window',
@@ -232,7 +232,10 @@ export default async function (ctx) {
   await ctx.shot('1-editor-menu');
   await pick('Link node_modules');
   await ctx.waitFor(`!document.querySelector('#ctxm').open`, { what: 'the menu closed' });
-  for (let i = 0; i < 50 && !existsSync(join(wt('feat-rates'), 'node_modules')); i++) await ctx.sleep(100);
+
+  for (let attempt = 0; attempt < 50 && !existsSync(join(wt('feat-rates'), 'node_modules')); attempt++) {
+    await ctx.sleep(100);
+  }
 
   ctx.assert.ok(
     lstatSync(join(wt('feat-rates'), 'node_modules')).isSymbolicLink(),
@@ -245,7 +248,7 @@ export default async function (ctx) {
   out.menu15v = await openMenu(15);
 
   ctx.assert.deepEqual(
-    out.menu15v.slice(0, 2).map(r => r[0]),
+    out.menu15v.slice(0, 2).map(row => row[0]),
     ['Open worktree feat-rates in Vim', '…or in VS Code, its own window'],
   );
 
@@ -253,7 +256,9 @@ export default async function (ctx) {
 
   const vim = await waitFor(
     async () =>
-      (await ctx.server.terminals()).find(t => t.editor === 'vim' && t.cwd === wt('feat-rates') && t.exited === null),
+      (await ctx.server.terminals()).find(
+        term => term.editor === 'vim' && term.cwd === wt('feat-rates') && term.exited === null,
+      ),
     { what: 'vim in the worktree' },
   );
 
@@ -281,7 +286,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(folder(), before, 'the folder’s branch untouched');
 
   await ctx.waitFor(
-    `document.querySelector('#prlist .prrow[data-url="${u(14)}"]')?.closest('.prline')?.querySelector('.prwhere')?.textContent === 'worktree feat-tax-rounding'`,
+    `document.querySelector('#prlist .prrow[data-url="${prUrl(14)}"]')?.closest('.prline')?.querySelector('.prwhere')?.textContent === 'worktree feat-tax-rounding'`,
     { what: '#14’s row saying where its branch is now', timeout: 15000 },
   );
 
@@ -290,7 +295,7 @@ export default async function (ctx) {
     .then(JSON.parse);
 
   ctx.assert.ok(
-    posted.some(k => k.includes(encodeURIComponent(wt('feat-tax-rounding')))),
+    posted.some(paneKey => paneKey.includes(encodeURIComponent(wt('feat-tax-rounding')))),
     'the shell asked to show VS Code Web on the worktree',
   );
 
@@ -307,7 +312,7 @@ export default async function (ctx) {
   out.menu16 = await openMenu(16);
 
   ctx.assert.deepEqual(
-    out.menu16.map(r => [r[0], r[2]]),
+    out.menu16.map(row => [row[0], row[2]]),
     [
       ['A worktree for it, in VS Code Web', false],
       ['Review only, detached', false],

@@ -7,10 +7,10 @@
 // run is a line in FAKEREADER_LOG: slack, or the key it answered with (none when none).
 import { appendFileSync, readFileSync } from 'node:fs';
 
-let d = {};
+let data = {};
 
 try {
-  d = JSON.parse(readFileSync(process.env.FAKEREADER_FILE, 'utf8'));
+  data = JSON.parse(readFileSync(process.env.FAKEREADER_FILE, 'utf8'));
 } catch {}
 
 const slack = process.argv.includes('--allowedTools');
@@ -18,8 +18,8 @@ let raw = '';
 
 process.stdin.setEncoding('utf8');
 
-process.stdin.on('data', c => {
-  raw += c;
+process.stdin.on('data', chunk => {
+  raw += chunk;
 });
 
 process.stdin.on('end', () => {
@@ -27,23 +27,23 @@ process.stdin.on('end', () => {
 
   try {
     text = JSON.parse(raw.split('\n')[0])
-      .message.content.filter(c => c.type === 'text')
-      .map(c => c.text)
+      .message.content.filter(block => block.type === 'text')
+      .map(block => block.text)
       .join('\n');
   } catch {}
 
-  const key = slack ? 'slack' : Object.keys(d.reads || {}).find(k => text.includes(k)) || 'none';
+  const key = slack ? 'slack' : Object.keys(data.reads || {}).find(words => text.includes(words)) || 'none';
 
   if (process.env.FAKEREADER_LOG) appendFileSync(process.env.FAKEREADER_LOG, `${key}\n`);
 
-  if (d.fail && text.includes(d.fail)) {
+  if (data.fail && text.includes(data.fail)) {
     process.stdout.write(`${JSON.stringify({ type: 'result', is_error: true, result: 'fake failure' })}\n`);
     return;
   }
 
   const answer = slack
-    ? d.slack || { places: [] }
-    : d.reads?.[key] || { isMenu: false, kind: 'other', days: [], price: null, closed: null };
+    ? data.slack || { places: [] }
+    : data.reads?.[key] || { isMenu: false, kind: 'other', days: [], price: null, closed: null };
 
   process.stdout.write(
     `${JSON.stringify({ type: 'system', subtype: 'init' })}\n${JSON.stringify({

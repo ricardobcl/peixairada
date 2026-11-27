@@ -17,9 +17,9 @@ export const PR_RE = /https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)\/pu
 export const PR_ONE = new RegExp(PR_RE.source); // same pattern, no /g — safe to reuse for a single match
 
 export const prMatch = url => {
-  const m = PR_ONE.exec(url);
+  const match = PR_ONE.exec(url);
 
-  return m && Number(m[3]) <= 2147483647 ? m : null;
+  return match && Number(match[3]) <= 2147483647 ? match : null;
 };
 
 const MAX_PRS = 40;
@@ -47,13 +47,13 @@ async function fileNames(file, where, tail) {
       const end = have + bytesRead;
       const hay = buf.subarray(0, end);
 
-      for (let i = hay.indexOf(tail); i >= 0; i = hay.indexOf(tail, i + 1)) {
-        const after = hay[i + tail.length]; // none yet at the end of what was read: no match here, and the next chunk has it whole
+      for (let index = hay.indexOf(tail); index >= 0; index = hay.indexOf(tail, index + 1)) {
+        const after = hay[index + tail.length]; // none yet at the end of what was read: no match here, and the next chunk has it whole
 
         if (
           (after < 48 || after > 57) &&
-          i >= where.length &&
-          hay.toString('latin1', i - where.length, i).toLowerCase() === where
+          index >= where.length &&
+          hay.toString('latin1', index - where.length, index).toLowerCase() === where
         ) {
           return true;
         }
@@ -67,16 +67,18 @@ async function fileNames(file, where, tail) {
   }
 }
 
-export async function chatsNaming(owner, repo, n) {
+export async function chatsNaming(owner, repo, number) {
   const where = `github.com/${owner}/${repo}`.toLowerCase();
-  const tail = Buffer.from(`/pull/${n}`);
+  const tail = Buffer.from(`/pull/${number}`);
 
-  const todo = [...sessions.values()].filter(s => s.file);
+  const todo = [...sessions.values()].filter(session => session.file);
   const ids = [];
 
   await Promise.all(
     Array.from({ length: NAMING_AT_ONCE }, async () => {
-      for (let s; (s = todo.pop());) if (await fileNames(s.file, where, tail).catch(() => false)) ids.push(s.id); // a file gone since: not a chat that names it
+      for (let session; (session = todo.pop());) {
+        if (await fileNames(session.file, where, tail).catch(() => false)) ids.push(session.id);
+      } // a file gone since: not a chat that names it
     }),
   );
 
@@ -95,56 +97,57 @@ export async function chatsNaming(owner, repo, n) {
  */
 /** A PR's one spelling: GitHub's owner and repo names are any case, so `Acme/Widgets` and `acme/widgets` were two PRs —
  *  two chips, two turns, two alerts for one move (2026-10-03). The label keeps the case first seen. */
-export const prKey = (owner, repo, n) => `https://github.com/${owner.toLowerCase()}/${repo.toLowerCase()}/pull/${n}`;
+export const prKey = (owner, repo, number) =>
+  `https://github.com/${owner.toLowerCase()}/${repo.toLowerCase()}/pull/${number}`;
 
-export function notePr(s, url, ts, by, ref = null) {
-  const m = prMatch(url);
+export function notePr(session, url, ts, by, ref = null) {
+  const match = prMatch(url);
 
-  if (!m && (ref || !/^https?:\/\//i.test(url))) return; // a pr-link that is no web address is nothing to put in an href
-  const clean = m ? prKey(m[1], m[2], m[3]) : url;
+  if (!match && (ref || !/^https?:\/\//i.test(url))) return; // a pr-link that is no web address is nothing to put in an href
+  const clean = match ? prKey(match[1], match[2], match[3]) : url;
 
   if (ref && noPr.has(clean)) return;
 
-  const at = s.prs.findIndex(p => p.url === clean);
-  const off = unlinked[s.id]?.[clean];
+  const at = session.prs.findIndex(entry => entry.url === clean);
+  const off = unlinked[session.id]?.[clean];
 
   if (off && at < 0 && !(by === 'user' && ts > off)) return; // taken off the chat, and not named by you since
-  const gone = at < 0 && s.prsGone?.get(clean);
+  const gone = at < 0 && session.prsGone?.get(clean);
 
-  if (gone) s.prsGone.delete(clean);
+  if (gone) session.prsGone.delete(clean);
 
   const pr =
     at >= 0
-      ? s.prs.splice(at, 1)[0]
+      ? session.prs.splice(at, 1)[0]
       : gone || {
           url: clean,
-          repo: m ? m[2] : null,
-          number: m ? Number(m[3]) : null,
+          repo: match ? match[2] : null,
+          number: match ? Number(match[3]) : null,
           // The owner rarely disambiguates and eats half the width of the chip; the URL is in the tooltip.
-          label: m ? `${m[2]}#${m[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
+          label: match ? `${match[2]}#${match[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
           count: 0,
           by: null,
-          firstAt: s.prsHeard.get(clean) ?? ts,
+          firstAt: session.prsHeard.get(clean) ?? ts,
           ref,
           linked: null,
           named: null,
         };
 
-  s.prsHeard.delete(clean);
+  session.prsHeard.delete(clean);
 
   if (at < 0) {
     // what GitHub has said of it since, a PR put aside included
-    const i = prStatus.get(clean);
+    const status = prStatus.get(clean);
 
     Object.assign(pr, {
-      state: i?.state ?? null,
-      title: i?.title ?? null,
-      turn: i?.turn ?? null,
-      people: i?.people ?? null,
-      checks: i?.checks ?? null,
-      refs: i?.refs ?? null,
-      updated: i?.updated ?? null,
-      review: i?.review ?? null,
+      state: status?.state ?? null,
+      title: status?.title ?? null,
+      turn: status?.turn ?? null,
+      people: status?.people ?? null,
+      checks: status?.checks ?? null,
+      refs: status?.refs ?? null,
+      updated: status?.updated ?? null,
+      review: status?.review ?? null,
       rounds: roundsOf(clean),
       logged: loggedOf(clean),
     });
@@ -158,18 +161,18 @@ export function notePr(s, url, ts, by, ref = null) {
     pr.by = by;
   }
 
-  const seq = ++s.prSeq;
+  const seq = ++session.prSeq;
 
   if (by == null) pr.linked ??= seq;
   else if (by === 'user') pr.named ??= seq;
   pr.lastAt = ts || pr.lastAt || null;
-  s.prs.unshift(pr);
+  session.prs.unshift(pr);
 
-  if (s.prs.length > MAX_PRS) {
-    const i = s.prs.findLastIndex(p => p.linked == null && p.named == null);
-    const [out] = s.prs.splice(i >= 0 ? i : s.prs.length - 1, 1);
+  if (session.prs.length > MAX_PRS) {
+    const index = session.prs.findLastIndex(entry => entry.linked == null && entry.named == null);
+    const [out] = session.prs.splice(index >= 0 ? index : session.prs.length - 1, 1);
 
-    (s.prsGone ||= new Map()).set(out.url, out);
+    (session.prsGone ||= new Map()).set(out.url, out);
   }
 
   if (!indexing) queuePr(clean); // at boot this would ask GitHub about every PR in every transcript
@@ -181,27 +184,30 @@ export function notePr(s, url, ts, by, ref = null) {
  *  script, a grep or a regex with the words in it opened nothing. */
 const OPENS_RE = /(?:^|[;&|({`\n]|\$\(|\b(?:do|then|else|xargs)\s|-c\s+['"])\s*(?:\w+=\S*\s+)*gh\s+pr\s+create\b/;
 
-export function noteOpening(s, b, ts) {
-  if (!b.id || !OPENS_RE.test(b.input?.command || '')) return;
-  s.opening.set(b.id, ts);
-  if (s.opening.size > ACTS_MAX) s.opening.delete(s.opening.keys().next().value);
+export function noteOpening(session, block, ts) {
+  if (!block.id || !OPENS_RE.test(block.input?.command || '')) return;
+  session.opening.set(block.id, ts);
+  if (session.opening.size > ACTS_MAX) session.opening.delete(session.opening.keys().next().value);
 }
 
-export function noteOpened(s, b) {
-  const at = s.opening.get(b.tool_use_id);
+export function noteOpened(session, block) {
+  const at = session.opening.get(block.tool_use_id);
 
   if (at === undefined) return;
-  s.opening.delete(b.tool_use_id);
-  if (!b.is_error) for (const m of resultText(b).matchAll(PR_RE)) if (prMatch(m[0])) notePr(s, m[0], at, null);
+  session.opening.delete(block.tool_use_id);
+
+  if (!block.is_error) {
+    for (const match of resultText(block).matchAll(PR_RE)) if (prMatch(match[0])) notePr(session, match[0], at, null);
+  }
 }
 
 /** Take a PR off a chat (2026-10-11): gone from its chips, its title, its turn and its polls, and kept off (`unlinked`). */
-export function unlinkPr(s, url) {
-  const at = s.prs.findIndex(p => p.url === url);
+export function unlinkPr(session, url) {
+  const at = session.prs.findIndex(pr => pr.url === url);
 
   if (at < 0) return false;
-  s.prs.splice(at, 1);
-  (unlinked[s.id] ||= {})[url] = new Date().toISOString();
+  session.prs.splice(at, 1);
+  (unlinked[session.id] ||= {})[url] = new Date().toISOString();
   return true;
 }
 
@@ -215,45 +221,49 @@ const SAID_AS = { bare: 1, repo: 2 };
 // second report of a review that the boot read from its first. So does a list you paste.
 const LIST_MIN = 10;
 
-export function notePrs(s, text, ts, by) {
+export function notePrs(session, text, ts, by) {
   if (!text) return;
   text = String(text);
   const said = new Map();
 
   const urls = text.includes('/pull/')
     ? [...text.matchAll(PR_RE)]
-        .filter(m => prMatch(m[0]))
-        .map(m => ({ at: m.index, url: m[0], key: prKey(m[1], m[2], m[3]), ref: null }))
+        .filter(match => prMatch(match[0]))
+        .map(match => ({ at: match.index, url: match[0], key: prKey(match[1], match[2], match[3]), ref: null }))
     : [];
 
-  for (const r of [...urls, ...(text.includes('#') ? refsIn(s, text) : [])].sort((a, b) => a.at - b.at)) {
-    const f = said.get(r.key);
+  for (const mention of [...urls, ...(text.includes('#') ? refsIn(session, text) : [])].sort(
+    (left, right) => left.at - right.at,
+  )) {
+    const first = said.get(mention.key);
 
-    if (!f) said.set(r.key, r);
-    else if ((SAID_AS[r.ref] ?? 3) > (SAID_AS[f.ref] ?? 3)) Object.assign(f, { url: r.url, ref: r.ref });
+    if (!first) said.set(mention.key, mention);
+    else if ((SAID_AS[mention.ref] ?? 3) > (SAID_AS[first.ref] ?? 3)) {
+      Object.assign(first, { url: mention.url, ref: mention.ref });
+    }
   }
 
   if (by === 'claude' && said.size >= LIST_MIN) {
     const fresh = [...said.keys()].filter(
-      k => !s.prs.some(p => p.url === k) && !s.prsGone?.has(k) && !s.prsHeard.has(k),
+      key => !session.prs.some(pr => pr.url === key) && !session.prsGone?.has(key) && !session.prsHeard.has(key),
     );
 
     if (fresh.length * 2 > said.size) {
-      for (const k of fresh) s.prsHeard.set(k, ts);
+      for (const key of fresh) session.prsHeard.set(key, ts);
       return;
     }
   }
 
-  for (const r of said.values()) notePr(s, r.url, ts, by, r.ref);
+  for (const mention of said.values()) notePr(session, mention.url, ts, by, mention.ref);
 
   // your words that name its PRs, for their history beside GitHub's (2026-10-15: the pointer on a card's PRs)
   if (by === 'user' && said.size && ts) {
-    (s.prSaid ||= []).push({
+    (session.prSaid ||= []).push({
       a: isoS(Date.parse(ts) || Date.now()),
       text: plainSnippet(text, 160),
       urls: [...said.keys()],
     });
 
-    if (s.prSaid.length > 8) s.prSaid.shift();
+    if (session.prSaid.length > 8) session.prSaid.shift();
   }
 }

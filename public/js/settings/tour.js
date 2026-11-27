@@ -10,9 +10,15 @@ const tour = { steps: [], i: 0, els: [], drawn: '', timer: 0, done: false };
 
 /** An element with a box on screen, else null. */
 const onScreen = el => {
-  const r = el?.getBoundingClientRect();
+  const rect = el?.getBoundingClientRect();
 
-  return r && r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth
+  return rect &&
+    rect.width > 0 &&
+    rect.height > 0 &&
+    rect.bottom > 0 &&
+    rect.top < innerHeight &&
+    rect.right > 0 &&
+    rect.left < innerWidth
     ? el
     : null;
 };
@@ -22,8 +28,8 @@ const tourCard = () => {
   const cs = [...document.querySelectorAll('#slist > .card')];
 
   return (
-    cs.find(c => c.matches('.asking, .working, .watching')) ||
-    cs.find(c => c.classList.contains('active')) ||
+    cs.find(card => card.matches('.asking, .working, .watching')) ||
+    cs.find(card => card.classList.contains('active')) ||
     cs[0] ||
     null
   );
@@ -33,11 +39,11 @@ const tourCard = () => {
 const tourKeys = rows =>
   `<div class="tkeys">${rows
     .map(
-      ([k, d]) =>
-        `<span>${k
+      ([press, does]) =>
+        `<span>${press
           .split(' ')
-          .map(x => `<kbd>${x}</kbd>`)
-          .join(' ')}</span><span>${d}</span>`,
+          .map(key => `<kbd>${key}</kbd>`)
+          .join(' ')}</span><span>${does}</span>`,
     )
     .join('')}</div>`;
 
@@ -178,29 +184,29 @@ const TOUR = [
 ];
 
 /** A step's part as it stands: its elements on screen — one, or a few drawn round as one (the chat and its resume bar). */
-const tourAt = t => {
+const tourAt = step => {
   try {
-    return [t.at?.()].flat().filter(el => {
-      const r = el?.getBoundingClientRect();
+    return [step.at?.()].flat().filter(el => {
+      const rect = el?.getBoundingClientRect();
 
-      return r && r.width > 0 && r.height > 0;
+      return rect && rect.width > 0 && rect.height > 0;
     });
   } catch {
     return [];
   }
 };
 
-const tourVal = v => (typeof v === 'function' ? v() : v);
+const tourVal = value => (typeof value === 'function' ? value() : value);
 
 function tourStart() {
-  for (const d of document.querySelectorAll('dialog[open]')) if (d.id !== 'tour') d.close();
-  document.querySelectorAll('.note').forEach(n => n.remove()); // a word left from before — the last tour's, say
+  for (const dialog of document.querySelectorAll('dialog[open]')) if (dialog.id !== 'tour') dialog.close();
+  document.querySelectorAll('.note').forEach(stale => stale.remove()); // a word left from before — the last tour's, say
   const dlg = $('#tour');
 
   if (inApp) post({ type: 'focus' }); // from the pane's keys, the board needs the keyboard back
 
   if (!dlg.open) {
-    tour.steps = TOUR.filter(t => !t.need || tourAt(t).length);
+    tour.steps = TOUR.filter(step => !step.need || tourAt(step).length);
     tour.done = false;
     tour.drawn = '';
     dlg.classList.add('still');
@@ -215,45 +221,45 @@ function tourStart() {
   dlg.classList.remove('still'); // the first place taken before the glide is on
 }
 
-function tourShow(i) {
-  const n = tour.steps.length;
+function tourShow(stepIndex) {
+  const stepCount = tour.steps.length;
 
-  tour.i = Math.max(0, Math.min(n - 1, i));
+  tour.i = Math.max(0, Math.min(stepCount - 1, stepIndex));
 
-  const t = tour.steps[tour.i];
-  const last = tour.i === n - 1;
+  const step = tour.steps[tour.i];
+  const last = tour.i === stepCount - 1;
 
-  tour.els = tourAt(t);
+  tour.els = tourAt(step);
 
   const el = tour.els[0];
   const list = el?.closest('#slist'); // a card out of the list's sight comes into it — the one thing moved for the tour
 
   if (list && el !== list) {
-    const r = el.getBoundingClientRect();
-    const b = list.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
+    const listRect = list.getBoundingClientRect();
 
-    if (r.top < b.top || r.bottom > b.bottom) el.scrollIntoView({ block: 'nearest' });
+    if (rect.top < listRect.top || rect.bottom > listRect.bottom) el.scrollIntoView({ block: 'nearest' });
   }
 
-  $('#tour .tcard').classList.toggle('mid', !!t.mid);
+  $('#tour .tcard').classList.toggle('mid', !!step.mid);
   const logo = $('#tourLogo');
 
-  logo.hidden = !t.logo;
-  if (t.logo && !logo.firstChild) logo.innerHTML = FISH_LOGO();
+  logo.hidden = !step.logo;
+  if (step.logo && !logo.firstChild) logo.innerHTML = FISH_LOGO();
 
   $('#tour .tdots').innerHTML = tour.steps
-    .map((_, k) => `<i class="${k === tour.i ? 'on' : k < tour.i ? 'past' : ''}"></i>`)
+    .map((_, index) => `<i class="${index === tour.i ? 'on' : index < tour.i ? 'past' : ''}"></i>`)
     .join('');
 
-  $('#tourNum').textContent = `${tour.i + 1} of ${n}`;
-  $('#tourTitle').textContent = tourVal(t.title);
-  $('#tourText').innerHTML = tourVal(t.text);
-  $('#tourPic').innerHTML = t.pic ? t.pic() : '';
-  $('#tourHow').innerHTML = t.how ? t.how() : '';
+  $('#tourNum').textContent = `${tour.i + 1} of ${stepCount}`;
+  $('#tourTitle').textContent = tourVal(step.title);
+  $('#tourText').innerHTML = tourVal(step.text);
+  $('#tourPic').innerHTML = step.pic ? step.pic() : '';
+  $('#tourHow').innerHTML = step.how ? step.how() : '';
   $('#tourBack').hidden = !tour.i;
   $('#tourSkip').hidden = last;
   $('#tourNext').textContent = !tour.i ? 'Show me round' : last ? 'Done' : 'Next';
-  $('#tourSay').textContent = `Step ${tour.i + 1} of ${n}: ${$('#tourTitle').textContent}`;
+  $('#tourSay').textContent = `Step ${tour.i + 1} of ${stepCount}: ${$('#tourTitle').textContent}`;
   const tin = $('#tour .tin');
 
   tin.classList.remove('in');
@@ -270,83 +276,89 @@ function tourPlace() {
   const dlg = $('#tour');
 
   if (!dlg.open) return;
-  const t = tour.steps[tour.i];
+  const step = tour.steps[tour.i];
 
-  if (!t) return;
-  if (t.at) tour.els = tourAt(t); // the board goes on under it: the part found again, wherever it is now
+  if (!step) return;
+  if (step.at) tour.els = tourAt(step); // the board goes on under it: the part found again, wherever it is now
 
   const card = $('#tour .tcard');
-  const W = innerWidth;
-  const H = innerHeight;
-  const M = 12;
-  const G = 14;
-  const P = 6;
-  const top = (state.notch?.top || 0) + M;
+  const WIDTH = innerWidth;
+  const HEIGHT = innerHeight;
+  const MARGIN = 12;
+  const GAP = 14;
+  const PADDING = 6;
+  const top = (state.notch?.top || 0) + MARGIN;
 
   const cw = card.offsetWidth;
   const ch = card.offsetHeight;
   const rs = tour.els.map(el => el.getBoundingClientRect());
 
-  const r = rs.length
+  const bounds = rs.length
     ? {
-        left: Math.min(...rs.map(x => x.left)),
-        top: Math.min(...rs.map(x => x.top)),
-        right: Math.max(...rs.map(x => x.right)),
-        bottom: Math.max(...rs.map(x => x.bottom)),
+        left: Math.min(...rs.map(rect => rect.left)),
+        top: Math.min(...rs.map(rect => rect.top)),
+        right: Math.max(...rs.map(rect => rect.right)),
+        bottom: Math.max(...rs.map(rect => rect.bottom)),
       }
     : null;
 
-  let h = null;
-  let x = (W - cw) / 2;
-  let y = (H - ch) / 2;
+  let spot = null;
+  let cardLeft = (WIDTH - cw) / 2;
+  let cardTop = (HEIGHT - ch) / 2;
 
-  if (r && r.right > 0 && r.left < W && r.bottom > 0 && r.top < H) {
+  if (bounds && bounds.right > 0 && bounds.left < WIDTH && bounds.bottom > 0 && bounds.top < HEIGHT) {
     // off the window (a card scrolled away since), none
-    const l = Math.max(2, r.left - P);
-    const tp = Math.max(2, r.top - P);
-    const rt = Math.min(W - 2, r.right + P);
-    const b = Math.min(H - 2, r.bottom + P);
+    const left = Math.max(2, bounds.left - PADDING);
+    const tp = Math.max(2, bounds.top - PADDING);
+    const rt = Math.min(WIDTH - 2, bounds.right + PADDING);
+    const bottom = Math.min(HEIGHT - 2, bounds.bottom + PADDING);
 
-    h = { x: l, y: tp, w: rt - l, h: b - tp };
-    const room = { right: W - rt - G - M, left: l - G - M, below: H - b - G - M, above: tp - G - top };
+    spot = { x: left, y: tp, w: rt - left, h: bottom - tp };
 
-    const side = [tourVal(t.side), 'right', 'left', 'below', 'above'].find(
-      s => s && room[s] >= (s === 'right' || s === 'left' ? cw : ch),
+    const room = {
+      right: WIDTH - rt - GAP - MARGIN,
+      left: left - GAP - MARGIN,
+      below: HEIGHT - bottom - GAP - MARGIN,
+      above: tp - GAP - top,
+    };
+
+    const side = [tourVal(step.side), 'right', 'left', 'below', 'above'].find(
+      place => place && room[place] >= (place === 'right' || place === 'left' ? cw : ch),
     );
 
-    const cx = (l + rt - cw) / 2;
-    const cy = (tp + b - ch) / 2;
+    const cx = (left + rt - cw) / 2;
+    const cy = (tp + bottom - ch) / 2;
 
-    [x, y] =
+    [cardLeft, cardTop] =
       side === 'right'
-        ? [rt + G, cy]
+        ? [rt + GAP, cy]
         : side === 'left'
-          ? [l - G - cw, cy]
+          ? [left - GAP - cw, cy]
           : side === 'below'
-            ? [cx, b + G]
+            ? [cx, bottom + GAP]
             : side === 'above'
-              ? [cx, tp - G - ch]
-              : [cx, b - ch - 24];
+              ? [cx, tp - GAP - ch]
+              : [cx, bottom - ch - 24];
   }
 
-  x = Math.round(Math.max(M, Math.min(W - cw - M, x)));
-  y = Math.round(Math.max(top, Math.min(H - ch - M, y)));
+  cardLeft = Math.round(Math.max(MARGIN, Math.min(WIDTH - cw - MARGIN, cardLeft)));
+  cardTop = Math.round(Math.max(top, Math.min(HEIGHT - ch - MARGIN, cardTop)));
 
-  const hh = h
-    ? { x: Math.round(h.x), y: Math.round(h.y), w: Math.round(h.w), h: Math.round(h.h) }
-    : { x: Math.round(W / 2), y: Math.round(H / 2), w: 0, h: 0 };
+  const hh = spot
+    ? { x: Math.round(spot.x), y: Math.round(spot.y), w: Math.round(spot.w), h: Math.round(spot.h) }
+    : { x: Math.round(WIDTH / 2), y: Math.round(HEIGHT / 2), w: 0, h: 0 };
 
-  const key = `${hh.x},${hh.y},${hh.w},${hh.h},${x},${y}`;
+  const key = `${hh.x},${hh.y},${hh.w},${hh.h},${cardLeft},${cardTop}`;
 
   if (key === tour.drawn) return;
   tour.drawn = key;
   const hole = $('#tour .thole');
 
-  hole.classList.toggle('none', !h);
+  hole.classList.toggle('none', !spot);
   hole.style.translate = `${hh.x}px ${hh.y}px`;
   hole.style.width = `${hh.w}px`;
   hole.style.height = `${hh.h}px`;
-  card.style.translate = `${x}px ${y}px`;
+  card.style.translate = `${cardLeft}px ${cardTop}px`;
 }
 
 $('#tourNext').onclick = () => {
@@ -358,14 +370,14 @@ $('#tourNext').onclick = () => {
 $('#tourBack').onclick = () => tourShow(tour.i - 1);
 $('#tourSkip').onclick = () => $('#tour').close();
 
-$('#tour').addEventListener('keydown', e => {
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
+$('#tour').addEventListener('keydown', event => {
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
 
-  if (e.key === 'ArrowRight' && tour.i < tour.steps.length - 1) {
-    e.preventDefault();
+  if (event.key === 'ArrowRight' && tour.i < tour.steps.length - 1) {
+    event.preventDefault();
     tourShow(tour.i + 1);
-  } else if (e.key === 'ArrowLeft' && tour.i) {
-    e.preventDefault();
+  } else if (event.key === 'ArrowLeft' && tour.i) {
+    event.preventDefault();
     tourShow(tour.i - 1);
   }
 });
@@ -388,5 +400,5 @@ $('#tour').addEventListener('close', () => {
   }
 });
 
-for (const b of ['#tourBtn', '#ksTour']) $(b).onclick = tourStart;
+for (const selector of ['#tourBtn', '#ksTour']) $(selector).onclick = tourStart;
 $('#ksNews').onclick = () => newsOpen(0);

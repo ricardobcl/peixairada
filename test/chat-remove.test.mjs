@@ -11,7 +11,7 @@ import { randomUUID } from 'node:crypto';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { defaultFixture } from '../scripts/fixture.mjs';
 
-const chatOf = async (srv, id) => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+const chatOf = async (srv, id) => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
 
 const start = pid =>
   execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(pid)], {
@@ -21,16 +21,16 @@ const start = pid =>
 
 /** A claude live outside the board, as far as the registry says. */
 function elsewhere(fx, chat, more = {}) {
-  const p = spawn('sleep', ['60'], { stdio: 'ignore' });
+  const claude = spawn('sleep', ['60'], { stdio: 'ignore' });
 
   writeFileSync(
-    join(fx.dir, 'sessions', `${p.pid}.json`),
+    join(fx.dir, 'sessions', `${claude.pid}.json`),
     JSON.stringify({
-      pid: p.pid,
+      pid: claude.pid,
       sessionId: chat.id,
       cwd: chat.cwd,
       startedAt: Date.now(),
-      procStart: start(p.pid),
+      procStart: start(claude.pid),
       kind: 'interactive',
       entrypoint: 'cli',
       status: 'idle',
@@ -39,7 +39,7 @@ function elsewhere(fx, chat, more = {}) {
     }),
   );
 
-  return p;
+  return claude;
 }
 
 const word = (chat, text = 'and one more thing') =>
@@ -69,12 +69,17 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
 
     try {
-      const r = await srv.post(`api/sessions/${chat.id}/remove`, {});
+      const response = await srv.post(`api/sessions/${chat.id}/remove`, {});
 
-      assert.equal(r.status, 200, JSON.stringify(r.body));
-      const s = await chatOf(srv, chat.id);
+      assert.equal(response.status, 200, JSON.stringify(response.body));
+      const session = await chatOf(srv, chat.id);
 
-      assert.deepEqual([s.removed, s.done, s.forGood], [true, true, true], 'a tick for good, and off the list');
+      assert.deepEqual(
+        [session.removed, session.done, session.forGood],
+        [true, true, true],
+        'a tick for good, and off the list',
+      );
+
       assert.equal(readFileSync(chat.file, 'utf8'), was, 'nothing under the transcripts is touched');
       assert.ok(existsSync(chat.file));
       const today = (await srv.api(`api/today?since=${Date.now() - 7 * 86_400_000}`)).body;
@@ -114,33 +119,33 @@ test(
 
     try {
       // a drawer's claude, and its zsh
-      const d = await srv.post(`api/sessions/${second.id}/terminal`, { cols: 90, rows: 24 });
+      const drawer = await srv.post(`api/sessions/${second.id}/terminal`, { cols: 90, rows: 24 });
 
-      assert.equal(d.status, 201);
+      assert.equal(drawer.status, 201);
       await waitFor(async () => (await chatOf(srv, second.id))?.alive, { what: 'the drawer up' });
-      const z = await srv.post(`api/sessions/${second.id}/shell`, { cols: 90, rows: 24 });
+      const zsh = await srv.post(`api/sessions/${second.id}/shell`, { cols: 90, rows: 24 });
       const pid = (await chatOf(srv, second.id)).live.pid;
-      const r = await srv.post(`api/sessions/${second.id}/remove`, {});
+      const response = await srv.post(`api/sessions/${second.id}/remove`, {});
 
-      assert.equal(r.status, 200, JSON.stringify(r.body));
-      assert.equal(r.body.removed, true);
+      assert.equal(response.status, 200, JSON.stringify(response.body));
+      assert.equal(response.body.removed, true);
 
       await waitFor(
         async () => {
-          const c = await chatOf(srv, second.id);
+          const session = await chatOf(srv, second.id);
 
-          return !c.alive && c.terminal?.exited != null && c.removed;
+          return !session.alive && session.terminal?.exited != null && session.removed;
         },
         { what: 'its claude ended, the chat still off' },
       );
 
       assert.throws(() => process.kill(pid, 0), 'its claude is gone');
 
-      if (z.status < 300) {
+      if (zsh.status < 300) {
         await waitFor(
           async () =>
-            (await srv.api('api/terminals')).body.terminals.find(t => t.id === z.body.terminal.id)?.exited != null ||
-            !(await srv.api('api/terminals')).body.terminals.some(t => t.id === z.body.terminal.id),
+            (await srv.api('api/terminals')).body.terminals.find(term => term.id === zsh.body.terminal.id)?.exited !=
+              null || !(await srv.api('api/terminals')).body.terminals.some(term => term.id === zsh.body.terminal.id),
           { what: 'its zsh ended' },
         );
       }
@@ -148,9 +153,9 @@ test(
       // a claude elsewhere, asking
       asker = elsewhere(fx, first, { status: 'waiting', waitingFor: 'input needed' });
       await waitFor(async () => (await chatOf(srv, first.id))?.status === 'needs-input', { what: 'the chat asking' });
-      const q = await srv.post(`api/sessions/${first.id}/remove`, {});
+      const askerResponse = await srv.post(`api/sessions/${first.id}/remove`, {});
 
-      assert.equal(q.status, 200, JSON.stringify(q.body));
+      assert.equal(askerResponse.status, 200, JSON.stringify(askerResponse.body));
       await waitFor(() => asker.exitCode !== null || asker.signalCode, { what: 'the claude elsewhere ended' });
       assert.equal((await chatOf(srv, first.id)).removed, true);
     } finally {
@@ -176,9 +181,9 @@ test('a word in it, a claude started on it or a resume brings it back', { timeou
 
     await waitFor(
       async () => {
-        const c = await chatOf(srv, first.id);
+        const session = await chatOf(srv, first.id);
 
-        return !c.removed && !c.done;
+        return !session.removed && !session.done;
       },
       { what: 'a word bringing it back' },
     );
@@ -187,9 +192,9 @@ test('a word in it, a claude started on it or a resume brings it back', { timeou
 
     await waitFor(
       async () => {
-        const c = await chatOf(srv, second.id);
+        const session = await chatOf(srv, second.id);
 
-        return c.alive && !c.removed && !c.done;
+        return session.alive && !session.removed && !session.done;
       },
       { what: 'a claude started on it bringing it back' },
     );
@@ -198,9 +203,9 @@ test('a word in it, a claude started on it or a resume brings it back', { timeou
     await waitFor(async () => !(await chatOf(srv, second.id)).alive, { what: 'that claude gone' });
     await srv.post(`api/sessions/${second.id}/remove`, {});
     assert.equal((await chatOf(srv, second.id)).removed, true);
-    const d = await srv.post(`api/sessions/${second.id}/terminal`, { cols: 90, rows: 24 });
+    const drawer = await srv.post(`api/sessions/${second.id}/terminal`, { cols: 90, rows: 24 });
 
-    assert.equal(d.status, 201, JSON.stringify(d.body));
+    assert.equal(drawer.status, 201, JSON.stringify(drawer.body));
     assert.equal((await chatOf(srv, second.id)).removed, false, 'a resume is the plainest way of asking for it back');
   } finally {
     try {
@@ -217,19 +222,21 @@ test('vim with unsaved work is not killed over them: the chat stays, and says wh
   const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { FAKE_VIM_DIRTY: '1' } });
 
   try {
-    const v = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 90, rows: 24, vim: true, dir: chat.cwd });
+    const vim = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 90, rows: 24, vim: true, dir: chat.cwd });
 
-    assert.ok(v.status < 300, JSON.stringify(v.body));
-    const r = await srv.post(`api/sessions/${chat.id}/remove`, {});
+    assert.ok(vim.status < 300, JSON.stringify(vim.body));
+    const response = await srv.post(`api/sessions/${chat.id}/remove`, {});
 
-    assert.equal(r.status, 409, JSON.stringify(r.body));
-    assert.match(r.body.error, /vim has unsaved work/);
-    const s = await chatOf(srv, chat.id);
+    assert.equal(response.status, 409, JSON.stringify(response.body));
+    assert.match(response.body.error, /vim has unsaved work/);
+    const session = await chatOf(srv, chat.id);
 
-    assert.deepEqual([s.removed, s.done], [false, false], 'back on the board');
+    assert.deepEqual([session.removed, session.done], [false, false], 'back on the board');
 
     assert.ok(
-      (await srv.api('api/terminals')).body.terminals.some(t => t.id === v.body.terminal.id && t.exited === null),
+      (await srv.api('api/terminals')).body.terminals.some(
+        term => term.id === vim.body.terminal.id && term.exited === null,
+      ),
       'vim still up',
     );
   } finally {
@@ -267,11 +274,11 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
 
     try {
-      await new Promise(r => setTimeout(r, 3000)); // two registry polls
+      await new Promise(resolve => setTimeout(resolve, 3000)); // two registry polls
       assert.equal((await chatOf(srv, first.id)).alive, false, 'no claude of the chat');
-      const r = await srv.post(`api/sessions/${first.id}/remove`, {});
+      const response = await srv.post(`api/sessions/${first.id}/remove`, {});
 
-      assert.equal(r.status, 200, JSON.stringify(r.body));
+      assert.equal(response.status, 200, JSON.stringify(response.body));
       await new Promise(res => setTimeout(res, 1000));
       assert.equal(other.exitCode ?? other.signalCode, null, 'the process it named lives on');
     } finally {

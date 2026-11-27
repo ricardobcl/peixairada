@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { chatLines, defaultFixture, replyLines, slugOf } from '../scripts/fixture.mjs';
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 /** The `alert` events of the stream, as they come — handed back once the stream's snapshot is in, so an empty list
  *  means a quiet stream, never one that did not connect (2026-10-03). */
@@ -30,14 +30,14 @@ async function alerts(url, key) {
 
       if (done) break;
       buf += dec.decode(value, { stream: true });
-      let i;
+      let index;
 
-      while ((i = buf.indexOf('\n\n')) >= 0) {
-        const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i));
+      while ((index = buf.indexOf('\n\n')) >= 0) {
+        const match = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, index));
 
-        buf = buf.slice(i + 2);
-        if (m?.[1] === 'snapshot') resolve();
-        if (m?.[1] === 'alert') got.push(JSON.parse(m[2]));
+        buf = buf.slice(index + 2);
+        if (match?.[1] === 'snapshot') resolve();
+        if (match?.[1] === 'alert') got.push(JSON.parse(match[2]));
       }
     }
   })().catch(() => {});
@@ -55,19 +55,19 @@ test(
     const chat = fx.chats[1];
 
     try {
-      const before = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+      const before = (await srv.api('api/sessions')).body.sessions.find(session => session.id === chat.id);
 
       assert.equal(before.loaded, false, 'the boot read only the tail');
-      const a = await alerts(srv.url, srv.key);
-      const r = await srv.api(`api/sessions/${chat.id}/messages`);
+      const alertFeed = await alerts(srv.url, srv.key);
+      const response = await srv.api(`api/sessions/${chat.id}/messages`);
 
-      assert.equal(r.status, 200);
-      assert.equal(r.body.session.loaded, true);
-      assert.equal(r.body.entries.length, 2, 'the whole transcript now');
-      assert.equal(r.body.session.lastReply, 'It is a fixture. No PRs here.');
+      assert.equal(response.status, 200);
+      assert.equal(response.body.session.loaded, true);
+      assert.equal(response.body.entries.length, 2, 'the whole transcript now');
+      assert.equal(response.body.session.lastReply, 'It is a fixture. No PRs here.');
       await sleep(900); // the alert debounce is 400 ms
-      a.stop();
-      assert.deepEqual(a.got, [], 'no alert for a reply that happened a day ago');
+      alertFeed.stop();
+      assert.deepEqual(alertFeed.got, [], 'no alert for a reply that happened a day ago');
     } finally {
       await srv.stop();
     }
@@ -100,25 +100,25 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir });
 
     try {
-      const placeholder = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+      const placeholder = (await srv.api('api/sessions')).body.sessions.find(chat => chat.id === id);
 
       assert.ok(placeholder?.alive && !placeholder.file, 'a live chat with no transcript yet');
-      const a = await alerts(srv.url, srv.key);
+      const alertFeed = await alerts(srv.url, srv.key);
       const lines = chatLines({ id, cwd, prompt: 'first words', reply: 'first answer', at: new Date() });
 
       writeFileSync(
         join(fx.dir, 'projects', slugOf(cwd), `${id}.jsonl`),
-        `${lines.map(l => JSON.stringify(l)).join('\n')}\n`,
+        `${lines.map(line => JSON.stringify(line)).join('\n')}\n`,
       );
 
-      await waitFor(() => a.got.length, { timeout: 8000, what: 'the alert' }).catch(() => {}); // the assertion below says what came
-      a.stop();
-      assert.equal(a.got.length, 1, 'one alert');
-      assert.equal(a.got[0].kind, 'reply');
-      assert.equal(a.got[0].snippet, 'first answer');
-      const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+      await waitFor(() => alertFeed.got.length, { timeout: 8000, what: 'the alert' }).catch(() => {}); // the assertion below says what came
+      alertFeed.stop();
+      assert.equal(alertFeed.got.length, 1, 'one alert');
+      assert.equal(alertFeed.got[0].kind, 'reply');
+      assert.equal(alertFeed.got[0].snippet, 'first answer');
+      const session = (await srv.api('api/sessions')).body.sessions.find(chat => chat.id === id);
 
-      assert.ok(s.file && s.alive, 'the chat has its transcript and is still the live one');
+      assert.ok(session.file && session.alive, 'the chat has its transcript and is still the live one');
     } finally {
       await srv.stop();
     }
@@ -137,7 +137,7 @@ test('an append read while a character was half written decodes whole', { timeou
 
     const line = Buffer.from(
       `${replyLines({ id: chat.id, cwd: chat.cwd, text: 'não, ação' })
-        .map(l => JSON.stringify(l))
+        .map(entry => JSON.stringify(entry))
         .join('\n')}\n`,
     );
 
@@ -150,9 +150,10 @@ test('an append read while a character was half written decodes whole', { timeou
     const last = await waitFor(
       async () =>
         (await srv.api(`api/sessions/${chat.id}/messages`)).body.entries
-          .findLast(e => e.role === 'assistant')
+          .findLast(entry => entry.role === 'assistant')
           ?.text.includes('ação') &&
-        (await srv.api(`api/sessions/${chat.id}/messages`)).body.entries.findLast(e => e.role === 'assistant').text,
+        (await srv.api(`api/sessions/${chat.id}/messages`)).body.entries.findLast(entry => entry.role === 'assistant')
+          .text,
       { what: 'the reply read' },
     );
 
@@ -188,12 +189,19 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir });
 
     try {
-      const a = await alerts(srv.url, srv.key);
+      const alertFeed = await alerts(srv.url, srv.key);
 
       // read in one go, as the first lines of a chat the registry announced: the move is judged at the read's end, the
       // reply queued while it was read — one window
-      const t = s => new Date(Date.now() - 30_000 + s * 1000).toISOString();
-      const base = (s, gitBranch) => ({ cwd, sessionId: id, entrypoint: 'cli', gitBranch, timestamp: t(s) });
+      const isoAt = seconds => new Date(Date.now() - 30_000 + seconds * 1000).toISOString();
+
+      const base = (seconds, gitBranch) => ({
+        cwd,
+        sessionId: id,
+        entrypoint: 'cli',
+        gitBranch,
+        timestamp: isoAt(seconds),
+      });
 
       const lines = [
         { ...base(0, 'feat/a'), type: 'user', uuid: randomUUID(), message: { role: 'user', content: 'round the tax' } },
@@ -226,17 +234,17 @@ test(
 
       writeFileSync(
         join(fx.dir, 'projects', slugOf(cwd), `${id}.jsonl`),
-        `${lines.map(l => JSON.stringify(l)).join('\n')}\n`,
+        `${lines.map(line => JSON.stringify(line)).join('\n')}\n`,
       );
 
-      await waitFor(() => a.got.length >= 2, { timeout: 8000, what: 'two alerts' }).catch(() => {}); // the assertion below says what came
+      await waitFor(() => alertFeed.got.length >= 2, { timeout: 8000, what: 'two alerts' }).catch(() => {}); // the assertion below says what came
       await sleep(600);
-      a.stop();
+      alertFeed.stop();
 
       assert.deepEqual(
-        a.got.map(x => x.kind).sort(),
+        alertFeed.got.map(alert => alert.kind).sort(),
         ['drift', 'reply'],
-        JSON.stringify(a.got.map(x => [x.kind, x.snippet])),
+        JSON.stringify(alertFeed.got.map(alert => [alert.kind, alert.snippet])),
       );
     } finally {
       await srv.stop();

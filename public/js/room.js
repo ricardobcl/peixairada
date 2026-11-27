@@ -70,31 +70,35 @@ const PIC_DIRECT =
 
 const PIC_GIPHY = /^https:\/\/(?:www\.)?giphy\.com\/(?:gifs|embed)\/(?:[\w-]*-)?([A-Za-z0-9]{6,40})\/?$/;
 
-function picOf(u) {
-  const s = String(u ?? '').trim();
-  const g = PIC_GIPHY.exec(s);
+function picOf(address) {
+  const url = String(address ?? '').trim();
+  const giphy = PIC_GIPHY.exec(url);
 
-  return g ? `https://media.giphy.com/media/${g[1]}/giphy.gif` : PIC_ASSET.test(s) || PIC_DIRECT.test(s) ? s : null;
+  return giphy
+    ? `https://media.giphy.com/media/${giphy[1]}/giphy.gif`
+    : PIC_ASSET.test(url) || PIC_DIRECT.test(url)
+      ? url
+      : null;
 }
 
 /** Raw HTML in a message, as text — but an <img> naming a picture, as GitHub's page writes one dropped there
  *  (`<img width="892" alt="…" src="https://github.com/user-attachments/assets/…">`): that picture, its alt kept. */
 function chatRawHtml(text) {
   const attr = (tag, name) => {
-    const m = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'>]+))`, 'i').exec(tag);
+    const match = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'>]+))`, 'i').exec(tag);
 
-    return m ? (m[1] ?? m[2] ?? m[3]).replace(/&amp;/g, '&') : null;
+    return match ? (match[1] ?? match[2] ?? match[3]).replace(/&amp;/g, '&') : null;
   };
 
   let out = '';
   let at = 0;
 
-  for (const m of String(text).matchAll(/<img\b[^>]*>/gi)) {
-    const src = picOf(attr(m[0], 'src'));
+  for (const match of String(text).matchAll(/<img\b[^>]*>/gi)) {
+    const src = picOf(attr(match[0], 'src'));
 
     if (!src) continue;
-    out += `${esc(text.slice(at, m.index))}<img src="${esc(src)}" alt="${esc(attr(m[0], 'alt') || '')}">`;
-    at = m.index + m[0].length;
+    out += `${esc(text.slice(at, match.index))}<img src="${esc(src)}" alt="${esc(attr(match[0], 'alt') || '')}">`;
+    at = match.index + match[0].length;
   }
 
   return out + esc(String(text).slice(at));
@@ -105,11 +109,11 @@ const chatMarked = hasMd
       gfm: true,
       breaks: true,
       renderer: {
-        html: t => chatRawHtml(t.text ?? ''),
-        image: t =>
-          picOf(t.href)
-            ? `<img src="${esc(picOf(t.href))}" alt="${esc(t.text || '')}">`
-            : esc(`[image: ${t.text || t.href || ''}]`),
+        html: token => chatRawHtml(token.text ?? ''),
+        image: token =>
+          picOf(token.href)
+            ? `<img src="${esc(picOf(token.href))}" alt="${esc(token.text || '')}">`
+            : esc(`[image: ${token.text || token.href || ''}]`),
       },
     })
   : null;
@@ -148,27 +152,27 @@ const chatHtml = new Map();
 
 /** A picture's place in a message, filled once its bytes are here (chatPicsFill): a button, which shows it large. */
 function chatPicNode(url, alt) {
-  const b = document.createElement('button');
+  const button = document.createElement('button');
 
-  b.type = 'button';
-  b.className = 'rmpic';
-  b.dataset.pic = url;
-  if (alt) b.dataset.alt = alt;
-  b.setAttribute('aria-label', alt ? `Picture: ${alt}` : 'Picture');
-  return b;
+  button.type = 'button';
+  button.className = 'rmpic';
+  button.dataset.pic = url;
+  if (alt) button.dataset.alt = alt;
+  button.setAttribute('aria-label', alt ? `Picture: ${alt}` : 'Picture');
+  return button;
 }
 
 /** A message's words as the panel draws them: raw HTML escaped by the parser, then only CHAT_TAGS, and no attribute but a
  *  link's address — https or mailto —, which it says on hover; a picture (an <img> the parser made of one, or a
  *  paragraph that is a picture's address alone) a place for it, by its address. */
 function chatMd(text) {
-  const t = String(text ?? '');
+  const markdown = String(text ?? '');
 
-  if (chatHtml.has(t)) return chatHtml.get(t);
+  if (chatHtml.has(markdown)) return chatHtml.get(markdown);
 
   let html = !chatMarked
-    ? esc(t).replace(/\n/g, '<br>')
-    : DOMPurify.sanitize(chatMarked.parse(t), {
+    ? esc(markdown).replace(/\n/g, '<br>')
+    : DOMPurify.sanitize(chatMarked.parse(markdown), {
         ALLOWED_TAGS: CHAT_TAGS,
         ALLOWED_ATTR: ['href', 'src', 'alt'],
         ALLOW_DATA_ATTR: false,
@@ -189,43 +193,43 @@ function chatMd(text) {
     );
   }
 
-  for (const a of tpl.content.querySelectorAll('a')) {
-    const h = a.getAttribute('href');
+  for (const link of tpl.content.querySelectorAll('a')) {
+    const href = link.getAttribute('href');
 
-    if (!h || a.querySelector('.rmpic')) {
-      a.replaceWith(...a.childNodes);
+    if (!href || link.querySelector('.rmpic')) {
+      link.replaceWith(...link.childNodes);
       continue;
     } // a picture linked: the picture, which opens itself
 
     const pic =
-      a.parentElement?.tagName === 'P' &&
-      a.parentElement.childNodes.length === 1 &&
-      a.textContent.trim() === h &&
-      picOf(h);
+      link.parentElement?.tagName === 'P' &&
+      link.parentElement.childNodes.length === 1 &&
+      link.textContent.trim() === href &&
+      picOf(href);
 
     if (pic) {
-      a.replaceWith(chatPicNode(pic, ''));
+      link.replaceWith(chatPicNode(pic, ''));
       continue;
     }
 
-    a.title = h;
-    a.rel = 'noopener noreferrer';
+    link.title = href;
+    link.rel = 'noopener noreferrer';
   }
 
   if (chatUi.emo) {
     // :tada: as GitHub draws it, 🎉 — not in code, and a name it does not know left as written
     const walk = document.createTreeWalker(tpl.content, NodeFilter.SHOW_TEXT);
 
-    for (let t = walk.nextNode(); t; t = walk.nextNode()) {
-      if (t.nodeValue.includes(':') && !t.parentElement?.closest('code, pre')) {
-        t.nodeValue = t.nodeValue.replace(/:([\w+-]+):/g, (all, n) => chatUi.emo.get(n) ?? all);
+    for (let node = walk.nextNode(); node; node = walk.nextNode()) {
+      if (node.nodeValue.includes(':') && !node.parentElement?.closest('code, pre')) {
+        node.nodeValue = node.nodeValue.replace(/:([\w+-]+):/g, (all, name) => chatUi.emo.get(name) ?? all);
       }
     }
   }
 
   html = tpl.innerHTML;
   if (chatHtml.size > 2000) chatHtml.clear();
-  chatHtml.set(t, html);
+  chatHtml.set(markdown, html);
   return html;
 }
 
@@ -246,11 +250,11 @@ async function chatPicOf(blob) {
   const src = URL.createObjectURL(blob);
 
   const img = await new Promise(ok => {
-    const i = new Image();
+    const image = new Image();
 
-    i.onload = () => ok(i);
-    i.onerror = () => ok(null);
-    i.src = src;
+    image.onload = () => ok(image);
+    image.onerror = () => ok(null);
+    image.src = src;
   });
 
   if (!img) {
@@ -262,12 +266,12 @@ async function chatPicOf(blob) {
 
   if (blob.type === 'image/gif') {
     try {
-      const c = document.createElement('canvas');
+      const canvas = document.createElement('canvas');
 
-      c.width = img.naturalWidth;
-      c.height = img.naturalHeight;
-      c.getContext('2d').drawImage(img, 0, 0);
-      still = URL.createObjectURL(await new Promise(ok => c.toBlob(ok, 'image/png')));
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      still = URL.createObjectURL(await new Promise(ok => canvas.toBlob(ok, 'image/png')));
     } catch {}
   }
 
@@ -280,9 +284,9 @@ function chatPicGet(url) {
   const ask = new Promise(ok => {
     chatPicQ.push({ url, ok });
     chatPicPump();
-  }).then(r => {
-    chatPics.set(url, r.err ? { ...r, at: Date.now() } : r);
-    return r;
+  }).then(got => {
+    chatPics.set(url, got.err ? { ...got, at: Date.now() } : got);
+    return got;
   });
 
   chatPics.set(url, ask);
@@ -297,17 +301,17 @@ function chatPicPump() {
 
     (async () => {
       await keySafe();
-      const r = await fetch(`/api/chat/pic?u=${encodeURIComponent(url)}`, { headers: keyHeaders() });
+      const response = await fetch(`/api/chat/pic?u=${encodeURIComponent(url)}`, { headers: keyHeaders() });
 
-      if (!r.ok) {
-        const d = await r.json().catch(() => ({}));
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
 
-        return { err: d.error || `HTTP ${r.status}` };
+        return { err: result.error || `HTTP ${response.status}` };
       }
 
-      return chatPicOf(await r.blob());
+      return chatPicOf(await response.blob());
     })()
-      .catch(e => ({ err: e.message }))
+      .catch(error => ({ err: error.message }))
       .then(ok)
       .finally(() => {
         chatPicRun--;
@@ -340,15 +344,15 @@ function chatPicPut(el, got) {
     return;
   }
 
-  const img = n => {
-    const i = document.createElement('img');
+  const img = src => {
+    const image = document.createElement('img');
 
-    i.src = n;
-    i.alt = el.dataset.alt || '';
-    i.width = got.w;
-    i.height = got.h;
-    i.decoding = 'async';
-    return i;
+    image.src = src;
+    image.alt = el.dataset.alt || '';
+    image.width = got.w;
+    image.height = got.h;
+    image.decoding = 'async';
+    return image;
   };
 
   el.replaceChildren(img(got.src), ...(got.still && stillNow() ? [img(got.still)] : []));
@@ -378,8 +382,10 @@ function chatPicsFill(root) {
 
     el.classList.add('wait');
 
-    (got || chatPicGet(url)).then(r => {
-      for (const x of document.querySelectorAll('.rmpic.wait')) if (x.dataset.pic === url) chatPicPut(x, r);
+    (got || chatPicGet(url)).then(loaded => {
+      for (const place of document.querySelectorAll('.rmpic.wait')) {
+        if (place.dataset.pic === url) chatPicPut(place, loaded);
+      }
     });
   }
 }
@@ -397,32 +403,32 @@ function chatView(el) {
   repostPane();
 }
 
-$('#rmview').addEventListener('click', e => {
-  if (e.target.closest('#rmviewOut')) openExternal(chatUi.viewing, { s: null });
+$('#rmview').addEventListener('click', event => {
+  if (event.target.closest('#rmviewOut')) openExternal(chatUi.viewing, { s: null });
   $('#rmview').close();
 });
 
 // your pictures for the next message: up to GitHub as they are added (POST /api/chat/upload — its bytes from a paste, a
 // drop or the picker; the app's Finder drop its path), shown from here meanwhile, in the tray over the box
 function chatPicsAdd(files) {
-  const c = state.chat;
+  const chat = state.chat;
 
-  if (!c.ready || c.room == null) return false;
+  if (!chat.ready || chat.room == null) return false;
 
-  if (!c.pics?.can) {
-    note($('#rmPicBtn'), `No pictures from here: ${c.pics?.why || 'the chat is still being read'}`, true);
+  if (!chat.pics?.can) {
+    note($('#rmPicBtn'), `No pictures from here: ${chat.pics?.why || 'the chat is still being read'}`, true);
     return true;
   }
 
-  for (const f of files) {
-    const name = f.name || f.path?.split('/').pop() || 'pasted.png';
+  for (const file of files) {
+    const name = file.name || file.path?.split('/').pop() || 'pasted.png';
 
-    if (f.path ? !/\.(png|jpe?g|gif|webp)$/i.test(f.path) : !PIC_TYPES.test(f.type)) {
+    if (file.path ? !/\.(png|jpe?g|gif|webp)$/i.test(file.path) : !PIC_TYPES.test(file.type)) {
       note($('#rmbox'), `${name}: a PNG, JPEG, GIF or WebP picture`, true);
       continue;
     }
 
-    if (f.size > PIC_MAX) {
+    if (file.size > PIC_MAX) {
       note($('#rmbox'), `${name}: larger than 10 MB`, true);
       continue;
     }
@@ -432,19 +438,19 @@ function chatPicsAdd(files) {
       break;
     }
 
-    const p = {
+    const pic = {
       key: ++chatUi.picSeq,
       name: name.replace(/\.\w{1,5}$/, ''),
-      file: f.path ? null : f,
-      path: f.path || null,
+      file: file.path ? null : file,
+      path: file.path || null,
       got: null,
       url: null,
       err: null,
       up: null,
     };
 
-    chatUi.pics.push(p);
-    chatPicUp(p);
+    chatUi.pics.push(pic);
+    chatPicUp(pic);
   }
 
   chatTrayDraw();
@@ -452,32 +458,32 @@ function chatPicsAdd(files) {
   return true;
 }
 
-function chatPicUp(p) {
-  p.err = null;
+function chatPicUp(pic) {
+  pic.err = null;
 
-  p.up = (async () => {
-    if (p.file && !p.got) {
-      p.got = await chatPicOf(p.file);
+  pic.up = (async () => {
+    if (pic.file && !pic.got) {
+      pic.got = await chatPicOf(pic.file);
       chatTrayDraw();
       chatDraw();
     }
 
     await keySafe();
 
-    const r = await fetch(
-      `/api/chat/upload?${p.path ? `path=${encodeURIComponent(p.path)}` : `name=${encodeURIComponent(p.file.name || 'pasted.png')}`}`,
-      { method: 'POST', body: p.file || undefined, headers: keyHeaders() },
+    const response = await fetch(
+      `/api/chat/upload?${pic.path ? `path=${encodeURIComponent(pic.path)}` : `name=${encodeURIComponent(pic.file.name || 'pasted.png')}`}`,
+      { method: 'POST', body: pic.file || undefined, headers: keyHeaders() },
     );
 
-    const d = await r.json().catch(() => ({}));
+    const result = await response.json().catch(() => ({}));
 
-    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
-    p.url = d.url;
-    if (p.got && !p.got.err) chatPics.set(d.url, p.got);
-    else p.got = await chatPicGet(d.url); // the app's drop: the server kept its bytes
+    if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+    pic.url = result.url;
+    if (pic.got && !pic.got.err) chatPics.set(result.url, pic.got);
+    else pic.got = await chatPicGet(result.url); // the app's drop: the server kept its bytes
   })()
-    .catch(e => {
-      p.err = e.message;
+    .catch(error => {
+      pic.err = error.message;
     })
     .finally(() => {
       chatTrayDraw();
@@ -485,7 +491,7 @@ function chatPicUp(p) {
     });
 
   chatTrayDraw();
-  return p.up;
+  return pic.up;
 }
 
 function chatTrayDraw() {
@@ -497,23 +503,23 @@ function chatTrayDraw() {
     tray,
     chatUi.pics
       .map(
-        p =>
-          `<span class="rmtp${p.err ? ' fail' : p.url ? '' : ' up'}" data-k="${p.key}" title="${esc(p.err ? `${p.name}: not uploaded — ${p.err}` : p.url ? p.name : `${p.name}: uploading…`)}">${
-            p.got?.src ? `<img src="${esc(p.got.src)}" alt="">` : '<span class="rmtpw"></span>'
-          }<button type="button" class="rmbtn" data-rm="unpic" title="Not this one" aria-label="Drop ${esc(p.name)}">${ICON.close}</button></span>`,
+        pic =>
+          `<span class="rmtp${pic.err ? ' fail' : pic.url ? '' : ' up'}" data-k="${pic.key}" title="${esc(pic.err ? `${pic.name}: not uploaded — ${pic.err}` : pic.url ? pic.name : `${pic.name}: uploading…`)}">${
+            pic.got?.src ? `<img src="${esc(pic.got.src)}" alt="">` : '<span class="rmtpw"></span>'
+          }<button type="button" class="rmbtn" data-rm="unpic" title="Not this one" aria-label="Drop ${esc(pic.name)}">${ICON.close}</button></span>`,
       )
       .join(''),
   );
 }
 
 /** A message on its way, its pictures as you gave them: drawn from here. */
-const chatOutPics = o =>
-  !o.pics?.length
+const chatOutPics = outgoing =>
+  !outgoing.pics?.length
     ? ''
-    : `<div class="rmoutpics">${o.pics.map(p => (p.got?.src ? `<span class="rmpic on"><img src="${esc(p.got.src)}" width="${p.got.w}" height="${p.got.h}" alt=""></span>` : '<span class="rmpic wait"></span>')).join('')}</div>`;
+    : `<div class="rmoutpics">${outgoing.pics.map(pic => (pic.got?.src ? `<span class="rmpic on"><img src="${esc(pic.got.src)}" width="${pic.got.w}" height="${pic.got.h}" alt=""></span>` : '<span class="rmpic wait"></span>')).join('')}</div>`;
 
-const mdAlt = n =>
-  String(n)
+const mdAlt = name =>
+  String(name)
     .replace(/[[\]\\\n]/g, ' ')
     .trim()
     .slice(0, 80);
@@ -592,8 +598,8 @@ function chatEmoLoad() {
   chatUi.emoAsk = true;
 
   api('GET', '/api/chat/emojis').then(
-    d => {
-      chatUi.emo = new Map(Object.entries(d.emojis || {}));
+    result => {
+      chatUi.emo = new Map(Object.entries(result.emojis || {}));
       chatUi.emoNames = [...chatUi.emo.keys()].sort();
       chatHtml.clear(); // the words drawn again, their :names: as emoji
       chatDraw();
@@ -605,31 +611,31 @@ function chatEmoLoad() {
   );
 }
 
-/** The names whose emoji a search finds, best first: `q`'s start, a word's start in the name, then anywhere. */
-function chatEmoFind(q, max) {
+/** The names whose emoji a search finds, best first: `query`'s start, a word's start in the name, then anywhere. */
+function chatEmoFind(query, max) {
   const names = chatUi.emoNames || [];
 
-  q = String(q).toLowerCase().replace(/^:|:$/g, '');
-  if (!q) return [];
+  query = String(query).toLowerCase().replace(/^:|:$/g, '');
+  if (!query) return [];
 
-  const a = [];
-  const b = [];
-  const c = [];
+  const starts = [];
+  const wordStarts = [];
+  const inside = [];
 
-  for (const n of names) {
-    if (n.startsWith(q)) a.push(n);
-    else if (n.includes(`_${q}`)) b.push(n);
-    else if (n.includes(q)) c.push(n);
-    if (a.length >= max) break;
+  for (const name of names) {
+    if (name.startsWith(query)) starts.push(name);
+    else if (name.includes(`_${query}`)) wordStarts.push(name);
+    else if (name.includes(query)) inside.push(name);
+    if (starts.length >= max) break;
   }
 
-  return [...a.sort((x, y) => x.length - y.length), ...b, ...c].slice(0, max);
+  return [...starts.sort((left, right) => left.length - right.length), ...wordStarts, ...inside].slice(0, max);
 }
 
 const emoNote = name => {
-  const r = prefs.emojiRecent.filter(n => n !== name);
+  const earlier = prefs.emojiRecent.filter(other => other !== name);
 
-  prefs.emojiRecent = [name, ...r].slice(0, 24);
+  prefs.emojiRecent = [name, ...earlier].slice(0, 24);
   savePrefs();
 };
 
@@ -655,22 +661,25 @@ function chatEmoOpen(on = $('#rmemo').hidden) {
 }
 
 function chatEmoDraw() {
-  const q = $('#rmemoq').value.trim();
-  const e = chatUi.emo;
+  const query = $('#rmemoq').value.trim();
+  const emojis = chatUi.emo;
 
-  if (!e) return setHtml($('#rmemog'), '<div class="rmnone">Asking GitHub for its emoji…</div>');
-  const names = q ? chatEmoFind(q, 96) : [...new Set([...prefs.emojiRecent, ...EMO_TOP])].filter(n => e.has(n));
+  if (!emojis) return setHtml($('#rmemog'), '<div class="rmnone">Asking GitHub for its emoji…</div>');
+
+  const names = query
+    ? chatEmoFind(query, 96)
+    : [...new Set([...prefs.emojiRecent, ...EMO_TOP])].filter(name => emojis.has(name));
 
   setHtml(
     $('#rmemog'),
     names.length
       ? names
           .map(
-            n =>
-              `<button type="button" class="rmeb" data-emo="${esc(n)}" title=":${esc(n)}:" role="option" aria-label="${esc(n.replace(/_/g, ' '))}">${e.get(n)}</button>`,
+            name =>
+              `<button type="button" class="rmeb" data-emo="${esc(name)}" title=":${esc(name)}:" role="option" aria-label="${esc(name.replace(/_/g, ' '))}">${emojis.get(name)}</button>`,
           )
           .join('')
-      : `<div class="rmnone">No emoji called “${esc(q)}”</div>`,
+      : `<div class="rmnone">No emoji called “${esc(query)}”</div>`,
   );
 }
 
@@ -685,28 +694,28 @@ function chatEmoPick(name) {
 
 $('#rmemoq').addEventListener('input', chatEmoDraw);
 
-$('#rmemoq').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
+$('#rmemoq').addEventListener('keydown', event => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
     const first = $('#rmemog .rmeb');
 
     if (first) chatEmoPick(first.dataset.emo);
-  } else if (e.key === 'ArrowDown') {
-    e.preventDefault();
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault();
     $('#rmemog .rmeb')?.focus();
   }
 });
 
 // the grid walked by the arrows, eight to a row (CSS's); ↑ from the first row back to the search
-$('#rmemog').addEventListener('keydown', e => {
+$('#rmemog').addEventListener('keydown', event => {
   const all = [...$('#rmemog').querySelectorAll('.rmeb')];
-  const i = all.indexOf(document.activeElement);
-  const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 8, ArrowUp: -8 }[e.key];
+  const index = all.indexOf(document.activeElement);
+  const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 8, ArrowUp: -8 }[event.key];
 
-  if (i < 0 || !step) return;
-  e.preventDefault();
-  if (i + step < 0) return $('#rmemoq').focus();
-  all[Math.min(all.length - 1, i + step)]?.focus();
+  if (index < 0 || !step) return;
+  event.preventDefault();
+  if (index + step < 0) return $('#rmemoq').focus();
+  all[Math.min(all.length - 1, index + step)]?.focus();
 });
 
 // : and a name in the box: its emoji offered under the pointer of the caret — ↑↓ walk them, ⇥ or ⏎ takes one, esc lets
@@ -725,28 +734,28 @@ function chatSugUpdate() {
     return chatSugClose();
   }
 
-  const m = /(^|[\s([{]):([\w+-]{2,})$/.exec(before);
-  const list = m ? chatEmoFind(m[2], 8) : [];
+  const match = /(^|[\s([{]):([\w+-]{2,})$/.exec(before);
+  const list = match ? chatEmoFind(match[2], 8) : [];
 
   if (!list.length) return chatSugClose();
   const same = chatUi.sug?.list.join() === list.join();
 
-  chatUi.sug = { start: before.length - m[2].length - 1, list, sel: same ? chatUi.sug.sel : 0 };
+  chatUi.sug = { start: before.length - match[2].length - 1, list, sel: same ? chatUi.sug.sel : 0 };
   chatSugDraw();
 }
 
 function chatSugDraw() {
-  const g = chatUi.sug;
+  const suggestions = chatUi.sug;
 
-  $('#rmsug').hidden = !g;
-  if (!g) return;
+  $('#rmsug').hidden = !suggestions;
+  if (!suggestions) return;
 
   setHtml(
     $('#rmsug'),
-    g.list
+    suggestions.list
       .map(
-        (n, i) =>
-          `<div class="rmsi${i === g.sel ? ' on' : ''}" data-emo="${esc(n)}" role="option" aria-selected="${i === g.sel}"><span class="e">${chatUi.emo.get(n)}</span>:${esc(n)}:</div>`,
+        (name, index) =>
+          `<div class="rmsi${index === suggestions.sel ? ' on' : ''}" data-emo="${esc(name)}" role="option" aria-selected="${index === suggestions.sel}"><span class="e">${chatUi.emo.get(name)}</span>:${esc(name)}:</div>`,
       )
       .join(''),
   );
@@ -760,45 +769,52 @@ function chatSugClose() {
 }
 
 function chatSugPick(name = chatUi.sug?.list[chatUi.sug.sel]) {
-  const g = chatUi.sug;
+  const suggestions = chatUi.sug;
   const box = $('#rmbox');
 
-  if (!g || !name) return;
+  if (!suggestions || !name) return;
   const next = box.value[box.selectionStart];
 
-  box.setRangeText(chatUi.emo.get(name) + (next && /\s/.test(next) ? '' : ' '), g.start, box.selectionStart, 'end');
+  box.setRangeText(
+    chatUi.emo.get(name) + (next && /\s/.test(next) ? '' : ' '),
+    suggestions.start,
+    box.selectionStart,
+    'end',
+  );
+
   emoNote(name);
   chatSugClose();
   chatGrow();
   box.focus();
 }
 
-$('#rmsug').addEventListener('mousedown', e => {
-  const it = e.target.closest('.rmsi');
+$('#rmsug').addEventListener('mousedown', event => {
+  const it = event.target.closest('.rmsi');
 
   if (!it) return;
-  e.preventDefault(); // the box keeps the keys
+  event.preventDefault(); // the box keeps the keys
   chatSugPick(it.dataset.emo);
 });
 
 // ---- reactions (2026-11-25): a chip for each given, yours lit, who on hover; given or taken back at once, then as
 // GitHub took it (POST /api/chat/react)
-function chatReactsHtml(m) {
+function chatReactsHtml(message) {
   const me = state.chat.me?.login;
   const by = new Map();
 
-  if (m.reacts?.length) for (const x of m.reacts) by.set(x.r, [...(by.get(x.r) || []), x.who]);
-  else for (const [r, n] of Object.entries(m.rc || {})) by.set(r, Array(n).fill(null));
+  if (message.reacts?.length) {
+    for (const reaction of message.reacts) by.set(reaction.r, [...(by.get(reaction.r) || []), reaction.who]);
+  } else for (const [kind, count] of Object.entries(message.rc || {})) by.set(kind, Array(count).fill(null));
   if (!by.size) return '';
 
   const chips = Object.keys(REACT_EMO)
-    .filter(r => by.has(r))
-    .map(r => {
-      const who = by.get(r);
+    .filter(kind => by.has(kind))
+    .map(kind => {
+      const who = by.get(kind);
       const mine = who.includes(me);
-      const names = who.filter(Boolean).map(w => (w === me ? 'you' : w));
+      const names = who.filter(Boolean).map(login => (login === me ? 'you' : login));
 
-      return `<button type="button" class="rmrc${mine ? ' mine' : ''}" data-rm="react" data-r="${esc(r)}" aria-pressed="${mine}" title="${esc(names.length ? names.join(', ') : `${who.length}`)}" aria-label="${esc(`${r}: ${who.length}${mine ? ', yours among them' : ''}`)}">${REACT_EMO[r]}<b>${who.length}</b></button>`;
+      return `<button type="button" class="rmrc${mine ? ' mine' : ''}" data-rm="react" data-r="${esc(kind)}" aria-pressed="${mine}" title="${esc(names.length ? names.join(', ') : `${who.length}`)}" aria-label="${esc(`${kind}: ${who.length}${mine ? ', yours among them' : ''}`)}">${REACT_EMO[kind]}<b>${who.length}</b></button>`;
     })
     .join('');
 
@@ -807,27 +823,27 @@ function chatReactsHtml(m) {
 
 /** Your reaction toggled at once; GitHub told in the order you clicked, one after another (a quick second click is
  *  not lost), its word taken once none of yours on that message is still on its way. */
-function chatReact(id, r) {
-  const m = chatUi.msgs.find(x => x.id === id);
+function chatReact(id, kind) {
+  const message = chatUi.msgs.find(entry => entry.id === id);
   const me = state.chat.me;
 
-  if (!m || m.poll || !me) return;
+  if (!message || message.poll || !me) return;
 
-  const toggle = x => {
-    const list = x.reacts ? [...x.reacts] : [];
-    const had = list.some(y => y.who === me.login && y.r === r);
+  const toggle = before => {
+    const list = before.reacts ? [...before.reacts] : [];
+    const had = list.some(reaction => reaction.who === me.login && reaction.r === kind);
 
     const reacts = had
-      ? list.filter(y => !(y.who === me.login && y.r === r))
-      : [...list, { r, who: me.login, face: me.face }];
+      ? list.filter(reaction => !(reaction.who === me.login && reaction.r === kind))
+      : [...list, { r: kind, who: me.login, face: me.face }];
 
     const rc = {};
 
-    for (const y of reacts) rc[y.r] = (rc[y.r] || 0) + 1;
-    return { ...x, reacts, rc };
+    for (const reaction of reacts) rc[reaction.r] = (rc[reaction.r] || 0) + 1;
+    return { ...before, reacts, rc };
   };
 
-  chatTake([toggle(m)], []);
+  chatTake([toggle(message)], []);
   chatDraw();
   chatUi.reacting.set(id, (chatUi.reacting.get(id) || 0) + 1);
 
@@ -835,12 +851,12 @@ function chatReact(id, r) {
     let got = null;
 
     try {
-      got = (await api('POST', '/api/chat/react', { id, r })).msg;
-    } catch (e) {
-      const now = chatUi.msgs.find(x => x.id === id);
+      got = (await api('POST', '/api/chat/react', { id, r: kind })).msg;
+    } catch (error) {
+      const now = chatUi.msgs.find(entry => entry.id === id);
 
       if (now) chatTake([toggle(now)], []); // this one back as it was
-      note($(`#rmlog .rmmsg[data-id="${id}"] .rmbody`) || $('#rmlog'), `Not reacted: ${e.message}`, true);
+      note($(`#rmlog .rmmsg[data-id="${id}"] .rmbody`) || $('#rmlog'), `Not reacted: ${error.message}`, true);
     }
 
     const left = chatUi.reacting.get(id) - 1;
@@ -854,31 +870,31 @@ function chatReact(id, r) {
 
 /** GitHub's eight, by the message's own React button. */
 function chatRxOpen(id, at) {
-  const p = $('#rmrxp');
+  const picker = $('#rmrxp');
 
   chatUi.rxFor = id;
 
   setHtml(
-    p,
+    picker,
     Object.entries(REACT_EMO)
       .map(
-        ([r, e]) =>
-          `<button type="button" class="rmrb" data-rx="${esc(r)}" title="${esc(r)}" aria-label="${esc(r)}">${e}</button>`,
+        ([kind, emoji]) =>
+          `<button type="button" class="rmrb" data-rx="${esc(kind)}" title="${esc(kind)}" aria-label="${esc(kind)}">${emoji}</button>`,
       )
       .join(''),
   );
 
-  p.hidden = false;
+  picker.hidden = false;
 
   // over the button, or under it where the log has no room above (the panel's head is not the row's)
   const room = $('#room').getBoundingClientRect();
   const log = $('#rmlog').getBoundingClientRect();
-  const b = at.getBoundingClientRect();
-  const up = b.top - p.offsetHeight - 4;
+  const rect = at.getBoundingClientRect();
+  const up = rect.top - picker.offsetHeight - 4;
 
-  p.style.left = `${Math.max(8, Math.min(room.width - p.offsetWidth - 8, b.right - room.left - p.offsetWidth))}px`;
-  p.style.top = `${(up >= log.top ? up : b.bottom + 4) - room.top}px`;
-  p.querySelector('.rmrb').focus();
+  picker.style.left = `${Math.max(8, Math.min(room.width - picker.offsetWidth - 8, rect.right - room.left - picker.offsetWidth))}px`;
+  picker.style.top = `${(up >= log.top ? up : rect.bottom + 4) - room.top}px`;
+  picker.querySelector('.rmrb').focus();
 }
 
 function chatRxClose() {
@@ -888,14 +904,14 @@ function chatRxClose() {
   return true;
 }
 
-$('#rmrxp').addEventListener('click', e => {
-  const b = e.target.closest('[data-rx]');
+$('#rmrxp').addEventListener('click', event => {
+  const button = event.target.closest('[data-rx]');
 
-  if (!b) return;
+  if (!button) return;
   const id = chatUi.rxFor;
 
   chatRxClose();
-  chatReact(id, b.dataset.rx);
+  chatReact(id, button.dataset.rx);
 });
 
 // ---- your message edited (2026-11-25): in the box, as Telegram's and WhatsApp's are — its words there, its pictures
@@ -911,22 +927,30 @@ function chatSplitPics(body) {
   for (const para of String(body).split(/\n{2,}/)) {
     const found = [...para.matchAll(pic)];
 
-    if (found.length && found.every(m => picOf(m[1] || m[2])) && !para.replace(pic, '').trim()) pics.push(para.trim());
-    else text.push(para);
+    if (found.length && found.every(match => picOf(match[1] || match[2])) && !para.replace(pic, '').trim()) {
+      pics.push(para.trim());
+    } else text.push(para);
   }
 
   return { text: text.join('\n\n').trim(), pics };
 }
 
 function chatEditStart(id) {
-  const m = chatUi.msgs.find(x => x.id === id);
+  const message = chatUi.msgs.find(entry => entry.id === id);
   const box = $('#rmbox');
 
-  if (!m || m.poll || m.who !== state.chat.me?.login) return;
+  if (!message || message.poll || message.who !== state.chat.me?.login) return;
   if (chatUi.poll) chatPollForm(false);
-  const { text, pics } = chatSplitPics(m.body);
+  const { text, pics } = chatSplitPics(message.body);
 
-  chatUi.editing = { id, pics, body: m.body, draft: chatUi.editing ? chatUi.editing.draft : box.value, saving: false };
+  chatUi.editing = {
+    id,
+    pics,
+    body: message.body,
+    draft: chatUi.editing ? chatUi.editing.draft : box.value,
+    saving: false,
+  };
+
   chatSugClose();
   chatEmoOpen(false);
   box.value = text;
@@ -951,44 +975,44 @@ function chatEditEnd(restore) {
 
 async function chatEditSave() {
   const ed = chatUi.editing;
-  const m = chatUi.msgs.find(x => x.id === ed?.id);
+  const message = chatUi.msgs.find(entry => entry.id === ed?.id);
 
   if (!ed || ed.saving) return;
-  if (!m) return chatEditEnd(true);
+  if (!message) return chatEditEnd(true);
   ed.saving = true;
   chatDraw();
   const added = chatUi.pics.slice();
 
   try {
-    await Promise.all(added.map(p => p.up));
-    const bad = added.find(p => p.err);
+    await Promise.all(added.map(pic => pic.up));
+    const bad = added.find(pic => pic.err);
 
     if (bad) throw new Error(`${bad.name}: ${bad.err}`);
 
-    const body = [$('#rmbox').value.trim(), ...ed.pics, ...added.map(p => `![${mdAlt(p.name)}](${p.url})`)]
+    const body = [$('#rmbox').value.trim(), ...ed.pics, ...added.map(pic => `![${mdAlt(pic.name)}](${pic.url})`)]
       .filter(Boolean)
       .join('\n\n');
 
     if (!body) throw new Error('nothing left — delete it instead');
 
     if (body !== ed.body) {
-      chatTake([{ ...m, body, edited: new Date().toISOString() }], []);
+      chatTake([{ ...message, body, edited: new Date().toISOString() }], []);
       chatDraw();
-      const d = await api('POST', '/api/chat/edit', { id: ed.id, body });
+      const result = await api('POST', '/api/chat/edit', { id: ed.id, body });
 
-      if (d.msg.n === chatUi.n) chatTake([d.msg], []);
+      if (result.msg.n === chatUi.n) chatTake([result.msg], []);
     }
 
-    chatUi.pics = chatUi.pics.filter(p => !added.includes(p));
+    chatUi.pics = chatUi.pics.filter(pic => !added.includes(pic));
     chatTrayDraw();
     chatEditEnd(false);
-  } catch (e) {
-    const now = chatUi.msgs.find(x => x.id === ed.id);
+  } catch (error) {
+    const now = chatUi.msgs.find(entry => entry.id === ed.id);
 
-    if (now && now.body !== ed.body) chatTake([{ ...now, body: ed.body, edited: m.edited }], []);
+    if (now && now.body !== ed.body) chatTake([{ ...now, body: ed.body, edited: message.edited }], []);
     ed.saving = false;
     chatDraw();
-    note($('#rmediting'), `Not saved: ${e.message}`, true);
+    note($('#rmediting'), `Not saved: ${error.message}`, true);
   }
 }
 
@@ -1002,17 +1026,17 @@ const chatFace = (url, cls = 'face') =>
 /** The status bar's word on the chat (renderBar): its unread count, an invitation waiting, what went wrong — nothing
  *  while there is no chat and no invitation. Reads state alone: the bar is drawn before this section has run. */
 function chatSeg() {
-  const c = state.chat;
+  const chat = state.chat;
 
-  if (!c.on) {
-    return c.invites?.length
-      ? `<button class="seg chatseg inv" id="sbChat" title="${esc(`${c.invites[0].by || 'Someone'} invited you to the chat in ${c.invites[0].repo} — click to join it`)}">${ICON.chat}invited</button>`
+  if (!chat.on) {
+    return chat.invites?.length
+      ? `<button class="seg chatseg inv" id="sbChat" title="${esc(`${chat.invites[0].by || 'Someone'} invited you to the chat in ${chat.invites[0].repo} — click to join it`)}">${ICON.chat}invited</button>`
       : '';
   }
 
-  const n = c.unread || 0;
+  const unread = chat.unread || 0;
 
-  return `<button class="seg chatseg${c.error ? ' err' : ''}" id="sbChat" title="${esc(c.error ? `The chat: ${c.error}` : `The chat in ${c.repo}${n ? ` — ${n} new` : ''} · click to open it`)}">${ICON.chat}chat${n ? `<b>${rn('chat', n)}</b>` : ''}</button>`;
+  return `<button class="seg chatseg${chat.error ? ' err' : ''}" id="sbChat" title="${esc(chat.error ? `The chat: ${chat.error}` : `The chat in ${chat.repo}${unread ? ` — ${unread} new` : ''} · click to open it`)}">${ICON.chat}chat${unread ? `<b>${rn('chat', unread)}</b>` : ''}</button>`;
 }
 
 function chatSegClick() {
@@ -1024,9 +1048,9 @@ function chatSegClick() {
 
 /** The panel, on the messages — or on the people. */
 function chatOpen(view = 'log') {
-  const c = state.chat;
+  const chat = state.chat;
 
-  if (!c.on || c.missing) return settingsAt('chat', '#chatSet');
+  if (!chat.on || chat.missing) return settingsAt('chat', '#chatSet');
   const dlg = $('#room');
 
   chatUi.view = view;
@@ -1047,10 +1071,10 @@ function chatOpen(view = 'log') {
   renderBar();
   chatSeenNow(); // what came while it was shut is read now
 
-  if (c.ready && c.pics && !c.pics.can) {
+  if (chat.ready && chat.pics && !chat.pics.can) {
     api('GET', '/api/chat?pics=1').then(
-      d => {
-        state.chat = d;
+      latest => {
+        state.chat = latest;
         chatChanged();
       },
       () => {},
@@ -1064,29 +1088,39 @@ function chatOpen(view = 'log') {
 /** The chat's messages, read as the panel first shows them — and again for another issue (the repo's, or its first
  *  closed on GitHub). */
 async function chatLoad() {
-  const n = state.chat.room;
+  const room = state.chat.room;
 
-  if (n === chatUi.n && (chatUi.msgs.length || chatUi.loading)) return;
-  Object.assign(chatUi, { n, msgs: [], gone: new Set(), loading: n != null, err: null, sure: null, seenSent: 0 });
+  if (room === chatUi.n && (chatUi.msgs.length || chatUi.loading)) return;
+
+  Object.assign(chatUi, {
+    n: room,
+    msgs: [],
+    gone: new Set(),
+    loading: room != null,
+    err: null,
+    sure: null,
+    seenSent: 0,
+  });
+
   chatDraw(true);
-  if (n == null) return;
+  if (room == null) return;
 
   try {
-    const d = await api('GET', '/api/chat/messages');
+    const result = await api('GET', '/api/chat/messages');
 
-    if (chatUi.n !== n) return;
+    if (chatUi.n !== room) return;
 
-    if (d.room === n) {
+    if (result.room === room) {
       chatTake(
-        d.msgs.filter(m => !chatUi.gone.has(m.id)),
+        result.msgs.filter(message => !chatUi.gone.has(message.id)),
         [],
       );
     }
-  } catch (e) {
-    if (chatUi.n === n) chatUi.err = e.message;
+  } catch (error) {
+    if (chatUi.n === room) chatUi.err = error.message;
   }
 
-  if (chatUi.n !== n) return;
+  if (chatUi.n !== room) return;
   chatUi.loading = false;
   chatDraw(true);
   chatSeenNow();
@@ -1094,38 +1128,38 @@ async function chatLoad() {
 
 /** Messages into the panel, by their ids: an edit in place, a delete out (and kept out of a fetch still on its way). */
 function chatTake(add, gone) {
-  const by = new Map(chatUi.msgs.map(m => [m.id, m]));
+  const by = new Map(chatUi.msgs.map(message => [message.id, message]));
 
-  for (const m of add) by.set(m.id, m);
+  for (const message of add) by.set(message.id, message);
 
   for (const id of gone) {
     by.delete(id);
     chatUi.gone.add(id);
   }
 
-  chatUi.msgs = [...by.values()].sort((a, b) => a.id - b.id);
+  chatUi.msgs = [...by.values()].sort((left, right) => left.id - right.id);
 }
 
 function chatLogHtml() {
-  const c = state.chat;
-  const me = c.me?.login;
-  const admin = c.role === 'admin';
+  const chat = state.chat;
+  const me = chat.me?.login;
+  const admin = chat.role === 'admin';
 
   const sure = !chatUi.sure
     ? ''
     : `<div class="rmsure" role="group"><span>${admin ? 'Stop the chat on this board? It stays on GitHub, and you its admin.' : 'Leave the chat? Coming back takes a new invitation.'}</span><button type="button" class="btn" data-rm="unsure">Cancel</button><button type="button" class="btn danger" data-rm="leave">${admin ? 'Stop' : 'Leave'}</button></div>`;
 
-  if (!c.ready) return `${sure}<div class="rmnone">${esc(c.error || 'Reading the chat…')}</div>`;
+  if (!chat.ready) return `${sure}<div class="rmnone">${esc(chat.error || 'Reading the chat…')}</div>`;
 
-  if (c.room == null) {
-    return `${sure}<div class="rmnone">No chat in ${esc(c.repo)} yet — its admin's board starts it.</div>`;
+  if (chat.room == null) {
+    return `${sure}<div class="rmnone">No chat in ${esc(chat.repo)} yet — its admin's board starts it.</div>`;
   }
 
   // yours on their way (chatSend) after everything said, as you see them: faded while they go, and one that did not go
   // says so under its words — Try again, or Edit (its words back in the box)
   const outs = chatUi.out
-    .filter(o => o.n === chatUi.n)
-    .map(o => ({ who: me || 'you', face: c.me?.face, at: o.at, body: o.body, out: o }));
+    .filter(outgoing => outgoing.n === chatUi.n)
+    .map(outgoing => ({ who: me || 'you', face: chat.me?.face, at: outgoing.at, body: outgoing.body, out: outgoing }));
 
   if (!chatUi.msgs.length && !outs.length) {
     return `${sure}<div class="rmnone">${esc(chatUi.err || (chatUi.loading ? 'Reading…' : 'Nothing said yet.'))}</div>`;
@@ -1134,33 +1168,34 @@ function chatLogHtml() {
   let out = sure;
   let prev = null;
 
-  for (const m of [...chatUi.msgs, ...outs]) {
-    if (!prev || dayOf(prev.at) !== dayOf(m.at)) {
-      out += `<div class="rmday">${esc(dayOf(m.at))}</div>`;
+  for (const message of [...chatUi.msgs, ...outs]) {
+    if (!prev || dayOf(prev.at) !== dayOf(message.at)) {
+      out += `<div class="rmday">${esc(dayOf(message.at))}</div>`;
       prev = null;
     }
 
-    const cont = prev?.who === m.who && new Date(m.at) - new Date(prev.at) < 5 * 60_000;
-    const mine = m.who === me || !!m.out;
-    const o = m.out;
+    const cont = prev?.who === message.who && new Date(message.at) - new Date(prev.at) < 5 * 60_000;
+    const mine = message.who === me || !!message.out;
+    const outgoing = message.out;
 
-    const ed = !o && chatUi.editing?.id === m.id ? (chatUi.editing.saving ? ' editing saving' : ' editing') : '';
+    const ed =
+      !outgoing && chatUi.editing?.id === message.id ? (chatUi.editing.saving ? ' editing saving' : ' editing') : '';
 
     out +=
-      `<div class="rmmsg${cont ? ' cont' : ''}${mine ? ' mine' : ''}${o ? ` out${o.err ? ' fail' : ''}` : ''}${ed}" ${o ? `data-out="${o.key}"` : `data-id="${m.id}"`}>${chatFace(m.face)}` +
-      `<div class="rmwho"><b>${esc(m.who)}</b><time datetime="${esc(m.at)}" title="${esc(new Date(m.at).toLocaleString())}">${esc(chatClock(m.at))}</time>${m.edited ? `<span class="edited" title="Edited ${esc(new Date(m.edited).toLocaleString())}">edited</span>` : ''}${o && !o.err ? '<span class="vh">sending</span>' : ''}</div>` +
-      `<div class="rmbody">${m.poll ? chatPollHtml(m) : chatMd(m.body)}${o ? chatOutPics(o) : ''}</div>${
-        !o && !m.poll ? chatReactsHtml(m) : ''
+      `<div class="rmmsg${cont ? ' cont' : ''}${mine ? ' mine' : ''}${outgoing ? ` out${outgoing.err ? ' fail' : ''}` : ''}${ed}" ${outgoing ? `data-out="${outgoing.key}"` : `data-id="${message.id}"`}>${chatFace(message.face)}` +
+      `<div class="rmwho"><b>${esc(message.who)}</b><time datetime="${esc(message.at)}" title="${esc(new Date(message.at).toLocaleString())}">${esc(chatClock(message.at))}</time>${message.edited ? `<span class="edited" title="Edited ${esc(new Date(message.edited).toLocaleString())}">edited</span>` : ''}${outgoing && !outgoing.err ? '<span class="vh">sending</span>' : ''}</div>` +
+      `<div class="rmbody">${message.poll ? chatPollHtml(message) : chatMd(message.body)}${outgoing ? chatOutPics(outgoing) : ''}</div>${
+        !outgoing && !message.poll ? chatReactsHtml(message) : ''
       }${
-        o?.err
-          ? `<div class="rmfail" role="status"><span>Not sent: ${esc(o.err)}</span><button type="button" class="btn" data-rm="retry">Try again</button><button type="button" class="btn" data-rm="edit" title="Its words back in the box">Edit</button></div>`
-          : !o
+        outgoing?.err
+          ? `<div class="rmfail" role="status"><span>Not sent: ${esc(outgoing.err)}</span><button type="button" class="btn" data-rm="retry">Try again</button><button type="button" class="btn" data-rm="edit" title="Its words back in the box">Edit</button></div>`
+          : !outgoing
             ? `<div class="rmacts">${
-                !m.poll
+                !message.poll
                   ? `<button type="button" class="rmbtn" data-rm="rxpick" title="React" aria-label="React">${ICON.react}</button>`
                   : ''
               }${
-                mine && !m.poll
+                mine && !message.poll
                   ? `<button type="button" class="rmbtn" data-rm="editmsg" title="Edit your message — or ↑ in an empty box" aria-label="Edit">${ICON.edit}</button>`
                   : ''
               }${
@@ -1171,7 +1206,7 @@ function chatLogHtml() {
             : ''
       }</div>`;
 
-    prev = m;
+    prev = message;
   }
 
   return out;
@@ -1179,25 +1214,28 @@ function chatLogHtml() {
 
 /** A poll as the panel draws it: the question, an answer a row — a click votes for it, again takes it back —, its share
  *  of the people who answered, and who, you first. */
-function chatPollHtml(m) {
-  const p = m.poll;
+function chatPollHtml(message) {
+  const poll = message.poll;
   const me = state.chat.me?.login;
-  const votes = m.votes || [];
-  const people = new Set(votes.map(v => v.who)).size;
+  const votes = message.votes || [];
+  const people = new Set(votes.map(vote => vote.who)).size;
 
-  const rows = p.opts
-    .map(o => {
-      const vs = votes.filter(v => v.r === o.r).sort((a, b) => (b.who === me) - (a.who === me));
-      const mine = vs.some(v => v.who === me);
+  const rows = poll.opts
+    .map(option => {
+      const vs = votes
+        .filter(vote => vote.r === option.r)
+        .sort((left, right) => (right.who === me) - (left.who === me));
+
+      const mine = vs.some(vote => vote.who === me);
 
       return (
-        `<button type="button" class="rmopt${mine ? ' mine' : ''}" data-rm="vote" data-r="${esc(o.r)}" aria-pressed="${mine}" style="--p:${people ? Math.round((vs.length / people) * 100) : 0}%">` +
-        `<span class="rmol">${esc(o.label)}</span><b>${vs.length}</b>${
+        `<button type="button" class="rmopt${mine ? ' mine' : ''}" data-rm="vote" data-r="${esc(option.r)}" aria-pressed="${mine}" style="--p:${people ? Math.round((vs.length / people) * 100) : 0}%">` +
+        `<span class="rmol">${esc(option.label)}</span><b>${vs.length}</b>${
           vs.length
             ? `<span class="rmvs">${vs
                 .slice(0, 6)
-                .map(v => chatFace(v.face, 'vf'))
-                .join('')}<span>${esc(vs.map(v => (v.who === me ? 'you' : v.who)).join(', '))}</span></span>`
+                .map(vote => chatFace(vote.face, 'vf'))
+                .join('')}<span>${esc(vs.map(vote => (vote.who === me ? 'you' : vote.who)).join(', '))}</span></span>`
             : ''
         }</button>`
       );
@@ -1205,32 +1243,32 @@ function chatPollHtml(m) {
     .join('');
 
   return (
-    `<div class="rmpoll"><div class="rmq">${ICON.poll}<span>${esc(p.q)}</span></div>${rows}` +
-    `<div class="rmpf">${people ? `${people} answered` : 'Nobody has answered yet'} · ${p.many ? 'as many answers as you like' : 'one answer each'}</div></div>`
+    `<div class="rmpoll"><div class="rmq">${ICON.poll}<span>${esc(poll.q)}</span></div>${rows}` +
+    `<div class="rmpf">${people ? `${people} answered` : 'Nobody has answered yet'} · ${poll.many ? 'as many answers as you like' : 'one answer each'}</div></div>`
   );
 }
 
 /** Your answer, drawn at once and then as GitHub took it; on a poll of one answer each it moves yours. */
-async function chatVote(id, r) {
-  const m = chatUi.msgs.find(x => x.id === id);
+async function chatVote(id, kind) {
+  const message = chatUi.msgs.find(entry => entry.id === id);
   const me = state.chat.me;
 
-  if (!m?.poll || !me || chatUi.voting.has(id)) return;
+  if (!message?.poll || !me || chatUi.voting.has(id)) return;
 
-  const before = m.votes || [];
-  const had = before.some(v => v.who === me.login && v.r === r);
+  const before = message.votes || [];
+  const had = before.some(vote => vote.who === me.login && vote.r === kind);
 
   chatUi.voting.add(id);
 
   chatTake(
     [
       {
-        ...m,
+        ...message,
         votes: had
-          ? before.filter(v => !(v.who === me.login && v.r === r))
+          ? before.filter(vote => !(vote.who === me.login && vote.r === kind))
           : [
-              ...before.filter(v => m.poll.many || v.who !== me.login),
-              { r, who: me.login, face: me.face, at: new Date().toISOString() },
+              ...before.filter(vote => message.poll.many || vote.who !== me.login),
+              { r: kind, who: me.login, face: me.face, at: new Date().toISOString() },
             ],
       },
     ],
@@ -1240,15 +1278,15 @@ async function chatVote(id, r) {
   chatDraw();
 
   try {
-    const d = await api('POST', '/api/chat/vote', { id, r });
+    const result = await api('POST', '/api/chat/vote', { id, r: kind });
 
-    if (d.msg.n === chatUi.n) chatTake([d.msg], []);
-  } catch (e) {
-    const now = chatUi.msgs.find(x => x.id === id);
+    if (result.msg.n === chatUi.n) chatTake([result.msg], []);
+  } catch (error) {
+    const now = chatUi.msgs.find(entry => entry.id === id);
 
     if (now) chatTake([{ ...now, votes: before }], []);
     chatDraw();
-    note($(`#rmlog .rmmsg[data-id="${id}"] .rmq`) || $('#rmlog'), `Not voted: ${e.message}`, true);
+    note($(`#rmlog .rmmsg[data-id="${id}"] .rmq`) || $('#rmlog'), `Not voted: ${error.message}`, true);
   } finally {
     chatUi.voting.delete(id);
   }
@@ -1271,30 +1309,30 @@ function chatPollForm(fill = null) {
 }
 
 function chatPollDraw() {
-  const p = chatUi.poll;
+  const poll = chatUi.poll;
   const form = $('#rmform');
   const text = 'type="text" spellcheck="false" autocomplete="off"';
 
-  form.hidden = !p;
-  $('#rmrow').hidden = !!p;
+  form.hidden = !poll;
+  $('#rmrow').hidden = !!poll;
   chatTrayDraw();
-  if (!p) return;
+  if (!poll) return;
   const lunch = state.lunch?.set;
 
   form.innerHTML =
-    `<input ${text} data-pf="q" maxlength="200" placeholder="Ask the chat — Lunch at 12:30?" aria-label="The question" value="${esc(p.q)}">${p.answers
+    `<input ${text} data-pf="q" maxlength="200" placeholder="Ask the chat — Lunch at 12:30?" aria-label="The question" value="${esc(poll.q)}">${poll.answers
       .map(
-        (a, i) =>
-          `<div class="rma"><input ${text} data-pf="a" data-i="${i}" maxlength="80" placeholder="Answer ${i + 1}" aria-label="Answer ${i + 1}" value="${esc(a)}">${
-            p.answers.length > 2
-              ? `<button type="button" class="rmbtn" data-pf="drop" data-i="${i}" title="Drop this answer" aria-label="Drop answer ${i + 1}">${ICON.close}</button>`
+        (answer, index) =>
+          `<div class="rma"><input ${text} data-pf="a" data-i="${index}" maxlength="80" placeholder="Answer ${index + 1}" aria-label="Answer ${index + 1}" value="${esc(answer)}">${
+            poll.answers.length > 2
+              ? `<button type="button" class="rmbtn" data-pf="drop" data-i="${index}" title="Drop this answer" aria-label="Drop answer ${index + 1}">${ICON.close}</button>`
               : ''
           }</div>`,
       )
       .join(
         '',
-      )}<div class="rmpfoot"><button type="button" class="btn" data-pf="add"${p.answers.length >= 8 ? ' disabled title="Eight at most — one for each reaction GitHub has"' : ''}>Add an answer</button>` +
-    `<label><input type="checkbox" data-pf="many"${p.many ? ' checked' : ''}>Several each</label><span class="spacer"></span>${
+      )}<div class="rmpfoot"><button type="button" class="btn" data-pf="add"${poll.answers.length >= 8 ? ' disabled title="Eight at most — one for each reaction GitHub has"' : ''}>Add an answer</button>` +
+    `<label><input type="checkbox" data-pf="many"${poll.many ? ' checked' : ''}>Several each</label><span class="spacer"></span>${
       lunch
         ? '<button type="button" class="btn" data-pf="lunch" title="Who is going to lunch, and where — lunch\'s places">Lunch</button>'
         : ''
@@ -1303,87 +1341,91 @@ function chatPollDraw() {
 
 /** Lunch's poll: who is going and where — the day's places not closed, and Not today. */
 function lunchPoll() {
-  const l = state.lunch || {};
+  const lunch = state.lunch || {};
 
-  const places = (l.places || [])
-    .filter(p => p.state !== 'closed')
-    .map(p => p.name)
+  const places = (lunch.places || [])
+    .filter(place => place.state !== 'closed')
+    .map(place => place.name)
     .slice(0, 7);
 
   return {
-    q: l.at ? `Lunch at ${l.at}?` : 'Lunch?',
+    q: lunch.at ? `Lunch at ${lunch.at}?` : 'Lunch?',
     answers: [...(places.length ? places : ['Going']), 'Not today'],
     many: false,
   };
 }
 
 async function chatPollPost(btn) {
-  const p = chatUi.poll;
+  const poll = chatUi.poll;
 
-  if (!p || chatUi.sending) return;
+  if (!poll || chatUi.sending) return;
   chatUi.sending = true;
   btn.disabled = true;
 
   try {
-    const d = await api('POST', '/api/chat/poll', { q: p.q, answers: p.answers.filter(a => a.trim()), many: p.many });
+    const result = await api('POST', '/api/chat/poll', {
+      q: poll.q,
+      answers: poll.answers.filter(answer => answer.trim()),
+      many: poll.many,
+    });
 
-    if (d.msg.n === chatUi.n) chatTake([d.msg], []);
+    if (result.msg.n === chatUi.n) chatTake([result.msg], []);
     chatPollForm(false);
     chatDraw(true);
-  } catch (e) {
+  } catch (error) {
     btn.disabled = false;
-    note(btn, `Not asked: ${e.message}`, true);
+    note(btn, `Not asked: ${error.message}`, true);
   } finally {
     chatUi.sending = false;
   }
 }
 
-$('#rmform').addEventListener('input', e => {
-  const p = chatUi.poll;
-  const f = e.target.dataset.pf;
+$('#rmform').addEventListener('input', event => {
+  const poll = chatUi.poll;
+  const field = event.target.dataset.pf;
 
-  if (!p) return;
-  if (f === 'q') p.q = e.target.value;
-  else if (f === 'a') p.answers[Number(e.target.dataset.i)] = e.target.value;
-  else if (f === 'many') p.many = e.target.checked;
+  if (!poll) return;
+  if (field === 'q') poll.q = event.target.value;
+  else if (field === 'a') poll.answers[Number(event.target.dataset.i)] = event.target.value;
+  else if (field === 'many') poll.many = event.target.checked;
 });
 
-$('#rmform').addEventListener('click', e => {
-  const b = e.target.closest('button[data-pf]');
-  const p = chatUi.poll;
+$('#rmform').addEventListener('click', event => {
+  const button = event.target.closest('button[data-pf]');
+  const poll = chatUi.poll;
 
-  if (!b || !p) return;
-  const f = b.dataset.pf;
+  if (!button || !poll) return;
+  const action = button.dataset.pf;
 
-  if (f === 'add' && p.answers.length < 8) {
-    p.answers.push('');
+  if (action === 'add' && poll.answers.length < 8) {
+    poll.answers.push('');
     chatPollDraw();
-    $(`#rmform [data-pf="a"][data-i="${p.answers.length - 1}"]`).focus();
-  } else if (f === 'drop') {
-    p.answers.splice(Number(b.dataset.i), 1);
+    $(`#rmform [data-pf="a"][data-i="${poll.answers.length - 1}"]`).focus();
+  } else if (action === 'drop') {
+    poll.answers.splice(Number(button.dataset.i), 1);
     chatPollDraw();
     $('#rmform [data-pf="a"]').focus();
-  } else if (f === 'lunch') chatPollForm(lunchPoll());
-  else if (f === 'cancel') chatPollForm(false);
-  else if (f === 'post') chatPollPost(b);
+  } else if (action === 'lunch') chatPollForm(lunchPoll());
+  else if (action === 'cancel') chatPollForm(false);
+  else if (action === 'post') chatPollPost(button);
 });
 
 // ⏎ walks down the form, a new answer past the last; ⌘⏎ asks
-$('#rmform').addEventListener('keydown', e => {
-  if (e.key !== 'Enter' || e.isComposing || e.target.type === 'checkbox') return;
-  e.preventDefault();
+$('#rmform').addEventListener('keydown', event => {
+  if (event.key !== 'Enter' || event.isComposing || event.target.type === 'checkbox') return;
+  event.preventDefault();
 
-  const p = chatUi.poll;
-  const f = e.target.dataset.pf;
-  const i = f === 'q' ? -1 : Number(e.target.dataset.i);
+  const poll = chatUi.poll;
+  const field = event.target.dataset.pf;
+  const index = field === 'q' ? -1 : Number(event.target.dataset.i);
 
-  if (e.metaKey || e.ctrlKey) return chatPollPost($('#rmform [data-pf="post"]'));
-  if (f !== 'q' && f !== 'a') return;
-  if (i + 1 < p.answers.length) return $(`#rmform [data-pf="a"][data-i="${i + 1}"]`).focus();
-  if (e.target.value.trim() && p.answers.length < 8) {
-    p.answers.push('');
+  if (event.metaKey || event.ctrlKey) return chatPollPost($('#rmform [data-pf="post"]'));
+  if (field !== 'q' && field !== 'a') return;
+  if (index + 1 < poll.answers.length) return $(`#rmform [data-pf="a"][data-i="${index + 1}"]`).focus();
+  if (event.target.value.trim() && poll.answers.length < 8) {
+    poll.answers.push('');
     chatPollDraw();
-    $(`#rmform [data-pf="a"][data-i="${p.answers.length - 1}"]`).focus();
+    $(`#rmform [data-pf="a"][data-i="${poll.answers.length - 1}"]`).focus();
   } else $('#rmform [data-pf="post"]').focus();
 });
 
@@ -1392,10 +1434,10 @@ function chatDraw(toEnd = false) {
 
   if (!dlg.open) return;
 
-  const c = state.chat;
-  const admin = c.role === 'admin';
+  const chat = state.chat;
+  const admin = chat.role === 'admin';
   const people = chatUi.view === 'people';
-  const r = c.room;
+  const room = chat.room;
 
   $('#rmTitle').textContent = people ? 'People' : 'Chat';
   $('#rmPeople').hidden = !admin;
@@ -1403,7 +1445,7 @@ function chatDraw(toEnd = false) {
   $('#rmPeople').setAttribute('aria-pressed', String(people));
   $('#rmlog').hidden = people;
   $('#rmpeople').hidden = !people;
-  $('#rmfoot').hidden = people || r == null;
+  $('#rmfoot').hidden = people || room == null;
   if (people) return chatPeopleDraw();
 
   const log = $('#rmlog');
@@ -1419,7 +1461,7 @@ function chatDraw(toEnd = false) {
 
   $('#rmediting').hidden = !chatUi.editing;
   $('#rmbox').placeholder = chatUi.editing ? 'Your message — ⏎ saves, esc cancels' : 'Message — ⏎ sends, ⇧⏎ a new line';
-  const pics = c.pics;
+  const pics = chat.pics;
 
   $('#rmPicBtn').setAttribute('aria-disabled', String(!pics?.can));
 
@@ -1429,17 +1471,17 @@ function chatDraw(toEnd = false) {
 
   setHtml(
     $('#rmsay'),
-    c.repo
-      ? `<span>${esc(c.me?.login ? `as ${c.me.login}` : '')}</span><a href="https://github.com/${esc(c.repo)}${r != null ? `/issues/${r}` : ''}" data-rm="gh" title="The chat on GitHub — its messages are this issue's comments">${esc(c.repo)}</a>`
+    chat.repo
+      ? `<span>${esc(chat.me?.login ? `as ${chat.me.login}` : '')}</span><a href="https://github.com/${esc(chat.repo)}${room != null ? `/issues/${room}` : ''}" data-rm="gh" title="The chat on GitHub — its messages are this issue's comments">${esc(chat.repo)}</a>`
       : '',
   );
 }
 
 function chatGrow() {
-  const b = $('#rmbox');
+  const box = $('#rmbox');
 
-  b.style.height = 'auto';
-  b.style.height = `${Math.min(140, b.scrollHeight + 2)}px`;
+  box.style.height = 'auto';
+  box.style.height = `${Math.min(140, box.scrollHeight + 2)}px`;
 }
 
 /** Your message, in the log as ⏎ is pressed (2026-10-27; the box waited on GitHub before): drawn on its way, then as
@@ -1455,7 +1497,7 @@ function chatSend() {
   box.value = '';
   chatGrow();
 
-  const o = {
+  const outgoing = {
     key: ++chatUi.outSeq,
     n: chatUi.n,
     body,
@@ -1465,30 +1507,32 @@ function chatSend() {
   };
 
   chatTrayDraw();
-  chatUi.out.push(o);
+  chatUi.out.push(outgoing);
   chatDraw(true);
-  chatPost(o);
+  chatPost(outgoing);
 }
 
 /** Sent once its pictures are up: the words, then each picture as markdown — as GitHub's own uploader writes one. */
-function chatPost(o) {
+function chatPost(outgoing) {
   chatUi.sendQ = chatUi.sendQ.then(async () => {
     try {
-      await Promise.all(o.pics.map(p => p.up));
-      const bad = o.pics.find(p => p.err);
+      await Promise.all(outgoing.pics.map(pic => pic.up));
+      const bad = outgoing.pics.find(pic => pic.err);
 
       if (bad) throw new Error(`${bad.name}: ${bad.err}`);
 
-      o.final = o.pics.length
-        ? [o.body.trim(), ...o.pics.map(p => `![${mdAlt(p.name)}](${p.url})`)].filter(Boolean).join('\n\n')
-        : o.body;
+      outgoing.final = outgoing.pics.length
+        ? [outgoing.body.trim(), ...outgoing.pics.map(pic => `![${mdAlt(pic.name)}](${pic.url})`)]
+            .filter(Boolean)
+            .join('\n\n')
+        : outgoing.body;
 
-      const d = await api('POST', '/api/chat/send', { body: o.final });
+      const result = await api('POST', '/api/chat/send', { body: outgoing.final });
 
-      chatUi.out = chatUi.out.filter(x => x !== o);
-      if (d.msg.n === chatUi.n) chatTake([d.msg], []);
-    } catch (e) {
-      o.err = e.message;
+      chatUi.out = chatUi.out.filter(queued => queued !== outgoing);
+      if (result.msg.n === chatUi.n) chatTake([result.msg], []);
+    } catch (error) {
+      outgoing.err = error.message;
     }
 
     chatDraw();
@@ -1498,17 +1542,17 @@ function chatPost(o) {
 /** A message that did not go: sent again, as the newest (a picture that did not go up, up again) — or its words back
  *  in the box, before what is typed there, and its pictures in the tray. */
 function chatRetry(key, edit) {
-  const o = chatUi.out.find(x => x.key === key);
+  const outgoing = chatUi.out.find(queued => queued.key === key);
 
-  if (!o) return;
-  chatUi.out = chatUi.out.filter(x => x !== o);
-  for (const p of o.pics) if (p.err) chatPicUp(p);
+  if (!outgoing) return;
+  chatUi.out = chatUi.out.filter(queued => queued !== outgoing);
+  for (const pic of outgoing.pics) if (pic.err) chatPicUp(pic);
 
   if (edit) {
     const box = $('#rmbox');
 
-    box.value = o.body + (box.value.trim() ? `\n${box.value}` : '');
-    chatUi.pics.unshift(...o.pics);
+    box.value = outgoing.body + (box.value.trim() ? `\n${box.value}` : '');
+    chatUi.pics.unshift(...outgoing.pics);
     chatTrayDraw();
     chatGrow();
     chatDraw();
@@ -1516,10 +1560,10 @@ function chatRetry(key, edit) {
     return;
   }
 
-  Object.assign(o, { at: new Date().toISOString(), err: null, final: null });
-  chatUi.out.push(o);
+  Object.assign(outgoing, { at: new Date().toISOString(), err: null, final: null });
+  chatUi.out.push(outgoing);
   chatDraw(true);
-  chatPost(o);
+  chatPost(outgoing);
 }
 
 /** While the panel is up the server looks often (POST /api/chat/watch, every 15 s), else every 20 s. */
@@ -1550,34 +1594,39 @@ async function chatPeopleLoad() {
   try {
     chatUi.people = await api('GET', '/api/chat/people');
     chatUi.peopleErr = null;
-  } catch (e) {
-    chatUi.peopleErr = e.message;
+  } catch (error) {
+    chatUi.peopleErr = error.message;
   }
 
   chatDraw();
 }
 
 function chatPeopleDraw() {
-  const p = chatUi.people;
-  const q = $('#rmfind').value.trim().replace(/^@/, '').toLowerCase();
-  const c = state.chat;
+  const people = chatUi.people;
+  const query = $('#rmfind').value.trim().replace(/^@/, '').toLowerCase();
+  const chat = state.chat;
 
-  if (!p) return setHtml($('#rmplist'), `<div class="rmnone">${esc(chatUi.peopleErr || 'Asking GitHub…')}</div>`);
+  if (!people) return setHtml($('#rmplist'), `<div class="rmnone">${esc(chatUi.peopleErr || 'Asking GitHub…')}</div>`);
 
-  const hit = l => !q || l.toLowerCase().includes(q);
+  const hit = login => !query || login.toLowerCase().includes(query);
   const ago = ts => (ts ? `${rel(ts)} ago` : '');
 
   const row = (login, face, small, btns, sure = '') =>
     `<div class="rmp" data-login="${esc(login)}">${chatFace(face)}<span><b>${esc(login)}</b>${small ? `<small>${esc(small)}</small>` : ''}</span><span>${btns}</span>${sure}</div>`;
 
   const known = new Set(
-    [c.me?.login, ...p.members.map(m => m.login), ...p.invites.map(i => i.login), ...p.suggest.map(s => s.login)]
+    [
+      chat.me?.login,
+      ...people.members.map(member => member.login),
+      ...people.invites.map(invite => invite.login),
+      ...people.suggest.map(suggested => suggested.login),
+    ]
       .filter(Boolean)
-      .map(l => l.toLowerCase()),
+      .map(login => login.toLowerCase()),
   );
 
   const typed =
-    q && /^[a-z0-9][a-z0-9-]{0,38}$/i.test(q) && !known.has(q)
+    query && /^[a-z0-9][a-z0-9-]{0,38}$/i.test(query) && !known.has(query)
       ? row(
           $('#rmfind').value.trim().replace(/^@/, ''),
           null,
@@ -1586,46 +1635,46 @@ function chatPeopleDraw() {
         )
       : '';
 
-  const sug = p.suggest
-    .filter(s => hit(s.login))
-    .map(s =>
+  const sug = people.suggest
+    .filter(suggested => hit(suggested.login))
+    .map(suggested =>
       row(
-        s.login,
-        s.face,
-        `${s.prs} PR${s.prs === 1 ? '' : 's'} in your chats`,
+        suggested.login,
+        suggested.face,
+        `${suggested.prs} PR${suggested.prs === 1 ? '' : 's'} in your chats`,
         '<button type="button" class="btn" data-rm="invite">Invite</button>',
       ),
     )
     .join('');
 
-  const inv = p.invites
-    .filter(i => hit(i.login))
-    .map(i =>
+  const inv = people.invites
+    .filter(invite => hit(invite.login))
+    .map(invite =>
       row(
-        i.login,
-        i.face,
-        i.expired ? 'expired' : `invited ${ago(i.at)}`,
-        `${i.expired ? '<button type="button" class="btn" data-rm="invite">Again</button>' : ''}<button type="button" class="btn" data-rm="cancel" data-id="${i.id}">Cancel</button>`,
+        invite.login,
+        invite.face,
+        invite.expired ? 'expired' : `invited ${ago(invite.at)}`,
+        `${invite.expired ? '<button type="button" class="btn" data-rm="invite">Again</button>' : ''}<button type="button" class="btn" data-rm="cancel" data-id="${invite.id}">Cancel</button>`,
       ),
     )
     .join('');
 
-  const mem = p.members
-    .filter(m => hit(m.login))
-    .map(m =>
+  const mem = people.members
+    .filter(member => hit(member.login))
+    .map(member =>
       row(
-        m.login,
-        m.face,
-        m.role || '',
+        member.login,
+        member.face,
+        member.role || '',
         '<button type="button" class="btn danger" data-rm="sureRemove">Remove…</button>',
-        chatUi.sure === `remove:${m.login}`
-          ? `<div class="rmsure" role="group"><span>Remove ${esc(m.login)}? They lose the chat and its history.</span><button type="button" class="btn" data-rm="unsure">Cancel</button><button type="button" class="btn danger" data-rm="remove">Remove</button></div>`
+        chatUi.sure === `remove:${member.login}`
+          ? `<div class="rmsure" role="group"><span>Remove ${esc(member.login)}? They lose the chat and its history.</span><button type="button" class="btn" data-rm="unsure">Cancel</button><button type="button" class="btn danger" data-rm="remove">Remove</button></div>`
           : '',
       ),
     )
     .join('');
 
-  const you = c.me ? row(c.me.login, c.me.face, 'you · its admin', '') : '';
+  const you = chat.me ? row(chat.me.login, chat.me.face, 'you · its admin', '') : '';
 
   setHtml(
     $('#rmplist'),
@@ -1633,32 +1682,32 @@ function chatPeopleDraw() {
       (typed ? `<h6>Invite</h6>${typed}` : '') +
       (sug ? `<h6>From your chats’ PRs</h6>${sug}` : '') +
       (inv ? `<h6>Invited</h6>${inv}` : '')
-    }<h6>In the chat</h6>${you}${mem || (q ? '' : '<div class="rmnone">Nobody else yet — invite someone above.</div>')}` +
+    }<h6>In the chat</h6>${you}${mem || (query ? '' : '<div class="rmnone">Nobody else yet — invite someone above.</div>')}` +
       `<p class="rmnone" style="padding: 12px 0 0">An invitation is GitHub’s: they join from Settings › Chat on their board, or from GitHub’s email.</p>`,
   );
 }
 
 async function chatAct(what, body, anchor, done) {
   try {
-    const d = await api('POST', `/api/chat/${what}`, body);
+    const result = await api('POST', `/api/chat/${what}`, body);
 
-    done?.(d);
-  } catch (e) {
-    note(anchor, e.message, true);
+    done?.(result);
+  } catch (error) {
+    note(anchor, error.message, true);
   }
 }
 
-$('#room').addEventListener('click', e => {
-  if (!$('#rmrxp').hidden && !e.target.closest('#rmrxp, [data-rm="rxpick"]')) chatRxClose();
-  if (!$('#rmemo').hidden && !e.target.closest('#rmemo, #rmEmoBtn')) chatEmoOpen(false);
-  if (e.target.closest('#rmClose')) return $('#room').close();
-  if (e.target.closest('#rmEmoBtn')) return chatEmoOpen();
-  const eb = e.target.closest('#rmemog .rmeb');
+$('#room').addEventListener('click', event => {
+  if (!$('#rmrxp').hidden && !event.target.closest('#rmrxp, [data-rm="rxpick"]')) chatRxClose();
+  if (!$('#rmemo').hidden && !event.target.closest('#rmemo, #rmEmoBtn')) chatEmoOpen(false);
+  if (event.target.closest('#rmClose')) return $('#room').close();
+  if (event.target.closest('#rmEmoBtn')) return chatEmoOpen();
+  const eb = event.target.closest('#rmemog .rmeb');
 
   if (eb) return chatEmoPick(eb.dataset.emo);
-  if (e.target.closest('#rmPollBtn')) return chatPollForm(chatUi.poll ? false : {});
+  if (event.target.closest('#rmPollBtn')) return chatPollForm(chatUi.poll ? false : {});
 
-  if (e.target.closest('#rmPeople')) {
+  if (event.target.closest('#rmPeople')) {
     chatUi.view = chatUi.view === 'people' ? 'log' : 'people';
     chatUi.sure = null;
 
@@ -1671,26 +1720,26 @@ $('#room').addEventListener('click', e => {
     return;
   }
 
-  const more = e.target.closest('#rmMore');
+  const more = event.target.closest('#rmMore');
 
   if (more) {
-    const c = state.chat;
-    const b = more.getBoundingClientRect();
+    const chat = state.chat;
+    const rect = more.getBoundingClientRect();
 
     return ctxShow(
       [
-        ...(c.room != null
+        ...(chat.room != null
           ? [
               {
                 t: 'The chat on GitHub',
-                fn: () => openExternal(`https://github.com/${c.repo}/issues/${c.room}`, { s: null }),
+                fn: () => openExternal(`https://github.com/${chat.repo}/issues/${chat.room}`, { s: null }),
               },
               { hr: true },
             ]
           : []),
         { t: 'Chat settings…', fn: () => settingsAt('chat', '#chatSet') },
         {
-          t: c.role === 'admin' ? 'Stop the chat on this board…' : 'Leave the chat…',
+          t: chat.role === 'admin' ? 'Stop the chat on this board…' : 'Leave the chat…',
           warn: true,
           fn: () => {
             chatUi.view = 'log';
@@ -1699,121 +1748,133 @@ $('#room').addEventListener('click', e => {
           },
         },
       ],
-      b.left,
-      b.bottom + 4,
+      rect.left,
+      rect.bottom + 4,
       'chat',
     );
   }
 
-  const pic = e.target.closest('#rmlog .rmpic.on');
+  const pic = event.target.closest('#rmlog .rmpic.on');
 
   if (pic) return pic.classList.contains('bad') ? openExternal(pic.dataset.pic, { s: null }) : chatView(pic);
 
-  if (e.target.closest('#rmPicBtn')) {
+  if (event.target.closest('#rmPicBtn')) {
     return state.chat.pics?.can
       ? $('#rmFile').click()
       : note($('#rmPicBtn'), `No pictures from here: ${state.chat.pics?.why || 'the chat is still being read'}`, true);
   }
 
-  const a = e.target.closest('#rmlog a[href], #rmsay a[href]');
+  const link = event.target.closest('#rmlog a[href], #rmsay a[href]');
 
-  if (a) {
-    e.preventDefault();
-    openExternal(a.href, { s: null });
+  if (link) {
+    event.preventDefault();
+    openExternal(link.href, { s: null });
     return;
   } // the system's browser: never a chat's pane
 
-  const act = e.target.closest('[data-rm]')?.dataset.rm;
-  const b = e.target.closest('[data-rm]');
+  const act = event.target.closest('[data-rm]')?.dataset.rm;
+  const control = event.target.closest('[data-rm]');
 
   if (!act) return;
 
-  const login = b.closest('.rmp')?.dataset.login;
-  const id = Number(b.closest('.rmmsg')?.dataset.id);
+  const login = control.closest('.rmp')?.dataset.login;
+  const id = Number(control.closest('.rmmsg')?.dataset.id);
 
   if (act === 'unsure') {
     chatUi.sure = null;
     chatDraw();
-  } else if (act === 'vote') chatVote(id, b.dataset.r);
-  else if (act === 'react') chatReact(id, b.dataset.r);
+  } else if (act === 'vote') chatVote(id, control.dataset.r);
+  else if (act === 'react') chatReact(id, control.dataset.r);
   else if (act === 'rxpick') {
     if (chatUi.rxFor === id && !$('#rmrxp').hidden) chatRxClose();
-    else chatRxOpen(id, b);
+    else chatRxOpen(id, control);
   } else if (act === 'editmsg') chatEditStart(id);
   else if (act === 'unedit') chatEditEnd(true);
-  else if (act === 'retry' || act === 'edit') chatRetry(Number(b.closest('.rmmsg')?.dataset.out), act === 'edit');
+  else if (act === 'retry' || act === 'edit') chatRetry(Number(control.closest('.rmmsg')?.dataset.out), act === 'edit');
   else if (act === 'unpic') {
-    const k = Number(b.closest('.rmtp')?.dataset.k);
+    const key = Number(control.closest('.rmtp')?.dataset.k);
 
-    chatUi.pics = chatUi.pics.filter(p => p.key !== k);
+    chatUi.pics = chatUi.pics.filter(added => added.key !== key);
     chatTrayDraw();
     $('#rmbox').focus();
   } else if (act === 'del') {
-    b.closest('.rmmsg').classList.add('going');
+    control.closest('.rmmsg').classList.add('going');
 
-    chatAct('delete', { id }, b, () => {
+    chatAct('delete', { id }, control, () => {
       chatTake([], [id]);
       chatDraw();
     });
   } else if (act === 'leave') {
-    chatAct('leave', {}, b, d => {
-      state.chat = d;
+    chatAct('leave', {}, control, latest => {
+      state.chat = latest;
       $('#room').close();
       chatChanged();
     });
   } else if (act === 'invite') {
-    chatAct('invite', { login }, b, d => {
-      chatUi.people = d;
+    chatAct('invite', { login }, control, people => {
+      chatUi.people = people;
       $('#rmfind').value = '';
       chatDraw();
 
       note(
         $('#rmfind'),
-        d.invited ? `Invited ${d.login} — they join from their board, or GitHub's email` : `${d.login} is in already`,
+        people.invited
+          ? `Invited ${people.login} — they join from their board, or GitHub's email`
+          : `${people.login} is in already`,
       );
     });
   } else if (act === 'cancel') {
-    chatAct('cancel', { id: Number(b.dataset.id) }, b, d => {
-      chatUi.people = d;
+    chatAct('cancel', { id: Number(control.dataset.id) }, control, people => {
+      chatUi.people = people;
       chatDraw();
     });
   } else if (act === 'sureRemove') {
     chatUi.sure = `remove:${login}`;
     chatDraw();
   } else if (act === 'remove') {
-    chatAct('remove', { login }, b, d => {
-      chatUi.people = d;
+    chatAct('remove', { login }, control, people => {
+      chatUi.people = people;
       chatUi.sure = null;
       chatDraw();
     });
   }
 });
 
-$('#rmbox').addEventListener('keydown', e => {
-  if (e.isComposing) return;
-  const g = chatUi.sug;
+$('#rmbox').addEventListener('keydown', event => {
+  if (event.isComposing) return;
+  const suggestions = chatUi.sug;
 
-  if (g && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-    e.preventDefault();
-    g.sel = (g.sel + (e.key === 'ArrowDown' ? 1 : g.list.length - 1)) % g.list.length;
+  if (suggestions && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+    event.preventDefault();
+
+    suggestions.sel =
+      (suggestions.sel + (event.key === 'ArrowDown' ? 1 : suggestions.list.length - 1)) % suggestions.list.length;
+
     return chatSugDraw();
   }
 
-  if (g && (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey))) {
-    e.preventDefault();
+  if (suggestions && (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey))) {
+    event.preventDefault();
     return chatSugPick();
   }
 
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
     chatSend();
-  } else if (e.key === 'ArrowUp' && !e.shiftKey && !e.metaKey && !e.altKey && !$('#rmbox').value && !chatUi.editing) {
+  } else if (
+    event.key === 'ArrowUp' &&
+    !event.shiftKey &&
+    !event.metaKey &&
+    !event.altKey &&
+    !$('#rmbox').value &&
+    !chatUi.editing
+  ) {
     // your last message, back in the box to edit (never a poll)
     const me = state.chat.me?.login;
-    const last = chatUi.msgs.findLast(m => m.who === me && !m.poll);
+    const last = chatUi.msgs.findLast(message => message.who === me && !message.poll);
 
     if (last) {
-      e.preventDefault();
+      event.preventDefault();
       chatEditStart(last.id);
     }
   }
@@ -1829,42 +1890,42 @@ $('#rmbox').addEventListener('blur', () =>
 );
 
 // a picture pasted (a screenshot's ⌃⇧⌘4, an image copied): to the tray — what has words to paste pastes them instead
-$('#rmbox').addEventListener('paste', e => {
-  const files = [...(e.clipboardData?.files || [])].filter(f => PIC_TYPES.test(f.type));
+$('#rmbox').addEventListener('paste', event => {
+  const files = [...(event.clipboardData?.files || [])].filter(file => PIC_TYPES.test(file.type));
 
-  if (!files.length || e.clipboardData.types.includes('text/plain')) return;
-  e.preventDefault();
+  if (!files.length || event.clipboardData.types.includes('text/plain')) return;
+  event.preventDefault();
   chatPicsAdd(files);
 });
 
-$('#rmFile').addEventListener('change', e => {
-  const files = [...e.target.files];
+$('#rmFile').addEventListener('change', event => {
+  const files = [...event.target.files];
 
-  e.target.value = '';
+  event.target.value = '';
   chatPicsAdd(files);
 });
 
 // a file dropped on the panel is the chat's, not the drawer's (attach.js's drop, on the document, never hears it)
-const roomFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+const roomFiles = event => [...(event.dataTransfer?.types || [])].includes('Files');
 
-$('#room').addEventListener('dragover', e => {
-  if (!roomFiles(e)) return;
-  e.preventDefault();
-  e.stopPropagation();
-  e.dataTransfer.dropEffect = 'copy';
+$('#room').addEventListener('dragover', event => {
+  if (!roomFiles(event)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  event.dataTransfer.dropEffect = 'copy';
   $('#room').classList.add('dropping');
 });
 
-$('#room').addEventListener('dragleave', e => {
-  if (!$('#room').contains(e.relatedTarget)) $('#room').classList.remove('dropping');
+$('#room').addEventListener('dragleave', event => {
+  if (!$('#room').contains(event.relatedTarget)) $('#room').classList.remove('dropping');
 });
 
-$('#room').addEventListener('drop', e => {
-  if (!roomFiles(e)) return;
-  e.preventDefault();
-  e.stopPropagation();
+$('#room').addEventListener('drop', event => {
+  if (!roomFiles(event)) return;
+  event.preventDefault();
+  event.stopPropagation();
   $('#room').classList.remove('dropping');
-  chatPicsAdd([...e.dataTransfer.files]);
+  chatPicsAdd([...event.dataTransfer.files]);
 });
 
 /** The app's Finder drop (peixDrop: paths, WebKit never sees the drag): the chat's when its panel has the keys and every
@@ -1875,7 +1936,7 @@ function chatTakesDrop(paths) {
     !$('#room').contains(document.activeElement) ||
     chatUi.view !== 'log' ||
     !paths.length ||
-    !paths.every(p => /\.(png|jpe?g|gif|webp)$/i.test(String(p)))
+    !paths.every(path => /\.(png|jpe?g|gif|webp)$/i.test(String(path)))
   ) {
     return false;
   }
@@ -1895,9 +1956,9 @@ $('#rmlog').addEventListener(
 
 $('#rmfind').addEventListener('input', () => chatPeopleDraw());
 
-$('#rmfind').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
+$('#rmfind').addEventListener('keydown', event => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
     $('#rmplist').querySelector('[data-rm="invite"]')?.click();
   }
 });
@@ -1982,29 +2043,31 @@ function chatChanged() {
   chatSeenNow();
 }
 
-function chatMsgs(d) {
-  if (d.n !== chatUi.n) return;
+function chatMsgs(change) {
+  if (change.n !== chatUi.n) return;
 
   // a new one of yours takes the place of the first on its way with its words (chatSend): the stream can bring it
   // before the send's own answer
   const me = state.chat.me?.login;
-  const held = new Set(chatUi.msgs.map(m => m.id));
+  const held = new Set(chatUi.msgs.map(message => message.id));
 
-  for (const m of d.add || []) {
-    const o =
-      !held.has(m.id) &&
-      m.who === me &&
+  for (const message of change.add || []) {
+    const outgoing =
+      !held.has(message.id) &&
+      message.who === me &&
       chatUi.out.find(
-        x =>
-          !x.err && x.n === m.n && (x.final ?? x.body).replace(/\r\n?/g, '\n').trim() === String(m.body ?? '').trim(),
+        queued =>
+          !queued.err &&
+          queued.n === message.n &&
+          (queued.final ?? queued.body).replace(/\r\n?/g, '\n').trim() === String(message.body ?? '').trim(),
       );
 
-    if (o) chatUi.out = chatUi.out.filter(x => x !== o);
+    if (outgoing) chatUi.out = chatUi.out.filter(queued => queued !== outgoing);
   }
 
-  chatTake(d.add || [], d.gone || []);
+  chatTake(change.add || [], change.gone || []);
 
-  if (chatUi.editing && (d.gone || []).includes(chatUi.editing.id)) {
+  if (chatUi.editing && (change.gone || []).includes(chatUi.editing.id)) {
     chatEditEnd(true);
     note($('#rmbox'), 'The message you were editing was deleted', true);
   }
@@ -2015,7 +2078,7 @@ function chatMsgs(d) {
 
 /** A message from someone else, while the room is not in front of you: a chime in front, else the app's banner or the
  *  browser's — never with a Reply… (no session), and a click opens the room. */
-function chatAlert(a) {
+function chatAlert(alert) {
   if ($('#room').open && chatUi.view === 'log' && document.visibilityState === 'visible' && document.hasFocus()) return;
   if (document.visibilityState === 'visible' && document.hasFocus()) chime('reply');
 
@@ -2023,25 +2086,29 @@ function chatAlert(a) {
     post({
       type: 'alert',
       kind: 'chat',
-      heading: a.heading || 'Chat',
+      heading: alert.heading || 'Chat',
       project: '',
-      title: a.title || '',
-      snippet: a.snippet || '',
+      title: alert.title || '',
+      snippet: alert.snippet || '',
       sessionId: '',
       hash: '',
       serverNotify: !!state.serverNotify,
-      quiet: !!a.quiet,
+      quiet: !!alert.quiet,
       drawer: false,
     });
   }
 
-  if (a.quiet || !('Notification' in window) || Notification.permission !== 'granted') return;
-  const n = new Notification(a.heading || 'Chat', { body: `${a.title}\n${a.snippet || ''}`, tag: 'chat' });
+  if (alert.quiet || !('Notification' in window) || Notification.permission !== 'granted') return;
 
-  n.onclick = () => {
+  const notification = new Notification(alert.heading || 'Chat', {
+    body: `${alert.title}\n${alert.snippet || ''}`,
+    tag: 'chat',
+  });
+
+  notification.onclick = () => {
     window.focus();
     chatOpen();
-    n.close();
+    notification.close();
   };
 }
 
@@ -2050,61 +2117,65 @@ function chatAlert(a) {
 // (`missing`), with Forget it; on — the repo, who you are in it, the people (the admin's), and leaving. What is typed
 // is chatUi's, so a redraw keeps it.
 function chatSetHtml() {
-  const c = state.chat;
+  const chat = state.chat;
   const text = 'type="text" spellcheck="false" autocomplete="off"';
 
   const group = (title, kw, rows, foot) =>
     `<section class="sgrp" data-kw="${kw}">${title ? `<h6 class="sgh">${title}</h6>` : ''}<div class="slist">${rows}</div>${foot ? `<p class="sgf">${foot}</p>` : ''}</section>`;
 
-  const row = (b, small, ctl) =>
-    `<div class="srow set"><span class="sl"><b>${b}</b><small>${small}</small></span>${ctl}</div>`;
+  const row = (label, small, ctl) =>
+    `<div class="srow set"><span class="sl"><b>${label}</b><small>${small}</small></span>${ctl}</div>`;
 
-  const invites = (c.invites || [])
-    .map(i =>
+  const invites = (chat.invites || [])
+    .map(invite =>
       row(
-        `${chatFace(i.face)} ${esc(i.by || 'Someone')} invited you`,
-        `to the chat in ${esc(i.repo)}${i.expired ? ' — expired: ask for another' : ''}`,
-        `<button type="button" class="btn" data-chat="join" data-id="${i.id}"${i.expired ? ' disabled' : ''}>Join</button>`,
+        `${chatFace(invite.face)} ${esc(invite.by || 'Someone')} invited you`,
+        `to the chat in ${esc(invite.repo)}${invite.expired ? ' — expired: ask for another' : ''}`,
+        `<button type="button" class="btn" data-chat="join" data-id="${invite.id}"${invite.expired ? ' disabled' : ''}>Join</button>`,
       ),
     )
     .join('');
 
-  if (!c.on || c.missing) {
-    const p = chatUi.places;
-    const owner = p ? p.orgs[0]?.login || p.me.login : null;
-    const others = p ? p.orgs.slice(1).map(o => o.login) : [];
+  if (!chat.on || chat.missing) {
+    const places = chatUi.places;
+    const owner = places ? places.orgs[0]?.login || places.me.login : null;
+    const others = places ? places.orgs.slice(1).map(org => org.login) : [];
 
     let name = 'chat';
 
-    for (let i = 2; p?.chats.some(x => x.repo.toLowerCase() === `${owner}/${name}`.toLowerCase()); i++) {
-      name = `chat-${i}`;
+    for (
+      let number = 2;
+      places?.chats.some(existing => existing.repo.toLowerCase() === `${owner}/${name}`.toLowerCase());
+      number++
+    ) {
+      name = `chat-${number}`;
     }
 
     const where = chatUi.placesErr
       ? `<span class="serr">${esc(chatUi.placesErr)}</span>`
-      : !p
+      : !places
         ? 'A private repo, in an organization you own or your account'
-        : p.orgs.length
+        : places.orgs.length
           ? `A private repo in ${esc(owner)}, ${others.length ? `the newest organization you own (or ${esc(others.join(', '))})` : 'the organization you own'} — then invite people from the chat`
           : 'A private repo in your account — in an organization of yours, people could join with Read alone';
 
-    const found = (p?.chats || [])
-      .map(x =>
+    const found = (places?.chats || [])
+      .map(existing =>
         row(
-          esc(x.repo),
-          x.admin ? 'A chat you made — you are its admin' : 'A chat you are in',
-          `<button type="button" class="btn" data-chat="use" data-repo="${esc(x.repo)}">Use</button>`,
+          esc(existing.repo),
+          existing.admin ? 'A chat you made — you are its admin' : 'A chat you are in',
+          `<button type="button" class="btn" data-chat="use" data-repo="${esc(existing.repo)}">Use</button>`,
         ),
       )
       .join('');
 
-    const gone = c.missing
+    const gone = chat.missing
       ? group(
           '',
           'chat repo github',
           row(
-            esc(c.repo),
-            `<span class="serr">${esc(c.error || 'not a repo you can read')}</span>`,
+            esc(chat.repo),
+            `<span class="serr">${esc(chat.error || 'not a repo you can read')}</span>`,
             '<button type="button" class="btn" data-chat="leave">Forget it</button>',
           ),
         )
@@ -2127,25 +2198,25 @@ function chatSetHtml() {
             'Its repo, owner/name — one GitHub lets you read',
             `<span class="schat"><input ${text} class="schatrepo" value="${esc(chatUi.useRepo ?? '')}" placeholder="acme-chat/room" aria-label="The chat's repo"><button type="button" class="btn" data-chat="use">Use</button></span>`,
           ),
-        `${c.missing ? 'Off until the repo can be read.' : 'Off until a repo is set.'} A private GitHub repo is the chat: its issues labelled <code>room</code> the rooms, their comments the messages — read with your <code>gh</code> login. Only its admin invites and removes people.`,
+        `${chat.missing ? 'Off until the repo can be read.' : 'Off until a repo is set.'} A private GitHub repo is the chat: its issues labelled <code>room</code> the rooms, their comments the messages — read with your <code>gh</code> login. Only its admin invites and removes people.`,
       )
     );
   }
 
-  const admin = c.role === 'admin';
-  const member = !!c.role && !admin;
+  const admin = chat.role === 'admin';
+  const member = !!chat.role && !admin;
 
-  const state_ = c.error
-    ? `<span class="serr">${esc(c.error)}</span>`
-    : !c.ready
+  const state_ = chat.error
+    ? `<span class="serr">${esc(chat.error)}</span>`
+    : !chat.ready
       ? 'Reading it…'
-      : `${admin ? 'You are its admin' : 'You are a member'}${c.me ? ` · as ${esc(c.me.login)}` : ''}${c.room == null ? ' · no chat in it yet' : ''}`;
+      : `${admin ? 'You are its admin' : 'You are a member'}${chat.me ? ` · as ${esc(chat.me.login)}` : ''}${chat.room == null ? ' · no chat in it yet' : ''}`;
 
   return group(
     '',
     'chat repo github room people invite leave pictures images gifs',
     `${
-      row(esc(c.repo), state_, '<button type="button" class="btn" data-chat="open">Open</button>') +
+      row(esc(chat.repo), state_, '<button type="button" class="btn" data-chat="open">Open</button>') +
       (admin
         ? row(
             'People',
@@ -2155,7 +2226,7 @@ function chatSetHtml() {
         : '')
     }<div class="srow set"><span class="sl"><b>${!member ? 'Stop the chat here' : 'Leave the chat'}</b><small>${!member ? 'The repo and its rooms stay on GitHub' : 'You leave the repo'}</small></span><button type="button" class="btn danger" data-chat="sure" aria-expanded="${chatUi.setSure}" aria-controls="chatSure">${!member ? 'Stop…' : 'Leave…'}</button>` +
       `<div class="ssure" id="chatSure" role="group" aria-labelledby="chatSureSay"${chatUi.setSure ? '' : ' hidden'}><span id="chatSureSay">${!member ? 'The chat goes from this board; the repo, its rooms and its people stay on GitHub.' : 'You leave the repo and its history; coming back takes a new invitation.'}</span><button type="button" class="btn" data-chat="unsure">Cancel</button><button type="button" class="btn danger" data-chat="leave">${!member ? 'Stop the chat' : 'Leave the chat'}</button></div></div>`,
-    `Messages are the repo’s issue comments, on GitHub; GitHub’s own emails about it are turned off for you. Pictures are GitHub’s attachments: a member who only reads the chat puts theirs against <code>${esc(c.repo)}-files</code>, which its admin’s board makes and keeps shared with everyone in it.`,
+    `Messages are the repo’s issue comments, on GitHub; GitHub’s own emails about it are turned off for you. Pictures are GitHub’s attachments: a member who only reads the chat puts theirs against <code>${esc(chat.repo)}-files</code>, which its admin’s board makes and keeps shared with everyone in it.`,
   );
 }
 
@@ -2166,10 +2237,10 @@ function renderChatSet(force = false) {
 /** Settings › Chat in front: the invitations asked now, not in ten minutes — and with no chat, where one could be. */
 function loadChatSet() {
   api('GET', '/api/chat?invites=1').then(
-    d => {
-      state.chat = d;
+    latest => {
+      state.chat = latest;
       chatChanged();
-      if (!d.on || d.missing) chatPlacesLoad();
+      if (!latest.on || latest.missing) chatPlacesLoad();
     },
     () => {},
   );
@@ -2181,12 +2252,12 @@ function chatPlacesLoad() {
 
   api('GET', '/api/chat/places')
     .then(
-      d => {
-        chatUi.places = d;
+      places => {
+        chatUi.places = places;
         chatUi.placesErr = null;
       },
-      e => {
-        chatUi.placesErr = e.message;
+      error => {
+        chatUi.placesErr = error.message;
       },
     )
     .finally(() => {
@@ -2195,34 +2266,34 @@ function chatPlacesLoad() {
     });
 }
 
-$('#chatSet').addEventListener('input', e => {
-  if (e.target.matches('.schatnew')) chatUi.newRepo = e.target.value;
-  else if (e.target.matches('.schatrepo')) chatUi.useRepo = e.target.value;
+$('#chatSet').addEventListener('input', event => {
+  if (event.target.matches('.schatnew')) chatUi.newRepo = event.target.value;
+  else if (event.target.matches('.schatrepo')) chatUi.useRepo = event.target.value;
 });
 
-$('#chatSet').addEventListener('focusout', e => {
-  if ($('#chatSet')._stale && !$('#chatSet').contains(e.relatedTarget)) renderChatSet();
+$('#chatSet').addEventListener('focusout', event => {
+  if ($('#chatSet')._stale && !$('#chatSet').contains(event.relatedTarget)) renderChatSet();
 });
 
-$('#chatSet').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && e.target.matches('.schatrepo, .schatnew')) {
-    e.preventDefault();
-    e.target.nextElementSibling.click();
+$('#chatSet').addEventListener('keydown', event => {
+  if (event.key === 'Enter' && event.target.matches('.schatrepo, .schatnew')) {
+    event.preventDefault();
+    event.target.nextElementSibling.click();
   }
 });
 
-$('#chatSet').addEventListener('click', e => {
-  const b = e.target.closest('[data-chat]');
+$('#chatSet').addEventListener('click', event => {
+  const button = event.target.closest('[data-chat]');
 
-  if (!b) return;
+  if (!button) return;
 
-  const set = d => {
-    state.chat = d;
+  const set = latest => {
+    state.chat = latest;
     chatChanged();
   };
 
-  const act = b.dataset.chat;
-  const box = b.previousElementSibling;
+  const act = button.dataset.chat;
+  const box = button.previousElementSibling;
 
   if (act === 'open') {
     settingsOpen(false);
@@ -2231,47 +2302,47 @@ $('#chatSet').addEventListener('click', e => {
     settingsOpen(false);
     chatOpen('people');
   } else if (act === 'join') {
-    b.disabled = true;
+    button.disabled = true;
 
-    api('POST', '/api/chat/join', { id: Number(b.dataset.id) }).then(
-      d => {
-        set(d);
+    api('POST', '/api/chat/join', { id: Number(button.dataset.id) }).then(
+      latest => {
+        set(latest);
         note($('#chatSet'), 'Joined — the chat is in the status bar');
       },
       err => {
-        b.disabled = false;
-        note(b, err.message, true);
+        button.disabled = false;
+        note(button, err.message, true);
       },
     );
   } else if (act === 'use') {
-    const repo = b.dataset.repo || box.value.trim();
+    const repo = button.dataset.repo || box.value.trim();
 
     if (repo) {
       api('POST', '/api/chat/use', { repo }).then(
-        d => {
+        latest => {
           chatUi.useRepo = null;
-          set(d);
+          set(latest);
         },
-        err => note(b.dataset.repo ? b : box, err.message, true),
+        err => note(button.dataset.repo ? button : box, err.message, true),
       );
     }
   } else if (act === 'make') {
     const repo = box.value.trim();
 
     if (!repo) return;
-    b.disabled = true;
-    b.textContent = 'Making it…';
+    button.disabled = true;
+    button.textContent = 'Making it…';
 
     api('POST', '/api/chat/make', { repo }).then(
-      d => {
+      latest => {
         chatUi.newRepo = chatUi.places = null;
-        set(d);
-        note($('#chatSet'), `Made ${d.repo} — invite people from the chat`);
+        set(latest);
+        note($('#chatSet'), `Made ${latest.repo} — invite people from the chat`);
       },
       err => {
-        b.disabled = false;
-        b.textContent = 'Make it';
-        note(b, err.message, true);
+        button.disabled = false;
+        button.textContent = 'Make it';
+        note(button, err.message, true);
       },
     );
   } else if (act === 'sure' || act === 'unsure') {
@@ -2283,13 +2354,13 @@ $('#chatSet').addEventListener('click', e => {
       ?.focus();
   } else if (act === 'leave') {
     api('POST', '/api/chat/leave', {}).then(
-      d => {
+      latest => {
         chatUi.setSure = false;
         chatUi.places = null;
-        set(d);
+        set(latest);
         chatPlacesLoad();
       },
-      err => note(b, err.message, true),
+      err => note(button, err.message, true),
     );
   }
 });

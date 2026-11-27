@@ -8,10 +8,10 @@ const ZG_BATCH_FS = `#version 300 es
 precision highp float;uniform sampler2D uT;in vec2 vU;in vec4 vC;out vec4 o;void main(){o=texture(uT,vU)*vC;}`;
 
 function zgBatch(gl) {
-  const P = zgCompile(gl, ZG_BATCH_VS, ZG_BATCH_FS);
+  const program = zgCompile(gl, ZG_BATCH_VS, ZG_BATCH_FS);
   const vao = gl.createVertexArray();
   const buf = gl.createBuffer();
-  const V = new Float32Array(8 * 24000);
+  const vertices = new Float32Array(8 * 24000);
 
   gl.bindVertexArray(vao);
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
@@ -26,12 +26,12 @@ function zgBatch(gl) {
   const sL = gl.createSampler();
   const sN = gl.createSampler();
 
-  for (const [sm, f] of [
+  for (const [sm, filter] of [
     [sL, gl.LINEAR],
     [sN, gl.NEAREST],
   ]) {
-    gl.samplerParameteri(sm, gl.TEXTURE_MIN_FILTER, f);
-    gl.samplerParameteri(sm, gl.TEXTURE_MAG_FILTER, f);
+    gl.samplerParameteri(sm, gl.TEXTURE_MIN_FILTER, filter);
+    gl.samplerParameteri(sm, gl.TEXTURE_MAG_FILTER, filter);
     gl.samplerParameteri(sm, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.samplerParameteri(sm, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   }
@@ -46,104 +46,104 @@ function zgBatch(gl) {
   const colors = new Map();
   const probe = document.createElement('canvas').getContext('2d');
 
-  let n = 0;
+  let count = 0;
   let curT = null;
   let curS = null;
-  let M = [1, 0, 0, 1, 0, 0];
+  let matrix = [1, 0, 0, 1, 0, 0];
   let stack = [];
   let paths = [];
   let cur = null;
-  let K = 1;
+  let scale = 1;
 
   const flush = () => {
-    if (!n) return;
+    if (!count) return;
     gl.bindVertexArray(vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    gl.bufferData(gl.ARRAY_BUFFER, V.subarray(0, n * 8), gl.DYNAMIC_DRAW);
-    gl.useProgram(P.p);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices.subarray(0, count * 8), gl.DYNAMIC_DRAW);
+    gl.useProgram(program.p);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, curT);
     gl.bindSampler(0, curS);
-    gl.uniform1i(gl.getUniformLocation(P.p, 'uT'), 0);
-    gl.drawArrays(gl.TRIANGLES, 0, n);
+    gl.uniform1i(gl.getUniformLocation(program.p, 'uT'), 0);
+    gl.drawArrays(gl.TRIANGLES, 0, count);
     gl.bindSampler(0, null);
     gl.bindVertexArray(zg.vao);
-    n = 0;
+    count = 0;
   };
 
-  const bind = (t, sm) => {
-    if (t !== curT || sm !== curS || n > 23900) {
+  const bind = (texture, sm) => {
+    if (texture !== curT || sm !== curS || count > 23900) {
       flush();
-      curT = t;
+      curT = texture;
       curS = sm;
     }
   };
 
-  const vert = (x, y, u, v, c) => {
-    const i = n++ * 8;
+  const vert = (atX, atY, texU, texV, rgba) => {
+    const offset = count++ * 8;
 
-    V[i] = M[0] * x + M[2] * y + M[4];
-    V[i + 1] = M[1] * x + M[3] * y + M[5];
-    V[i + 2] = u;
-    V[i + 3] = v;
-    V[i + 4] = c[0];
-    V[i + 5] = c[1];
-    V[i + 6] = c[2];
-    V[i + 7] = c[3];
+    vertices[offset] = matrix[0] * atX + matrix[2] * atY + matrix[4];
+    vertices[offset + 1] = matrix[1] * atX + matrix[3] * atY + matrix[5];
+    vertices[offset + 2] = texU;
+    vertices[offset + 3] = texV;
+    vertices[offset + 4] = rgba[0];
+    vertices[offset + 5] = rgba[1];
+    vertices[offset + 6] = rgba[2];
+    vertices[offset + 7] = rgba[3];
   };
 
-  const rawv = (x, y, c) => {
-    const i = n++ * 8;
+  const rawv = (atX, atY, rgba) => {
+    const offset = count++ * 8;
 
-    V[i] = x;
-    V[i + 1] = y;
-    V[i + 2] = 0.5;
-    V[i + 3] = 0.5;
-    V[i + 4] = c[0];
-    V[i + 5] = c[1];
-    V[i + 6] = c[2];
-    V[i + 7] = c[3];
+    vertices[offset] = atX;
+    vertices[offset + 1] = atY;
+    vertices[offset + 2] = 0.5;
+    vertices[offset + 3] = 0.5;
+    vertices[offset + 4] = rgba[0];
+    vertices[offset + 5] = rgba[1];
+    vertices[offset + 6] = rgba[2];
+    vertices[offset + 7] = rgba[3];
   };
 
-  const color = (css, a) => {
-    let c = colors.get(css);
+  const color = (css, alpha) => {
+    let rgba = colors.get(css);
 
-    if (!c) {
+    if (!rgba) {
       probe.fillStyle = '#000';
       probe.fillStyle = css;
-      const t = probe.fillStyle;
-      let m;
+      const canonical = probe.fillStyle;
+      let match;
 
-      if (t[0] === '#') {
-        const h = parseInt(t.slice(1), 16);
+      if (canonical[0] === '#') {
+        const packed = parseInt(canonical.slice(1), 16);
 
-        c = [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255) / 255, 1];
-      } else if ((m = t.match(/rgba?\(([^)]+)\)/))) {
-        const q = m[1].split(',').map(Number);
+        rgba = [((packed >> 16) & 255) / 255, ((packed >> 8) & 255) / 255, (packed & 255) / 255, 1];
+      } else if ((match = canonical.match(/rgba?\(([^)]+)\)/))) {
+        const parts = match[1].split(',').map(Number);
 
-        c = [q[0] / 255, q[1] / 255, q[2] / 255, q[3] ?? 1];
-      } else c = [1, 1, 1, 1];
-      colors.set(css, c);
+        rgba = [parts[0] / 255, parts[1] / 255, parts[2] / 255, parts[3] ?? 1];
+      } else rgba = [1, 1, 1, 1];
+      colors.set(css, rgba);
     }
 
-    const A = c[3] * a;
+    const opacity = rgba[3] * alpha;
 
-    return [c[0] * A, c[1] * A, c[2] * A, A];
+    return [rgba[0] * opacity, rgba[1] * opacity, rgba[2] * opacity, opacity];
   };
 
   const texOf = cv => {
-    let t = texs.get(cv);
+    let texture = texs.get(cv);
 
-    if (!t) {
-      t = zgUp(gl, cv);
-      texs.set(cv, t);
+    if (!texture) {
+      texture = zgUp(gl, cv);
+      texs.set(cv, texture);
       zg.ups = (zg.ups || 0) + 1;
     }
 
-    return t;
+    return texture;
   };
 
-  const X = {
+  const batch = {
     zg: true,
     globalAlpha: 1,
     fillStyle: '#000',
@@ -157,18 +157,18 @@ function zgBatch(gl) {
     imageSmoothingEnabled: true,
     shadowBlur: 0,
     shadowColor: '',
-    begin(k) {
-      K = k;
-      n = 0;
+    begin(frameScale) {
+      scale = frameScale;
+      count = 0;
       curT = null;
       curS = null;
-      M = [1, 0, 0, 1, 0, 0];
+      matrix = [1, 0, 0, 1, 0, 0];
       stack = [];
-      X.globalAlpha = 1;
-      X.imageSmoothingEnabled = true;
+      batch.globalAlpha = 1;
+      batch.imageSmoothingEnabled = true;
     },
     free() {
-      for (const T of texts.values()) zgLetGo(T.cv);
+      for (const textSprite of texts.values()) zgLetGo(textSprite.cv);
       texts.clear();
     },
     end() {
@@ -176,80 +176,80 @@ function zgBatch(gl) {
     },
     save() {
       stack.push({
-        M: M.slice(),
-        a: X.globalAlpha,
-        f: X.fillStyle,
-        s: X.strokeStyle,
-        l: X.lineWidth,
-        fo: X.font,
-        al: X.textAlign,
-        ba: X.textBaseline,
-        sm: X.imageSmoothingEnabled,
+        M: matrix.slice(),
+        a: batch.globalAlpha,
+        f: batch.fillStyle,
+        s: batch.strokeStyle,
+        l: batch.lineWidth,
+        fo: batch.font,
+        al: batch.textAlign,
+        ba: batch.textBaseline,
+        sm: batch.imageSmoothingEnabled,
       });
     },
     restore() {
-      const q = stack.pop();
+      const saved = stack.pop();
 
-      if (!q) return;
-      M = q.M;
-      X.globalAlpha = q.a;
-      X.fillStyle = q.f;
-      X.strokeStyle = q.s;
-      X.lineWidth = q.l;
-      X.font = q.fo;
-      X.textAlign = q.al;
-      X.textBaseline = q.ba;
-      X.imageSmoothingEnabled = q.sm;
+      if (!saved) return;
+      matrix = saved.M;
+      batch.globalAlpha = saved.a;
+      batch.fillStyle = saved.f;
+      batch.strokeStyle = saved.s;
+      batch.lineWidth = saved.l;
+      batch.font = saved.fo;
+      batch.textAlign = saved.al;
+      batch.textBaseline = saved.ba;
+      batch.imageSmoothingEnabled = saved.sm;
     },
-    translate(x, y) {
-      M[4] += M[0] * x + M[2] * y;
-      M[5] += M[1] * x + M[3] * y;
+    translate(byX, byY) {
+      matrix[4] += matrix[0] * byX + matrix[2] * byY;
+      matrix[5] += matrix[1] * byX + matrix[3] * byY;
     },
-    scale(x, y) {
-      M[0] *= x;
-      M[1] *= x;
-      M[2] *= y;
-      M[3] *= y;
+    scale(scaleX, scaleY) {
+      matrix[0] *= scaleX;
+      matrix[1] *= scaleX;
+      matrix[2] *= scaleY;
+      matrix[3] *= scaleY;
     },
-    rotate(a) {
-      const c = Math.cos(a);
-      const s = Math.sin(a);
-      const [A, B, C, D] = M;
+    rotate(angle) {
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const [m0, m1, m2, m3] = matrix;
 
-      M[0] = A * c + C * s;
-      M[1] = B * c + D * s;
-      M[2] = C * c - A * s;
-      M[3] = D * c - B * s;
+      matrix[0] = m0 * cos + m2 * sin;
+      matrix[1] = m1 * cos + m3 * sin;
+      matrix[2] = m2 * cos - m0 * sin;
+      matrix[3] = m3 * cos - m1 * sin;
     },
-    drawImage(img, a, b, c, d, e, f, g, h) {
+    drawImage(img, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
       let sx = 0;
       let sy = 0;
       let sw = img.width;
       let sh = img.height;
-      let dx = a;
-      let dy = b;
-      let dw = c ?? sw;
-      let dh = d ?? sh;
+      let dx = arg1;
+      let dy = arg2;
+      let dw = arg3 ?? sw;
+      let dh = arg4 ?? sh;
 
-      if (e !== undefined) {
-        sx = a;
-        sy = b;
-        sw = c;
-        sh = d;
-        dx = e;
-        dy = f;
-        dw = g;
-        dh = h;
+      if (arg5 !== undefined) {
+        sx = arg1;
+        sy = arg2;
+        sw = arg3;
+        sh = arg4;
+        dx = arg5;
+        dy = arg6;
+        dw = arg7;
+        dh = arg8;
       }
 
-      bind(texOf(img), X.imageSmoothingEnabled ? sL : sN);
+      bind(texOf(img), batch.imageSmoothingEnabled ? sL : sN);
 
       const u0 = sx / img.width;
       const v0 = sy / img.height;
       const u1 = (sx + sw) / img.width;
       const v1 = (sy + sh) / img.height;
-      const A = X.globalAlpha;
-      const cl = [A, A, A, A];
+      const alpha = batch.globalAlpha;
+      const cl = [alpha, alpha, alpha, alpha];
 
       vert(dx, dy, u0, v0, cl);
       vert(dx + dw, dy, u1, v0, cl);
@@ -258,17 +258,17 @@ function zgBatch(gl) {
       vert(dx + dw, dy + dh, u1, v1, cl);
       vert(dx, dy + dh, u0, v1, cl);
     },
-    fillRect(x, y, w, h) {
-      if (typeof X.fillStyle !== 'string') return;
-      const c = color(X.fillStyle, X.globalAlpha);
+    fillRect(left, top, width, height) {
+      if (typeof batch.fillStyle !== 'string') return;
+      const rgba = color(batch.fillStyle, batch.globalAlpha);
 
       bind(white, sL);
-      vert(x, y, 0.5, 0.5, c);
-      vert(x + w, y, 0.5, 0.5, c);
-      vert(x, y + h, 0.5, 0.5, c);
-      vert(x + w, y, 0.5, 0.5, c);
-      vert(x + w, y + h, 0.5, 0.5, c);
-      vert(x, y + h, 0.5, 0.5, c);
+      vert(left, top, 0.5, 0.5, rgba);
+      vert(left + width, top, 0.5, 0.5, rgba);
+      vert(left, top + height, 0.5, 0.5, rgba);
+      vert(left + width, top, 0.5, 0.5, rgba);
+      vert(left + width, top + height, 0.5, 0.5, rgba);
+      vert(left, top + height, 0.5, 0.5, rgba);
     },
     createRadialGradient() {
       return { addColorStop() {} };
@@ -277,199 +277,199 @@ function zgBatch(gl) {
       paths = [];
       cur = null;
     },
-    moveTo(x, y) {
-      cur = [[M[0] * x + M[2] * y + M[4], M[1] * x + M[3] * y + M[5]]];
+    moveTo(atX, atY) {
+      cur = [[matrix[0] * atX + matrix[2] * atY + matrix[4], matrix[1] * atX + matrix[3] * atY + matrix[5]]];
       paths.push(cur);
     },
-    lineTo(x, y) {
-      if (!cur) return X.moveTo(x, y);
-      cur.push([M[0] * x + M[2] * y + M[4], M[1] * x + M[3] * y + M[5]]);
+    lineTo(atX, atY) {
+      if (!cur) return batch.moveTo(atX, atY);
+      cur.push([matrix[0] * atX + matrix[2] * atY + matrix[4], matrix[1] * atX + matrix[3] * atY + matrix[5]]);
     },
     closePath() {
       if (cur) cur.push(cur[0].slice());
     },
-    rect(x, y, w, h) {
-      X.moveTo(x, y);
-      X.lineTo(x + w, y);
-      X.lineTo(x + w, y + h);
-      X.lineTo(x, y + h);
-      X.closePath();
+    rect(left, top, width, height) {
+      batch.moveTo(left, top);
+      batch.lineTo(left + width, top);
+      batch.lineTo(left + width, top + height);
+      batch.lineTo(left, top + height);
+      batch.closePath();
     },
-    roundRect(x, y, w, h, r = 0) {
-      r = typeof r === 'number' ? r : (r[0] ?? 0);
-      X.moveTo(x + r, y);
-      X.arc(x + w - r, y + r, r, -Math.PI / 2, 0);
-      X.arc(x + w - r, y + h - r, r, 0, Math.PI / 2);
-      X.arc(x + r, y + h - r, r, Math.PI / 2, Math.PI);
-      X.arc(x + r, y + r, r, Math.PI, Math.PI * 1.5);
-      X.closePath();
+    roundRect(left, top, width, height, radius = 0) {
+      radius = typeof radius === 'number' ? radius : (radius[0] ?? 0);
+      batch.moveTo(left + radius, top);
+      batch.arc(left + width - radius, top + radius, radius, -Math.PI / 2, 0);
+      batch.arc(left + width - radius, top + height - radius, radius, 0, Math.PI / 2);
+      batch.arc(left + radius, top + height - radius, radius, Math.PI / 2, Math.PI);
+      batch.arc(left + radius, top + radius, radius, Math.PI, Math.PI * 1.5);
+      batch.closePath();
     },
-    arc(x, y, r, a0, a1, ccw) {
-      X.ellipse(x, y, r, r, 0, a0, a1, ccw);
+    arc(centerX, centerY, radius, a0, a1, ccw) {
+      batch.ellipse(centerX, centerY, radius, radius, 0, a0, a1, ccw);
     },
-    ellipse(x, y, rx, ry, rot, a0, a1, ccw) {
-      let d = a1 - a0;
+    ellipse(centerX, centerY, rx, ry, rot, a0, a1, ccw) {
+      let sweep = a1 - a0;
 
-      if (ccw && d > 0) d -= Math.PI * 2;
-      if (!ccw && d < 0) d += Math.PI * 2;
-      if (Math.abs(a1 - a0) >= Math.PI * 2) d = Math.PI * 2;
+      if (ccw && sweep > 0) sweep -= Math.PI * 2;
+      if (!ccw && sweep < 0) sweep += Math.PI * 2;
+      if (Math.abs(a1 - a0) >= Math.PI * 2) sweep = Math.PI * 2;
 
-      const st = Math.max(8, Math.min(56, Math.ceil(Math.abs(d) * Math.max(rx, ry) * 0.7)));
+      const st = Math.max(8, Math.min(56, Math.ceil(Math.abs(sweep) * Math.max(rx, ry) * 0.7)));
       const co = Math.cos(rot);
       const si = Math.sin(rot);
 
-      for (let i = 0; i <= st; i++) {
-        const t = a0 + (d * i) / st;
-        const px = Math.cos(t) * rx;
-        const py = Math.sin(t) * ry;
-        const qx = x + px * co - py * si;
-        const qy = y + px * si + py * co;
+      for (let step = 0; step <= st; step++) {
+        const angle = a0 + (sweep * step) / st;
+        const px = Math.cos(angle) * rx;
+        const py = Math.sin(angle) * ry;
+        const qx = centerX + px * co - py * si;
+        const qy = centerY + px * si + py * co;
 
-        if (i === 0 && !cur) X.moveTo(qx, qy);
-        else X.lineTo(qx, qy);
+        if (step === 0 && !cur) batch.moveTo(qx, qy);
+        else batch.lineTo(qx, qy);
       }
     },
     clip() {},
     fill() {
-      if (typeof X.fillStyle !== 'string') return;
-      const c = color(X.fillStyle, X.globalAlpha);
+      if (typeof batch.fillStyle !== 'string') return;
+      const rgba = color(batch.fillStyle, batch.globalAlpha);
 
       bind(white, sL);
 
-      for (const p of paths) {
-        if (p.length < 3) continue;
+      for (const path of paths) {
+        if (path.length < 3) continue;
 
         let cx0 = 0;
         let cy0 = 0;
 
-        for (const q of p) {
-          cx0 += q[0];
-          cy0 += q[1];
+        for (const point of path) {
+          cx0 += point[0];
+          cy0 += point[1];
         }
 
-        cx0 /= p.length;
-        cy0 /= p.length;
+        cx0 /= path.length;
+        cy0 /= path.length;
         bind(white, sL);
 
-        for (let i = 0; i < p.length - 1; i++) {
-          rawv(cx0, cy0, c);
-          rawv(p[i][0], p[i][1], c);
-          rawv(p[i + 1][0], p[i + 1][1], c);
+        for (let index = 0; index < path.length - 1; index++) {
+          rawv(cx0, cy0, rgba);
+          rawv(path[index][0], path[index][1], rgba);
+          rawv(path[index + 1][0], path[index + 1][1], rgba);
         }
       }
     },
     stroke() {
-      const c = color(X.strokeStyle, X.globalAlpha);
-      const w = (X.lineWidth * Math.sqrt(Math.abs(M[0] * M[3] - M[1] * M[2]))) / 2;
+      const rgba = color(batch.strokeStyle, batch.globalAlpha);
+      const halfWidth = (batch.lineWidth * Math.sqrt(Math.abs(matrix[0] * matrix[3] - matrix[1] * matrix[2]))) / 2;
 
       bind(white, sL);
 
-      for (const p of paths) {
-        for (let i = 0; i < p.length - 1; i++) {
+      for (const path of paths) {
+        for (let index = 0; index < path.length - 1; index++) {
           bind(white, sL);
 
-          const [a, b] = p[i];
-          const [e, f] = p[i + 1];
-          const dx = e - a;
-          const dy = f - b;
-          const l = Math.hypot(dx, dy) || 1;
-          const nx = (-dy / l) * w;
-          const ny = (dx / l) * w;
-          const ex = (dx / l) * w * 0.5;
-          const ey = (dy / l) * w * 0.5;
+          const [fromX, fromY] = path[index];
+          const [toX, toY] = path[index + 1];
+          const dx = toX - fromX;
+          const dy = toY - fromY;
+          const length = Math.hypot(dx, dy) || 1;
+          const nx = (-dy / length) * halfWidth;
+          const ny = (dx / length) * halfWidth;
+          const ex = (dx / length) * halfWidth * 0.5;
+          const ey = (dy / length) * halfWidth * 0.5;
 
-          rawv(a + nx - ex, b + ny - ey, c);
-          rawv(e + nx + ex, f + ny + ey, c);
-          rawv(a - nx - ex, b - ny - ey, c);
-          rawv(e + nx + ex, f + ny + ey, c);
-          rawv(e - nx + ex, f - ny + ey, c);
-          rawv(a - nx - ex, b - ny - ey, c);
+          rawv(fromX + nx - ex, fromY + ny - ey, rgba);
+          rawv(toX + nx + ex, toY + ny + ey, rgba);
+          rawv(fromX - nx - ex, fromY - ny - ey, rgba);
+          rawv(toX + nx + ex, toY + ny + ey, rgba);
+          rawv(toX - nx + ex, toY - ny + ey, rgba);
+          rawv(fromX - nx - ex, fromY - ny - ey, rgba);
         }
       }
     },
-    measureText(s) {
-      probe.font = X.font;
-      return probe.measureText(s);
+    measureText(text) {
+      probe.font = batch.font;
+      return probe.measureText(text);
     },
-    _text(s, x, y, mode) {
-      const style = mode === 'fill' ? X.fillStyle : X.strokeStyle;
-      const lw = mode === 'fill' ? 0 : X.lineWidth;
-      const key = `${K}|${X.font}|${mode}|${style}|${lw}|${s}`;
+    _text(text, atX, atY, mode) {
+      const style = mode === 'fill' ? batch.fillStyle : batch.strokeStyle;
+      const lw = mode === 'fill' ? 0 : batch.lineWidth;
+      const key = `${scale}|${batch.font}|${mode}|${style}|${lw}|${text}`;
 
-      let T = texts.get(key);
+      let textSprite = texts.get(key);
 
-      if (!T) {
-        probe.font = X.font;
+      if (!textSprite) {
+        probe.font = batch.font;
 
-        const tw = probe.measureText(s).width;
-        const size = parseFloat(X.font.match(/([\d.]+)px/)?.[1] || 12);
+        const tw = probe.measureText(text).width;
+        const size = parseFloat(batch.font.match(/([\d.]+)px/)?.[1] || 12);
         const pad = 4 + lw;
-        const w = tw + pad * 2;
-        const h = size * 1.5 + pad * 2;
+        const width = tw + pad * 2;
+        const height = size * 1.5 + pad * 2;
         const cv = document.createElement('canvas');
 
-        cv.width = Math.ceil(w * K);
-        cv.height = Math.ceil(h * K);
-        const q = cv.getContext('2d');
+        cv.width = Math.ceil(width * scale);
+        cv.height = Math.ceil(height * scale);
+        const context = cv.getContext('2d');
 
-        q.scale(K, K);
-        q.font = X.font;
-        q.textAlign = 'left';
-        q.textBaseline = 'middle';
-        q.lineJoin = 'round';
-        q.fillStyle = q.strokeStyle = style;
-        q.lineWidth = lw;
-        if (mode === 'fill') q.fillText(s, pad, h / 2);
-        else q.strokeText(s, pad, h / 2);
-        T = { cv, w, h, tw, pad };
+        context.scale(scale, scale);
+        context.font = batch.font;
+        context.textAlign = 'left';
+        context.textBaseline = 'middle';
+        context.lineJoin = 'round';
+        context.fillStyle = context.strokeStyle = style;
+        context.lineWidth = lw;
+        if (mode === 'fill') context.fillText(text, pad, height / 2);
+        else context.strokeText(text, pad, height / 2);
+        textSprite = { cv, w: width, h: height, tw, pad };
         if (texts.size > 240) texts.clear();
-        texts.set(key, T);
+        texts.set(key, textSprite);
       }
 
-      const dx = X.textAlign === 'center' ? -T.tw / 2 : X.textAlign === 'right' ? -T.tw : 0;
-      const sm = X.imageSmoothingEnabled;
+      const dx = batch.textAlign === 'center' ? -textSprite.tw / 2 : batch.textAlign === 'right' ? -textSprite.tw : 0;
+      const sm = batch.imageSmoothingEnabled;
 
-      X.imageSmoothingEnabled = true;
-      X.drawImage(T.cv, x + dx - T.pad, y - T.h / 2, T.w, T.h);
-      X.imageSmoothingEnabled = sm;
+      batch.imageSmoothingEnabled = true;
+      batch.drawImage(textSprite.cv, atX + dx - textSprite.pad, atY - textSprite.h / 2, textSprite.w, textSprite.h);
+      batch.imageSmoothingEnabled = sm;
     },
-    fillText(s, x, y) {
-      X._text(s, x, y, 'fill');
+    fillText(text, atX, atY) {
+      batch._text(text, atX, atY, 'fill');
     },
-    strokeText(s, x, y) {
-      X._text(s, x, y, 'stroke');
+    strokeText(text, atX, atY) {
+      batch._text(text, atX, atY, 'stroke');
     },
   };
 
-  return X;
+  return batch;
 }
 
 /** A car is too much path for a frame: drawn once a wheel's phase by its own code, then a sprite that pitches and rolls. */
-function zgCar(cx, kind, x, y, f, wheel, tilt, flip, part) {
+function zgCar(cx, kind, atX, atY, facing, wheel, tilt, flip, part) {
   const step = (Math.PI * 2) / 5;
-  const w = ((wheel % step) + step) % step;
-  const ph = Math.floor((w / step) * 4);
-  const k = zg.k;
-  const key = `${kind}|${f}|${part}|${ph}|${k}`;
-  const m = (zg.cars ||= new Map());
+  const turn = ((wheel % step) + step) % step;
+  const ph = Math.floor((turn / step) * 4);
+  const scale = zg.k;
+  const key = `${kind}|${facing}|${part}|${ph}|${scale}`;
+  const cars = (zg.cars ||= new Map());
 
-  let cv = m.get(key);
+  let cv = cars.get(key);
 
   if (!cv) {
     cv = document.createElement('canvas');
-    cv.width = Math.ceil(320 * k);
-    cv.height = Math.ceil(170 * k);
-    const q = cv.getContext('2d');
+    cv.width = Math.ceil(320 * scale);
+    cv.height = Math.ceil(170 * scale);
+    const context = cv.getContext('2d');
 
-    q.scale(k, k);
-    q.translate(160, 140);
-    zeCar(q, kind, 0, 0, f, (ph / 4) * step, 0, 0, part);
-    m.set(key, cv);
+    context.scale(scale, scale);
+    context.translate(160, 140);
+    zeCar(context, kind, 0, 0, facing, (ph / 4) * step, 0, 0, part);
+    cars.set(key, cv);
   }
 
   cx.save();
-  cx.translate(x, y);
-  cx.scale(f, 1);
+  cx.translate(atX, atY);
+  cx.scale(facing, 1);
 
   if (flip) {
     cx.translate(0, -50 - Math.sin(flip) * 60);
@@ -483,7 +483,7 @@ function zgCar(cx, kind, x, y, f, wheel, tilt, flip, part) {
     cx.translate(-pv, 0);
   }
 
-  cx.scale(f, 1);
+  cx.scale(facing, 1);
   cx.drawImage(cv, -160, -140, 320, 170);
   cx.restore();
 }

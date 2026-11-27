@@ -12,11 +12,11 @@ export default async function (ctx) {
     ctx.evaluate(`(b => b && { cls: b.className, text: b.textContent })(document.querySelector('#sbLeft .upg'))`);
 
   const restart = async () => {
-    const n = await snaps();
+    const snapshots = await snaps();
 
     await ctx.server.restart();
 
-    await ctx.waitFor(`!window.__mark || window.peix.state().snapshots > ${n}`, {
+    await ctx.waitFor(`!window.__mark || window.peix.state().snapshots > ${snapshots}`, {
       timeout: 20_000,
       what: 'the stream back from the new server',
     });

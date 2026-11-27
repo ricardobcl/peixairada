@@ -19,15 +19,15 @@ export function readRaw(req, max) {
     // a body declared too large is read to its end too, kept nowhere, and refused only then (2026-10-14): refused at
     // once, the close after the 413 met a body still coming, and the reset could reach the page before the answer
     const chunks = [];
-    let n = Number(req.headers['content-length']) > max ? max + 1 : 0;
+    let received = Number(req.headers['content-length']) > max ? max + 1 : 0;
 
-    req.on('data', c => {
-      n += c.length;
-      if (n <= max) chunks.push(c);
+    req.on('data', chunk => {
+      received += chunk.length;
+      if (received <= max) chunks.push(chunk);
       else chunks.length = 0;
     });
 
-    req.on('end', () => (n <= max ? resolve(Buffer.concat(chunks)) : reject(new Error('too large'))));
+    req.on('end', () => (received <= max ? resolve(Buffer.concat(chunks)) : reject(new Error('too large'))));
     req.on('error', reject);
   });
 }
@@ -49,7 +49,7 @@ export function saveAttachment(sid, name, buf) {
 
   let file = join(dir, clean);
 
-  for (let i = 2; existsSync(file); i++) file = join(dir, `${stem}-${i}${ext}`);
+  for (let suffix = 2; existsSync(file); suffix++) file = join(dir, `${stem}-${suffix}${ext}`);
   writeFileSync(file, buf);
   return file;
 }

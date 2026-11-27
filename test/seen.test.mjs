@@ -16,7 +16,7 @@ test(
 
     try {
       const one = fx.chats[0].id;
-      const chat = async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === one);
+      const chat = async () => (await srv.api('api/sessions')).body.sessions.find(session => session.id === one);
 
       await waitFor(async () => !!(await chat()), { what: 'the fixture indexed' });
       const first = await chat();
@@ -26,21 +26,21 @@ test(
         "never shown: the boot's time, after its reply — no new reply",
       );
 
-      const r = await srv.post(`api/sessions/${one}/seen`, {});
+      const response = await srv.post(`api/sessions/${one}/seen`, {});
 
-      assert.equal(r.status, 200);
-      assert.ok(r.body.seenAt >= first.seenAt);
-      assert.equal((await chat()).seenAt, r.body.seenAt);
+      assert.equal(response.status, 200);
+      assert.ok(response.body.seenAt >= first.seenAt);
+      assert.equal((await chat()).seenAt, response.body.seenAt);
 
       assert.equal(
         JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8')).seen[one],
-        r.body.seenAt,
+        response.body.seenAt,
         'in the state file',
       );
 
       assert.equal((await srv.post('api/sessions/nope/seen', {})).status, 404);
       await srv.restart();
-      await waitFor(async () => (await chat())?.seenAt === r.body.seenAt, { what: 'the same after a restart' });
+      await waitFor(async () => (await chat())?.seenAt === response.body.seenAt, { what: 'the same after a restart' });
     } finally {
       await srv.stop();
     }

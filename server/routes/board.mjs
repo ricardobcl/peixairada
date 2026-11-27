@@ -20,8 +20,8 @@ import {
 // switch.
 
 /** The board's lists and its switch: pinned projects, Pinned chats, hidden projects, notifications. */
-export async function boardRoutes(req, res, url, p) {
-  if (req.method === 'PUT' && p === '/api/pins') {
+export async function boardRoutes(req, res, url, path) {
+  if (req.method === 'PUT' && path === '/api/pins') {
     // the pinned projects, in order — the whole list each time; folder cwds and c:<id>
     const body = await jsonBody(req);
 
@@ -29,7 +29,9 @@ export async function boardRoutes(req, res, url, p) {
 
     setPinned(
       [
-        ...new Set(body.pins.filter(k => typeof k === 'string' && /^(\/|c:\w+$)/.test(k)).map(k => k.slice(0, 1000))),
+        ...new Set(
+          body.pins.filter(key => typeof key === 'string' && /^(\/|c:\w+$)/.test(key)).map(key => key.slice(0, 1000)),
+        ),
       ].slice(0, 200),
     );
 
@@ -38,7 +40,7 @@ export async function boardRoutes(req, res, url, p) {
     return json(res, 200, { ok: true, pins: pinned });
   }
 
-  if (req.method === 'PUT' && p === '/api/priority') {
+  if (req.method === 'PUT' && path === '/api/priority') {
     // top priority (2026-11-24, round XXX): the chats at the list's head, in order — the whole list each time
     const body = await jsonBody(req);
 
@@ -48,7 +50,7 @@ export async function boardRoutes(req, res, url, p) {
       [
         ...new Set(
           body.ids.filter(
-            k => typeof k === 'string' && /^[\w-]+$/.test(k) && sessions.has(k) && !isRemoved(sessions.get(k)),
+            id => typeof id === 'string' && /^[\w-]+$/.test(id) && sessions.has(id) && !isRemoved(sessions.get(id)),
           ),
         ),
       ].slice(0, PRIORITY_MAX),
@@ -59,7 +61,7 @@ export async function boardRoutes(req, res, url, p) {
     return json(res, 200, { ok: true, priority });
   }
 
-  if (req.method === 'PUT' && p === '/api/hidden') {
+  if (req.method === 'PUT' && path === '/api/hidden') {
     // the projects taken off the board, the whole list each time — same keys as the pins
     const body = await jsonBody(req);
 
@@ -67,7 +69,9 @@ export async function boardRoutes(req, res, url, p) {
 
     setHiddenProjects(
       [
-        ...new Set(body.hidden.filter(k => typeof k === 'string' && /^(\/|c:\w+$)/.test(k)).map(k => k.slice(0, 1000))),
+        ...new Set(
+          body.hidden.filter(key => typeof key === 'string' && /^(\/|c:\w+$)/.test(key)).map(key => key.slice(0, 1000)),
+        ),
       ].slice(0, 500),
     );
 
@@ -76,7 +80,7 @@ export async function boardRoutes(req, res, url, p) {
     return json(res, 200, { ok: true, hidden: hiddenProjects });
   }
 
-  if (req.method === 'PUT' && p === '/api/notifications') {
+  if (req.method === 'PUT' && path === '/api/notifications') {
     // the cog's switch: system notifications on or off, for every page and the app
     const body = await jsonBody(req);
 
@@ -91,34 +95,34 @@ export async function boardRoutes(req, res, url, p) {
 }
 
 /** Named projects: listed, made, changed, deleted. */
-export async function projectRoutes(req, res, url, p) {
-  let m;
+export async function projectRoutes(req, res, url, path) {
+  let match;
 
-  if (req.method === 'GET' && p === '/api/projects') return json(res, 200, { projects: projectList() });
+  if (req.method === 'GET' && path === '/api/projects') return json(res, 200, { projects: projectList() });
 
-  if (req.method === 'POST' && p === '/api/projects') {
+  if (req.method === 'POST' && path === '/api/projects') {
     const body = await jsonBody(req);
-    const v = projectInput(body, { cwds: [] });
+    const input = projectInput(body, { cwds: [] });
 
-    if (v.error) return json(res, 400, { error: v.error });
+    if (input.error) return json(res, 400, { error: input.error });
     const id = `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-    projects[id] = { id, ...v, createdAt: new Date().toISOString() };
+    projects[id] = { id, ...input, createdAt: new Date().toISOString() };
     saveState();
     broadcast('projects', { projects: projectList() });
     return json(res, 201, { project: projects[id] });
   }
 
-  if ((req.method === 'PUT' || req.method === 'DELETE') && (m = p.match(/^\/api\/projects\/(\w+)$/))) {
-    const prev = projects[m[1]];
+  if ((req.method === 'PUT' || req.method === 'DELETE') && (match = path.match(/^\/api\/projects\/(\w+)$/))) {
+    const prev = projects[match[1]];
 
     if (!prev) return json(res, 404, { error: 'unknown project' });
 
     if (req.method === 'DELETE') {
-      delete projects[m[1]];
+      delete projects[match[1]];
 
-      if (pinned.includes(`c:${m[1]}`)) {
-        setPinned(pinned.filter(k => k !== `c:${m[1]}`));
+      if (pinned.includes(`c:${match[1]}`)) {
+        setPinned(pinned.filter(key => key !== `c:${match[1]}`));
         broadcast('pins', { pins: pinned });
       }
 
@@ -128,13 +132,13 @@ export async function projectRoutes(req, res, url, p) {
     }
 
     const body = await jsonBody(req);
-    const v = projectInput(body, prev);
+    const input = projectInput(body, prev);
 
-    if (v.error) return json(res, 400, { error: v.error });
-    projects[m[1]] = { ...prev, ...v };
+    if (input.error) return json(res, 400, { error: input.error });
+    projects[match[1]] = { ...prev, ...input };
     saveState();
     broadcast('projects', { projects: projectList() });
-    return json(res, 200, { project: projects[m[1]] });
+    return json(res, 200, { project: projects[match[1]] });
   }
 
   return NEXT;

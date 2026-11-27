@@ -4,31 +4,31 @@
 const spZoomNow = () => Math.min(1.5, Math.max(0.5, Number(prefs.spZoom) || 1));
 
 function spZoomShow() {
-  const z = spZoomNow();
-  const g = $('#spgrid');
+  const zoom = spZoomNow();
+  const grid = $('#spgrid');
 
-  g.style.setProperty('--spz', String(z));
-  g.classList.toggle('small', z < 0.75);
-  $('#main').style.setProperty('--sp-min', `${Math.ceil(SP_TILE[0] * z + 20 + 16)}px`); // the divider's floor: one tile at this zoom, the field's padding and a scrollbar (2026-11-18, v12)
-  $('#spzv').textContent = `${Math.round(z * 100)}%`;
+  grid.style.setProperty('--spz', String(zoom));
+  grid.classList.toggle('small', zoom < 0.75);
+  $('#main').style.setProperty('--sp-min', `${Math.ceil(SP_TILE[0] * zoom + 20 + 16)}px`); // the divider's floor: one tile at this zoom, the field's padding and a scrollbar (2026-11-18, v12)
+  $('#spzv').textContent = `${Math.round(zoom * 100)}%`;
 }
 
-function spZoom(z) {
-  prefs.spZoom = Math.round(Math.min(1.5, Math.max(0.5, z)) * 10) / 10;
+function spZoom(zoom) {
+  prefs.spZoom = Math.round(Math.min(1.5, Math.max(0.5, zoom)) * 10) / 10;
   savePrefs();
   spZoomShow();
 }
 
 function spFit() {
-  const f = $('#spfield');
-  const n = $('#spgrid').querySelectorAll('.spt').length;
-  const W = f.clientWidth - 20;
-  const H = f.clientHeight - 64;
+  const field = $('#spfield');
+  const count = $('#spgrid').querySelectorAll('.spt').length;
+  const width = field.clientWidth - 20;
+  const height = field.clientHeight - 64;
 
-  for (let z = 1.5; z > 0.5; z = Math.round((z - 0.1) * 10) / 10) {
-    const cols = Math.max(1, Math.floor((W / z + 6) / (SP_TILE[0] + 6)));
+  for (let zoom = 1.5; zoom > 0.5; zoom = Math.round((zoom - 0.1) * 10) / 10) {
+    const cols = Math.max(1, Math.floor((width / zoom + 6) / (SP_TILE[0] + 6)));
 
-    if (Math.ceil(n / cols) * (SP_TILE[1] + 8) * z <= H) return spZoom(z);
+    if (Math.ceil(count / cols) * (SP_TILE[1] + 8) * zoom <= height) return spZoom(zoom);
   }
 
   spZoom(0.5);
@@ -55,10 +55,10 @@ function applySpace() {
   applyList(); // the list's button: off while Space has its place
   $('#space').hidden = $('#spdiv').hidden = !on;
   main.style.setProperty('--sp', String(Math.min(0.9, Math.max(0.05, Number(prefs.spaceAt) || 0.52)))); // CSS holds the floors: one tile, the chat's
-  const b = $('#sbSpace');
+  const button = $('#sbSpace');
 
-  b.setAttribute('aria-pressed', String(on));
-  b.title = `${on ? 'Leave' : 'Open'} Space — every chat as a node of its agents (⌥⌘X)`;
+  button.setAttribute('aria-pressed', String(on));
+  button.title = `${on ? 'Leave' : 'Open'} Space — every chat as a node of its agents (⌥⌘X)`;
   clearInterval(sp.timer);
   sp.timer = on ? setInterval(spSoon, 5000) : 0;
 
@@ -73,12 +73,12 @@ function applySpace() {
   if (on !== !!sp.fall) spFall();
   if (on !== !!sp.visit) spVisit(); // a falling star now and then while Space is on
   if (on) renderSpace();
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (s) {
+  if (session) {
     drawn.head = null;
-    renderHead(s);
-    syncTerm(s);
+    renderHead(session);
+    syncTerm(session);
   } else repostPane(); // the header's × is Space's
   if (state.notch) layoutNotch(); // Space's bar round the housing, or the list's
 }
@@ -115,49 +115,49 @@ function spLook() {
     ['#fallRow', '#fallPick'],
     ['#visitRow', '#visitOn'],
   ]) {
-    const r = $(row);
-    const say = r.querySelector('small');
+    const element = $(row);
+    const say = element.querySelector('small');
 
-    r.classList.toggle('off', !sky);
+    element.classList.toggle('off', !sky);
     $(box).disabled = !sky;
     say.textContent = sky ? say.dataset.d : say.dataset.off;
   }
 }
 
-const spSet = (k, v, draw) => {
-  prefs[k] = v;
+const spSet = (key, value, draw) => {
+  prefs[key] = value;
   savePrefs();
   spLook();
-  if (k === 'spSky' || k === 'spFalls') spFall();
-  if (k === 'spSky') spVisit();
+  if (key === 'spSky' || key === 'spFalls') spFall();
+  if (key === 'spSky') spVisit();
   if (draw) renderSpace();
 };
 
-$('#skyOn').addEventListener('change', e => spSet('spSky', e.target.checked));
-$('#twinkleOn').addEventListener('change', e => spSet('spTwinkle', e.target.checked));
-$('#fallPick').addEventListener('change', e => spSet('spFalls', e.target.value));
+$('#skyOn').addEventListener('change', event => spSet('spSky', event.target.checked));
+$('#twinkleOn').addEventListener('change', event => spSet('spTwinkle', event.target.checked));
+$('#fallPick').addEventListener('change', event => spSet('spFalls', event.target.value));
 
-$('#visitOn').addEventListener('change', e => {
-  spSet('spVisits', e.target.checked);
+$('#visitOn').addEventListener('change', event => {
+  spSet('spVisits', event.target.checked);
   spVisit();
 });
 
-$('#agCardOn').addEventListener('change', e => {
-  spSet('spCard', e.target.checked);
-  if (!e.target.checked) mxtHide();
+$('#agCardOn').addEventListener('change', event => {
+  spSet('spCard', event.target.checked);
+  if (!event.target.checked) mxtHide();
 });
 
-$('#busyOnly').addEventListener('change', e => spSet('spBusy', e.target.checked, prefs.space));
-$('#fadeOn').addEventListener('change', e => spSet('spFade', e.target.checked, prefs.space));
-$('#linksOn').addEventListener('change', e => spSet('spLinks', e.target.checked, prefs.space));
+$('#busyOnly').addEventListener('change', event => spSet('spBusy', event.target.checked, prefs.space));
+$('#fadeOn').addEventListener('change', event => spSet('spFade', event.target.checked, prefs.space));
+$('#linksOn').addEventListener('change', event => spSet('spLinks', event.target.checked, prefs.space));
 
-$('#askOn').addEventListener('change', e => {
-  if (!e.target.checked) spAskClose();
-  spSet('spAnswer', e.target.checked, prefs.space);
+$('#askOn').addEventListener('change', event => {
+  if (!event.target.checked) spAskClose();
+  spSet('spAnswer', event.target.checked, prefs.space);
 });
 
-$('#podNames').addEventListener('change', e => spSet('spNames', e.target.value));
-$('#laneSpan').addEventListener('change', e => spSet('spWin', +e.target.value, prefs.space));
+$('#podNames').addEventListener('change', event => spSet('spNames', event.target.value));
+$('#laneSpan').addEventListener('change', event => spSet('spWin', +event.target.value, prefs.space));
 // The sky (2026-11-18, later), drawn once: four layers of stars from fixed seeds, so it is the same sky every time — the
 // first still, the others twinkling (CSS). A falling star now and then (SP_FALL_MS, a random wait each time): from a random
 // place in the sky's top half, at a random angle, under a second and a half — never while Space is hidden, the page is,
@@ -175,15 +175,15 @@ const SP_FALLS = { rare: [60_000, 180_000], some: [20_000, 60_000], often: [5_00
     ['tw3', 51, 14, 0.6],
     ['big', 67, 9, 0.8],
   ]
-    .map(([cls, seed, n, o]) => {
-      const r = rand(seed * 7919);
+    .map(([cls, seed, count, opacity]) => {
+      const random = rand(seed * 7919);
 
-      return `<b class="${cls}">${Array.from({ length: n }, () => {
-        const x = (r() * 100).toFixed(2);
-        const y = (r() * 100).toFixed(2);
-        const d = cls === 'big' ? (3 + r() * 1.5).toFixed(1) : r() < 0.85 ? 1 : r() < 0.7 ? 1.5 : 2;
+      return `<b class="${cls}">${Array.from({ length: count }, () => {
+        const left = (random() * 100).toFixed(2);
+        const top = (random() * 100).toFixed(2);
+        const size = cls === 'big' ? (3 + random() * 1.5).toFixed(1) : random() < 0.85 ? 1 : random() < 0.7 ? 1.5 : 2;
 
-        return `<i style="left:${x}%;top:${y}%;width:${d}px;height:${d}px;opacity:${(o * (0.6 + r() * 0.4)).toFixed(2)}"></i>`;
+        return `<i style="left:${left}%;top:${top}%;width:${size}px;height:${size}px;opacity:${(opacity * (0.6 + random() * 0.4)).toFixed(2)}"></i>`;
       }).join('')}</b>`;
     })
     .join('');
@@ -250,21 +250,21 @@ function spVisit(now = false) {
   }
 
   const sky = $('#spsky');
-  const W = sky.clientWidth;
-  const H = sky.clientHeight;
+  const width = sky.clientWidth;
+  const height = sky.clientHeight;
 
   if (
     !document.hidden &&
     !REDUCED.matches &&
     getComputedStyle(sky).display !== 'none' &&
-    W &&
+    width &&
     !sky.querySelector('.spvis')
   ) {
     const el = document.createElement('i');
     const comet = Math.random() < 0.5;
     const ltr = Math.random() < 0.5;
-    const y0 = H * (0.08 + Math.random() * 0.6);
-    const dy = (Math.random() - 0.5) * H * (comet ? 0.5 : 0.15);
+    const y0 = height * (0.08 + Math.random() * 0.6);
+    const dy = (Math.random() - 0.5) * height * (comet ? 0.5 : 0.15);
 
     if (comet) {
       el.className = 'spvis spcomet';
@@ -283,8 +283,8 @@ function spVisit(now = false) {
     sky.append(el);
 
     const pad = 160;
-    const from = ltr ? -pad : W + pad;
-    const to = ltr ? W + pad : -pad;
+    const from = ltr ? -pad : width + pad;
+    const to = ltr ? width + pad : -pad;
     const turn = comet ? (Math.atan2(dy, to - from) * 180) / Math.PI : 0;
 
     el.animate(
@@ -310,8 +310,8 @@ function spVisit(now = false) {
 
 $('#sbSpace').onclick = spToggle;
 
-$('#spgrid').addEventListener('pointerover', e => {
-  const id = e.target.closest?.('.spt[data-id]')?.dataset.id || null;
+$('#spgrid').addEventListener('pointerover', event => {
+  const id = event.target.closest?.('.spt[data-id]')?.dataset.id || null;
 
   if (id !== sp.over) {
     sp.over = id;
@@ -326,50 +326,56 @@ $('#spgrid').addEventListener('pointerleave', () => {
 
 new ResizeObserver(() => spLinksSoon()).observe($('#spgrid'));
 
-$('#spgrid').addEventListener('keydown', e => {
+$('#spgrid').addEventListener('keydown', event => {
   // F on a node: star it, or not; D: done, or back
-  const k = e.key.toLowerCase();
-  const n = (k === 'f' || k === 'd') && !e.metaKey && !e.ctrlKey && !e.altKey && e.target.closest?.('.spt[data-id]');
+  const key = event.key.toLowerCase();
+
+  const node =
+    (key === 'f' || key === 'd') &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    event.target.closest?.('.spt[data-id]');
 
   const pill =
-    e.key === 'Enter' &&
-    !e.metaKey &&
-    !e.ctrlKey &&
-    !e.altKey &&
-    e.target.matches?.('.spt[data-id]') &&
-    e.target.querySelector('.spask[data-tid]');
+    event.key === 'Enter' &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    event.target.matches?.('.spt[data-id]') &&
+    event.target.querySelector('.spask[data-tid]');
 
   if (pill) {
-    e.preventDefault();
-    return spAskOpen(e.target.dataset.id, pill.dataset.tid);
+    event.preventDefault();
+    return spAskOpen(event.target.dataset.id, pill.dataset.tid);
   } // ⏎ on a node asking you: its question
 
-  if (!n) return;
-  e.preventDefault();
-  if (k === 'f') setFav(n.dataset.id, !state.sessions.get(n.dataset.id)?.fav);
-  else spTick(n.dataset.id, n.querySelector('.spdone'));
+  if (!node) return;
+  event.preventDefault();
+  if (key === 'f') setFav(node.dataset.id, !state.sessions.get(node.dataset.id)?.fav);
+  else spTick(node.dataset.id, node.querySelector('.spdone'));
 });
 
 // ⌘F with the keys in Space — not in the chat beside it, whose find stays its own — is its box (2026-11-23)
 addEventListener(
   'keydown',
-  e => {
+  event => {
     if (
       !prefs.space ||
-      e.code !== 'KeyF' ||
-      !e.metaKey ||
-      e.altKey ||
-      e.ctrlKey ||
-      e.shiftKey ||
+      event.code !== 'KeyF' ||
+      !event.metaKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
       $('#space').hidden ||
       document.querySelector('dialog[open]')
     ) {
       return;
     }
 
-    if (e.target.closest?.('#chat, #sessions')) return;
-    e.preventDefault();
-    e.stopPropagation();
+    if (event.target.closest?.('#chat, #sessions')) return;
+    event.preventDefault();
+    event.stopPropagation();
     const box = $('#spq');
 
     box.focus();
@@ -381,30 +387,32 @@ addEventListener(
 const spRing = () => $('#spgrid .spt.hit')?.scrollIntoView({ block: 'nearest' });
 
 /** The word being typed, if it is a filter's start: the whole of it and where it starts. */
-const spPartial = v => {
-  const m = /(?:^|\s)((?:is|pr):\w*|[@#]\S*)$/.exec(v);
+const spPartial = text => {
+  const match = /(?:^|\s)((?:is|pr):\w*|[@#]\S*)$/.exec(text);
 
-  return m ? { w: m[1], at: v.length - m[1].length } : null;
+  return match ? { w: match[1], at: text.length - match[1].length } : null;
 };
 
 /** What a filter's start can be: [token, what it means, how many chats it keeps]. */
-function spTokRows(w) {
-  const pool = projectList().find(x => x.key === prefs.project)?.sessions || [];
-  const n = t => pool.filter(spTokTest(t) || (() => false)).length;
+function spTokRows(word) {
+  const pool = projectList().find(project => project.key === prefs.project)?.sessions || [];
+  const keeps = token => pool.filter(spTokTest(token) || (() => false)).length;
 
-  const lw = w.toLowerCase();
+  const lw = word.toLowerCase();
 
   const list = lw.startsWith('is:')
-    ? Object.keys(SP_IS).map(k => [`is:${k}`, SP_IS_SAY[k]])
+    ? Object.keys(SP_IS).map(name => [`is:${name}`, SP_IS_SAY[name]])
     : lw.startsWith('pr:')
-      ? Object.keys(SP_PRS).map(k => [`pr:${k}`, SP_PRS_SAY[k]])
+      ? Object.keys(SP_PRS).map(name => [`pr:${name}`, SP_PRS_SAY[name]])
       : lw.startsWith('@')
-        ? [...new Set(pool.flatMap(spTypes))].sort().map(k => [`@${k}`, 'an agent of that type'])
-        : [...new Set(pool.map(s => s.project).filter(Boolean))].sort().map(k => [`#${k}`, 'its project']);
+        ? [...new Set(pool.flatMap(spTypes))].sort().map(type => [`@${type}`, 'an agent of that type'])
+        : [...new Set(pool.map(session => session.project).filter(Boolean))]
+            .sort()
+            .map(project => [`#${project}`, 'its project']);
 
   return list
-    .filter(([t]) => t.toLowerCase().startsWith(lw) && !sp.toks.includes(t))
-    .map(([t, say]) => [t, say, n(t)])
+    .filter(([token]) => token.toLowerCase().startsWith(lw) && !sp.toks.includes(token))
+    .map(([token, say]) => [token, say, keeps(token)])
     .slice(0, 8);
 }
 
@@ -415,38 +423,38 @@ function spTokDraw() {
     $('#sptoks'),
     sp.toks
       .map(
-        (t, i) =>
-          `<span class="sptok">${esc(t)}<button type="button" data-i="${i}" aria-label="${esc(`Take ${t} off`)}">×</button></span>`,
+        (token, index) =>
+          `<span class="sptok">${esc(token)}<button type="button" data-i="${index}" aria-label="${esc(`Take ${token} off`)}">×</button></span>`,
       )
       .join(''),
   );
 
   const box = $('#spq');
-  const d = $('#spqd');
+  const dropdown = $('#spqd');
   const part = document.activeElement === box && spPartial(box.value);
   const rows = part && part.w !== sp.dshut ? spTokRows(part.w) : [];
 
-  d.hidden = !rows.length;
-  if (!rows.length) return setHtml(d, '');
+  dropdown.hidden = !rows.length;
+  if (!rows.length) return setHtml(dropdown, '');
   sp.dsel = Math.min(sp.dsel, rows.length - 1);
 
   setHtml(
-    d,
+    dropdown,
     rows
       .map(
-        ([t, say, n], i) =>
-          `<div class="dr${i === sp.dsel ? ' on' : ''}" role="option" aria-selected="${i === sp.dsel}" data-tok="${esc(t)}"><code>${esc(t)}</code><span>${esc(say)}</span><em>${n}</em></div>`,
+        ([token, say, count], index) =>
+          `<div class="dr${index === sp.dsel ? ' on' : ''}" role="option" aria-selected="${index === sp.dsel}" data-tok="${esc(token)}"><code>${esc(token)}</code><span>${esc(say)}</span><em>${count}</em></div>`,
       )
       .join(''),
   );
 }
 
 /** A filter taken: a chip, the word typed for it gone. */
-function spTokAdd(t) {
+function spTokAdd(token) {
   const box = $('#spq');
   const part = spPartial(box.value);
 
-  if (!sp.toks.includes(t)) sp.toks.push(t);
+  if (!sp.toks.includes(token)) sp.toks.push(token);
   box.value = sp.q = part ? box.value.slice(0, part.at) : box.value;
   sp.sel = 0;
   sp.dsel = 0;
@@ -456,12 +464,12 @@ function spTokAdd(t) {
 
 /** Words typed: a whole filter followed by a space becomes a chip; the rest stays text. */
 function spTyped(box) {
-  const v = box.value;
-  const m = /(?:^|\s)((?:is|pr):\w+|[@#]\S+)\s$/.exec(v);
+  const text = box.value;
+  const match = /(?:^|\s)((?:is|pr):\w+|[@#]\S+)\s$/.exec(text);
 
-  if (m && spTokTest(m[1])) {
-    if (!sp.toks.includes(m[1])) sp.toks.push(m[1]);
-    box.value = v.slice(0, v.length - m[0].length + (m[0].startsWith(' ') ? 1 : 0)).trimStart();
+  if (match && spTokTest(match[1])) {
+    if (!sp.toks.includes(match[1])) sp.toks.push(match[1]);
+    box.value = text.slice(0, text.length - match[0].length + (match[0].startsWith(' ') ? 1 : 0)).trimStart();
   }
 
   sp.q = box.value;
@@ -470,8 +478,8 @@ function spTyped(box) {
   sp.dshut = '';
 }
 
-$('#spq').addEventListener('input', e => {
-  spTyped(e.target);
+$('#spq').addEventListener('input', event => {
+  spTyped(event.target);
   renderSpace();
   $('#spfield').scrollTop = 0;
 });
@@ -484,122 +492,122 @@ $('#spq').addEventListener('blur', () =>
   }, 150),
 );
 
-$('#spqd').addEventListener('pointerdown', e => {
-  const r = e.target.closest('.dr[data-tok]');
+$('#spqd').addEventListener('pointerdown', event => {
+  const row = event.target.closest('.dr[data-tok]');
 
-  if (r) {
-    e.preventDefault();
-    spTokAdd(r.dataset.tok);
+  if (row) {
+    event.preventDefault();
+    spTokAdd(row.dataset.tok);
   }
 });
 
-$('#sptoks').addEventListener('click', e => {
-  const b = e.target.closest('button[data-i]');
+$('#sptoks').addEventListener('click', event => {
+  const button = event.target.closest('button[data-i]');
 
-  if (b) {
-    sp.toks.splice(+b.dataset.i, 1);
+  if (button) {
+    sp.toks.splice(+button.dataset.i, 1);
     sp.sel = 0;
     renderSpace();
     $('#spq').focus();
   }
 });
 
-$('#spq').addEventListener('keydown', e => {
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
+$('#spq').addEventListener('keydown', event => {
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
 
-  const d = $('#spqd');
-  const rows = d.hidden ? [] : [...d.querySelectorAll('.dr[data-tok]')];
+  const dropdown = $('#spqd');
+  const rows = dropdown.hidden ? [] : [...dropdown.querySelectorAll('.dr[data-tok]')];
 
   if (rows.length) {
     // a filter's start typed: its list has the arrows, ⇥ and ⏎ take one, esc closes it
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      sp.dsel = (sp.dsel + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      sp.dsel = (sp.dsel + (event.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length;
       return spTokDraw();
     }
 
-    if (e.key === 'Tab' || e.key === 'Enter') {
-      e.preventDefault();
+    if (event.key === 'Tab' || event.key === 'Enter') {
+      event.preventDefault();
       return spTokAdd(rows[sp.dsel].dataset.tok);
     }
 
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      sp.dshut = spPartial(e.target.value)?.w || '';
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      sp.dshut = spPartial(event.target.value)?.w || '';
       return spTokDraw();
     }
   }
 
-  if (e.key === 'Backspace' && !e.target.value && sp.toks.length) {
-    e.preventDefault();
+  if (event.key === 'Backspace' && !event.target.value && sp.toks.length) {
+    event.preventDefault();
     sp.toks.pop();
     sp.sel = 0;
     return renderSpace();
   }
 
-  const step = { ArrowDown: 1, ArrowUp: -1 }[e.key];
+  const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
 
   if (step && spOn()) {
-    e.preventDefault();
+    event.preventDefault();
     sp.sel = Math.max(0, Math.min(sp.list.length - 1, sp.sel + step));
     renderSpace();
     return spRing();
   }
 
-  if (e.key === 'Enter' && spOn()) {
-    e.preventDefault();
-    const s = sp.list[sp.sel];
+  if (event.key === 'Enter' && spOn()) {
+    event.preventDefault();
+    const session = sp.list[sp.sel];
 
-    if (s && s.id !== state.current) openSession(s.id);
+    if (session && session.id !== state.current) openSession(session.id);
     return;
   }
 
-  if (e.key === 'Escape') {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.target.value || sp.toks.length) {
-      e.target.value = sp.q = '';
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.target.value || sp.toks.length) {
+      event.target.value = sp.q = '';
       sp.toks = [];
       sp.sel = 0;
       renderSpace();
-    } else e.target.blur();
+    } else event.target.blur();
   }
 });
 
-$('#space').addEventListener('click', e => {
-  const f = e.target.closest('.spf[data-k]');
+$('#space').addEventListener('click', event => {
+  const filter = event.target.closest('.spf[data-k]');
 
-  if (f) {
-    const k = f.dataset.k;
+  if (filter) {
+    const status = filter.dataset.k;
     const off = spOff();
 
-    prefs.spOff = off.includes(k) ? off.filter(x => x !== k) : [...off, k];
+    prefs.spOff = off.includes(status) ? off.filter(other => other !== status) : [...off, status];
     savePrefs();
     return renderSpace();
   }
 
-  const w = e.target.closest('.spwin [data-w]');
+  const winButton = event.target.closest('.spwin [data-w]');
 
-  if (w) {
-    prefs.spWin = +w.dataset.w;
+  if (winButton) {
+    prefs.spWin = +winButton.dataset.w;
     savePrefs();
     spLook();
     return renderSpace();
   }
 
-  const z = e.target.closest('.spzoom [data-z]');
+  const zoomButton = event.target.closest('.spzoom [data-z]');
 
-  if (z) return z.dataset.z === 'fit' ? spFit() : spZoom(spZoomNow() + 0.1 * +z.dataset.z);
+  if (zoomButton) return zoomButton.dataset.z === 'fit' ? spFit() : spZoom(spZoomNow() + 0.1 * +zoomButton.dataset.z);
 
-  if (e.target.closest('.spfold')) {
+  if (event.target.closest('.spfold')) {
     prefs.spLanes = prefs.spLanes === false;
     savePrefs();
     return renderSpace();
   }
 
   // a pod's +N: the ones done or idle, folded again SP_OPEN_MS on — later while the pointer is on its chat (2026-11-18, v10)
-  const px = e.target.closest('.spx[data-pod]');
+  const px = event.target.closest('.spx[data-pod]');
 
   if (px) {
     const key = `${px.closest('.spt').dataset.id}:${px.dataset.pod}`;
@@ -609,9 +617,9 @@ $('#space').addEventListener('click', e => {
   }
 
   // an agent's mark: its chat, open on that agent's tab — its own transcript (2026-11-18, v8); one with none yet, the chat
-  const mk = e.target.closest('.spgrid .spa[data-ag]');
+  const mk = event.target.closest('.spgrid .spa[data-ag]');
   const ms = mk && state.sessions.get(mk.dataset.sid);
-  const mr = ms && spRows(ms).find(x => x.id === mk.dataset.ag);
+  const mr = ms && spRows(ms).find(row => row.id === mk.dataset.ag);
 
   if (mr && AG_ID.test(String(mr.id)) && mr.st !== 'joined') {
     mxtHide();
@@ -620,8 +628,10 @@ $('#space').addEventListener('click', e => {
 
   // the star: its own target, or the one under the pointer should the click go to the node's button (2026-11-18, v11)
   const star =
-    e.target.closest('.spstar') ||
-    (e.detail && e.target.matches?.('.spt') && document.elementFromPoint(e.clientX, e.clientY)?.closest('.spstar'));
+    event.target.closest('.spstar') ||
+    (event.detail &&
+      event.target.matches?.('.spt') &&
+      document.elementFromPoint(event.clientX, event.clientY)?.closest('.spstar'));
 
   if (star) {
     const id = star.closest('.spt').dataset.id;
@@ -629,10 +639,10 @@ $('#space').addEventListener('click', e => {
     return setFav(id, !state.sessions.get(id)?.fav);
   }
 
-  const tk = e.target.closest('.spdone');
+  const tk = event.target.closest('.spdone');
 
   if (tk) return spTick(tk.closest('.spt').dataset.id, tk);
-  const ar = e.target.closest('#spar [data-arr]');
+  const ar = event.target.closest('#spar [data-arr]');
 
   if (ar) {
     prefs.spArrange = ar.dataset.arr;
@@ -640,7 +650,7 @@ $('#space').addEventListener('click', e => {
     return renderSpace();
   }
 
-  const tkp = e.target.closest('.sptk[data-url]'); // its ticket's page, beside the chat (2026-11-24)
+  const tkp = event.target.closest('.sptk[data-url]'); // its ticket's page, beside the chat (2026-11-24)
 
   if (tkp) {
     const id = tkp.closest('.spt').dataset.id;
@@ -648,16 +658,16 @@ $('#space').addEventListener('click', e => {
 
     if (url) {
       (id === state.current ? Promise.resolve() : openSession(id)).then(() => {
-        const c = state.sessions.get(id);
+        const chat = state.sessions.get(id);
 
-        if (c && state.current === id) openExternal(url, { s: c });
+        if (chat && state.current === id) openExternal(url, { s: chat });
       });
     }
 
     return;
   }
 
-  const ak = e.target.closest('.spask'); // its question (2026-11-24); one asked elsewhere opens nothing
+  const ak = event.target.closest('.spask'); // its question (2026-11-24); one asked elsewhere opens nothing
 
   if (ak) {
     if (ak.dataset.tid) {
@@ -670,25 +680,25 @@ $('#space').addEventListener('click', e => {
   }
 
   // a PR in a node's list: its chat open, the PR on a tab beside it (2026-11-23); the pill itself opens nothing
-  const pr = e.target.closest('.spprr[data-url]');
+  const pr = event.target.closest('.spprr[data-url]');
 
   if (pr) {
     const id = pr.closest('.spt').dataset.id;
     const url = pr.dataset.url;
 
     (id === state.current ? Promise.resolve() : openSession(id)).then(() => {
-      const s = state.sessions.get(id);
+      const chat = state.sessions.get(id);
 
-      if (s && state.current === id) openExternal(url, { s });
+      if (chat && state.current === id) openExternal(url, { s: chat });
     });
 
     return;
   }
 
-  if (e.target.closest('.sppr')) return;
-  const node = e.target.closest('.spt[data-id]');
+  if (event.target.closest('.sppr')) return;
+  const node = event.target.closest('.spt[data-id]');
 
-  if (node && e.shiftKey) {
+  if (node && event.shiftKey) {
     const id = node.dataset.id;
 
     sp.chosen.has(id) ? sp.chosen.delete(id) : sp.chosen.add(id);
@@ -705,11 +715,11 @@ $('#space').addEventListener('click', e => {
     return;
   }
 
-  const s = state.sessions.get(state.current);
-  const lane = e.target.closest('.splane[data-ag]');
-  const r = lane && s && spRows(s).find(x => x.id === lane.dataset.ag);
+  const session = state.sessions.get(state.current);
+  const lane = event.target.closest('.splane[data-ag]');
+  const agent = lane && session && spRows(session).find(row => row.id === lane.dataset.ag);
 
-  if (r) agOpen(s, r);
+  if (agent) agOpen(session, agent);
 });
 
 // a pinch over the nodes is theirs: Chrome's comes as a wheel with ⌃, WebKit's as gesture events; ⌘-wheel too
@@ -721,16 +731,20 @@ $('#space').addEventListener('click', e => {
 
   $('#spfield').addEventListener(
     'wheel',
-    e => {
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
+    event => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
       clearTimeout(rest);
 
       rest = setTimeout(() => {
         raw = null;
       }, 300);
 
-      raw = Math.min(1.5, Math.max(0.5, (raw ?? spZoomNow()) * Math.exp(-Math.max(-30, Math.min(30, e.deltaY)) / 300)));
+      raw = Math.min(
+        1.5,
+        Math.max(0.5, (raw ?? spZoomNow()) * Math.exp(-Math.max(-30, Math.min(30, event.deltaY)) / 300)),
+      );
+
       spZoom(raw);
     },
     { passive: false },
@@ -741,64 +755,69 @@ $('#space').addEventListener('click', e => {
   let at = 1;
   const field = $('#spfield');
 
-  field.addEventListener('gesturestart', e => {
-    e.preventDefault();
+  field.addEventListener('gesturestart', event => {
+    event.preventDefault();
     at = spZoomNow();
   });
 
-  field.addEventListener('gesturechange', e => {
-    e.preventDefault();
-    spZoom(at * e.scale);
+  field.addEventListener('gesturechange', event => {
+    event.preventDefault();
+    spZoom(at * event.scale);
   });
 }
 
-$('#space').addEventListener('keydown', e => {
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
+$('#space').addEventListener('keydown', event => {
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
 
-  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.splane[data-ag]')) {
-    e.preventDefault();
-    return e.target.click();
+  if ((event.key === 'Enter' || event.key === ' ') && event.target.matches?.('.splane[data-ag]')) {
+    event.preventDefault();
+    return event.target.click();
   }
 
-  const at = e.target.closest?.('#spgrid .spt');
+  const at = event.target.closest?.('#spgrid .spt');
 
-  if (e.key === 'Escape' && sp.chosen.size && !e.target.closest?.('input, textarea')) {
-    e.preventDefault();
-    e.stopPropagation();
+  if (event.key === 'Escape' && sp.chosen.size && !event.target.closest?.('input, textarea')) {
+    event.preventDefault();
+    event.stopPropagation();
     sp.chosen.clear();
     return renderSpace();
   }
 
-  if (!at || !['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
-  e.preventDefault();
+  if (!at || !['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+  event.preventDefault();
 
   // by the grid as it lies (2026-11-24): ←→ the node before or after, ↑↓ the nearest in the row above or below, Home End the ends
   const nodes = [...$('#spgrid').querySelectorAll('.spt')];
-  const i = nodes.indexOf(at);
-  const box = n => n.getBoundingClientRect();
-  const r = box(at);
-  const cx = r.left + r.width / 2;
+  const index = nodes.indexOf(at);
+  const box = node => node.getBoundingClientRect();
+  const here = box(at);
+  const cx = here.left + here.width / 2;
 
   let to;
 
-  if (e.key === 'Home') to = nodes[0];
-  else if (e.key === 'End') to = nodes.at(-1);
-  else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-    to = nodes[Math.max(0, Math.min(nodes.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)))];
+  if (event.key === 'Home') to = nodes[0];
+  else if (event.key === 'End') to = nodes.at(-1);
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    to = nodes[Math.max(0, Math.min(nodes.length - 1, index + (event.key === 'ArrowRight' ? 1 : -1)))];
   } else {
-    const down = e.key === 'ArrowDown';
-    const rows = nodes.map(n => [n, box(n)]).filter(([, b]) => (down ? b.top > r.top + 4 : b.top < r.top - 4));
+    const down = event.key === 'ArrowDown';
 
-    const row = down ? Math.min(...rows.map(([, b]) => b.top)) : Math.max(...rows.map(([, b]) => b.top));
+    const rows = nodes
+      .map(node => [node, box(node)])
+      .filter(([, rect]) => (down ? rect.top > here.top + 4 : rect.top < here.top - 4));
+
+    const row = down ? Math.min(...rows.map(([, rect]) => rect.top)) : Math.max(...rows.map(([, rect]) => rect.top));
 
     to =
       rows
-        .filter(([, b]) => Math.abs(b.top - row) < 4)
-        .sort(([, a], [, b]) => Math.abs(a.left + a.width / 2 - cx) - Math.abs(b.left + b.width / 2 - cx))[0]?.[0] ||
-      at;
+        .filter(([, rect]) => Math.abs(rect.top - row) < 4)
+        .sort(
+          ([, first], [, second]) =>
+            Math.abs(first.left + first.width / 2 - cx) - Math.abs(second.left + second.width / 2 - cx),
+        )[0]?.[0] || at;
   }
 
-  if (e.shiftKey && to) {
+  if (event.shiftKey && to) {
     sp.chosen.add(at.dataset.id);
     sp.chosen.add(to.dataset.id);
     renderSpace();

@@ -37,9 +37,9 @@ const bin = join(nm, 'node_modules/.cache/peixairada/webkit');
 const args = process.argv.slice(2);
 
 const opt = name => {
-  const i = args.indexOf(name);
+  const index = args.indexOf(name);
 
-  return i === -1 ? '' : (args.splice(i, 2)[1] ?? '');
+  return index === -1 ? '' : (args.splice(index, 2)[1] ?? '');
 };
 
 const hash = opt('--hash');
@@ -52,7 +52,7 @@ if (!body) {
   process.exit(2);
 }
 
-const [w, h] = (process.env.SIZE || '1600x900').split('x');
+const [width, height] = (process.env.SIZE || '1600x900').split('x');
 
 try {
   JSON.parse(process.env.PREFS || '{}');
@@ -61,9 +61,9 @@ try {
   process.exit(2);
 }
 
-const mtime = f => {
+const mtime = file => {
   try {
-    return statSync(f).mtimeMs;
+    return statSync(file).mtimeMs;
   } catch {
     return 0;
   }
@@ -72,17 +72,17 @@ const mtime = f => {
 if (mtime(bin) < mtime(src)) {
   mkdirSync(dirname(bin), { recursive: true });
   console.error('› compiling scripts/webkit.swift');
-  const c = spawnSync('swiftc', ['-O', '-swift-version', '5', '-o', bin, src], { stdio: 'inherit' });
+  const compiled = spawnSync('swiftc', ['-O', '-swift-version', '5', '-o', bin, src], { stdio: 'inherit' });
 
-  if (c.status !== 0) process.exit(c.status ?? 1);
+  if (compiled.status !== 0) process.exit(compiled.status ?? 1);
 }
 
-const r = spawnSync(bin, [process.env.URL || 'http://127.0.0.1:7331/', body, shot, then], {
+const result = spawnSync(bin, [process.env.URL || 'http://127.0.0.1:7331/', body, shot, then], {
   stdio: 'inherit',
   env: {
     ...process.env,
-    WK_W: w,
-    WK_H: h,
+    WK_W: width,
+    WK_H: height,
     WK_HASH: hash,
     WK_PREFS: process.env.PREFS || '{}',
     WK_KEY: liveKey(), // KEY, else the live board's (2026-10-16)
@@ -91,4 +91,4 @@ const r = spawnSync(bin, [process.env.URL || 'http://127.0.0.1:7331/', body, sho
   },
 });
 
-process.exit(r.status ?? 1);
+process.exit(result.status ?? 1);

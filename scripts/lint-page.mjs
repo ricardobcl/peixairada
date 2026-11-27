@@ -26,11 +26,11 @@ function firstInPart(file, line) {
     .every(text => NO_CODE.test(text));
 }
 
-for (const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
-  const from = m.index + '<script>'.length;
+for (const match of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+  const from = match.index + '<script>'.length;
   const line0 = html.slice(0, from).split('\n').length; // the page's line the script starts on
   const col0 = from - html.lastIndexOf('\n', from - 1) - 1;
-  const [res] = await eslint.lintText(m[1], { filePath: `${ROOT}public/page.js` });
+  const [res] = await eslint.lintText(match[1], { filePath: `${ROOT}public/page.js` });
 
   for (const msg of res.messages) {
     const at = where(line0 + (msg.line ?? 1) - 1);
@@ -46,15 +46,17 @@ for (const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
   }
 }
 
-found.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column);
+found.sort(
+  (left, right) => left.file.localeCompare(right.file) || left.line - right.line || left.column - right.column,
+);
 
-for (const f of found) {
+for (const problem of found) {
   console.log(
-    `${f.file}:${f.line}:${f.column}  ${f.severity === 2 ? 'error' : 'warning'}  ${f.message}  ${f.ruleId ?? ''}`,
+    `${problem.file}:${problem.line}:${problem.column}  ${problem.severity === 2 ? 'error' : 'warning'}  ${problem.message}  ${problem.ruleId ?? ''}`,
   );
 }
 
-const errors = found.filter(f => f.severity === 2).length;
+const errors = found.filter(problem => problem.severity === 2).length;
 
 if (found.length) {
   console.log(

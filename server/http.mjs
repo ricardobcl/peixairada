@@ -28,10 +28,10 @@ const BODY_MAX = 1e6;
  *  whole (2026-10-03: a chunk at a time before, so a character split across two chunks came out as two U+FFFD). */
 export const jsonBody = req =>
   readRaw(req, BODY_MAX)
-    .then(b => {
-      const v = JSON.parse(b.toString('utf8') || '{}');
+    .then(buffer => {
+      const parsed = JSON.parse(buffer.toString('utf8') || '{}');
 
-      return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
     })
     .catch(() => ({}));
 
@@ -69,8 +69,8 @@ export const server = createServer(async (req, res) => {
 
     if (why) return json(res, 403, { error: `not the board's own page (${why})` });
     const url = new URL(req.url, 'http://localhost'); // the path and the query: the Host was foreign()'s to judge
-    const p = url.pathname;
-    const want = !KEY_OPEN.test(p) && keyWant(req, url);
+    const path = url.pathname;
+    const want = !KEY_OPEN.test(path) && keyWant(req, url);
 
     if (want) {
       res.setHeader('connection', 'close');
@@ -80,20 +80,20 @@ export const server = createServer(async (req, res) => {
       });
     } // its body unread: the socket goes
 
-    if (req.method !== 'GET' && p !== '/api/update' && p !== '/api/chat/watch' && !p.endsWith('/seen')) {
+    if (req.method !== 'GET' && path !== '/api/update' && path !== '/api/chat/watch' && !path.endsWith('/seen')) {
       setLastTouchAt(Date.now());
     } // something done on the board (a reply shown is the page's own doing): no update until it rests
 
-    for (const route of ROUTES) if ((await route(req, res, url, p)) !== NEXT) return;
+    for (const route of ROUTES) if ((await route(req, res, url, path)) !== NEXT) return;
     json(res, 404, { error: 'not found' });
-  } catch (e) {
+  } catch (error) {
     console.error(
       `[peixairada] ${req.method} ${String(req.url).replace(/([?&](?:key|tkn|ticket)=)[^&#]*/gi, '$1…')}:`,
-      e,
+      error,
     ); // the key never in the log (2026-11-06)
 
     if (res.headersSent) res.destroy();
-    else json(res, 500, { error: String(e?.stack || e) });
+    else json(res, 500, { error: String(error?.stack || error) });
   }
 });
 
@@ -105,8 +105,8 @@ server.on('upgrade', (req, socket, head) => {
 
   booted.promise
     .then(() => attachTermSocket(req, socket, head))
-    .catch(e => {
-      console.error('[peixairada] upgrade:', e);
+    .catch(error => {
+      console.error('[peixairada] upgrade:', error);
       socket.destroy();
     });
 });

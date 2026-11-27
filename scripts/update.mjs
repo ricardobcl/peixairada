@@ -27,11 +27,11 @@ const STEPS = {
 };
 
 const PARTS = { deps: 'the packages', server: 'the server', page: 'the page', app: 'the app' };
-const sha = h => (h ? h.slice(0, 7) : '?');
-const many = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const sha = hash => (hash ? hash.slice(0, 7) : '?');
+const many = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
 const them = list => (list?.length === 1 ? 'it' : 'them');
 const and = list => list.join(', ').replace(/, ([^,]*)$/, ' and $1');
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const key = () => {
   try {
@@ -46,34 +46,34 @@ const BY_HAND =
 
 /** The updater's state, or with a body its answer to *Update now*. `null`: nothing answers on the port. */
 async function ask(body, path = '/api/update') {
-  let r;
+  let response;
 
   try {
-    r = await fetch(`http://127.0.0.1:${PORT}${path}`, {
+    response = await fetch(`http://127.0.0.1:${PORT}${path}`, {
       method: body ? 'POST' : 'GET',
       headers: { 'x-peix-key': key(), ...(body && { 'content-type': 'application/json' }) },
       body: body && JSON.stringify(body),
       signal: AbortSignal.timeout(body ? BUILD_MS : 5000),
     });
-  } catch (e) {
-    if (['ECONNREFUSED', 'ECONNRESET', 'UND_ERR_SOCKET'].includes(e.cause?.code) || e.name === 'TimeoutError') {
+  } catch (error) {
+    if (['ECONNREFUSED', 'ECONNRESET', 'UND_ERR_SOCKET'].includes(error.cause?.code) || error.name === 'TimeoutError') {
       return null;
     }
 
-    throw e;
+    throw error;
   }
 
-  const b = await r.json().catch(() => ({}));
+  const reply = await response.json().catch(() => ({}));
 
-  if (!r.ok) {
+  if (!response.ok) {
     throw new Error(
-      r.status === 401
+      response.status === 401
         ? `the board refused its key (${dirname(STATE)}/key)`
-        : b.error || `the board answered ${r.status}`,
+        : reply.error || `the board answered ${response.status}`,
     );
   }
 
-  return b;
+  return reply;
 }
 
 function stop(line) {
@@ -81,7 +81,7 @@ function stop(line) {
   process.exit(1);
 }
 
-const fail = e => stop(`not updated: ${e.message}`);
+const fail = error => stop(`not updated: ${error.message}`);
 let st = await ask().catch(fail);
 
 if (!st) {
@@ -114,12 +114,12 @@ const answer = ask({ apply: true }).finally(() => {
 
 (async () => {
   while (!done) {
-    const u = await ask().catch(() => null);
-    const k = u?.busy === 'updating' && u.steps?.[u.step];
+    const update = await ask().catch(() => null);
+    const step = update?.busy === 'updating' && update.steps?.[update.step];
 
-    if (k && `${u.up}:${k}` !== said) {
-      said = `${u.up}:${k}`;
-      console.log(`  ${u.step + 1}/${u.steps.length} ${STEPS[k] || k}…`);
+    if (step && `${update.up}:${step}` !== said) {
+      said = `${update.up}:${step}`;
+      console.log(`  ${update.step + 1}/${update.steps.length} ${STEPS[step] || step}…`);
     }
 
     await sleep(EVERY_MS);
@@ -145,7 +145,7 @@ const news = st.channel === 'releases' && st.release ? `${relName(st.release)}` 
 
 if (took) {
   console.log(
-    `updated ${sha(st.last.from)} → ${sha(st.last.to)}${st.last.release ? `, to ${relName(st.last.release)}` : ''}, ${many(st.last.count, 'commit')}${st.last.parts.length ? `: ${and(st.last.parts.map(p => PARTS[p]))}` : ', nothing to start again'}`,
+    `updated ${sha(st.last.from)} → ${sha(st.last.to)}${st.last.release ? `, to ${relName(st.last.release)}` : ''}, ${many(st.last.count, 'commit')}${st.last.parts.length ? `: ${and(st.last.parts.map(part => PARTS[part]))}` : ', nothing to start again'}`,
   );
 } else {
   const up = st.upstream || 'the remote';
@@ -181,9 +181,9 @@ if (st.restarting) {
 
   while (!back && Date.now() < until) {
     await sleep(EVERY_MS);
-    const u = await ask().catch(() => null);
+    const update = await ask().catch(() => null);
 
-    if (u && !u.restarting) back = u;
+    if (update && !update.restarting) back = update;
   }
 
   if (!back) stop(`the server has not come back in ${RESTART_MS / 1000} s — scripts/launchd.sh status and logs`);
@@ -227,5 +227,7 @@ if (took && st.last?.release) {
     (await ask(null, `/api/update/notes?since=${encodeURIComponent(before || '0.0.0')}`).catch(() => null))?.notes ||
     [];
 
-  for (const n of notes) console.log(`\n## ${relName(n.version)}${n.title ? ` — ${n.title}` : ''}\n\n${n.md}`);
+  for (const note of notes) {
+    console.log(`\n## ${relName(note.version)}${note.title ? ` — ${note.title}` : ''}\n\n${note.md}`);
+  }
 }

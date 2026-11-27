@@ -23,7 +23,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 
 const face = login =>
-  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="hsl(${[...login].reduce((h, c) => h + c.charCodeAt(0) * 37, 0) % 360} 55% 55%)"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff" font-family="sans-serif">${login[0].toUpperCase()}</text></svg>`)}`;
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="hsl(${[...login].reduce((hash, char) => hash + char.charCodeAt(0) * 37, 0) % 360} 55% 55%)"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff" font-family="sans-serif">${login[0].toUpperCase()}</text></svg>`)}`;
 
 const ROLE = { pull: 1, push: 2, admin: 3 };
 const ROLE_NAME = { pull: 'read', push: 'write', admin: 'admin' };
@@ -66,24 +66,24 @@ export async function startFakeGitHub({
     return people.get(login);
   };
 
-  for (const u of users) user(u);
+  for (const login of users) user(login);
 
   const orgNames = [...Object.keys(orgs), ...Object.keys(members)];
-  const orgName = owner => orgNames.find(o => o.toLowerCase() === owner.toLowerCase());
+  const orgName = owner => orgNames.find(org => org.toLowerCase() === owner.toLowerCase());
 
   const isOrg = owner => !!orgName(owner);
 
-  const orgOut = o => ({
-    login: o,
-    id: 9000 + orgNames.indexOf(o),
-    avatar_url: face(o),
-    created_at: new Date(Date.parse('2026-01-01T00:00:00Z') + orgNames.indexOf(o) * 86_400_000).toISOString(),
+  const orgOut = org => ({
+    login: org,
+    id: 9000 + orgNames.indexOf(org),
+    avatar_url: face(org),
+    created_at: new Date(Date.parse('2026-01-01T00:00:00Z') + orgNames.indexOf(org) * 86_400_000).toISOString(),
   });
 
   function makeRepo(full, { perms = {}, description, rooms = [], private: priv = true } = {}) {
     const [owner, name] = full.split('/');
 
-    const r = {
+    const repository = {
       id: repoId++,
       owner,
       name,
@@ -97,12 +97,12 @@ export async function startFakeGitHub({
       subs: {},
     };
 
-    if (!isOrg(owner)) r.perms[owner] = 'admin';
-    all.set(full.toLowerCase(), r);
+    if (!isOrg(owner)) repository.perms[owner] = 'admin';
+    all.set(full.toLowerCase(), repository);
 
     for (const room of rooms) {
-      const i = {
-        number: r.issues.length + 1,
+      const issue = {
+        number: repository.issues.length + 1,
         title: room.title,
         labels: room.labels || ['room'],
         state: room.state || 'open',
@@ -110,85 +110,93 @@ export async function startFakeGitHub({
         comments: [],
       };
 
-      if (i.labels.includes('room')) r.labels.add('room');
+      if (issue.labels.includes('room')) repository.labels.add('room');
 
       for (const [by, body] of room.comments || []) {
-        const t = at();
+        const time = at();
 
-        i.comments.push({ id: nextId++, user: user(by), body, created_at: t, updated_at: t, reactions: [] });
+        issue.comments.push({ id: nextId++, user: user(by), body, created_at: time, updated_at: time, reactions: [] });
       }
 
-      r.issues.push(i);
+      repository.issues.push(issue);
     }
 
-    return r;
+    return repository;
   }
 
   for (const [full, spec] of Object.entries(repos)) makeRepo(full, spec);
-  const role = (r, login) => r.perms[login] || (orgs[orgName(r.owner) || '']?.includes(login) ? 'admin' : null);
-  const may = (r, login, need) => (ROLE[role(r, login)] || 0) >= ROLE[need];
 
-  const issueOut = (r, i) => ({
-    number: i.number,
-    title: i.title,
-    state: i.state,
-    user: i.user,
-    labels: i.labels.map(name => ({ name })),
-    comments: i.comments.length,
-    url: `https://api.github.com/repos/${r.full_name}/issues/${i.number}`,
+  const role = (repository, login) =>
+    repository.perms[login] || (orgs[orgName(repository.owner) || '']?.includes(login) ? 'admin' : null);
+
+  const may = (repository, login, need) => (ROLE[role(repository, login)] || 0) >= ROLE[need];
+
+  const issueOut = (repository, issue) => ({
+    number: issue.number,
+    title: issue.title,
+    state: issue.state,
+    user: issue.user,
+    labels: issue.labels.map(name => ({ name })),
+    comments: issue.comments.length,
+    url: `https://api.github.com/repos/${repository.full_name}/issues/${issue.number}`,
   });
 
-  const commentOut = (r, i, c) => ({
-    id: c.id,
-    user: c.user,
-    body: c.body,
-    created_at: c.created_at,
-    updated_at: c.updated_at,
-    issue_url: `https://api.github.com/repos/${r.full_name}/issues/${i.number}`,
-    html_url: `https://github.com/${r.full_name}/issues/${i.number}#issuecomment-${c.id}`,
+  const commentOut = (repository, issue, comment) => ({
+    id: comment.id,
+    user: comment.user,
+    body: comment.body,
+    created_at: comment.created_at,
+    updated_at: comment.updated_at,
+    issue_url: `https://api.github.com/repos/${repository.full_name}/issues/${issue.number}`,
+    html_url: `https://github.com/${repository.full_name}/issues/${issue.number}#issuecomment-${comment.id}`,
     reactions: Object.fromEntries([
-      ['total_count', c.reactions.length],
-      ...REACTIONS.map(k => [k, c.reactions.filter(x => x.content === k).length]),
+      ['total_count', comment.reactions.length],
+      ...REACTIONS.map(content => [content, comment.reactions.filter(reaction => reaction.content === content).length]),
     ]),
   });
 
-  const react = (c, login, content) => {
-    let x = c.reactions.find(y => y.user.login === login && y.content === content);
+  const react = (comment, login, content) => {
+    let reaction = comment.reactions.find(candidate => candidate.user.login === login && candidate.content === content);
 
-    if (x) return [200, x];
-    x = { id: reactionId++, user: user(login), content, created_at: at() };
-    c.reactions.push(x);
-    return [201, x];
+    if (reaction) return [200, reaction];
+    reaction = { id: reactionId++, user: user(login), content, created_at: at() };
+    comment.reactions.push(reaction);
+    return [201, reaction];
   };
 
-  const repoOut = (r, login) => ({
-    id: r.id,
-    full_name: r.full_name,
-    name: r.name,
-    private: r.private,
-    description: r.description,
-    owner: { login: r.owner, type: isOrg(r.owner) ? 'Organization' : 'User' },
-    permissions: { admin: may(r, login, 'admin'), push: may(r, login, 'push'), pull: may(r, login, 'pull') },
+  const repoOut = (repository, login) => ({
+    id: repository.id,
+    full_name: repository.full_name,
+    name: repository.name,
+    private: repository.private,
+    description: repository.description,
+    owner: { login: repository.owner, type: isOrg(repository.owner) ? 'Organization' : 'User' },
+    permissions: {
+      admin: may(repository, login, 'admin'),
+      push: may(repository, login, 'push'),
+      pull: may(repository, login, 'pull'),
+    },
   });
 
-  const inviteOut = (r, v) => ({
-    id: v.id,
-    invitee: user(v.login),
-    inviter: user(v.by),
-    created_at: v.created_at,
-    expired: !!v.expired,
-    permissions: v.permission === 'pull' ? 'read' : 'write',
-    repository: { full_name: r.full_name, description: r.description, private: r.private },
+  const inviteOut = (repository, invitation) => ({
+    id: invitation.id,
+    invitee: user(invitation.login),
+    inviter: user(invitation.by),
+    created_at: invitation.created_at,
+    expired: !!invitation.expired,
+    permissions: invitation.permission === 'pull' ? 'read' : 'write',
+    repository: { full_name: repository.full_name, description: repository.description, private: repository.private },
   });
 
-  const comments = r => r.issues.flatMap(i => i.comments.map(c => commentOut(r, i, c)));
+  const comments = repository =>
+    repository.issues.flatMap(issue => issue.comments.map(comment => commentOut(repository, issue, comment)));
 
   const find = id => {
-    for (const r of all.values()) {
-      for (const i of r.issues) {
-        const c = i.comments.find(x => x.id === id);
+    for (const repository of all.values()) {
+      for (const issue of repository.issues) {
+        const comment = issue.comments.find(candidate => candidate.id === id);
 
-        if (c) return { r, i, c };
+        if (comment) return { r: repository, i: issue, c: comment };
       }
     }
 
@@ -197,34 +205,34 @@ export async function startFakeGitHub({
 
   const EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' };
 
-  const addAsset = (r, bytes, type) => {
+  const addAsset = (repository, bytes, type) => {
     const id = randomUUID();
 
-    assets.set(id, { repo: r.full_name, type, bytes: Buffer.from(bytes), n: assetN++ });
+    assets.set(id, { repo: repository.full_name, type, bytes: Buffer.from(bytes), n: assetN++ });
     return `https://github.com/user-attachments/assets/${id}`;
   };
 
   const server = createServer((req, res) => {
     const chunks = [];
 
-    req.on('data', d => {
-      chunks.push(d);
+    req.on('data', chunk => {
+      chunks.push(chunk);
     });
 
     req.on('end', () => {
       const bytes = Buffer.concat(chunks);
       const raw = bytes.toString('utf8');
 
-      const u = new URL(req.url, 'http://x');
-      const path = u.pathname;
-      const q = u.searchParams;
-      const M = req.method;
+      const requestUrl = new URL(req.url, 'http://x');
+      const path = requestUrl.pathname;
+      const query = requestUrl.searchParams;
+      const method = req.method;
 
       const send = (code, body) => {
         let text = body === undefined ? '' : JSON.stringify(body);
         let tag = null;
 
-        if (M === 'GET' && code === 200) {
+        if (method === 'GET' && code === 200) {
           tag = `W/"${createHash('sha1').update(text).digest('hex')}"`;
 
           if (req.headers['if-none-match'] === tag) {
@@ -233,22 +241,22 @@ export async function startFakeGitHub({
           }
         }
 
-        calls.push(`${M} ${path}${u.search} ${code}`);
+        calls.push(`${method} ${path}${requestUrl.search} ${code}`);
         res.writeHead(code, { 'content-type': 'application/json', ...(tag && { etag: tag }) });
         res.end(text);
       };
 
       const no = (code, message) => send(code, { message });
-      let m;
+      let match;
 
-      if (M === 'GET' && (m = path.match(/^\/pics\/\d+-([0-9a-f-]{36})\.\w+$/))) {
+      if (method === 'GET' && (match = path.match(/^\/pics\/\d+-([0-9a-f-]{36})\.\w+$/))) {
         // a signed address: no token, the signature
-        const a = assets.get(m[1]);
+        const asset = assets.get(match[1]);
 
-        if (!a || !signed.has(q.get('jwt'))) return no(404, 'Not Found');
-        calls.push(`${M} ${path} 200`);
-        res.writeHead(200, { 'content-type': a.type, 'content-length': a.bytes.length });
-        return res.end(a.bytes);
+        if (!asset || !signed.has(query.get('jwt'))) return no(404, 'Not Found');
+        calls.push(`${method} ${path} 200`);
+        res.writeHead(200, { 'content-type': asset.type, 'content-length': asset.bytes.length });
+        return res.end(asset.bytes);
       }
 
       const token = /^Bearer fake-token-(.+)$/.exec(req.headers.authorization || '');
@@ -256,18 +264,18 @@ export async function startFakeGitHub({
 
       if (!me) return no(401, 'Bad credentials');
 
-      if (M === 'POST' && path === '/user-attachments/assets') {
+      if (method === 'POST' && path === '/user-attachments/assets') {
         // GitHub's attachment endpoint: a writer's picture, its address back
-        const r = [...all.values()].find(x => x.id === Number(q.get('repository_id')));
+        const target = [...all.values()].find(candidate => candidate.id === Number(query.get('repository_id')));
 
-        if (!r || !may(r, me, 'push')) return no(404, 'Not Found');
-        if (!EXT[q.get('content_type')] || !bytes.length) return send(422, { message: 'Validation Failed' });
-        const url = addAsset(r, bytes, q.get('content_type'));
+        if (!target || !may(target, me, 'push')) return no(404, 'Not Found');
+        if (!EXT[query.get('content_type')] || !bytes.length) return send(422, { message: 'Validation Failed' });
+        const url = addAsset(target, bytes, query.get('content_type'));
 
         return send(201, {
           id: assets.size,
-          name: q.get('name'),
-          content_type: q.get('content_type'),
+          name: query.get('name'),
+          content_type: query.get('content_type'),
           size: bytes.length,
           url,
           href: url,
@@ -282,23 +290,23 @@ export async function startFakeGitHub({
         return no(400, 'Problems parsing JSON');
       }
 
-      if (M === 'POST' && path === '/markdown') {
+      if (method === 'POST' && path === '/markdown') {
         // GitHub's rendering for you: a picture of a repo you read signed, any other as written
         const html = String(body.text || '')
           .split(/\n{2,}/)
           .map(
             par =>
               `<p dir="auto">${par.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_, alt, url) => {
-                const a = assets.get(url.split('/').pop());
-                const r = a && all.get(a.repo.toLowerCase());
+                const asset = assets.get(url.split('/').pop());
+                const assetRepo = asset && all.get(asset.repo.toLowerCase());
 
                 let src = url;
 
-                if (a && may(r, me, 'pull')) {
+                if (asset && may(assetRepo, me, 'pull')) {
                   const jwt = createHash('sha1').update(`${me}:${url}:${Math.random()}`).digest('hex');
 
                   signed.add(jwt);
-                  src = `http://127.0.0.1:${server.address().port}/pics/${a.n}-${url.split('/').pop()}.${EXT[a.type]}?jwt=${jwt}`;
+                  src = `http://127.0.0.1:${server.address().port}/pics/${asset.n}-${url.split('/').pop()}.${EXT[asset.type]}?jwt=${jwt}`;
                 }
 
                 return `<a target="_blank" rel="noopener noreferrer" href="${src.replace(/&/g, '&amp;')}"><img src="${src.replace(/&/g, '&amp;')}" alt="${alt}" style="max-width: 100%;"></a>`;
@@ -306,92 +314,102 @@ export async function startFakeGitHub({
           )
           .join('\n');
 
-        calls.push(`${M} ${path} 200`);
+        calls.push(`${method} ${path} 200`);
         res.writeHead(200, { 'content-type': 'text/html;charset=utf-8' });
         return res.end(html);
       }
 
-      if (M === 'GET' && path === '/user') return send(200, user(me));
+      if (method === 'GET' && path === '/user') return send(200, user(me));
 
-      if (M === 'GET' && path === '/emojis') {
-        const u = cp => `https://github.githubassets.com/images/icons/emoji/unicode/${cp}.png?v8`;
+      if (method === 'GET' && path === '/emojis') {
+        const emojiUrl = cp => `https://github.githubassets.com/images/icons/emoji/unicode/${cp}.png?v8`;
 
         return send(200, {
-          '+1': u('1f44d'),
-          tada: u('1f389'),
-          heart: u('2764'),
-          rocket: u('1f680'),
-          smile: u('1f604'),
-          smiley: u('1f603'),
-          sweat_smile: u('1f605'),
-          fish: u('1f41f'),
-          ramen: u('1f35c'),
-          hash: u('0023-20e3'),
-          rainbow_flag: u('1f3f3-fe0f-200d-1f308'),
+          '+1': emojiUrl('1f44d'),
+          tada: emojiUrl('1f389'),
+          heart: emojiUrl('2764'),
+          rocket: emojiUrl('1f680'),
+          smile: emojiUrl('1f604'),
+          smiley: emojiUrl('1f603'),
+          sweat_smile: emojiUrl('1f605'),
+          fish: emojiUrl('1f41f'),
+          ramen: emojiUrl('1f35c'),
+          hash: emojiUrl('0023-20e3'),
+          rainbow_flag: emojiUrl('1f3f3-fe0f-200d-1f308'),
           octocat: 'https://github.githubassets.com/images/icons/emoji/octocat.png?v8',
         });
       }
 
-      if (M === 'GET' && (m = path.match(/^\/users\/([^/]+)$/))) {
-        return people.has(m[1]) ? send(200, user(m[1])) : no(404, 'Not Found');
+      if (method === 'GET' && (match = path.match(/^\/users\/([^/]+)$/))) {
+        return people.has(match[1]) ? send(200, user(match[1])) : no(404, 'Not Found');
       }
 
-      if (M === 'GET' && path === '/user/memberships/orgs') {
+      if (method === 'GET' && path === '/user/memberships/orgs') {
         return send(
           200,
           orgNames
-            .filter(o => orgs[o]?.includes(me) || members[o]?.includes(me))
-            .map(o => ({ organization: orgOut(o), role: orgs[o]?.includes(me) ? 'admin' : 'member', state: 'active' })),
+            .filter(org => orgs[org]?.includes(me) || members[org]?.includes(me))
+            .map(org => ({
+              organization: orgOut(org),
+              role: orgs[org]?.includes(me) ? 'admin' : 'member',
+              state: 'active',
+            })),
         );
       }
 
-      if (M === 'GET' && (m = path.match(/^\/orgs\/([^/]+)$/))) {
-        return isOrg(m[1]) ? send(200, orgOut(orgName(m[1]))) : no(404, 'Not Found');
+      if (method === 'GET' && (match = path.match(/^\/orgs\/([^/]+)$/))) {
+        return isOrg(match[1]) ? send(200, orgOut(orgName(match[1]))) : no(404, 'Not Found');
       }
 
-      if (M === 'GET' && (m = path.match(/^\/orgs\/([^/]+)\/repos$/))) {
-        return isOrg(m[1])
+      if (method === 'GET' && (match = path.match(/^\/orgs\/([^/]+)\/repos$/))) {
+        return isOrg(match[1])
           ? send(
               200,
               [...all.values()]
-                .filter(r => r.owner.toLowerCase() === m[1].toLowerCase() && may(r, me, 'pull'))
-                .map(r => repoOut(r, me)),
+                .filter(
+                  candidate => candidate.owner.toLowerCase() === match[1].toLowerCase() && may(candidate, me, 'pull'),
+                )
+                .map(found => repoOut(found, me)),
             )
           : no(404, 'Not Found');
       }
 
-      if (M === 'GET' && path === '/user/repos') {
+      if (method === 'GET' && path === '/user/repos') {
         // affiliation: owner, collaborator (let in by name), organization_member
-        const aff = (q.get('affiliation') || 'owner,collaborator,organization_member').split(',');
-        const inOrg = r => [orgs, members].some(x => x[orgName(r.owner) || '']?.includes(me));
+        const aff = (query.get('affiliation') || 'owner,collaborator,organization_member').split(',');
+        const inOrg = candidate => [orgs, members].some(roster => roster[orgName(candidate.owner) || '']?.includes(me));
 
         return send(
           200,
           [...all.values()]
             .filter(
-              r =>
-                (aff.includes('owner') && r.owner === me) ||
-                (aff.includes('collaborator') && r.owner !== me && r.perms[me]) ||
-                (aff.includes('organization_member') && inOrg(r)),
+              candidate =>
+                (aff.includes('owner') && candidate.owner === me) ||
+                (aff.includes('collaborator') && candidate.owner !== me && candidate.perms[me]) ||
+                (aff.includes('organization_member') && inOrg(candidate)),
             )
-            .map(r => repoOut(r, me)),
+            .map(found => repoOut(found, me)),
         );
       }
 
-      if (M === 'GET' && path === '/user/repository_invitations') {
+      if (method === 'GET' && path === '/user/repository_invitations') {
         return send(
           200,
-          [...all.values()].flatMap(r => r.invitations.filter(v => v.login === me).map(v => inviteOut(r, v))),
+          [...all.values()].flatMap(candidate =>
+            candidate.invitations
+              .filter(invitation => invitation.login === me)
+              .map(invitation => inviteOut(candidate, invitation)),
+          ),
         );
       }
 
-      if (M === 'PATCH' && (m = path.match(/^\/user\/repository_invitations\/(\d+)$/))) {
-        for (const r of all.values()) {
-          const v = r.invitations.find(x => x.id === Number(m[1]) && x.login === me);
+      if (method === 'PATCH' && (match = path.match(/^\/user\/repository_invitations\/(\d+)$/))) {
+        for (const candidate of all.values()) {
+          const invitation = candidate.invitations.find(entry => entry.id === Number(match[1]) && entry.login === me);
 
-          if (v) {
-            r.invitations.splice(r.invitations.indexOf(v), 1);
-            r.perms[me] = v.permission;
+          if (invitation) {
+            candidate.invitations.splice(candidate.invitations.indexOf(invitation), 1);
+            candidate.perms[me] = invitation.permission;
             return send(204);
           }
         }
@@ -399,10 +417,10 @@ export async function startFakeGitHub({
         return no(404, 'Not Found');
       }
 
-      if (M === 'POST' && (path === '/user/repos' || (m = path.match(/^\/orgs\/([^/]+)\/repos$/)))) {
-        const owner = m ? m[1] : me;
+      if (method === 'POST' && (path === '/user/repos' || (match = path.match(/^\/orgs\/([^/]+)\/repos$/)))) {
+        const owner = match ? match[1] : me;
 
-        if (m && !orgs[owner]?.includes(me)) {
+        if (match && !orgs[owner]?.includes(me)) {
           return no(403, 'You need admin access to the organization before adding a repository to it.');
         }
 
@@ -413,112 +431,118 @@ export async function startFakeGitHub({
           });
         }
 
-        const r = makeRepo(`${owner}/${body.name}`, {
+        const made = makeRepo(`${owner}/${body.name}`, {
           description: body.description || '',
           private: body.private !== false,
-          perms: m ? {} : {},
+          perms: match ? {} : {},
         });
 
-        return send(201, repoOut(r, me));
+        return send(201, repoOut(made, me));
       }
 
-      if (!(m = path.match(/^\/repos\/([^/]+)\/([^/]+)(\/.*)?$/))) return no(404, 'Not Found');
+      if (!(match = path.match(/^\/repos\/([^/]+)\/([^/]+)(\/.*)?$/))) return no(404, 'Not Found');
 
-      const r = all.get(`${m[1]}/${m[2]}`.toLowerCase());
-      const rest = m[3] || '';
+      const repository = all.get(`${match[1]}/${match[2]}`.toLowerCase());
+      const rest = match[3] || '';
 
-      if (!r || !may(r, me, 'pull')) return no(404, 'Not Found');
-      if (M === 'GET' && !rest) return send(200, repoOut(r, me));
+      if (!repository || !may(repository, me, 'pull')) return no(404, 'Not Found');
+      if (method === 'GET' && !rest) return send(200, repoOut(repository, me));
 
-      if (M === 'PUT' && rest === '/subscription') {
-        r.subs[me] = { subscribed: !!body.subscribed, ignored: !!body.ignored };
-        return send(200, { ...r.subs[me], url: `https://api.github.com/repos/${r.full_name}/subscription` });
+      if (method === 'PUT' && rest === '/subscription') {
+        repository.subs[me] = { subscribed: !!body.subscribed, ignored: !!body.ignored };
+        return send(200, {
+          ...repository.subs[me],
+          url: `https://api.github.com/repos/${repository.full_name}/subscription`,
+        });
       }
 
-      if (M === 'GET' && rest === '/collaborators') {
-        if (!may(r, me, 'push')) return no(403, 'Must have push access to view repository collaborators.');
+      if (method === 'GET' && rest === '/collaborators') {
+        if (!may(repository, me, 'push')) return no(403, 'Must have push access to view repository collaborators.');
         return send(
           200,
-          Object.entries(r.perms).map(([login, p]) => ({ ...user(login), role_name: ROLE_NAME[p] })),
+          Object.entries(repository.perms).map(([login, permission]) => ({
+            ...user(login),
+            role_name: ROLE_NAME[permission],
+          })),
         );
       }
 
-      if ((m = rest.match(/^\/collaborators\/([^/]+)$/))) {
-        const who = m[1];
+      if ((match = rest.match(/^\/collaborators\/([^/]+)$/))) {
+        const who = match[1];
 
-        if (M === 'PUT') {
-          if (!may(r, me, 'admin')) return no(403, 'Must have admin rights to Repository.');
+        if (method === 'PUT') {
+          if (!may(repository, me, 'admin')) return no(403, 'Must have admin rights to Repository.');
           if (!people.has(who)) return no(404, 'Not Found');
-          if (r.perms[who]) return send(204);
+          if (repository.perms[who]) return send(204);
 
-          if (!r.invitations.some(v => v.login === who)) {
-            r.invitations.push({
+          if (!repository.invitations.some(invitation => invitation.login === who)) {
+            repository.invitations.push({
               id: inviteId++,
               login: who,
               by: me,
               created_at: at(),
-              permission: isOrg(r.owner) ? body.permission || 'push' : 'push',
+              permission: isOrg(repository.owner) ? body.permission || 'push' : 'push',
             });
           }
 
           return send(
             201,
             inviteOut(
-              r,
-              r.invitations.find(v => v.login === who),
+              repository,
+              repository.invitations.find(invitation => invitation.login === who),
             ),
           );
         }
 
-        if (M === 'DELETE') {
-          if (who !== me && !may(r, me, 'admin')) return no(403, 'Must have admin rights to Repository.');
-          delete r.perms[who];
+        if (method === 'DELETE') {
+          if (who !== me && !may(repository, me, 'admin')) return no(403, 'Must have admin rights to Repository.');
+          delete repository.perms[who];
           return send(204);
         }
       }
 
-      if (M === 'GET' && rest === '/invitations') {
-        if (!may(r, me, 'admin')) return no(403, 'Must have admin rights to Repository.');
+      if (method === 'GET' && rest === '/invitations') {
+        if (!may(repository, me, 'admin')) return no(403, 'Must have admin rights to Repository.');
         return send(
           200,
-          r.invitations.map(v => inviteOut(r, v)),
+          repository.invitations.map(invitation => inviteOut(repository, invitation)),
         );
       }
 
-      if (M === 'DELETE' && (m = rest.match(/^\/invitations\/(\d+)$/))) {
-        if (!may(r, me, 'admin')) return no(403, 'Must have admin rights to Repository.');
-        r.invitations = r.invitations.filter(v => v.id !== Number(m[1]));
+      if (method === 'DELETE' && (match = rest.match(/^\/invitations\/(\d+)$/))) {
+        if (!may(repository, me, 'admin')) return no(403, 'Must have admin rights to Repository.');
+        repository.invitations = repository.invitations.filter(invitation => invitation.id !== Number(match[1]));
         return send(204);
       }
 
-      if (M === 'POST' && rest === '/labels') {
-        if (!may(r, me, 'push')) return no(403, 'Must have push access to repository');
+      if (method === 'POST' && rest === '/labels') {
+        if (!may(repository, me, 'push')) return no(403, 'Must have push access to repository');
 
-        if (r.labels.has(body.name)) {
+        if (repository.labels.has(body.name)) {
           return send(422, { message: 'Validation Failed', errors: [{ code: 'already_exists' }] });
         }
 
-        r.labels.add(body.name);
+        repository.labels.add(body.name);
         return send(201, { name: body.name });
       }
 
-      if (M === 'GET' && rest === '/issues') {
-        const label = q.get('labels');
-        const state = q.get('state') || 'open';
+      if (method === 'GET' && rest === '/issues') {
+        const label = query.get('labels');
+        const state = query.get('state') || 'open';
 
         return send(
           200,
-          r.issues
-            .filter(i => (state === 'all' || i.state === state) && (!label || i.labels.includes(label)))
-            .map(i => issueOut(r, i)),
+          repository.issues
+            .filter(issue => (state === 'all' || issue.state === state) && (!label || issue.labels.includes(label)))
+            .map(issue => issueOut(repository, issue)),
         );
       }
 
-      if (M === 'POST' && rest === '/issues') {
-        const labels = may(r, me, 'push') ? body.labels || [] : []; // a reader's labels are dropped, as GitHub drops them
+      if (method === 'POST' && rest === '/issues') {
+        const labels = may(repository, me, 'push') ? body.labels || [] : []; // a reader's labels are dropped, as GitHub drops them
 
-        const i = {
-          number: r.issues.length + 1,
+        const issue = {
+          number: repository.issues.length + 1,
           title: String(body.title || ''),
           labels,
           state: 'open',
@@ -526,109 +550,110 @@ export async function startFakeGitHub({
           comments: [],
         };
 
-        r.issues.push(i);
-        return send(201, issueOut(r, i));
+        repository.issues.push(issue);
+        return send(201, issueOut(repository, issue));
       }
 
-      if (M === 'PATCH' && (m = rest.match(/^\/issues\/(\d+)$/))) {
-        const i = r.issues.find(x => x.number === Number(m[1]));
+      if (method === 'PATCH' && (match = rest.match(/^\/issues\/(\d+)$/))) {
+        const issue = repository.issues.find(candidate => candidate.number === Number(match[1]));
 
-        if (!i) return no(404, 'Not Found');
-        if (!may(r, me, 'push') && i.user.login !== me) return no(403, 'Must have push access');
-        if (body.state) i.state = body.state;
-        if (body.title) i.title = body.title;
-        return send(200, issueOut(r, i));
+        if (!issue) return no(404, 'Not Found');
+        if (!may(repository, me, 'push') && issue.user.login !== me) return no(403, 'Must have push access');
+        if (body.state) issue.state = body.state;
+        if (body.title) issue.title = body.title;
+        return send(200, issueOut(repository, issue));
       }
 
-      if (M === 'GET' && rest === '/issues/comments') {
-        const key = q.get('sort') === 'updated' ? 'updated_at' : 'created_at';
-        const down = q.get('direction') === 'desc';
-        const per = Math.min(100, Number(q.get('per_page')) || 30);
+      if (method === 'GET' && rest === '/issues/comments') {
+        const key = query.get('sort') === 'updated' ? 'updated_at' : 'created_at';
+        const down = query.get('direction') === 'desc';
+        const per = Math.min(100, Number(query.get('per_page')) || 30);
 
-        const list = comments(r).sort(
-          (a, b) => (a[key] === b[key] ? a.id - b.id : a[key] < b[key] ? -1 : 1) * (down ? -1 : 1),
+        const list = comments(repository).sort(
+          (left, right) =>
+            (left[key] === right[key] ? left.id - right.id : left[key] < right[key] ? -1 : 1) * (down ? -1 : 1),
         );
 
         return send(200, list.slice(0, per));
       }
 
-      if ((m = rest.match(/^\/issues\/(\d+)\/comments$/))) {
-        const i = r.issues.find(x => x.number === Number(m[1]));
+      if ((match = rest.match(/^\/issues\/(\d+)\/comments$/))) {
+        const issue = repository.issues.find(candidate => candidate.number === Number(match[1]));
 
-        if (!i) return no(404, 'Not Found');
+        if (!issue) return no(404, 'Not Found');
 
-        if (M === 'GET') {
-          const per = Math.min(100, Number(q.get('per_page')) || 30);
-          const page = Math.max(1, Number(q.get('page')) || 1);
+        if (method === 'GET') {
+          const per = Math.min(100, Number(query.get('per_page')) || 30);
+          const page = Math.max(1, Number(query.get('page')) || 1);
 
           return send(
             200,
-            i.comments.slice((page - 1) * per, page * per).map(c => commentOut(r, i, c)),
+            issue.comments.slice((page - 1) * per, page * per).map(comment => commentOut(repository, issue, comment)),
           );
         }
 
-        if (M === 'POST') {
-          const t = at();
+        if (method === 'POST') {
+          const time = at();
 
-          const c = {
+          const comment = {
             id: nextId++,
             user: user(me),
             body: String(body.body || ''),
-            created_at: t,
-            updated_at: t,
+            created_at: time,
+            updated_at: time,
             reactions: [],
           };
 
-          i.comments.push(c);
-          return send(201, commentOut(r, i, c));
+          issue.comments.push(comment);
+          return send(201, commentOut(repository, issue, comment));
         }
       }
 
-      if ((m = rest.match(/^\/issues\/comments\/(\d+)\/reactions(?:\/(\d+))?$/))) {
+      if ((match = rest.match(/^\/issues\/comments\/(\d+)\/reactions(?:\/(\d+))?$/))) {
         // anyone who reads reacts; a reaction is taken back by its own
-        const f = find(Number(m[1]));
+        const found = find(Number(match[1]));
 
-        if (!f || f.r !== r) return no(404, 'Not Found');
+        if (!found || found.r !== repository) return no(404, 'Not Found');
 
-        if (M === 'GET' && !m[2]) {
-          return send(200, f.c.reactions.slice(0, Math.min(100, Number(q.get('per_page')) || 30)));
+        if (method === 'GET' && !match[2]) {
+          return send(200, found.c.reactions.slice(0, Math.min(100, Number(query.get('per_page')) || 30)));
         }
 
-        if (M === 'POST' && !m[2]) {
+        if (method === 'POST' && !match[2]) {
           if (!REACTIONS.includes(body.content)) return send(422, { message: 'Validation Failed' });
-          return send(...react(f.c, me, body.content));
+          return send(...react(found.c, me, body.content));
         }
 
-        if (M === 'DELETE' && m[2]) {
-          const x = f.c.reactions.find(y => y.id === Number(m[2]));
+        if (method === 'DELETE' && match[2]) {
+          const reaction = found.c.reactions.find(candidate => candidate.id === Number(match[2]));
 
-          if (!x) return no(404, 'Not Found');
-          if (x.user.login !== me) return no(403, 'Must own the reaction');
-          f.c.reactions.splice(f.c.reactions.indexOf(x), 1);
+          if (!reaction) return no(404, 'Not Found');
+          if (reaction.user.login !== me) return no(403, 'Must own the reaction');
+          found.c.reactions.splice(found.c.reactions.indexOf(reaction), 1);
           return send(204);
         }
       }
 
-      if (M === 'PATCH' && (m = rest.match(/^\/issues\/comments\/(\d+)$/))) {
-        const f = find(Number(m[1]));
+      if (method === 'PATCH' && (match = rest.match(/^\/issues\/comments\/(\d+)$/))) {
+        const found = find(Number(match[1]));
 
-        if (!f || f.r !== r) return no(404, 'Not Found');
-        if (f.c.user.login !== me && !may(r, me, 'push')) return no(403, 'Must have push access');
-        f.c.body = String(body.body || '');
-        f.c.updated_at = at();
-        return send(200, commentOut(r, f.i, f.c));
+        if (!found || found.r !== repository) return no(404, 'Not Found');
+        if (found.c.user.login !== me && !may(repository, me, 'push')) return no(403, 'Must have push access');
+        found.c.body = String(body.body || '');
+        found.c.updated_at = at();
+        return send(200, commentOut(repository, found.i, found.c));
       }
 
-      if (M === 'DELETE' && (m = rest.match(/^\/issues\/comments\/(\d+)$/))) {
-        const f = find(Number(m[1]));
+      if (method === 'DELETE' && (match = rest.match(/^\/issues\/comments\/(\d+)$/))) {
+        const found = find(Number(match[1]));
 
-        if (!f || f.r !== r) return no(404, 'Not Found');
-        if (f.c.user.login !== me && !may(r, me, 'push')) return no(403, 'Must have push access');
-        f.i.comments.splice(f.i.comments.indexOf(f.c), 1);
+        if (!found || found.r !== repository) return no(404, 'Not Found');
+        if (found.c.user.login !== me && !may(repository, me, 'push')) return no(403, 'Must have push access');
+        found.i.comments.splice(found.i.comments.indexOf(found.c), 1);
         return send(204);
       }
 
-      no(404, `no such call: ${M} ${path}`);
+      no(404, `no such call: ${method} ${path}`);
     });
   });
 
@@ -645,40 +670,49 @@ export async function startFakeGitHub({
       return addAsset(repo(full), bytes, type);
     },
     /** A message another board sent: its id. */
-    say(full, n, login, body) {
-      const t = at();
-      const c = { id: nextId++, user: user(login), body, created_at: t, updated_at: t, reactions: [] };
+    say(full, issueNumber, login, body) {
+      const time = at();
+      const comment = { id: nextId++, user: user(login), body, created_at: time, updated_at: time, reactions: [] };
 
       repo(full)
-        .issues.find(i => i.number === n)
-        .comments.push(c);
+        .issues.find(issue => issue.number === issueNumber)
+        .comments.push(comment);
 
-      return c.id;
+      return comment.id;
     },
     edit(id, body) {
-      const f = find(id);
+      const found = find(id);
 
-      f.c.body = body;
-      f.c.updated_at = at();
+      found.c.body = body;
+      found.c.updated_at = at();
     },
     drop(id) {
-      const f = find(id);
+      const found = find(id);
 
-      f.i.comments.splice(f.i.comments.indexOf(f.c), 1);
+      found.i.comments.splice(found.i.comments.indexOf(found.c), 1);
     },
     react(id, login, content) {
       return react(find(id).c, login, content)[1].id;
     },
     unreact(id, login, content) {
-      const c = find(id).c;
+      const comment = find(id).c;
 
-      c.reactions = c.reactions.filter(x => !(x.user.login === login && x.content === content));
+      comment.reactions = comment.reactions.filter(
+        reaction => !(reaction.user.login === login && reaction.content === content),
+      );
     },
     invite(full, login, by) {
-      const r = repo(full);
+      const repository = repo(full);
 
       user(login);
-      r.invitations.push({ id: inviteId++, login, by, created_at: at(), permission: isOrg(r.owner) ? 'pull' : 'push' });
+
+      repository.invitations.push({
+        id: inviteId++,
+        login,
+        by,
+        created_at: at(),
+        permission: isOrg(repository.owner) ? 'pull' : 'push',
+      });
     },
     user,
     close: () =>

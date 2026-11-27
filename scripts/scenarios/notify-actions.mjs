@@ -15,7 +15,12 @@ export default async function (ctx) {
   const size = () =>
     ctx.server
       .terminals()
-      .then(ts => ts.filter(t => t.sessionId === two.id && t.exited === null).map(t => `${t.cols}x${t.rows}`)[0]);
+      .then(
+        ts =>
+          ts
+            .filter(term => term.sessionId === two.id && term.exited === null)
+            .map(term => `${term.cols}x${term.rows}`)[0],
+      );
 
   out.sizeBefore = await size();
   await ctx.openChat(one.id); // another chat in front: the drawer's chat is not the page's
@@ -60,12 +65,12 @@ export default async function (ctx) {
   out.stale = await said();
   ctx.assert.match(out.stale, /moved on/);
   // …nor one while the chat asks: a permission dialog takes ⏎ as its Yes
-  const tid = (await ctx.server.terminals()).find(t => t.sessionId === two.id && t.exited === null).id;
+  const tid = (await ctx.server.terminals()).find(term => term.sessionId === two.id && term.exited === null).id;
 
-  const keys = d =>
+  const keys = input =>
     ctx.evaluate(`new Promise(res => {
       const ws = new WebSocket(location.origin.replace(/^http/, 'ws') + '/api/terminals/${tid}/ws?key=' + encodeURIComponent(window.PEIX_KEY));
-      ws.onopen = () => { ws.send(JSON.stringify({ t: 'in', d: ${JSON.stringify(d)} })); setTimeout(() => { ws.close(); res(true); }, 300); };
+      ws.onopen = () => { ws.send(JSON.stringify({ t: 'in', d: ${JSON.stringify(input)} })); setTimeout(() => { ws.close(); res(true); }, 300); };
     })`); // your own keys, in its drawer
 
   await keys('/permission\r');

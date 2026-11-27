@@ -36,7 +36,7 @@ test(
       assert.deepEqual(cdp.exceptions, [], 'no exception at load');
 
       assert.deepEqual(
-        cdp.console.filter(l => /CSP violation/.test(l)),
+        cdp.console.filter(line => /CSP violation/.test(line)),
         [],
         "nothing the page's policy refused",
       );
@@ -55,18 +55,18 @@ test('the page is served with its policy: its own inline scripts by hash, nothin
   const srv = await startTestServer({});
 
   try {
-    const r = await fetch(srv.url);
-    const csp = r.headers.get('content-security-policy') || '';
-    const html = await r.text();
+    const response = await fetch(srv.url);
+    const csp = response.headers.get('content-security-policy') || '';
+    const html = await response.text();
 
     const { createHash } = await import('node:crypto');
 
     const want = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(
-      m => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`,
+      match => `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`,
     );
 
     assert.equal(want.length, 2, 'the page has its two inline blocks');
-    const script = csp.split(/;\s*/).find(d => d.startsWith('script-src '));
+    const script = csp.split(/;\s*/).find(directive => directive.startsWith('script-src '));
 
     assert.equal(
       script,
@@ -74,14 +74,14 @@ test('the page is served with its policy: its own inline scripts by hash, nothin
       'script-src: the vendored files and those two, no unsafe-inline, no eval',
     );
 
-    for (const d of [
+    for (const directive of [
       "object-src 'none'",
       "base-uri 'none'",
       "form-action 'none'",
       "frame-ancestors 'none'",
       "default-src 'self'",
     ]) {
-      assert.ok(csp.includes(d), d);
+      assert.ok(csp.includes(directive), directive);
     }
 
     assert.match(

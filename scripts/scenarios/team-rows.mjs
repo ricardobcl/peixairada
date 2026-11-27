@@ -24,7 +24,7 @@ export default async function (ctx) {
   const root = realpathSync(tmpDir('peix-team-'));
 
   const sleeps = [0, 1].map(() => spawn('sleep', ['300'], { stdio: 'ignore' }));
-  const live = i => ({ pid: sleeps[i].pid, startedAt: now - 3600_000 });
+  const live = index => ({ pid: sleeps[index].pid, startedAt: now - 3600_000 });
 
   try {
     const { chats } = makeFixture(ctx.fixture.dir, [
@@ -64,8 +64,8 @@ export default async function (ctx) {
     await ctx.settle();
     await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${lead.id}"] [data-k="_done"]').click()`); // the done one's words
     out.rows = await rows(ctx, lead.id);
-    ctx.assert.deepEqual(out.rows.map(r => r.name).sort(), ['reviewer', 'scribe', 'tester']);
-    const by = n => out.rows.find(r => r.name === n);
+    ctx.assert.deepEqual(out.rows.map(row => row.name).sort(), ['reviewer', 'scribe', 'tester']);
+    const by = name => out.rows.find(row => row.name === name);
 
     ctx.assert.equal(by('reviewer').state, 'run');
     ctx.assert.match(by('reviewer').said, /^at work, /, 'said for a screen reader');
@@ -90,7 +90,7 @@ export default async function (ctx) {
 
     // the reviewer takes its next step, still at work: its row changes, the card's node stays
     await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${lead.id}"]')._mark = 1`);
-    const tf = readdirSync(sub).find(n => n.includes('areviewer-') && n.endsWith('.jsonl'));
+    const tf = readdirSync(sub).find(name => name.includes('areviewer-') && name.endsWith('.jsonl'));
 
     appendFileSync(
       join(sub, tf),
@@ -120,7 +120,7 @@ export default async function (ctx) {
 
     out.kept = await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${lead.id}"]')._mark === 1`);
     ctx.assert.equal(out.kept, true, 'the card’s node kept');
-    out.reviewer = (await rows(ctx, lead.id)).find(r => r.name === 'reviewer');
+    out.reviewer = (await rows(ctx, lead.id)).find(row => row.name === 'reviewer');
     ctx.assert.match(out.reviewer.last, /^Read src\/retry\.ts$/, "a path in the chat's folder from there");
 
     // compact keeps them, at same height too
@@ -170,6 +170,6 @@ export default async function (ctx) {
 
     return out;
   } finally {
-    for (const s of sleeps) s.kill();
+    for (const child of sleeps) child.kill();
   }
 }

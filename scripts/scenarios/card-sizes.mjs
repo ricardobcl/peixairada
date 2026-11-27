@@ -31,7 +31,7 @@ const slider = ctx =>
     `({ v: document.querySelector('#cardsSize [aria-checked="true"]')?.dataset.v, list: document.querySelector('#sessions').dataset.cards, on: document.querySelector('#cardsSize [aria-checked="true"]')?.textContent.toLowerCase() || null })`,
   );
 
-const pick = (ctx, v) => ctx.evaluate(`document.querySelector('#cardsSize [data-v="${v}"]').click()`);
+const pick = (ctx, step) => ctx.evaluate(`document.querySelector('#cardsSize [data-v="${step}"]').click()`);
 
 /** A dependent switch under the size: whether it is off, and the line under its name. */
 const dep = (ctx, row) =>
@@ -171,13 +171,20 @@ export default async function (ctx) {
     await pick(ctx, 2);
     out.compact = { slider: await slider(ctx), cards: await cards(ctx) };
     ctx.assert.deepEqual(out.compact.slider, { v: '2', list: 'compact', on: 'compact' });
-    for (const [t, c] of Object.entries(out.compact.cards)) ctx.assert.deepEqual(c.words, [], `no words on "${t}"`);
+
+    for (const [title, card] of Object.entries(out.compact.cards)) {
+      ctx.assert.deepEqual(card.words, [], `no words on "${title}"`);
+    }
+
     ctx.assert.equal(out.compact.cards['Asking you'].ask, true, 'the question stays even here');
 
-    for (const t of ['Claude spoke last', 'You spoke last']) {
-      const [l, m, c] = [out.large, out.medium, out.compact].map(x => x.cards[t].h);
+    for (const title of ['Claude spoke last', 'You spoke last']) {
+      const [large, medium, compact] = [out.large, out.medium, out.compact].map(reading => reading.cards[title].h);
 
-      ctx.assert.ok(l > m && m > c, `"${t}" shrinks at each step: ${l} → ${m} → ${c}`);
+      ctx.assert.ok(
+        large > medium && medium > compact,
+        `"${title}" shrinks at each step: ${large} → ${medium} → ${compact}`,
+      );
     }
 
     await ctx.shot('compact', { x: 0, y: 0, width: 420, height: 640 });
@@ -209,7 +216,7 @@ export default async function (ctx) {
     // compact's own switch (2026-09-29):
     // on under compact only (off with why at the other sizes, 2026-10-16; hidden before); on, the title is one line and
     // nothing hangs under it, so every card is one height
-    const heights = cs => [...new Set(Object.values(cs).map(c => c.h))];
+    const heights = cs => [...new Set(Object.values(cs).map(card => card.h))];
 
     ctx.assert.deepEqual(
       await dep(ctx, '#evenRow'),
@@ -235,7 +242,7 @@ export default async function (ctx) {
     ctx.assert.deepEqual(
       heights(out.even.cards).length,
       1,
-      `one height for every card: ${JSON.stringify(Object.fromEntries(Object.entries(out.even.cards).map(([t, c]) => [t, c.h])))}`,
+      `one height for every card: ${JSON.stringify(Object.fromEntries(Object.entries(out.even.cards).map(([title, card]) => [title, card.h])))}`,
     );
 
     const exact = await ctx.evaluate(
@@ -286,11 +293,11 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="list"]').click()`);
     await ctx.settle();
 
-    const r = await ctx.evaluate(
+    const clip = await ctx.evaluate(
       `(r => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) }))(document.querySelector('#settings').getBoundingClientRect())`,
     );
 
-    await ctx.shot('cog', r);
+    await ctx.shot('cog', clip);
     await ctx.cmd('Comma');
 
     // a reload keeps it: a pref of this window
@@ -300,7 +307,7 @@ export default async function (ctx) {
       what: 'the list back after the reload',
     });
 
-    out.reloaded = { slider: await slider(ctx), words: Object.values(await cards(ctx)).flatMap(c => c.words) };
+    out.reloaded = { slider: await slider(ctx), words: Object.values(await cards(ctx)).flatMap(card => card.words) };
 
     ctx.assert.deepEqual(
       out.reloaded,

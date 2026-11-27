@@ -18,9 +18,9 @@ export const REPOS_POLL_MS = 3000;
 const GH_REMOTE = /github\.com(?:-[\w.-]+)?[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?\s*$/;
 
 const ghRepoUrl = remote => {
-  const m = GH_REMOTE.exec(String(remote));
+  const match = GH_REMOTE.exec(String(remote));
 
-  return m ? `https://github.com/${m[1]}/${m[2]}` : null;
+  return match ? `https://github.com/${match[1]}/${match[2]}` : null;
 };
 
 /** The same repository as `{owner, name}`, read from the checkout's git config rather than asked of git — a chat's `#12`
@@ -48,11 +48,11 @@ export function ghRepoOf(cwd, now = Date.now()) {
         } catch {}
       }
 
-      const m = GH_REMOTE.exec(
+      const match = GH_REMOTE.exec(
         /\[remote "origin"\][^[]*?url\s*=\s*(\S+)/.exec(readFileSync(join(git, 'config'), 'utf8'))?.[1] || '',
       );
 
-      if (m) repo = { owner: m[1], name: m[2] };
+      if (match) repo = { owner: match[1], name: match[2] };
     } catch {}
   }
 
@@ -60,15 +60,16 @@ export function ghRepoOf(cwd, now = Date.now()) {
   return repo;
 }
 
-export const repoUrls = () => Object.fromEntries([...repos].filter(([, v]) => v.url).map(([c, v]) => [c, v.url]));
+export const repoUrls = () =>
+  Object.fromEntries([...repos].filter(([, entry]) => entry.url).map(([cwd, entry]) => [cwd, entry.url]));
 
 export function pollRepos() {
   const want = boardCwds();
   let changed = false;
 
-  for (const c of [...repos.keys()]) {
-    if (!want.has(c)) {
-      repos.delete(c);
+  for (const cwd of [...repos.keys()]) {
+    if (!want.has(cwd)) {
+      repos.delete(cwd);
       changed = true;
     }
   }
@@ -76,7 +77,7 @@ export function pollRepos() {
   // Six a poll (every 3 s), not every folder at once (2026-10-03: forty gits at boot and again each hour, all on one
   // poll); and an answer that is no answer — git timed out, or is not there — keeps the URL known before. Only "no
   // origin" (2) and "not a repo" (128) say there is none.
-  const due = [...want].filter(c => !repos.has(c) || Date.now() - repos.get(c).at > REPO_TTL_MS).slice(0, 6);
+  const due = [...want].filter(cwd => !repos.has(cwd) || Date.now() - repos.get(cwd).at > REPO_TTL_MS).slice(0, 6);
   const git = due.length && findBin('git', '⌥⌘G opens no repo');
 
   if (!git) {

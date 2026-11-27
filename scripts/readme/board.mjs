@@ -20,8 +20,8 @@ import { agentFiles, makeFixture, prLinkLine, replyLines, taskNoteLine, toolLine
 
 export const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 export const OUT = join(ROOT, 'docs', 'shots');
-export const W = 1440;
-export const H = 900;
+export const WIDTH = 1440;
+export const HEIGHT = 900;
 
 // The fixture is built as the module loads — before the runner starts the server — so the server boots on it whole.
 const root = mkdtempSync(join(realpathSync(tmpdir()), 'peix-shots-'));
@@ -46,8 +46,8 @@ writeFileSync(
     {
       projects: Object.fromEntries(
         Object.entries(COLORS)
-          .filter(([, c]) => c)
-          .map(([n, color]) => [n, { color }]),
+          .filter(([, color]) => color)
+          .map(([name, color]) => [name, { color }]),
       ),
     },
     null,
@@ -123,13 +123,13 @@ const SOURCES = {
     ':root {\n  --surface: #ffffff;\n  --surface-sunken: #f2f2f2;\n  --text: #111111;\n  --border-subtle: #e5e5e5;\n  --accent-muted: #fde68a;\n}\n\n@media (prefers-color-scheme: dark) {\n  :root {\n    --surface: #1c1c1e;\n    --surface-sunken: #141416;\n    --text: #f2f2f2;\n    --border-subtle: #2c2c2e;\n    --accent-muted: #5b4a12;\n  }\n}\n',
 };
 
-for (const [f, text] of Object.entries(SOURCES)) {
-  mkdirSync(dirname(join(SF, f)), { recursive: true });
-  writeFileSync(join(SF, f), text);
+for (const [file, text] of Object.entries(SOURCES)) {
+  mkdirSync(dirname(join(SF, file)), { recursive: true });
+  writeFileSync(join(SF, file), text);
 }
 
-const git = (...a) =>
-  spawnSync('git', ['-c', 'user.name=Ada', '-c', 'user.email=ada@example.com', '-c', 'commit.gpgsign=false', ...a], {
+const git = (...args) =>
+  spawnSync('git', ['-c', 'user.name=Ada', '-c', 'user.email=ada@example.com', '-c', 'commit.gpgsign=false', ...args], {
     cwd: SF,
     stdio: 'ignore',
   });
@@ -172,7 +172,7 @@ const kenji = face('kenji', '#e5892a');
 
 const ci = state => ({ commits: { nodes: [{ commit: { statusCheckRollup: { state } } }] } });
 
-const pr = o => ({
+const pr = fields => ({
   isDraft: false,
   headRefOid: 'A',
   reviewRequests: { nodes: [] },
@@ -180,7 +180,7 @@ const pr = o => ({
   comments: { nodes: [] },
   pushes: { nodes: [] },
   asks: { nodes: [] },
-  ...o,
+  ...fields,
 });
 
 export const prsFile = join(root, 'prs.json');
@@ -281,7 +281,7 @@ export const PRS = {
 writeFileSync(prsFile, JSON.stringify(PRS));
 
 const sleeps = Array.from({ length: 5 }, () => spawn('sleep', ['900'], { stdio: 'ignore' }));
-const live = i => ({ pid: sleeps[i].pid, startedAt: Date.now() - 3600_000 });
+const live = index => ({ pid: sleeps[index].pid, startedAt: Date.now() - 3600_000 });
 
 export const FABLE = 'claude-fable-5-1';
 export const userLine = (id, where, text, at) => ({
@@ -536,7 +536,7 @@ export const { chats } = makeFixture(claudeDir, [
     reply: 'Cached for five minutes per prefix — https://github.com/acme/storefront/pull/471.',
   },
 ]);
-export const chat = t => chats.find(c => c.title === t);
+export const chat = title => chats.find(candidate => candidate.title === title);
 const agents = chat('Review the staging VPC plan');
 
 agentFiles({
@@ -568,25 +568,25 @@ agentFiles({
 });
 
 // Claude Code in the drawer, for the open chat resumed there: the screen the fake draws (it wraps it to its width).
-const O = '\x1b[38;2;215;119;87m';
-const B = '\x1b[1m';
-const D = '\x1b[2m';
-const R = '\x1b[0m';
+const ORANGE = '\x1b[38;2;215;119;87m';
+const BOLD = '\x1b[1m';
+const DIM = '\x1b[2m';
+const RESET = '\x1b[0m';
 const OK = '\x1b[38;2;78;186;101m';
-const U = '\x1b[38;5;247m';
-const C = '\x1b[38;2;177;185;249m';
+const GREY = '\x1b[38;5;247m';
+const CODE = '\x1b[38;2;177;185;249m';
 
 const MINUS = '\x1b[48;2;92;30;36m';
 const PLUS = '\x1b[48;2;24;72;40m';
 
 const tool = (name, arg, ...result) => [
-  `${OK}⏺${R} ${B}${name}${R}(${arg})`,
-  ...result.map((r, i) => (i ? `     ${r}` : `  ${D}⎿${R}  ${r}`)),
+  `${OK}⏺${RESET} ${BOLD}${name}${RESET}(${arg})`,
+  ...result.map((line, index) => (index ? `     ${line}` : `  ${DIM}⎿${RESET}  ${line}`)),
   '',
 ];
 
-const diff = (n, sign, text) =>
-  `      ${D}${String(n).padStart(2)}${R} ${sign === '-' ? MINUS : sign === '+' ? PLUS : ''}${sign || ' '} ${text}${R}`;
+const diff = (lineNumber, sign, text) =>
+  `      ${DIM}${String(lineNumber).padStart(2)}${RESET} ${sign === '-' ? MINUS : sign === '+' ? PLUS : ''}${sign || ' '} ${text}${RESET}`;
 
 const screenFile = join(root, 'screen.json');
 
@@ -594,21 +594,21 @@ writeFileSync(
   screenFile,
   JSON.stringify({
     screen: [
-      ` ${O}▐▛███▜▌${R}   ${B}Claude Code${R}`,
-      `${O}▝▜█████▛▘${R}  ${D}Fable 5.1 · Claude Max${R}`,
-      `  ${O}▘▘ ▝▝${R}    ${D}~/work/storefront${R}`,
+      ` ${ORANGE}▐▛███▜▌${RESET}   ${BOLD}Claude Code${RESET}`,
+      `${ORANGE}▝▜█████▛▘${RESET}  ${DIM}Fable 5.1 · Claude Max${RESET}`,
+      `  ${ORANGE}▘▘ ▝▝${RESET}    ${DIM}~/work/storefront${RESET}`,
       '',
-      `${U}> The product grid ignores the dark theme — the cards stay white. Make it follow the system setting.${R}`,
+      `${GREY}> The product grid ignores the dark theme — the cards stay white. Make it follow the system setting.${RESET}`,
       '',
       '⏺ Let me see where the grid gets its colours from.',
       '',
-      ...tool('Search', 'pattern: "background: #fff", path: "src/components"', `Found ${B}1${R} file`),
-      ...tool('Read', 'src/components/ProductGrid/ProductCard.css', `Read ${B}27${R} lines`),
-      ...tool('Read', 'src/theme/tokens.css', `Read ${B}19${R} lines`),
+      ...tool('Search', 'pattern: "background: #fff", path: "src/components"', `Found ${BOLD}1${RESET} file`),
+      ...tool('Read', 'src/components/ProductGrid/ProductCard.css', `Read ${BOLD}27${RESET} lines`),
+      ...tool('Read', 'src/theme/tokens.css', `Read ${BOLD}19${RESET} lines`),
       ...tool(
         'Update',
         'src/components/ProductGrid/ProductCard.css',
-        `Updated ${B}ProductCard.css${R} with ${B}5${R} additions and ${B}5${R} removals`,
+        `Updated ${BOLD}ProductCard.css${RESET} with ${BOLD}5${RESET} additions and ${BOLD}5${RESET} removals`,
       ),
       diff(5, '', '  border-radius: 12px;'),
       diff(6, '-', '  background: #fff;'),
@@ -622,26 +622,26 @@ writeFileSync(
       ...tool(
         'Bash',
         'npm test -- ProductGrid',
-        `${OK}✓${R} src/components/ProductGrid/ProductGrid.test.tsx ${D}(14 tests) 412ms${R}`,
-        `${B}Tests${R}  ${OK}14 passed${R} (14)`,
+        `${OK}✓${RESET} src/components/ProductGrid/ProductGrid.test.tsx ${DIM}(14 tests) 412ms${RESET}`,
+        `${BOLD}Tests${RESET}  ${OK}14 passed${RESET} (14)`,
       ),
       '⏺ The cards hard-code their colours instead of reading the theme tokens, so they never change with the system setting.',
       '',
-      `  ${B}What changed${R}`,
+      `  ${BOLD}What changed${RESET}`,
       '',
-      `  - ${C}ProductCard.css${R} reads ${C}var(--surface)${R} and ${C}var(--text)${R} instead of ${C}#fff${R} / ${C}#111${R}`,
-      `  - the price badge uses ${C}--accent-muted${R}, which already has a dark value`,
-      `  - the image placeholder uses ${C}--surface-sunken${R}, so nothing flashes white while images load`,
+      `  - ${CODE}ProductCard.css${RESET} reads ${CODE}var(--surface)${RESET} and ${CODE}var(--text)${RESET} instead of ${CODE}#fff${RESET} / ${CODE}#111${RESET}`,
+      `  - the price badge uses ${CODE}--accent-muted${RESET}, which already has a dark value`,
+      `  - the image placeholder uses ${CODE}--surface-sunken${RESET}, so nothing flashes white while images load`,
       '',
       '  All 14 grid tests pass. Want me to open a PR?',
       '',
-      `${U}> yes, open it${R}`,
+      `${GREY}> yes, open it${RESET}`,
       '',
       ...tool('Bash', 'gh pr create --fill', 'https://github.com/acme/storefront/pull/479'),
       '⏺ Opened https://github.com/acme/storefront/pull/479 — the visual snapshots for the grid are updated in the same commit.',
       '',
     ],
-    status: [`  \x1b[38;2;175;135;255m⏵⏵ accept edits on${R}${D} (shift+tab to cycle)${R}`],
+    status: [`  \x1b[38;2;175;135;255m⏵⏵ accept edits on${RESET}${DIM} (shift+tab to cycle)${RESET}`],
     // what the clips type into the drawer, and its answer (clips.mjs)
     replies: {
       'give the search box the same tokens':
@@ -653,10 +653,10 @@ writeFileSync(
 // VS Code Web for the pane: a serve-web of its own, on a port of its own, its server data in the fixture.
 const freePort = () =>
   new Promise(res => {
-    const s = net.createServer().listen(0, '127.0.0.1', () => {
-      const p = s.address().port;
+    const probe = net.createServer().listen(0, '127.0.0.1', () => {
+      const port = probe.address().port;
 
-      s.close(() => res(p));
+      probe.close(() => res(port));
     });
   });
 
@@ -724,7 +724,7 @@ VS.child.on('error', () => {
 });
 
 for (const t0 = Date.now(); VS.child && Date.now() - t0 < 90_000 && !(await vsUp());) {
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise(resolve => setTimeout(resolve, 500));
 }
 
 if (!(await vsUp())) {
@@ -766,13 +766,13 @@ if (VS.child) {
 
     const up = http.request(
       { host: '127.0.0.1', port: VS.port, method: req.method, path: req.url, headers: req.headers },
-      r => {
-        const h = { ...r.headers };
+      response => {
+        const headers = { ...response.headers };
 
-        delete h['x-frame-options'];
-        delete h['content-security-policy'];
-        res.writeHead(r.statusCode, h);
-        r.pipe(res);
+        delete headers['x-frame-options'];
+        delete headers['content-security-policy'];
+        res.writeHead(response.statusCode, headers);
+        response.pipe(res);
       },
     );
 
@@ -790,7 +790,10 @@ if (VS.child) {
     const up = net.connect(VS.port, '127.0.0.1', () => {
       const hs = [];
 
-      for (let i = 0; i < req.rawHeaders.length; i += 2) hs.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
+      for (let index = 0; index < req.rawHeaders.length; index += 2) {
+        hs.push(`${req.rawHeaders[index]}: ${req.rawHeaders[index + 1]}`);
+      }
+
       up.write(`${req.method} ${req.url} HTTP/1.1\r\n${hs.join('\r\n')}\r\n\r\n`);
       if (head?.length) up.write(head);
       up.pipe(sock);
@@ -801,7 +804,7 @@ if (VS.child) {
     sock.on('error', () => up.destroy());
   });
 
-  await new Promise(r => VS.server.listen(VS.proxy, '127.0.0.1', r));
+  await new Promise(resolve => VS.server.listen(VS.proxy, '127.0.0.1', resolve));
 }
 
 // A zsh tab's prompt: the made-up user's at the made-up host, never this Mac's name (zsh's own default is `%m%# `).
@@ -833,7 +836,7 @@ export const meta = {
 
 // What /api/usage and /api/stats would answer — the page's fetch answers them before the server is asked — and the
 // snapshot's word on who and where (the home's user@host, the About box): made up, as the rest is.
-const inMin = m => new Date(now + m * 60_000).toISOString();
+const inMin = minutes => new Date(now + minutes * 60_000).toISOString();
 
 const USAGE = {
   fetchedAt: new Date(now).toISOString(),
@@ -882,9 +885,9 @@ export const PAGE = `(() => { if (window.top !== window) return;
 export function endBoard() {
   endVs();
 
-  for (const s of sleeps) {
+  for (const child of sleeps) {
     try {
-      s.kill();
+      child.kill();
     } catch {}
   }
 
@@ -902,8 +905,13 @@ export function kit(ctx) {
       features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }],
     });
 
-  const scale = (s, w = W, h = H) =>
-    ctx.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: s, mobile: false });
+  const scale = (factor, width = WIDTH, height = HEIGHT) =>
+    ctx.send('Emulation.setDeviceMetricsOverride', {
+      width,
+      height,
+      deviceScaleFactor: factor,
+      mobile: false,
+    });
 
   const rect = sel =>
     ctx.evaluate(
@@ -927,7 +935,7 @@ export function kit(ctx) {
     if (open) await ctx.openChat(open);
 
     await ctx.waitFor(
-      `${JSON.stringify(chats.map(c => c.id))}.filter(id => window.peix.session(id)?.prs?.some(p => p.state)).length >= 5`,
+      `${JSON.stringify(chats.map(item => item.id))}.filter(id => window.peix.session(id)?.prs?.some(p => p.state)).length >= 5`,
       { what: 'the PR states from the fake gh', timeout: 30000 },
     );
   };

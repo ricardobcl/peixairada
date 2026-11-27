@@ -38,14 +38,14 @@ async function alerts(srv) {
 
       if (done) break;
       buf += dec.decode(value, { stream: true });
-      let i;
+      let index;
 
-      while ((i = buf.indexOf('\n\n')) >= 0) {
-        const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i));
+      while ((index = buf.indexOf('\n\n')) >= 0) {
+        const match = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, index));
 
-        buf = buf.slice(i + 2);
-        if (m?.[1] === 'snapshot') resolve();
-        if (m?.[1] === 'alert') got.push(JSON.parse(m[2]));
+        buf = buf.slice(index + 2);
+        if (match?.[1] === 'snapshot') resolve();
+        if (match?.[1] === 'alert') got.push(JSON.parse(match[2]));
       }
     }
   })().catch(() => {});
@@ -53,12 +53,12 @@ async function alerts(srv) {
   await snapshot;
   return {
     got,
-    of: (id, kind) => got.filter(a => a.sessionId === id && (!kind || a.kind === kind)),
+    of: (id, kind) => got.filter(alert => alert.sessionId === id && (!kind || alert.kind === kind)),
     stop: () => reader.cancel().catch(() => {}),
   };
 }
 
-const append = (chat, lines) => appendFileSync(chat.file, `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
+const append = (chat, lines) => appendFileSync(chat.file, `${lines.map(line => JSON.stringify(line)).join('\n')}\n`);
 const said = (chat, text) => append(chat, replyLines({ id: chat.id, cwd: chat.cwd, text, at: new Date() }));
 
 /** A word of yours, now. */
@@ -80,7 +80,7 @@ const typed = (chat, text) =>
     },
   ]);
 
-const summaryOf = async (srv, id) => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+const summaryOf = async (srv, id) => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
 const snooze = (srv, id, body) => srv.post(`api/sessions/${id}/snooze`, body);
 
 test('wakeWhy: what ends a snooze, and how', () => {
@@ -92,64 +92,76 @@ test('wakeWhy: what ends a snooze, and how', () => {
   const url = 'https://github.com/acme/widgets/pull/12';
 
   const chat = () => {
-    const s = newSession(randomUUID(), '/x/a.jsonl');
+    const made = newSession(randomUUID(), '/x/a.jsonl');
 
-    s.alive = true;
-    s.live = { pid: 1, status: 'idle', startedAt: 0 };
-    s.status = 'idle';
-    s.lastActivity = before;
-    return s;
+    made.alive = true;
+    made.live = { pid: 1, status: 'idle', startedAt: 0 };
+    made.status = 'idle';
+    made.lastActivity = before;
+    return made;
   };
 
-  let s = chat();
+  let session = chat();
 
-  assert.equal(wakeWhy(s, { at, until: '2026-11-24T12:00:00.000Z' }, now), null, 'its time not come');
-  assert.deepEqual(wakeWhy(s, { at, until: after }, now), { kind: 'time', why: 'its time came' });
-  s.lastUserAt = before;
-  assert.equal(wakeWhy(s, { at, until: '2026-11-24T12:00:00.000Z' }, now), null, 'a word of yours from before');
-  s.lastUserAt = after;
+  assert.equal(wakeWhy(session, { at, until: '2026-11-24T12:00:00.000Z' }, now), null, 'its time not come');
+  assert.deepEqual(wakeWhy(session, { at, until: after }, now), { kind: 'time', why: 'its time came' });
+  session.lastUserAt = before;
+  assert.equal(wakeWhy(session, { at, until: '2026-11-24T12:00:00.000Z' }, now), null, 'a word of yours from before');
+  session.lastUserAt = after;
 
   assert.deepEqual(
-    wakeWhy(s, { at, until: after }, now),
+    wakeWhy(session, { at, until: after }, now),
     { quiet: true },
     'your word since: no mark, even past its time',
   );
 
-  s = chat();
-  s.live.status = 'waiting';
-  s.live.waitingFor = 'input needed';
+  session = chat();
+  session.live.status = 'waiting';
+  session.live.waitingFor = 'input needed';
 
   assert.deepEqual(
-    wakeWhy(s, { at, until: '2026-11-24T12:00:00.000Z' }, now),
+    wakeWhy(session, { at, until: '2026-11-24T12:00:00.000Z' }, now),
     { quiet: true },
     'a question: its own alert speaks',
   );
 
-  s = chat();
-  doneMarks[s.id] = after;
-  assert.deepEqual(wakeWhy(s, { at, until: '2026-11-24T12:00:00.000Z' }, now), { quiet: true }, 'ticked done since');
-  doneMarks[s.id] = before;
-  assert.equal(wakeWhy(s, { at, until: '2026-11-24T12:00:00.000Z' }, now), null, 'a tick from before holds nothing');
-  delete doneMarks[s.id];
+  session = chat();
+  doneMarks[session.id] = after;
 
-  s = chat();
+  assert.deepEqual(
+    wakeWhy(session, { at, until: '2026-11-24T12:00:00.000Z' }, now),
+    { quiet: true },
+    'ticked done since',
+  );
+
+  doneMarks[session.id] = before;
+
+  assert.equal(
+    wakeWhy(session, { at, until: '2026-11-24T12:00:00.000Z' }, now),
+    null,
+    'a tick from before holds nothing',
+  );
+
+  delete doneMarks[session.id];
+
+  session = chat();
   const pr = { url, label: 'widgets#12', state: 'open', checks: 'pending', turn: { you: false, movedAt: before } };
 
-  s.prs = [pr];
+  session.prs = [pr];
   const onPr = { at, on: 'pr', pr: url };
 
-  assert.equal(wakeWhy(s, onPr, now), null, 'their move');
+  assert.equal(wakeWhy(session, onPr, now), null, 'their move');
   pr.turn = { you: true, movedAt: before };
-  assert.equal(wakeWhy(s, onPr, now), null, 'your move from before the snooze');
+  assert.equal(wakeWhy(session, onPr, now), null, 'your move from before the snooze');
   pr.turn = { you: true, movedAt: after };
-  assert.deepEqual(wakeWhy(s, onPr, now), { kind: 'pr', why: 'widgets#12 came round to you' });
+  assert.deepEqual(wakeWhy(session, onPr, now), { kind: 'pr', why: 'widgets#12 came round to you' });
   pr.turn = null;
   pr.state = 'merged';
-  assert.deepEqual(wakeWhy(s, onPr, now), { kind: 'pr', why: 'widgets#12 was merged' });
+  assert.deepEqual(wakeWhy(session, onPr, now), { kind: 'pr', why: 'widgets#12 was merged' });
   pr.state = 'open';
   const onCi = { at, on: 'ci', pr: url };
 
-  assert.equal(wakeWhy(s, onCi, now), null, 'its checks running');
+  assert.equal(wakeWhy(session, onCi, now), null, 'its checks running');
 
   for (const [checks, why] of [
     ['pass', 'its checks passed'],
@@ -157,36 +169,36 @@ test('wakeWhy: what ends a snooze, and how', () => {
     [null, 'its checks finished'],
   ]) {
     pr.checks = checks;
-    assert.deepEqual(wakeWhy(s, onCi, now), { kind: 'ci', why });
+    assert.deepEqual(wakeWhy(session, onCi, now), { kind: 'ci', why });
   }
 
-  s.prs = [];
-  assert.deepEqual(wakeWhy(s, onPr, now), { kind: 'pr', why: 'its PR left the chat' });
-  assert.deepEqual(wakeWhy(s, onCi, now), { kind: 'ci', why: 'its checks finished' });
+  session.prs = [];
+  assert.deepEqual(wakeWhy(session, onPr, now), { kind: 'pr', why: 'its PR left the chat' });
+  assert.deepEqual(wakeWhy(session, onCi, now), { kind: 'ci', why: 'its checks finished' });
 
-  s = chat();
-  s.status = 'working';
-  s.live.status = 'busy';
-  assert.equal(wakeWhy(s, { at, on: 'reply' }, now), null, 'still at work');
-  s.status = 'idle';
-  s.live.status = 'idle';
-  assert.deepEqual(wakeWhy(s, { at, on: 'reply' }, now), { kind: 'reply', why: 'Claude replied' });
-  s.alive = false;
+  session = chat();
+  session.status = 'working';
+  session.live.status = 'busy';
+  assert.equal(wakeWhy(session, { at, on: 'reply' }, now), null, 'still at work');
+  session.status = 'idle';
+  session.live.status = 'idle';
+  assert.deepEqual(wakeWhy(session, { at, on: 'reply' }, now), { kind: 'reply', why: 'Claude replied' });
+  session.alive = false;
 
   assert.deepEqual(
-    wakeWhy(s, { at, on: 'reply' }, now),
+    wakeWhy(session, { at, on: 'reply' }, now),
     { kind: 'ended', why: 'its claude ended' },
     'its claude gone: no reply to speak for it',
   );
 
-  s = chat();
-  s.tasks = new Map([['bg1', { kind: 'monitor', what: 'the deploy', at: new Date().toISOString() }]]);
-  assert.equal(wakeWhy(s, { at, on: 'mon' }, now), null, 'its monitor runs');
-  s.tasks = new Map();
-  assert.deepEqual(wakeWhy(s, { at, on: 'mon' }, now), { kind: 'mon', why: 'its monitor ended' });
+  session = chat();
+  session.tasks = new Map([['bg1', { kind: 'monitor', what: 'the deploy', at: new Date().toISOString() }]]);
+  assert.equal(wakeWhy(session, { at, on: 'mon' }, now), null, 'its monitor runs');
+  session.tasks = new Map();
+  assert.deepEqual(wakeWhy(session, { at, on: 'mon' }, now), { kind: 'mon', why: 'its monitor ended' });
 
   assert.deepEqual(
-    wakeWhy(s, { at, on: 'mon', until: after }, now),
+    wakeWhy(session, { at, on: 'mon', until: after }, now),
     { kind: 'time', why: 'its time came' },
     'both: whichever first',
   );
@@ -223,20 +235,20 @@ test('the route takes a time ahead or an event that can come, and nothing else',
     assert.equal((await summaryOf(srv, one.id)).snooze, null, 'no refusal snoozed it');
 
     const until = new Date(Date.now() + 3_600_000).toISOString();
-    const r = await snooze(srv, one.id, { until });
+    const response = await snooze(srv, one.id, { until });
 
-    assert.equal(r.status, 200);
-    assert.deepEqual([r.body.snooze.until, typeof r.body.snooze.at], [until, 'string']);
-    assert.deepEqual((await summaryOf(srv, one.id)).snooze, r.body.snooze, 'on the summary');
+    assert.equal(response.status, 200);
+    assert.deepEqual([response.body.snooze.until, typeof response.body.snooze.at], [until, 'string']);
+    assert.deepEqual((await summaryOf(srv, one.id)).snooze, response.body.snooze, 'on the summary');
 
     assert.deepEqual(
       JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8')).snoozed[one.id],
-      r.body.snooze,
+      response.body.snooze,
       'in the state file',
     );
 
     await srv.restart();
-    assert.deepEqual((await summaryOf(srv, one.id)).snooze, r.body.snooze, 'after a restart');
+    assert.deepEqual((await summaryOf(srv, one.id)).snooze, response.body.snooze, 'after a restart');
   } finally {
     await srv.stop();
   }
@@ -266,10 +278,10 @@ test('a chat asking you is not snoozed', { timeout: 30_000 }, async () => {
 
   try {
     await waitFor(async () => (await summaryOf(srv, chat.id))?.status === 'needs-input', { what: 'the chat asking' });
-    const r = await snooze(srv, chat.id, { until: Date.now() + 60_000 });
+    const response = await snooze(srv, chat.id, { until: Date.now() + 60_000 });
 
-    assert.equal(r.status, 409);
-    assert.match(r.body.error, /question wakes it/);
+    assert.equal(response.status, 409);
+    assert.match(response.body.error, /question wakes it/);
   } finally {
     await srv.stop();
   }
@@ -283,14 +295,14 @@ test(
     const [one, two] = fx.chats; // one is the older
 
     const srv = await startTestServer({ claudeDir: fx.dir });
-    let a;
+    let alertFeed;
 
     try {
       assert.equal((await srv.api('api/sessions')).body.sessions[0].id, two.id, 'the newer first, to begin with');
-      a = await alerts(srv);
+      alertFeed = await alerts(srv);
       await snooze(srv, one.id, { until: Date.now() + 1500 });
-      await waitFor(() => a.of(one.id, 'back').length, { what: 'the back alert' });
-      const back = a.of(one.id, 'back')[0];
+      await waitFor(() => alertFeed.of(one.id, 'back').length, { what: 'the back alert' });
+      const back = alertFeed.of(one.id, 'back')[0];
 
       assert.deepEqual(
         [back.heading, back.snippet, back.quiet, back.muted, back.snoozed],
@@ -310,12 +322,12 @@ test(
 
       await srv.post(`api/sessions/${two.id}/mute`, { on: true });
       await snooze(srv, two.id, { until: Date.now() + 800 });
-      await waitFor(() => a.of(two.id, 'back').length, { what: "the muted chat's back alert" });
-      assert.deepEqual([a.of(two.id, 'back')[0].quiet, a.of(two.id, 'back')[0].muted], [true, true]);
+      await waitFor(() => alertFeed.of(two.id, 'back').length, { what: "the muted chat's back alert" });
+      assert.deepEqual([alertFeed.of(two.id, 'back')[0].quiet, alertFeed.of(two.id, 'back')[0].muted], [true, true]);
       await sleep(600);
-      assert.equal(a.got.filter(x => x.kind === 'back').length, 2, 'once each');
+      assert.equal(alertFeed.got.filter(alert => alert.kind === 'back').length, 2, 'once each');
     } finally {
-      a?.stop();
+      alertFeed?.stop();
       await srv.stop();
     }
   },
@@ -329,18 +341,18 @@ test(
     const [one, two] = fx.chats;
 
     const srv = await startTestServer({ claudeDir: fx.dir });
-    let a;
+    let alertFeed;
 
     try {
-      a = await alerts(srv);
+      alertFeed = await alerts(srv);
       const later = () => Date.now() + 3_600_000;
 
       await snooze(srv, one.id, { until: later() });
       said(one, 'a reply while it is away');
-      await waitFor(() => a.of(one.id, 'reply').length, { what: 'the reply alert' });
+      await waitFor(() => alertFeed.of(one.id, 'reply').length, { what: 'the reply alert' });
 
       assert.deepEqual(
-        [a.of(one.id, 'reply')[0].quiet, a.of(one.id, 'reply')[0].snoozed],
+        [alertFeed.of(one.id, 'reply')[0].quiet, alertFeed.of(one.id, 'reply')[0].snoozed],
         [true, true],
         'it calls you on nothing',
       );
@@ -366,9 +378,9 @@ test(
       );
 
       await sleep(600);
-      assert.equal(a.got.filter(x => x.kind === 'back').length, 0, 'no back alert for any of them');
+      assert.equal(alertFeed.got.filter(alert => alert.kind === 'back').length, 0, 'no back alert for any of them');
     } finally {
-      a?.stop();
+      alertFeed?.stop();
       await srv.stop();
     }
   },
@@ -393,17 +405,17 @@ test(
 
     const chat = fx.chats[0];
     const srv = await startTestServer({ claudeDir: fx.dir });
-    let a;
+    let alertFeed;
 
     try {
       await waitFor(async () => (await summaryOf(srv, chat.id))?.status === 'working', { what: 'the chat at work' });
-      a = await alerts(srv);
-      const r = await snooze(srv, chat.id, { on: 'reply' });
+      alertFeed = await alerts(srv);
+      const response = await snooze(srv, chat.id, { on: 'reply' });
 
-      assert.deepEqual([r.status, r.body.snooze?.on], [200, 'reply']);
+      assert.deepEqual([response.status, response.body.snooze?.on], [200, 'reply']);
       said(chat, 'deployed');
-      await waitFor(() => a.of(chat.id, 'reply').length, { what: 'the reply alert' });
-      const reply = a.of(chat.id, 'reply')[0];
+      await waitFor(() => alertFeed.of(chat.id, 'reply').length, { what: 'the reply alert' });
+      const reply = alertFeed.of(chat.id, 'reply')[0];
 
       assert.deepEqual([reply.quiet, reply.snoozed], [false, undefined], 'loud: the snooze was gone before it went');
       const sum = await summaryOf(srv, chat.id);
@@ -412,12 +424,12 @@ test(
       await sleep(600);
 
       assert.deepEqual(
-        a.of(chat.id).map(x => x.kind),
+        alertFeed.of(chat.id).map(alert => alert.kind),
         ['reply'],
         'no back alert besides',
       );
     } finally {
-      a?.stop();
+      alertFeed?.stop();
       await srv.stop();
     }
   },

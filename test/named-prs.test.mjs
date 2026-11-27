@@ -42,19 +42,19 @@ test(
     const srv = await startTestServer({ claudeDir: dir, env: ENV });
 
     const named = async link => {
-      const r = await srv.api(`api/named?pr=${encodeURIComponent(link)}`);
+      const response = await srv.api(`api/named?pr=${encodeURIComponent(link)}`);
 
-      assert.equal(r.status, 200, JSON.stringify(r.body));
-      return r.body.ids;
+      assert.equal(response.status, 200, JSON.stringify(response.body));
+      return response.body.ids;
     };
 
     try {
-      const chat = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+      const chat = async id => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
 
       await waitFor(async () => !!(await chat(chip.id)) && !!(await chat(plain.id)), { what: 'the fixture indexed' });
 
       assert.deepEqual(
-        (await chat(mid.id)).prs.map(p => p.label),
+        (await chat(mid.id)).prs.map(pr => pr.label),
         [],
         'the boot did not read it: no chip',
       );
@@ -80,17 +80,17 @@ test(
       assert.deepEqual(await named(LINK), [mid.id], 'a done chat as any other');
 
       assert.deepEqual(
-        (await chat(mid.id)).prs.map(p => p.label),
+        (await chat(mid.id)).prs.map(pr => pr.label),
         [],
         'asking puts nothing on the chat',
       );
 
-      for (const q of [
+      for (const bad of [
         'nonsense',
         'https://github.com/acme/widgets/issues/650',
         'https://github.com/acme/widgets/pull/99999999999',
       ]) {
-        assert.equal((await srv.api(`api/named?pr=${encodeURIComponent(q)}`)).status, 400, q);
+        assert.equal((await srv.api(`api/named?pr=${encodeURIComponent(bad)}`)).status, 400, bad);
       }
 
       assert.equal((await srv.api('api/named')).status, 400, 'none asked');
@@ -118,10 +118,10 @@ test("GET /api/named: a link cut by the read's chunk", { timeout: 40_000 }, asyn
   ).chats;
 
   /** A line in the file putting `text`'s first `cut` bytes before the chunk's end and the rest after it. */
-  const across = (c, text, cut) => {
+  const across = (chat, text, cut) => {
     const head = '{"type":"file-history-snapshot","note":"';
 
-    appendFileSync(c.file, `${head}${'x'.repeat(CHUNK - statSync(c.file).size - head.length - cut)}${text}"}\n`);
+    appendFileSync(chat.file, `${head}${'x'.repeat(CHUNK - statSync(chat.file).size - head.length - cut)}${text}"}\n`);
   };
 
   across(org, LINK, 'https://github.com/ac'.length);

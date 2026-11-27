@@ -6,15 +6,15 @@ import { ensureWorktree, linkModules, switchGuard } from '../worktrees.mjs';
 
 /** A chat's changes and the working trees of its checkout: read, made, linked — and whether its folder may switch
  *  branch. */
-export async function changeRoutes(req, res, url, p) {
-  let m;
+export async function changeRoutes(req, res, url, path) {
+  let match;
 
   // the changes tab (2026-10-10): the chat's folder's diff in a scope — `pr` with `pr=<n or URL>` (and `base=`) a PR's,
   // from origin's refs (2026-10-13) —, or ?stat=1 for the header's counts
-  if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/changes$/))) {
-    const s = sessions.get(m[1]);
+  if (req.method === 'GET' && (match = path.match(/^\/api\/sessions\/([\w-]+)\/changes$/))) {
+    const session = sessions.get(match[1]);
 
-    if (!s) return json(res, 404, { error: 'unknown session' });
+    if (!session) return json(res, 404, { error: 'unknown session' });
 
     const scope = ['uncommitted', 'branch', 'turn', 'pr'].includes(url.searchParams.get('scope'))
       ? url.searchParams.get('scope')
@@ -26,12 +26,14 @@ export async function changeRoutes(req, res, url, p) {
     }; // scope pr's: which, and against what
 
     try {
-      const r = url.searchParams.get('stat') ? await changeStat(s) : await changesOf(s, scope, false, ask);
+      const result = url.searchParams.get('stat')
+        ? await changeStat(session)
+        : await changesOf(session, scope, false, ask);
 
-      return json(res, r.error ? 409 : 200, r);
-    } catch (e) {
+      return json(res, result.error ? 409 : 200, result);
+    } catch (error) {
       return json(res, 500, {
-        error: String(e.stderr || e.message)
+        error: String(error.stderr || error.message)
           .trim()
           .split('\n')[0],
       });
@@ -40,86 +42,86 @@ export async function changeRoutes(req, res, url, p) {
 
   // the working trees of a chat's checkout and the branch each holds (2026-10-13); a tree for a PR's branch or a new
   // one — the one that has it, else made (ensureWorktree); its node_modules linked to the main tree's
-  if (req.method === 'GET' && p === '/api/worktrees') {
+  if (req.method === 'GET' && path === '/api/worktrees') {
     try {
-      const r = await worktreesFor(url.searchParams.get('cwd'));
+      const result = await worktreesFor(url.searchParams.get('cwd'));
 
-      return json(res, r.error ? 409 : 200, r);
-    } catch (e) {
+      return json(res, result.error ? 409 : 200, result);
+    } catch (error) {
       return json(res, 500, {
-        error: String(e.stderr || e.message)
+        error: String(error.stderr || error.message)
           .trim()
           .split('\n')[0],
       });
     }
   }
 
-  if (req.method === 'GET' && p === '/api/worktrees/branch') {
+  if (req.method === 'GET' && path === '/api/worktrees/branch') {
     // a new chat's branch, as its name is typed: where it is already
     try {
-      const r = await branchWhere(url.searchParams.get('cwd'), url.searchParams.get('name') || '');
+      const result = await branchWhere(url.searchParams.get('cwd'), url.searchParams.get('name') || '');
 
-      return json(res, r.error ? 409 : 200, r);
-    } catch (e) {
+      return json(res, result.error ? 409 : 200, result);
+    } catch (error) {
       return json(res, 500, {
-        error: String(e.stderr || e.message)
+        error: String(error.stderr || error.message)
           .trim()
           .split('\n')[0],
       });
     }
   }
 
-  if (req.method === 'GET' && p === '/api/worktrees/bases') {
+  if (req.method === 'GET' && path === '/api/worktrees/bases') {
     // what a new chat's new branch may start from (2026-10-28)
     try {
-      const r = await worktreeBases(url.searchParams.get('cwd'));
+      const result = await worktreeBases(url.searchParams.get('cwd'));
 
-      return json(res, r.error ? 409 : 200, r);
-    } catch (e) {
+      return json(res, result.error ? 409 : 200, result);
+    } catch (error) {
       return json(res, 500, {
-        error: String(e.stderr || e.message)
+        error: String(error.stderr || error.message)
           .trim()
           .split('\n')[0],
       });
     }
   }
 
-  if (req.method === 'POST' && p === '/api/worktrees') {
-    const b = await jsonBody(req);
+  if (req.method === 'POST' && path === '/api/worktrees') {
+    const body = await jsonBody(req);
 
-    const r = await ensureWorktree({
-      cwd: typeof b.cwd === 'string' ? b.cwd : null,
-      pr: typeof b.pr === 'string' || typeof b.pr === 'number' ? String(b.pr) : null,
-      branch: typeof b.branch === 'string' ? b.branch : null,
-      detach: b.detach === true,
-      fresh: b.fresh === true,
-      share: b.share === true,
-      base: typeof b.base === 'string' ? b.base : null,
-    }).catch(e => ({ code: 500, error: e.message }));
+    const result = await ensureWorktree({
+      cwd: typeof body.cwd === 'string' ? body.cwd : null,
+      pr: typeof body.pr === 'string' || typeof body.pr === 'number' ? String(body.pr) : null,
+      branch: typeof body.branch === 'string' ? body.branch : null,
+      detach: body.detach === true,
+      fresh: body.fresh === true,
+      share: body.share === true,
+      base: typeof body.base === 'string' ? body.base : null,
+    }).catch(error => ({ code: 500, error: error.message }));
 
-    return json(res, r.error ? r.code || 500 : 200, r);
+    return json(res, result.error ? result.code || 500 : 200, result);
   }
 
-  if (req.method === 'POST' && p === '/api/worktrees/modules') {
-    const b = await jsonBody(req);
+  if (req.method === 'POST' && path === '/api/worktrees/modules') {
+    const body = await jsonBody(req);
 
-    const r = await linkModules(typeof b.path === 'string' ? b.path : null).catch(e => ({
+    const result = await linkModules(typeof body.path === 'string' ? body.path : null).catch(error => ({
       code: 500,
-      error: e.message,
+      error: error.message,
     }));
 
-    return json(res, r.error ? r.code || 500 : 200, r);
+    return json(res, result.error ? result.code || 500 : 200, result);
   }
 
   // whether the chat's folder may be switched to a branch — the board types `git switch` into its zsh, unrun, only then
-  if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/switch$/))) {
-    const s = sessions.get(m[1]);
+  if (req.method === 'GET' && (match = path.match(/^\/api\/sessions\/([\w-]+)\/switch$/))) {
+    const session = sessions.get(match[1]);
 
-    if (!s) return json(res, 404, { error: 'unknown session' });
+    if (!session) return json(res, 404, { error: 'unknown session' });
     const branch = url.searchParams.get('branch') || '';
 
     if (!BRANCH_NAME.test(branch)) return json(res, 400, { error: 'which branch?' });
-    return json(res, 200, await switchGuard(s, branch).catch(e => ({ ok: false, why: [e.message] })));
+    return json(res, 200, await switchGuard(session, branch).catch(error => ({ ok: false, why: [error.message] })));
   }
 
   return NEXT;

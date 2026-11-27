@@ -75,7 +75,7 @@ export default async function (ctx) {
 
   out.card = await ctx.evaluate(`document.querySelector('#mxtip').textContent`);
 
-  for (const w of [
+  for (const words of [
     'Review the plan for security',
     'at work 9m',
     'code-reviewer',
@@ -85,7 +85,7 @@ export default async function (ctx) {
     '1k tokens',
     'Flag anything wider',
   ]) {
-    ctx.assert.ok(out.card.includes(w), `its card says ${w}: ${out.card}`);
+    ctx.assert.ok(out.card.includes(words), `its card says ${words}: ${out.card}`);
   }
 
   await ctx.sleep(800);
@@ -109,7 +109,7 @@ export default async function (ctx) {
   out.menu = await menu(`${card} [data-k="sec"]`);
 
   ctx.assert.deepEqual(
-    out.menu.map(([t]) => t.split('it ')[0].slice(0, 12)),
+    out.menu.map(([label]) => label.split('it ')[0].slice(0, 12)),
     ['Open its tra', 'Open its wor', 'Copy what ', 'Ask Claude t'],
     'its rows',
   );

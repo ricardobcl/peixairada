@@ -13,23 +13,23 @@ const written = new Map(); // name → the last colour written, so a rest and th
 const colorWas = new Map(); // name → its colour before the picker moved it: what a refused write goes back to (2026-10-03: the refused colour stayed on the board)
 
 function note(anchor, text, err) {
-  document.querySelectorAll('.note').forEach(n => n.remove());
-  const r = anchor?.getBoundingClientRect?.();
+  document.querySelectorAll('.note').forEach(stale => stale.remove());
+  const rect = anchor?.getBoundingClientRect?.();
 
-  if (!r) return;
+  if (!rect) return;
   // Inside a modal dialog it goes into the dialog, the top layer: under it the backdrop would cover it.
-  const n = document.createElement('div');
+  const popup = document.createElement('div');
 
-  n.className = `note${err ? ' err' : ''}`;
-  n.textContent = text;
-  (anchor.closest?.('dialog[open]') || document.body).appendChild(n);
-  n.style.left = `${Math.max(8, Math.min(innerWidth - n.offsetWidth - 8, r.left))}px`;
-  n.style.top = `${r.bottom + 6 + n.offsetHeight > innerHeight ? r.top - n.offsetHeight - 6 : r.bottom + 6}px`;
+  popup.className = `note${err ? ' err' : ''}`;
+  popup.textContent = text;
+  (anchor.closest?.('dialog[open]') || document.body).appendChild(popup);
+  popup.style.left = `${Math.max(8, Math.min(innerWidth - popup.offsetWidth - 8, rect.left))}px`;
+  popup.style.top = `${rect.bottom + 6 + popup.offsetHeight > innerHeight ? rect.top - popup.offsetHeight - 6 : rect.bottom + 6}px`;
 
   setTimeout(
     () => {
-      n.classList.add('out');
-      setTimeout(() => n.remove(), 140);
+      popup.classList.add('out');
+      setTimeout(() => popup.remove(), 140);
     },
     err ? 8000 : 4000,
   ); // fades before it goes
@@ -46,11 +46,11 @@ const sqFor = name =>
 function openColorPicker(sq) {
   colorAt = '#shead';
 
-  const r = sq.getBoundingClientRect();
+  const rect = sq.getBoundingClientRect();
   const name = sq.dataset.name;
 
-  colorInput.style.left = `${r.left}px`;
-  colorInput.style.top = `${r.bottom}px`;
+  colorInput.style.left = `${rect.left}px`;
+  colorInput.style.top = `${rect.bottom}px`;
   colorInput.dataset.name = name;
   colorInput.value = projCfg(name).color || '#b9b9b3';
   written.set(name, colorInput.value);
@@ -83,9 +83,9 @@ function previewColor(name, hex) {
   previewRaf = requestAnimationFrame(() => {
     previewRaf = 0;
     renderBoard();
-    const s = state.sessions.get(state.current);
+    const session = state.sessions.get(state.current);
 
-    if (s) renderHead(s);
+    if (session) renderHead(session);
   });
 }
 
@@ -102,14 +102,14 @@ colorInput.addEventListener('change', () => setColor(colorInput.dataset.name, co
 
 document.addEventListener(
   'click',
-  e => {
+  event => {
     // capture: before the row's own click selects the project
-    const sq = e.target.closest('.sq.pick');
+    const sq = event.target.closest('.sq.pick');
 
     if (!sq) return;
-    e.stopPropagation();
-    e.preventDefault();
-    if (e.altKey) clearColor(sq.dataset.name);
+    event.stopPropagation();
+    event.preventDefault();
+    if (event.altKey) clearColor(sq.dataset.name);
     else openColorPicker(sq); // always asked: what was written last may have been set again elsewhere
   },
   true,
@@ -120,49 +120,52 @@ document.addEventListener(
 // under the pointer and close the fan. Its own listeners, added as the pointer comes (a card's node is new whenever
 // its markup changes): a wheel listener on the list could not be passive, and every scroll of it would wait on the
 // page. The pointer gone, the fan is back at its start as it closes.
-const fanWheel = e => {
-  const t = e.currentTarget;
+const fanWheel = event => {
+  const fan = event.currentTarget;
 
-  if (t.scrollWidth <= t.clientWidth || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
-  e.preventDefault();
-  t.scrollLeft -= e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? t.clientWidth : 1);
+  if (fan.scrollWidth <= fan.clientWidth || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+  event.preventDefault();
+  fan.scrollLeft -= event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? fan.clientWidth : 1);
 };
 
-const fanLeave = e => e.currentTarget.scrollTo({ left: 0, behavior: REDUCED.matches ? 'auto' : 'smooth' });
+const fanLeave = event => event.currentTarget.scrollTo({ left: 0, behavior: REDUCED.matches ? 'auto' : 'smooth' });
 
-$('#slist').addEventListener('pointerover', e => {
-  const t = e.target.closest('.card .tprs');
+$('#slist').addEventListener('pointerover', event => {
+  const fan = event.target.closest('.card .tprs');
 
-  if (!t || t._fan) return;
-  t._fan = true;
-  t.addEventListener('wheel', fanWheel, { passive: false });
-  t.addEventListener('pointerleave', fanLeave);
+  if (!fan || fan._fan) return;
+  fan._fan = true;
+  fan.addEventListener('wheel', fanWheel, { passive: false });
+  fan.addEventListener('pointerleave', fanLeave);
 });
 
 // …and a PR matrix past its row's room (2026-11-01) the same way, over its squares or its number: down is further
 // along, rightwards. It stays where it was taken (fadeOver brings the ringed square into sight on a new draw only).
-const mxWheel = e => {
-  const t = e.currentTarget.querySelector('.mxg');
+const mxWheel = event => {
+  const scroller = event.currentTarget.querySelector('.mxg');
 
-  if (!t || t.scrollWidth <= t.clientWidth || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
-  e.preventDefault();
-  t.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? t.clientWidth : 1);
+  if (!scroller || scroller.scrollWidth <= scroller.clientWidth || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) {
+    return;
+  }
+
+  event.preventDefault();
+  scroller.scrollLeft += event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroller.clientWidth : 1);
 };
 
 for (const box of [$('#slist'), $('#shead')]) {
-  box.addEventListener('pointerover', e => {
-    const t = e.target.closest('.tmx');
+  box.addEventListener('pointerover', event => {
+    const matrix = event.target.closest('.tmx');
 
-    if (!t || t._wheel) return;
-    t._wheel = true;
-    t.addEventListener('wheel', mxWheel, { passive: false });
+    if (!matrix || matrix._wheel) return;
+    matrix._wheel = true;
+    matrix.addEventListener('wheel', mxWheel, { passive: false });
   });
 
   box.addEventListener(
     'scroll',
-    e => {
-      if (e.target.classList?.contains('mxg')) {
-        mxEdges(e.target);
+    event => {
+      if (event.target.classList?.contains('mxg')) {
+        mxEdges(event.target);
         mxtHide();
       }
     },
@@ -172,47 +175,47 @@ for (const box of [$('#slist'), $('#shead')]) {
 
 // a lane's head, clicked or ⏎/space on it (2026-10-11, later): its lane folds or opens — in one motion since
 // 2026-11-01, the head staying put and the list under it sliding over the lane's cards or off them (foldRun, openRun)
-function foldLane(g, byKey = false) {
+function foldLane(lane, byKey = false) {
   if (listFilter()) return; // a filter shows every match: its heads do not fold
   const shut = new Set(prefs.lanesShut || []);
 
-  if (shut.has(g)) shut.delete(g);
-  else shut.add(g);
+  if (shut.has(lane)) shut.delete(lane);
+  else shut.add(lane);
   prefs.lanesShut = [...shut];
   savePrefs();
-  noteMotion(g, shut.has(g) ? 'fold' : 'unfold');
-  drawCards.lane = { g, shut: shut.has(g) };
+  noteMotion(lane, shut.has(lane) ? 'fold' : 'unfold');
+  drawCards.lane = { g: lane, shut: shut.has(lane) };
   renderBoard();
-  if (byKey) document.querySelector(`#slist > .gsep.lane[data-lane="${g}"]`)?.focus({ preventScroll: true }); // the same node, but a render may draw it anew
+  if (byKey) document.querySelector(`#slist > .gsep.lane[data-lane="${lane}"]`)?.focus({ preventScroll: true }); // the same node, but a render may draw it anew
 }
 
-$('#slist').addEventListener('keydown', e => {
-  const l = !e.target.closest?.('.clr') && e.target.closest?.('.gsep.lane[data-lane]');
+$('#slist').addEventListener('keydown', event => {
+  const head = !event.target.closest?.('.clr') && event.target.closest?.('.gsep.lane[data-lane]');
 
-  if (l && (e.key === 'Enter' || e.key === ' ')) {
-    e.preventDefault();
-    foldLane(l.dataset.lane, true);
+  if (head && (event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault();
+    foldLane(head.dataset.lane, true);
   }
 });
 
-const moreLane = g => {
-  laneMore.add(g);
-  noteMotion(g, 'more');
+const moreLane = lane => {
+  laneMore.add(lane);
+  noteMotion(lane, 'more');
   renderBoard();
 }; // a long lane's rest (LANE_CAP)
 
-$('#slist').addEventListener('keydown', e => {
-  const m = e.target.closest?.('.gsep.more[data-more]');
+$('#slist').addEventListener('keydown', event => {
+  const more = event.target.closest?.('.gsep.more[data-more]');
 
-  if (m && (e.key === 'Enter' || e.key === ' ')) {
-    e.preventDefault();
-    moreLane(m.dataset.more);
+  if (more && (event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault();
+    moreLane(more.dataset.more);
   }
 });
 
-$('#slist').addEventListener('keydown', e => {
-  if (e.target.closest?.('.gsep.others') && (e.key === 'Enter' || e.key === ' ')) {
-    e.preventDefault();
+$('#slist').addEventListener('keydown', event => {
+  if (event.target.closest?.('.gsep.others') && (event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault();
     showAll();
   }
 });
@@ -224,162 +227,162 @@ function showAll() {
   selectProject(ALL);
 
   if (had) {
-    const l = $('#slist');
+    const list = $('#slist');
 
-    l.tabIndex = -1;
-    l.focus({ preventScroll: true });
-    l.addEventListener('blur', () => l.removeAttribute('tabindex'), { once: true });
+    list.tabIndex = -1;
+    list.focus({ preventScroll: true });
+    list.addEventListener('blur', () => list.removeAttribute('tabindex'), { once: true });
   }
 }
 
 for (const box of [$('#stitle'), $('#slist')]) {
-  box.addEventListener('mousedown', e => {
-    if (e.target.closest('#stitle button, .gsep.others')) e.preventDefault();
+  box.addEventListener('mousedown', event => {
+    if (event.target.closest('#stitle button, .gsep.others')) event.preventDefault();
   });
 }
 
-$('#sessions').addEventListener('click', e => {
-  if (e.target.closest('#stitle .sx')) {
+$('#sessions').addEventListener('click', event => {
+  if (event.target.closest('#stitle .sx')) {
     if (prioFocus()) setFilter(null);
     else showAll();
     return;
   } // in focus, every chat again first (2026-11-24)
 
-  if (e.target.closest('#stitle .ask')) {
-    const s = askingElsewhere(projectStub(prefs.project)).sort(byWait)[0];
+  if (event.target.closest('#stitle .ask')) {
+    const session = askingElsewhere(projectStub(prefs.project)).sort(byWait)[0];
 
-    if (s) openSession(s.id, { locate: true });
+    if (session) openSession(session.id, { locate: true });
     return;
   }
 
-  if (e.target.closest('#stitle .t')) {
+  if (event.target.closest('#stitle .t')) {
     if (!prioFocus()) pickOpen('project');
     return;
   }
 
-  if (e.target.closest('#slist > .gsep.others')) {
+  if (event.target.closest('#slist > .gsep.others')) {
     showAll();
     return;
   }
 
-  if (e.target.closest('#slist > .gsep.lane.prio .clr')) {
+  if (event.target.closest('#slist > .gsep.lane.prio .clr')) {
     clearDone();
     return;
   } // the ticked pinned chats unpinned (2026-11-24, round XXX's D2)
 
-  const lane = e.target.closest('#slist > .gsep.lane[data-lane]');
+  const lane = event.target.closest('#slist > .gsep.lane[data-lane]');
 
   if (lane) return foldLane(lane.dataset.lane);
-  const more = e.target.closest('#slist > .gsep.more[data-more]');
+  const more = event.target.closest('#slist > .gsep.more[data-more]');
 
   if (more) return moreLane(more.dataset.more);
-  const card = e.target.closest('.card');
+  const card = event.target.closest('.card');
 
   if (!card) return;
-  const pin = e.target.closest('.peerin[data-sid]');
+  const pin = event.target.closest('.peerin[data-sid]');
 
   if (pin && state.sessions.has(pin.dataset.sid)) {
-    e.stopPropagation();
+    event.stopPropagation();
     openSession(pin.dataset.sid, { locate: true });
     return;
   } // the chat that sent it (2026-10-31)
 
   // a card's agents (2026-11-02): the chip folds them, +N and the done row open
-  const agc = e.target.closest('.chip.agents');
+  const agc = event.target.closest('.chip.agents');
 
   if (agc) {
-    e.stopPropagation();
+    event.stopPropagation();
     agSwitch(card.dataset.id, 'fold');
     renderBoard();
     return;
   }
 
-  const agx = e.target.closest('.agr[data-k="_more"], .agr[data-k="_done"], .agr[data-k="_sum"]');
+  const agx = event.target.closest('.agr[data-k="_more"], .agr[data-k="_done"], .agr[data-k="_sum"]');
 
   if (agx) {
-    e.stopPropagation();
+    event.stopPropagation();
     agSwitch(card.dataset.id, agx.dataset.k === '_more' ? 'more' : 'done');
     fillAgents();
     return;
   }
 
-  const agr = e.target.closest('.agr[data-ag]');
+  const agr = event.target.closest('.agr[data-ag]');
 
   if (agr) {
     const cs = state.sessions.get(card.dataset.id);
-    const r = cs?.agentRows?.find(x => x.id === agr.dataset.ag);
+    const agentRow = cs?.agentRows?.find(row => row.id === agr.dataset.ag);
 
-    if (r) {
-      e.stopPropagation();
-      agOpen(cs, r);
+    if (agentRow) {
+      event.stopPropagation();
+      agOpen(cs, agentRow);
       return;
     }
   }
 
-  const cpr = e.target.closest('.tmx [data-url]'); // the matrix's square or number (2026-11-01)
+  const cpr = event.target.closest('.tmx [data-url]'); // the matrix's square or number (2026-11-01)
 
   if (cpr) {
-    e.stopPropagation();
+    event.stopPropagation();
     openSession(card.dataset.id);
     showPr(cpr.dataset.url);
     return;
   } // that chat, with that PR open
 
-  const ctk = e.target.closest('.ctk');
+  const ctk = event.target.closest('.ctk');
 
   if (ctk) {
-    e.stopPropagation();
+    event.stopPropagation();
     openSession(card.dataset.id);
     openExternal(ctk.dataset.url, { s: state.sessions.get(card.dataset.id) });
     return;
   } // …or that ticket
 
-  if (e.target.closest('.chip.cmute')) {
-    e.stopPropagation();
+  if (event.target.closest('.chip.cmute')) {
+    event.stopPropagation();
     setMuted(card.dataset.id, false);
     return;
   }
 
-  const ax = e.target.closest('.ax');
+  const ax = event.target.closest('.ax');
   const as = ax && state.sessions.get(card.dataset.id); // the marks under the pointer (2026-11-24, round XXX's A5, S5)
 
   if (ax && as) {
-    e.stopPropagation();
+    event.stopPropagation();
 
     if (ax.classList.contains('pin')) prioPut(as, !inPrio(as), null, card);
     else if (asleep(as)) snoozeIt(as, { undo: true }, card);
     else {
-      const r = ax.getBoundingClientRect();
+      const rect = ax.getBoundingClientRect();
 
-      snoozeMenu(as, r.left, r.bottom + 4);
+      snoozeMenu(as, rect.left, rect.bottom + 4);
     }
 
     return;
   }
 
-  const act = e.target.closest('.act');
+  const act = event.target.closest('.act');
 
   if (act) {
-    e.stopPropagation();
-    if (e.altKey || act.dataset.act === 'del') removeChat(card.dataset.id, card, act);
+    event.stopPropagation();
+    if (event.altKey || act.dataset.act === 'del') removeChat(card.dataset.id, card, act);
     else tickDone(card.dataset.id, act.dataset.act === 'done', card, act);
     return;
   }
 
-  const mv = e.altKey && e.target.closest('.prmove');
+  const mv = event.altKey && event.target.closest('.prmove');
 
   if (mv) {
-    e.stopPropagation();
+    event.stopPropagation();
     letGo(state.sessions.get(card.dataset.id), mv);
     return;
   } // ⌥ on "your move": this round let go
 
   // the move line, or a PR's mark beside it: the chat, its timeline on that PR, at the move (2026-10-17)
-  const pm = e.target.closest('.prmove, .prpips .pp[data-url]');
+  const pm = event.target.closest('.prmove, .prpips .pp[data-url]');
   const cs = pm && state.sessions.get(card.dataset.id);
 
   if (pm && cs) {
-    e.stopPropagation();
+    event.stopPropagation();
     openSession(cs.id);
     tvOpenOn(cs, pm.dataset.url || movedPrs(cs)[0]?.url);
     return;

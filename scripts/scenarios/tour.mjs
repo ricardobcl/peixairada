@@ -90,13 +90,13 @@ export default async function (ctx) {
       .then(JSON.parse);
 
   const arrow = async key => {
-    const k = { ArrowRight: 39, ArrowLeft: 37, Escape: 27 }[key];
+    const keyCode = { ArrowRight: 39, ArrowLeft: 37, Escape: 27 }[key];
 
-    await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key, code: key, windowsVirtualKeyCode: k });
-    await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key, windowsVirtualKeyCode: k });
+    await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key, code: key, windowsVirtualKeyCode: keyCode });
+    await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key, windowsVirtualKeyCode: keyCode });
   };
 
-  const overlap = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+  const overlap = (boxA, boxB) => boxA.l < boxB.r && boxB.l < boxA.r && boxA.t < boxB.b && boxB.t < boxA.b;
 
   /** Every step from here to the last: on screen, beside its part (or inside it, at its foot, with no room round it). */
   async function walk(label) {
@@ -104,56 +104,61 @@ export default async function (ctx) {
 
     for (;;) {
       await ctx.settle();
-      const g = await geom();
+      const view = await geom();
 
-      seen.push(g);
-      await ctx.shot(`${label}-${g.step}`);
+      seen.push(view);
+      await ctx.shot(`${label}-${view.step}`);
 
       ctx.assert.ok(
-        g.card.l >= 0 && g.card.t >= 0 && g.card.r <= g.W && g.card.b <= g.H,
-        `${label} ${g.step}: the card on screen ${JSON.stringify(g.card)}`,
+        view.card.l >= 0 && view.card.t >= 0 && view.card.r <= view.W && view.card.b <= view.H,
+        `${label} ${view.step}: the card on screen ${JSON.stringify(view.card)}`,
       );
 
-      ctx.assert.equal(g.focus, 'tourNext', `${label} ${g.step}: the keys on Next`);
+      ctx.assert.equal(view.focus, 'tourNext', `${label} ${view.step}: the keys on Next`);
 
-      if (g.part) {
-        ctx.assert.ok(!g.shut, `${label} ${g.step}: the hole open round its part`);
+      if (view.part) {
+        ctx.assert.ok(!view.shut, `${label} ${view.step}: the hole open round its part`);
 
-        const P = 6;
-        const inV = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+        const PAD = 6;
+        const inV = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 
-        for (const [k, want] of [
-          ['l', inV(g.part.l - P, 2, g.W)],
-          ['t', inV(g.part.t - P, 2, g.H)],
-          ['r', inV(g.part.r + P, 0, g.W - 2)],
-          ['b', inV(g.part.b + P, 0, g.H - 2)],
+        for (const [side, want] of [
+          ['l', inV(view.part.l - PAD, 2, view.W)],
+          ['t', inV(view.part.t - PAD, 2, view.H)],
+          ['r', inV(view.part.r + PAD, 0, view.W - 2)],
+          ['b', inV(view.part.b + PAD, 0, view.H - 2)],
         ]) {
           ctx.assert.ok(
-            Math.abs(g.hole[k] - want) <= 1,
-            `${label} ${g.step}: the hole's ${k} ${g.hole[k]} round the part (${want})`,
+            Math.abs(view.hole[side] - want) <= 1,
+            `${label} ${view.step}: the hole's ${side} ${view.hole[side]} round the part (${want})`,
           );
         }
 
-        const inside = g.card.l >= g.hole.l && g.card.r <= g.hole.r && g.card.t >= g.hole.t && g.card.b <= g.hole.b;
+        const inside =
+          view.card.l >= view.hole.l &&
+          view.card.r <= view.hole.r &&
+          view.card.t >= view.hole.t &&
+          view.card.b <= view.hole.b;
 
         ctx.assert.ok(
-          !overlap(g.card, g.hole) || inside,
-          `${label} ${g.step}: the card clear of its part, or inside it — card ${JSON.stringify(g.card)} hole ${JSON.stringify(g.hole)}`,
+          !overlap(view.card, view.hole) || inside,
+          `${label} ${view.step}: the card clear of its part, or inside it — card ${JSON.stringify(view.card)} hole ${JSON.stringify(view.hole)}`,
         );
       } else {
-        ctx.assert.ok(g.shut, `${label} ${g.step}: no part, the hole shut`);
+        ctx.assert.ok(view.shut, `${label} ${view.step}: no part, the hole shut`);
 
         ctx.assert.ok(
-          Math.abs((g.card.l + g.card.r) / 2 - g.W / 2) <= 1 && Math.abs((g.card.t + g.card.b) / 2 - g.H / 2) <= 1,
-          `${label} ${g.step}: no part, the card centred ${JSON.stringify(g.card)}`,
+          Math.abs((view.card.l + view.card.r) / 2 - view.W / 2) <= 1 &&
+            Math.abs((view.card.t + view.card.b) / 2 - view.H / 2) <= 1,
+          `${label} ${view.step}: no part, the card centred ${JSON.stringify(view.card)}`,
         );
       }
 
-      if (g.next === 'Done') break;
+      if (view.next === 'Done') break;
       await arrow('ArrowRight');
 
-      await ctx.waitFor(`window.peix.tour().step !== ${JSON.stringify(g.step)}`, {
-        what: `${label}: the step after ${g.step}`,
+      await ctx.waitFor(`window.peix.tour().step !== ${JSON.stringify(view.step)}`, {
+        what: `${label}: the step after ${view.step}`,
       });
     }
 
@@ -192,7 +197,7 @@ export default async function (ctx) {
 
   // ---- → to the end, ← back ----
   out.first = await walk('first');
-  const by = id => out.first.find(g => g.step === id);
+  const by = id => out.first.find(view => view.step === id);
 
   ctx.assert.ok(
     by('list').part && by('list').part.l <= 20 && by('list').card.l >= by('list').hole.r,
@@ -316,7 +321,7 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.tour().open`, { what: 'the tour on a chat' });
   ctx.assert.deepEqual((await tour()).steps, STEPS, 'its steps with a chat open');
   out.chat = await walk('chat');
-  const on = id => out.chat.find(g => g.step === id);
+  const on = id => out.chat.find(view => view.step === id);
 
   ctx.assert.equal(on('chat').title, 'The chat, live');
   ctx.assert.deepEqual(on('chat').parts, ['#groups', '#resume'], 'its body and its resume bar, drawn round as one');
@@ -343,14 +348,14 @@ export default async function (ctx) {
     `its timeline, closed: ···, with a picture ${JSON.stringify(on('timeline').parts)}`,
   );
 
-  for (let i = 0; i < 4; i++) {
+  for (let index = 0; index < 4; index++) {
     await arrow('ArrowLeft');
     await ctx.sleep(50);
   }
 
   await ctx.waitFor(`window.peix.tour().step === 'move'`, { what: 'back to the move' });
 
-  for (let i = 0; i < 4; i++) {
+  for (let index = 0; index < 4; index++) {
     await arrow('ArrowRight');
     await ctx.sleep(50);
   }
@@ -367,7 +372,7 @@ export default async function (ctx) {
   await ctx.settle();
   await ctx.evaluate(`document.querySelector('#tourBtn').click()`);
   await ctx.waitFor(`window.peix.tour().open`, { what: 'the tour, split' });
-  for (let i = 0; i < STEPS.indexOf('split'); i++) await arrow('ArrowRight');
+  for (let index = 0; index < STEPS.indexOf('split'); index++) await arrow('ArrowRight');
   await ctx.waitFor(`window.peix.tour().step === 'split'`, { what: 'the split step, split' });
   await ctx.settle();
   out.split = await geom();
@@ -418,7 +423,7 @@ export default async function (ctx) {
   await ctx.settle();
   await ctx.shot('card-dark');
   await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
-  for (let i = 0; i < 2; i++) await arrow('ArrowRight');
+  for (let index = 0; index < 2; index++) await arrow('ArrowRight');
   await ctx.waitFor(`window.peix.tour().step === 'new'`, { what: 'the new chat step, light' });
   await ctx.settle();
   await ctx.shot('new-light');

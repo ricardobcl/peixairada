@@ -92,7 +92,7 @@ export async function main() {
         `[peixairada] the test that started this server (pid ${process.env.PEIX_TEST_PARENT}) is gone — ending its drawers and stopping`,
       );
 
-      for (const t of terms.values()) holderSend(t, { t: 'quit' });
+      for (const term of terms.values()) holderSend(term, { t: 'quit' });
       setTimeout(() => process.exit(0), 500);
     };
 
@@ -104,8 +104,8 @@ export async function main() {
   // boot-time copy of the state file over the live server's ticks, all while serving nobody. A busy port is waited
   // for, not died on: the launchd agent starts while the app's own server still holds 7331, and the handoff is the app
   // quitting a moment later — a crash here would only make launchd throttle and retry with noise in the log.
-  server.on('error', e => {
-    if (e.code !== 'EADDRINUSE') throw e;
+  server.on('error', error => {
+    if (error.code !== 'EADDRINUSE') throw error;
     console.error(`[peixairada] port ${PORT} is busy — trying again in 3 s`);
     setTimeout(() => server.listen(PORT, HOST), 3000);
   });
@@ -135,10 +135,10 @@ export async function main() {
 
     if (parts.length === 4 && parts[2] === 'subagents' && parts[3].endsWith('.jsonl')) {
       // <slug>/<id>/subagents/agent-*.jsonl
-      const s = sessions.get(parts[1]);
+      const session = sessions.get(parts[1]);
 
-      if (!s) return;
-      agentsSoon(s);
+      if (!session) return;
+      agentsSoon(session);
       return;
     }
 
@@ -154,8 +154,8 @@ export async function main() {
 
         try {
           tailFile(file);
-        } catch (e) {
-          console.error('[peixairada] tail error', file, e);
+        } catch (error) {
+          console.error('[peixairada] tail error', file, error);
         }
       }, 40),
     );
@@ -193,7 +193,7 @@ export async function main() {
       if (projs) {
         console.log(
           `[peixairada] Peacock's colours moved into ${tildePath(CONFIG_FILE)}: ${Object.keys(projs)
-            .filter(k => projs[k] !== was?.[k])
+            .filter(project => projs[project] !== was?.[project])
             .join(', ')}`,
         );
       }
@@ -214,8 +214,8 @@ export async function main() {
   if (awakeOn) {
     try {
       keepAwake(true);
-    } catch (e) {
-      console.error(`[peixairada] could not keep the Mac awake: ${e.message}`);
+    } catch (error) {
+      console.error(`[peixairada] could not keep the Mac awake: ${error.message}`);
     }
   } // the switch outlives a restart
 
@@ -244,8 +244,8 @@ export async function main() {
 
       sayUpdate();
     },
-    e => {
-      upd.error = errText(e);
+    error => {
+      upd.error = errText(error);
     },
   ); // pending: a server that waited on the port while a pull came (2026-11-25)
 
@@ -257,7 +257,7 @@ export async function main() {
     setInterval(checkUpdate, UPDATE_EVERY_MS);
   } // the board's own new commits (checkUpdate)
 
-  for (const s of sessions.values()) if (s.alive) scanAgents(s); // the past agents of the chats with no claude: the poll's, a few at a time (pastSweep)
+  for (const session of sessions.values()) if (session.alive) scanAgents(session); // the past agents of the chats with no claude: the poll's, a few at a time (pastSweep)
 
   // An agent gone quiet stops counting; a task past its expiry stops running. Both are only visible on a push, and
   // a chat whose last word was "monitor started" has nothing else to push.
@@ -265,29 +265,31 @@ export async function main() {
     if (!projectsWatch && watchProjects()) scanProjects();
 
     // a live chat's file looked at: what an event never told of is read (2026-10-14) — a stat when nothing was
-    for (const f of [...sessions.values()].filter(s => s.alive && s.file).map(s => s.file)) {
+    for (const file of [...sessions.values()]
+      .filter(session => session.alive && session.file)
+      .map(session => session.file)) {
       try {
-        tailFile(f);
-      } catch (e) {
-        console.error('[peixairada] tail error', f, e);
+        tailFile(file);
+      } catch (error) {
+        console.error('[peixairada] tail error', file, error);
       }
     }
 
     try {
       findTasks();
-    } catch (e) {
-      console.error('[peixairada] findTasks', e);
+    } catch (error) {
+      console.error('[peixairada] findTasks', error);
     }
 
-    for (const s of sessions.values()) {
-      if (pruneTasks(s) + pruneWakes(s)) schedulePush(s); // both asked, each its own pruning
+    for (const session of sessions.values()) {
+      if (pruneTasks(session) + pruneWakes(session)) schedulePush(session); // both asked, each its own pruning
 
-      if (s.alive) {
-        scanAgents(s);
-        s.agentDirAt = null;
-      } else if (s.agentsRunning) {
-        s.agentsRunning = 0;
-        schedulePush(s);
+      if (session.alive) {
+        scanAgents(session);
+        session.agentDirAt = null;
+      } else if (session.agentsRunning) {
+        session.agentsRunning = 0;
+        schedulePush(session);
       } // its claude is gone, and its agents with it — a stale card read "2 agents" until a restart
     }
 
@@ -304,7 +306,7 @@ export async function main() {
   setInterval(readPower, POWER_POLL_MS); // the lid's setting and idle sleep are the system's: whoever changes them, or the charger, the marks follow
 
   console.log(
-    `[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`,
+    `[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(session => session.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`,
   );
 
   if (existsSync(SESSIONS_DIR)) {

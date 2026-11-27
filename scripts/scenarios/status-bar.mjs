@@ -57,7 +57,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual([out.fish.on, out.fish.trying, out.fish.lost], out.fish.want, 'green, amber, red');
 
   ctx.assert.ok(
-    !out.rest.segs.some(t => /\blive$|drawer|shell/.test(t)),
+    !out.rest.segs.some(segment => /\blive$|drawer|shell/.test(segment)),
     `no live count, no drawers or shells (2026-10-11): ${JSON.stringify(out.rest.segs)}`,
   );
 

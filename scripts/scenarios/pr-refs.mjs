@@ -47,7 +47,7 @@ export const meta = {
   },
 };
 
-const pull = (repo, n) => `https://github.com/${repo}/pull/${n}`;
+const pull = (repo, number) => `https://github.com/${repo}/pull/${number}`;
 
 export default async function (ctx) {
   const out = {};
@@ -55,7 +55,7 @@ export default async function (ctx) {
   const now = Date.now();
 
   const {
-    chats: [c],
+    chats: [chat],
   } = makeFixture(ctx.fixture.dir, [
     {
       cwd,
@@ -66,7 +66,7 @@ export default async function (ctx) {
     },
   ]);
 
-  const card = `document.querySelector('#slist > .card[data-id="${c.id}"]')`;
+  const card = `document.querySelector('#slist > .card[data-id="${chat.id}"]')`;
 
   const chips = () =>
     ctx
@@ -83,7 +83,7 @@ export default async function (ctx) {
     [pull('other/thing', 3), 'draft'],
   ];
 
-  const sorted = list => list.map(([u, st]) => `${u} ${st}`).sort();
+  const sorted = list => list.map(([url, st]) => `${url} ${st}`).sort();
 
   await ctx.waitFor(`${card}?.querySelectorAll('.tmx .mxs').length === ${want.length}`, {
     timeout: 20_000,
@@ -112,7 +112,7 @@ export default async function (ctx) {
       .then(JSON.parse),
   );
 
-  await ctx.openChat(c.id);
+  await ctx.openChat(chat.id);
 
   await ctx.waitFor(`document.querySelectorAll('#prlist .prrow').length === ${want.length}`, {
     what: "the header's rows",
@@ -125,20 +125,20 @@ export default async function (ctx) {
     .then(JSON.parse);
 
   ctx.assert.deepEqual(
-    out.rows.map(r => r[0]).sort(),
+    out.rows.map(row => row[0]).sort(),
     ['app#12', 'lib#7', 'lib#8', 'lib#9', 'thing#3'],
     `the rows' labels: ${JSON.stringify(out.rows)}`,
   );
 
   ctx.assert.ok(
-    out.rows.every(r => r[1] && r[2] && !/on its way/.test(r[2])),
+    out.rows.every(row => row[1] && row[2] && !/on its way/.test(row[2])),
     'each with its state and title',
   );
 
   appendFileSync(
-    c.file,
-    `${replyLines({ id: c.id, cwd, text: 'And #20 landed meanwhile.', at: new Date() })
-      .map(l => JSON.stringify(l))
+    chat.file,
+    `${replyLines({ id: chat.id, cwd, text: 'And #20 landed meanwhile.', at: new Date() })
+      .map(line => JSON.stringify(line))
       .join('\n')}\n`,
   );
 
@@ -151,7 +151,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.live.length, want.length + 1, 'one more');
 
   ctx.assert.equal(
-    await ctx.evaluate(`window.peix.session('${c.id}').prs[0].url`),
+    await ctx.evaluate(`window.peix.session('${chat.id}').prs[0].url`),
     pull('acme/app', 20),
     "and first in the chat's order: the most recently said",
   );

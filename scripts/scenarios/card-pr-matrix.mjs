@@ -31,17 +31,17 @@ const face = login => ({
 
 const ci = state => ({ commits: { nodes: [{ commit: { statusCheckRollup: { state } } }] } });
 
-const pr = o => ({
+const pr = fields => ({
   isDraft: false,
   isCrossRepository: false,
   author: face('me'),
   reviewRequests: { nodes: [] },
   reviews: { nodes: [] },
   comments: { nodes: [] },
-  ...o,
+  ...fields,
 });
 
-const MANY = Array.from({ length: 30 }, (_, i) => 41 + i); // #41…#70, #70 updated last
+const MANY = Array.from({ length: 30 }, (_, index) => 41 + index); // #41…#70, #70 updated last
 
 writeFileSync(
   file,
@@ -118,15 +118,15 @@ writeFileSync(
       ...ci('SUCCESS'),
     }),
     ...Object.fromEntries(
-      MANY.map(n => [
-        `acme/app#${n}`,
+      MANY.map(prNumber => [
+        `acme/app#${prNumber}`,
         pr({
-          state: n % 7 ? 'OPEN' : 'MERGED',
-          title: `Part ${n}`,
+          state: prNumber % 7 ? 'OPEN' : 'MERGED',
+          title: `Part ${prNumber}`,
           baseRefName: 'main',
-          headRefName: `part-${n}`,
+          headRefName: `part-${prNumber}`,
           createdAt: ago(2000),
-          updatedAt: ago(n === 70 ? 2 : 1000 - n),
+          updatedAt: ago(prNumber === 70 ? 2 : 1000 - prNumber),
         }),
       ]),
     ),
@@ -144,7 +144,7 @@ export const meta = {
   },
 };
 
-const pull = (repo, n) => `https://github.com/acme/${repo}/pull/${n}`;
+const pull = (repo, prNumber) => `https://github.com/acme/${repo}/pull/${prNumber}`;
 
 export default async function (ctx) {
   const out = {};
@@ -172,7 +172,7 @@ export default async function (ctx) {
     {
       cwd,
       title: 'On thirty',
-      prompt: `the parts: ${MANY.map(n => pull('app', n)).join(' ')}`,
+      prompt: `the parts: ${MANY.map(prNumber => pull('app', prNumber)).join(' ')}`,
       reply: 'looked',
       at: new Date(now - 240_000),
     },
@@ -321,7 +321,7 @@ export default async function (ctx) {
   );
 
   // a square: its card under the pointer — on a spring, the square lifted —, from square to square, the number's
-  const sq = n => `${card(stack.id)}.querySelector('.mxs[data-url$="/pull/${n}"]')`;
+  const sq = prNumber => `${card(stack.id)}.querySelector('.mxs[data-url$="/pull/${prNumber}"]')`;
 
   const centre = el =>
     ctx.evaluate(`(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(${el}.getBoundingClientRect())`);
@@ -437,7 +437,7 @@ export default async function (ctx) {
   out.menu = await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].map(b => b.textContent)`);
 
   ctx.assert.ok(
-    out.menu[0] === 'Open the PR' && out.menu.some(t => t.startsWith('Take it off')),
+    out.menu[0] === 'Open the PR' && out.menu.some(label => label.startsWith('Take it off')),
     `the chip's menu: ${out.menu}`,
   );
 

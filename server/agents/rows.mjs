@@ -29,45 +29,51 @@ import {
 // Only the last round shows: the agents out at one time, a new round being one that starts after all before it ended. A failure
 // from a round before stays with it (`old`), for the page to keep until the chat is opened (seenAt). Words hold AGENT_WORDS_MS:
 // a tool call every 6.6 s here (the median over 247 agents) would flicker, and a new one must not push for each step.
-const typeOf = (s, type) => ({ type, color: agentColor(s.live?.cwd || s.cwd, type) });
+const typeOf = (session, type) => ({ type, color: agentColor(session.live?.cwd || session.cwd, type) });
 
 const AGENT_WORDS_MS = Number(process.env.AGENT_WORDS_MS ?? 15_000);
 const AGENT_FILES = 40;
 
 /** The agent a tool's result names (2026-11-02): an Agent call's, a forked Skill's. How the transcript gets back to it, whatever became of its row. */
-export const agentNamed = t =>
-  typeof t?.agentId === 'string' && /^[\w-]+$/.test(t.agentId)
-    ? { agent: { id: t.agentId, name: pstr(t.name) || pstr(t.commandName), asked: pstr(t.description) } }
+export const agentNamed = result =>
+  typeof result?.agentId === 'string' && /^[\w-]+$/.test(result.agentId)
+    ? {
+        agent: {
+          id: result.agentId,
+          name: pstr(result.name) || pstr(result.commandName),
+          asked: pstr(result.description),
+        },
+      }
     : null;
 
-const agentMetaOf = m =>
-  !m || typeof m !== 'object'
+const agentMetaOf = meta =>
+  !meta || typeof meta !== 'object'
     ? {}
     : {
-        name: pstr(m.name),
-        asked: pstr(m.description),
-        kind: pstr(m.agentType),
-        spawned: pstr(m.spawnedAgentType) || pstr(m.customAgentType),
-        mate: m.taskKind === 'in_process_teammate' || !!pstr(m.teamName),
-        model: pstr(m.model),
-        branch: pstr(m.worktreeBranch),
-        tree: pstr(m.worktreePath),
-        tool: pstr(m.toolUseId),
-        finished: m.finished === true,
-        stopped: m.stoppedByUser === true,
+        name: pstr(meta.name),
+        asked: pstr(meta.description),
+        kind: pstr(meta.agentType),
+        spawned: pstr(meta.spawnedAgentType) || pstr(meta.customAgentType),
+        mate: meta.taskKind === 'in_process_teammate' || !!pstr(meta.teamName),
+        model: pstr(meta.model),
+        branch: pstr(meta.worktreeBranch),
+        tree: pstr(meta.worktreePath),
+        tool: pstr(meta.toolUseId),
+        finished: meta.finished === true,
+        stopped: meta.stoppedByUser === true,
       };
 
-const metaFile = (dir, n) => join(dir, `${n.slice(0, -'.jsonl'.length)}.meta.json`);
+const metaFile = (dir, fileName) => join(dir, `${fileName.slice(0, -'.jsonl'.length)}.meta.json`);
 
 /** Its meta says it finished, and nothing was written since: an agent ended by an API error writes no end of its own, and
  *  counted as at work for AGENT_STALE_MS. A resumed one writes on, and is at work again. */
-export function agentFinished(dir, n) {
-  const mf = metaFile(dir, n);
+export function agentFinished(dir, fileName) {
+  const mf = metaFile(dir, fileName);
 
   if (!jsonOnce(mf, agentMetaOf)?.finished) return false;
 
   try {
-    return jsonSeen.get(mf).mtimeMs >= statSync(join(dir, n)).mtimeMs - 1500;
+    return jsonSeen.get(mf).mtimeMs >= statSync(join(dir, fileName)).mtimeMs - 1500;
   } catch {
     return false;
   }
@@ -76,9 +82,9 @@ export function agentFinished(dir, n) {
 const TM_BODY = /<teammate-message\b[^>]*>\s*([\s\S]*?)\s*<\/teammate-message>/;
 
 const agentPrompt = text => {
-  const t = cleanPrompt(String(text || ''));
+  const cleaned = cleanPrompt(String(text || ''));
 
-  return TM_BODY.exec(t)?.[1] ?? t;
+  return TM_BODY.exec(cleaned)?.[1] ?? cleaned;
 };
 
 const bornSeen = new Map(); // an agent's transcript → { at, prompt }: its first line, read once
@@ -106,95 +112,95 @@ function agentBorn(file, st) {
       closeSync(fd);
     }
 
-    const l = JSON.parse(buf.toString('utf8').split('\n')[0]);
+    const firstLine = JSON.parse(buf.toString('utf8').split('\n')[0]);
 
-    at = pstr(l.timestamp);
-    prompt = agentPrompt(textOf(l.message?.content));
+    at = pstr(firstLine.timestamp);
+    prompt = agentPrompt(textOf(firstLine.message?.content));
   } catch {}
 
-  const v = { at: at || new Date(st.birthtimeMs || st.mtimeMs).toISOString(), prompt };
+  const born = { at: at || new Date(st.birthtimeMs || st.mtimeMs).toISOString(), prompt };
 
   if (bornSeen.size >= SEEN_MAX) bornSeen.delete(bornSeen.keys().next().value);
-  bornSeen.set(file, v);
-  return v;
+  bornSeen.set(file, born);
+  return born;
 }
 
 /** How an agent's notices in the chat's own transcript say it ended, by the call that started it. A notice comes each time it
  *  stops with nothing of its own running, so the last one speaks. */
 const AGENT_NOTE = /<summary>Agent "([^"]*)"\s*([\s\S]*?)<\/summary>/;
 
-export function noteAgentNotices(s, text, ts) {
+export function noteAgentNotices(session, text, ts) {
   let any = false;
 
-  for (const [, b] of text.matchAll(/<task-notification>([\s\S]*?)<\/task-notification>/g)) {
-    const tool = /<tool-use-id>([^<]+)</.exec(b)?.[1];
-    const sum = AGENT_NOTE.exec(b);
+  for (const [, notice] of text.matchAll(/<task-notification>([\s\S]*?)<\/task-notification>/g)) {
+    const tool = /<tool-use-id>([^<]+)</.exec(notice)?.[1];
+    const sum = AGENT_NOTE.exec(notice);
 
     if (!tool || !sum) continue;
 
-    const status = /<status>([^<]+)</.exec(b)?.[1] || null;
+    const status = /<status>([^<]+)</.exec(notice)?.[1] || null;
     const said = sum[2].trim();
     const why = status === 'failed' ? snippet(said.replace(/^failed:\s*/i, ''), 120) : null;
 
-    const was = s.agentEnds?.get(tool);
+    const was = session.agentEnds?.get(tool);
 
-    (s.agentEnds ||= new Map()).set(tool, { status, waiting: /waiting on its own/i.test(said), why, ts });
+    (session.agentEnds ||= new Map()).set(tool, { status, waiting: /waiting on its own/i.test(said), why, ts });
 
     if (status === 'failed' && was?.status !== 'failed') {
-      s.agentFail = { what: sum[1], why };
-      queueNotify(s, 'agent-failed');
+      session.agentFail = { what: sum[1], why };
+      queueNotify(session, 'agent-failed');
     } // the one word of an agent's that is news: one done is not, the chat's reply is
 
     any = true;
   }
 
-  if (any) agentsSoon(s);
+  if (any) agentsSoon(session);
   return any;
 }
 
 /** The chat's rows as they stand; true when they changed. */
-export function noteAgents(s, dir, work, since, now) {
+export function noteAgents(session, dir, work, since, now) {
   const files = [];
   const before = [];
 
-  for (const [n, on] of work) {
+  for (const [fileName, on] of work) {
     let st;
 
     try {
-      st = statSync(join(dir, n));
+      st = statSync(join(dir, fileName));
     } catch {
       continue;
     }
 
-    if (st.size) (st.mtimeMs >= since ? files : before).push({ n, on, st });
+    if (st.size) (st.mtimeMs >= since ? files : before).push({ n: fileName, on, st });
   }
 
-  files.sort((a, b) => b.st.mtimeMs - a.st.mtimeMs);
-  before.sort((a, b) => b.st.mtimeMs - a.st.mtimeMs);
+  files.sort((left, right) => right.st.mtimeMs - left.st.mtimeMs);
+  before.sort((left, right) => right.st.mtimeMs - left.st.mtimeMs);
 
-  const had = new Map((s.agentRows || []).map(r => [r.id, r]));
-  const said = (s.agentSaid ||= new Map());
+  const had = new Map((session.agentRows || []).map(agentRow => [agentRow.id, agentRow]));
+  const said = (session.agentSaid ||= new Map());
   const names = new Set();
   const rows = [];
 
-  const row = ({ n, on, st }, names, past) => {
-    const m = jsonOnce(metaFile(dir, n), agentMetaOf) || {};
-    const file = join(dir, n);
-    const id = n.slice(0, -'.jsonl'.length).replace(/^agent-/, '');
+  const row = ({ n: fileName, on, st }, names, past) => {
+    const meta = jsonOnce(metaFile(dir, fileName), agentMetaOf) || {};
+    const file = join(dir, fileName);
+    const id = fileName.slice(0, -'.jsonl'.length).replace(/^agent-/, '');
 
-    if (m.mate && m.name) {
-      if (names.has(m.name)) return null;
-      names.add(m.name);
+    if (meta.mate && meta.name) {
+      if (names.has(meta.name)) return null;
+      names.add(meta.name);
     } // one name twice: the newest
 
-    const end = m.tool ? s.agentEnds?.get(m.tool) : null;
+    const end = meta.tool ? session.agentEnds?.get(meta.tool) : null;
     const born = agentBorn(file, st);
 
     const state = on
       ? 'run'
       : end?.status === 'failed'
         ? 'fail'
-        : m.stopped || end?.status === 'stopped' || end?.status === 'killed'
+        : meta.stopped || end?.status === 'stopped' || end?.status === 'killed'
           ? 'stop'
           : !past && end?.waiting && now - st.mtimeMs < TASK_MAX_MS
             ? 'wait'
@@ -209,15 +215,18 @@ export function noteAgents(s, dir, work, since, now) {
     else if (JSON.stringify(last) !== JSON.stringify(was?.last ?? null)) said.set(id, now);
     return {
       id,
-      name: m.name,
-      asked: m.asked || snippet(born.prompt, 80) || null,
-      kind: m.kind && m.kind !== 'general-purpose' ? m.kind : null,
-      mate: !!m.mate,
+      name: meta.name,
+      asked: meta.asked || snippet(born.prompt, 80) || null,
+      kind: meta.kind && meta.kind !== 'general-purpose' ? meta.kind : null,
+      mate: !!meta.mate,
       st: state,
       last,
       // its type as Claude Code named it — a teammate's, the category it was spawned as (mateType, 2026-11-18, v6) — and the
       // colour that type's definition gives (Space's pods): none for a built-in
-      ...typeOf(s, m.mate ? mateType(s, m.name, m.spawned, m.kind) : m.spawned || m.kind || null),
+      ...typeOf(
+        session,
+        meta.mate ? mateType(session, meta.name, meta.spawned, meta.kind) : meta.spawned || meta.kind || null,
+      ),
       // when it ended: not its last line alone — an API error writes none, and you may have opened the chat since that line (the page keeps a failure until then)
       at: born.at,
       end:
@@ -227,22 +236,22 @@ export function noteAgents(s, dir, work, since, now) {
               Math.max(
                 st.mtimeMs,
                 Date.parse(end?.ts) || 0,
-                m.finished ? jsonSeen.get(metaFile(dir, n))?.mtimeMs || 0 : 0,
+                meta.finished ? jsonSeen.get(metaFile(dir, fileName))?.mtimeMs || 0 : 0,
               ),
             ).toISOString(),
       lastAt: new Date(st.mtimeMs).toISOString(),
       why: state === 'fail' ? end?.why || null : null,
-      branch: m.branch,
-      tree: m.tree,
-      tool: m.tool,
+      branch: meta.branch,
+      tree: meta.tree,
+      tool: meta.tool,
       ...(past ? { past: true } : {}),
     };
   };
 
-  for (const f of files.slice(0, AGENT_FILES)) {
-    const r = row(f, names, false);
+  for (const entry of files.slice(0, AGENT_FILES)) {
+    const agentRow = row(entry, names, false);
 
-    if (r) rows.push(r);
+    if (agentRow) rows.push(agentRow);
   }
 
   // the agents of the claudes before this one (2026-11-24): a resume is a new claude, and its rows start over, but Space's pods
@@ -250,45 +259,45 @@ export function noteAgents(s, dir, work, since, now) {
   const pastNames = new Set();
   const past = [];
 
-  for (const f of before.slice(0, Math.max(0, AGENT_FILES - rows.length))) {
-    const r = row(f, pastNames, true);
+  for (const entry of before.slice(0, Math.max(0, AGENT_FILES - rows.length))) {
+    const agentRow = row(entry, pastNames, true);
 
-    if (r) past.push(r);
+    if (agentRow) past.push(agentRow);
   }
 
-  past.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
-  rows.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  past.sort((left, right) => Date.parse(left.at) - Date.parse(right.at));
+  rows.sort((left, right) => Date.parse(left.at) - Date.parse(right.at));
 
   let cut = 0;
   let far = -Infinity; // the last round: where one starts after every one before it had ended
 
-  rows.forEach((r, i) => {
-    const from = Date.parse(r.at);
+  rows.forEach((agentRow, index) => {
+    const from = Date.parse(agentRow.at);
 
-    if (i && from > far) cut = i;
-    far = Math.max(far, r.end ? Date.parse(r.lastAt) : Infinity);
+    if (index && from > far) cut = index;
+    far = Math.max(far, agentRow.end ? Date.parse(agentRow.lastAt) : Infinity);
   });
 
   const kept = [
     ...rows
       .slice(0, cut)
-      .filter(r => r.st === 'fail')
+      .filter(agentRow => agentRow.st === 'fail')
       .slice(-3)
-      .map(r => ({ ...r, old: true })),
+      .map(agentRow => ({ ...agentRow, old: true })),
     ...rows.slice(cut),
   ];
 
   const joined = [];
 
-  for (const m of rosterOf(s)) {
-    if (!names.has(m.name)) {
+  for (const mate of rosterOf(session)) {
+    if (!names.has(mate.name)) {
       joined.push({
-        id: `mate-${m.name}`,
-        name: m.name,
+        id: `mate-${mate.name}`,
+        name: mate.name,
         asked: null,
         kind: null,
         mate: true,
-        ...typeOf(s, mateType(s, m.name, null, m.kind)),
+        ...typeOf(session, mateType(session, mate.name, null, mate.kind)),
         st: 'joined',
         last: null,
         at: null,
@@ -309,14 +318,17 @@ export function noteAgents(s, dir, work, since, now) {
 
   // what changed: `lastAt` only by the minute, or every line of every agent would push the card
   const sig = JSON.stringify([
-    kept.map(({ lastAt, ...r }) => [r, Math.floor(Date.parse(lastAt) / 60_000)]),
-    all && [...past, ...rows.slice(0, cut)].map(r => [r.id, r.st, r.type]),
+    kept.map(({ lastAt, ...rest }) => [rest, Math.floor(Date.parse(lastAt) / 60_000)]),
+    all && [...past, ...rows.slice(0, cut)].map(agentRow => [agentRow.id, agentRow.st, agentRow.type]),
   ]);
 
-  if (sig === (s.agentSig ?? null) || (!kept.length && !s.agentRows && !all && !s.agentAll)) return false;
-  s.agentRows = kept.length ? kept : null;
-  s.agentAll = all;
-  s.agentSig = sig;
+  if (sig === (session.agentSig ?? null) || (!kept.length && !session.agentRows && !all && !session.agentAll)) {
+    return false;
+  }
+
+  session.agentRows = kept.length ? kept : null;
+  session.agentAll = all;
+  session.agentSig = sig;
   return true;
 }
 
@@ -328,68 +340,68 @@ const AGENT_LOGS = 6;
 
 function agentFold(log, raw) {
   if (!raw.includes('"type":"assistant"') && !raw.includes('"type":"user"')) return; // an API request's lines: the bulk of the file
-  let l;
+  let line;
 
   try {
-    l = JSON.parse(raw);
+    line = JSON.parse(raw);
   } catch {
     return;
   }
 
-  const ts = l.timestamp || null;
-  const c = l.message?.content;
-  const blocks = Array.isArray(c) ? c : [];
+  const ts = line.timestamp || null;
+  const content = line.message?.content;
+  const blocks = Array.isArray(content) ? content : [];
 
-  if (l.type === 'assistant') {
-    const m = l.message || {};
+  if (line.type === 'assistant') {
+    const message = line.message || {};
 
-    if (m.model && m.model !== '<synthetic>') log.model = m.model;
-    const u = m.usage;
+    if (message.model && message.model !== '<synthetic>') log.model = message.model;
+    const usage = message.usage;
 
-    if (u) {
+    if (usage) {
       log.tokens =
-        (u.input_tokens || 0) +
-        (u.cache_read_input_tokens || 0) +
-        (u.cache_creation_input_tokens || 0) +
-        (u.output_tokens || 0);
+        (usage.input_tokens || 0) +
+        (usage.cache_read_input_tokens || 0) +
+        (usage.cache_creation_input_tokens || 0) +
+        (usage.output_tokens || 0);
     } // as its notice counts them: the context at its last call
 
-    for (const b of blocks) {
-      if (b?.type === 'text' && b.text?.trim()) {
-        log.entries.push({ role: 'assistant', kind: 'text', text: b.text, ts, msgId: m.id });
-      } else if (b?.type === 'tool_use') {
+    for (const block of blocks) {
+      if (block?.type === 'text' && block.text?.trim()) {
+        log.entries.push({ role: 'assistant', kind: 'text', text: block.text, ts, msgId: message.id });
+      } else if (block?.type === 'tool_use') {
         log.tools++;
 
-        if (b.name === 'SubagentHandback') {
-          (log.handed ||= new Set()).add(b.id);
-          const t = String(b.input?.message || '').trim();
+        if (block.name === 'SubagentHandback') {
+          (log.handed ||= new Set()).add(block.id);
+          const report = String(block.input?.message || '').trim();
 
-          if (t) log.entries.push({ role: 'assistant', kind: 'text', text: t, ts, msgId: m.id });
+          if (report) log.entries.push({ role: 'assistant', kind: 'text', text: report, ts, msgId: message.id });
         } // its report: words, not a call, and its result nothing
         else {
           log.entries.push({
             role: 'assistant',
             kind: 'tool_use',
-            name: b.name,
-            text: summarizeToolInput(b.name, b.input),
-            toolUseId: b.id,
+            name: block.name,
+            text: summarizeToolInput(block.name, block.input),
+            toolUseId: block.id,
             ts,
           });
         }
       }
     }
-  } else if (l.type === 'user' && !l.isMeta && !l.isCompactSummary) {
-    const results = blocks.filter(b => b?.type === 'tool_result');
+  } else if (line.type === 'user' && !line.isMeta && !line.isCompactSummary) {
+    const results = blocks.filter(block => block?.type === 'tool_result');
 
     if (results.length) {
-      for (const b of results) {
-        if (!log.handed?.has(b.tool_use_id)) {
+      for (const block of results) {
+        if (!log.handed?.has(block.tool_use_id)) {
           log.entries.push({
             role: 'user',
             kind: 'tool_result',
-            toolUseId: b.tool_use_id,
-            isError: !!b.is_error,
-            text: toolResultSnippet(b),
+            toolUseId: block.tool_use_id,
+            isError: !!block.is_error,
+            text: toolResultSnippet(block),
             ts,
           });
         }
@@ -398,7 +410,7 @@ function agentFold(log, raw) {
       return;
     }
 
-    const text = agentPrompt(textOf(c));
+    const text = agentPrompt(textOf(content));
 
     if (!text || TASK_NOTE_RE.test(text) || SYNTHETIC_RE.test(text)) return;
     log.prompt ??= text;
@@ -406,8 +418,8 @@ function agentFold(log, raw) {
   }
 }
 
-export function agentLog(s, id) {
-  const dir = agentsDir(s);
+export function agentLog(session, id) {
+  const dir = agentsDir(session);
 
   if (!dir || !/^[\w-]+$/.test(id)) return null;
   const file = join(dir, `agent-${id}.jsonl`);

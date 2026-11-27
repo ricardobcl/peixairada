@@ -42,23 +42,23 @@ const NAME = 'peix-shell';
 const argv = process.argv.slice(2);
 
 const opt = name => {
-  const i = argv.indexOf(name);
+  const index = argv.indexOf(name);
 
-  return i < 0 ? null : argv.splice(i, 2)[1];
+  return index < 0 ? null : argv.splice(index, 2)[1];
 };
 
 const flag = name => {
-  const i = argv.indexOf(name);
+  const index = argv.indexOf(name);
 
-  if (i < 0) return false;
-  argv.splice(i, 1);
+  if (index < 0) return false;
+  argv.splice(index, 1);
   return true;
 };
 
 const shots = opt('--shots') || join(tmpdir(), 'peixairada-shots');
 const srcAsked = opt('--src');
 const space = flag('--space');
-const named = argv.filter(a => !a.startsWith('--'));
+const named = argv.filter(arg => !arg.startsWith('--'));
 
 const DRIVE = join(ROOT, 'scripts/shell-probe.swift');
 const SRC = srcAsked ? resolve(srcAsked) : join(ROOT, 'mac/Sources');
@@ -66,9 +66,9 @@ const SRC = srcAsked ? resolve(srcAsked) : join(ROOT, 'mac/Sources');
 // the app's files (2026-11-25: main.swift alone before), in C's order: the one scripts/check.sh hashes them in
 const SOURCES = existsSync(join(SRC, 'main.swift'))
   ? readdirSync(SRC)
-      .filter(f => f.endsWith('.swift'))
+      .filter(file => file.endsWith('.swift'))
       .sort()
-      .map(f => join(SRC, f))
+      .map(file => join(SRC, file))
   : [];
 
 if (!SOURCES.length) {
@@ -91,10 +91,10 @@ while (!existsSync(join(nm, 'node_modules')) && dirname(nm) !== nm) nm = dirname
 const CACHE = join(nm, 'node_modules/.cache/peixairada');
 
 const sourceHash = () => {
-  const h = createHash('sha256');
+  const hash = createHash('sha256');
 
-  for (const f of [...SOURCES, DRIVE]) h.update(readFileSync(f));
-  return h.digest('hex');
+  for (const file of [...SOURCES, DRIVE]) hash.update(readFileSync(file));
+  return hash.digest('hex');
 };
 
 /** Compiled once per what it is compiled from, whichever worktree asks: flags as build.sh's but -O, which only takes longer. */
@@ -111,7 +111,7 @@ function compile() {
   console.error(`› compiling ${SRC === join(ROOT, 'mac/Sources') ? 'mac/Sources' : SRC} with the probe`);
   const made = join(dir, `${NAME}.${process.pid}`);
 
-  const c = spawnSync(
+  const compiled = spawnSync(
     'swiftc',
     [
       '-swift-version',
@@ -129,18 +129,18 @@ function compile() {
     { stdio: ['ignore', 'ignore', 'pipe'], encoding: 'utf8' },
   );
 
-  if (c.status !== 0) {
-    console.error(c.stderr);
-    process.exit(c.status ?? 1);
+  if (compiled.status !== 0) {
+    console.error(compiled.stderr);
+    process.exit(compiled.status ?? 1);
   }
 
   renameSync(made, bin);
 
   for (const old of readdirSync(join(CACHE, 'shell'))) {
     if (old !== hash.slice(0, 16)) {
-      const p = join(CACHE, 'shell', old);
+      const oldDir = join(CACHE, 'shell', old);
 
-      if (Date.now() - statSync(p).mtimeMs > 86_400_000) rmSync(p, { recursive: true, force: true });
+      if (Date.now() - statSync(oldDir).mtimeMs > 86_400_000) rmSync(oldDir, { recursive: true, force: true });
     }
   }
 
@@ -217,50 +217,50 @@ function startShell(bin, { port, home, space: inSpace }) {
     failed = rej;
   });
 
-  child.stderr.on('data', d => {
-    err = (err + d).slice(-4000);
+  child.stderr.on('data', chunk => {
+    err = (err + chunk).slice(-4000);
   });
 
   child.stdin.on('error', () => {});
 
   child.on('exit', (code, sig) => {
-    const e = new Error(`the shell ended (${code ?? sig})${err ? `:\n${err}` : ''}`);
+    const error = new Error(`the shell ended (${code ?? sig})${err ? `:\n${err}` : ''}`);
 
-    failed(e);
-    for (const w of waiting.values()) w.rej(e);
+    failed(error);
+    for (const waiter of waiting.values()) waiter.rej(error);
     waiting.clear();
   });
 
   createInterface({ input: child.stdout }).on('line', line => {
-    let m;
+    let message;
 
     try {
-      m = JSON.parse(line);
+      message = JSON.parse(line);
     } catch {
       return;
     }
 
-    if (m.ready) return ready(m);
-    const w = waiting.get(m.id);
+    if (message.ready) return ready(message);
+    const waiter = waiting.get(message.id);
 
-    if (!w) return;
-    waiting.delete(m.id);
-    clearTimeout(w.t);
-    if (m.ok) w.res(m.value);
-    else w.rej(new Error(`${w.what}: ${m.error}`));
+    if (!waiter) return;
+    waiting.delete(message.id);
+    clearTimeout(waiter.t);
+    if (message.ok) waiter.res(message.value);
+    else waiter.rej(new Error(`${waiter.what}: ${message.error}`));
   });
 
-  const ask = (what, o = {}, ms = 20_000) =>
+  const ask = (what, fields = {}, ms = 20_000) =>
     new Promise((res, rej) => {
       const id = ++seq;
 
-      const t = setTimeout(() => {
+      const timer = setTimeout(() => {
         waiting.delete(id);
         rej(new Error(`no answer from the shell in ${ms} ms to ${what}`));
       }, ms);
 
-      waiting.set(id, { res, rej, t, what });
-      child.stdin.write(`${JSON.stringify({ id, do: what, ...o })}\n`);
+      waiting.set(id, { res, rej, t: timer, what });
+      child.stdin.write(`${JSON.stringify({ id, do: what, ...fields })}\n`);
     });
 
   return {
@@ -299,7 +299,7 @@ async function runCheck(file, bin) {
   const mod = await import(pathToFileURL(file).href);
   const meta = mod.meta || {};
 
-  const log = (...a) => console.error(`[${name}]`, ...a);
+  const log = (...args) => console.error(`[${name}]`, ...args);
   const home = tmpDir('peix-home-');
   const cleanups = [];
 
@@ -318,8 +318,8 @@ async function runCheck(file, bin) {
 
   if (stranger) cleanups.push(() => stranger.close());
 
-  for (const d of ['Library/Application Support/peixAIrada', 'Library/Logs']) {
-    mkdirSync(join(home, d), { recursive: true });
+  for (const folder of ['Library/Application Support/peixAIrada', 'Library/Logs']) {
+    mkdirSync(join(home, folder), { recursive: true });
   }
 
   writeFileSync(join(home, 'Library/Application Support/peixAIrada/key'), server.key);
@@ -353,9 +353,9 @@ async function runCheck(file, bin) {
       shots,
       aside: !meta.space,
       /** A body of script on the board, what it returns (JSON). */
-      js: code => shell.ask('js', { code }).then(v => JSON.parse(v)),
+      js: code => shell.ask('js', { code }).then(answer => JSON.parse(answer)),
       /** …on a page in the pane, by its key. */
-      page: (key, code) => shell.ask('page', { key, code }).then(v => JSON.parse(v)),
+      page: (key, code) => shell.ask('page', { key, code }).then(answer => JSON.parse(answer)),
       /** The window as the shell has it: size, style, fill, the overlay's top, each pane view's place. */
       win: () => shell.ask('window'),
       until: (code, what = code, timeout = 15_000) =>
@@ -401,10 +401,10 @@ async function runCheck(file, bin) {
       halfOf: url =>
         waitFor(
           async () => {
-            const h = await ctx.js(`return peix.state().halves`);
-            const g = h.findIndex(k => (k || '').endsWith(url));
+            const halves = await ctx.js(`return peix.state().halves`);
+            const half = halves.findIndex(tab => (tab || '').endsWith(url));
 
-            return g < 0 ? null : { g, key: h[g] };
+            return half < 0 ? null : { g: half, key: halves[half] };
           },
           { what: `a half showing ${url}`, every: 100 },
         ),
@@ -416,21 +416,21 @@ async function runCheck(file, bin) {
 
         await waitFor(
           async () => {
-            const w = await ctx.win();
+            const win = await ctx.win();
 
-            return w.fill !== was.fill || w.full !== was.full ? w : null;
+            return win.fill !== was.fill || win.full !== was.full ? win : null;
           },
           { what: 'the full screen to change', timeout: 15_000, every: 100 },
         );
       },
-      size: (w, h) => shell.ask('size', { w, h }),
+      size: (width, height) => shell.ask('size', { w: width, h: height }),
       /** Settings' text size, as its menu picks it. */
-      zoom: async z => {
+      zoom: async level => {
         await ctx.js(
-          `const p = document.querySelector('#zoomPick'); p.value = ${JSON.stringify(String(z))}; p.dispatchEvent(new Event('change')); return true`,
+          `const p = document.querySelector('#zoomPick'); p.value = ${JSON.stringify(String(level))}; p.dispatchEvent(new Event('change')); return true`,
         );
 
-        await waitFor(async () => (await ctx.win()).zoom === z, { what: `the zoom at ${z}`, every: 50 });
+        await waitFor(async () => (await ctx.win()).zoom === level, { what: `the zoom at ${level}`, every: 50 });
       },
       /** Nothing finite still moving and no draw to come, as a scenario's ctx.settle(), then a frame for it to reach the window. */
       settle: async () => {
@@ -456,18 +456,18 @@ async function runCheck(file, bin) {
 
     log(`passed in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
     return { name, ok: true, result };
-  } catch (e) {
-    log(`FAILED: ${e.stack || e}`);
+  } catch (error) {
+    log(`FAILED: ${error.stack || error}`);
     const tail = appLog().split('\n').slice(-12).join('\n');
 
     if (tail.trim()) log(`the shell's log, its end:\n${tail}`);
-    return { name, ok: false, error: e.message };
+    return { name, ok: false, error: error.message };
   } finally {
-    for (const c of cleanups.reverse()) {
+    for (const cleanup of cleanups.reverse()) {
       try {
-        await c();
-      } catch (e) {
-        log('cleanup:', e.message);
+        await cleanup();
+      } catch (error) {
+        log('cleanup:', error.message);
       }
     }
 
@@ -478,33 +478,33 @@ async function runCheck(file, bin) {
 const dir = join(ROOT, 'scripts/shell-checks');
 
 const all = readdirSync(dir)
-  .filter(f => f.endsWith('.mjs'))
-  .map(f => join(dir, f));
+  .filter(file => file.endsWith('.mjs'))
+  .map(file => join(dir, file));
 
 const metas = new Map();
 
-for (const f of all) metas.set(f, (await import(pathToFileURL(f).href)).meta || {});
+for (const file of all) metas.set(file, (await import(pathToFileURL(file).href)).meta || {});
 
 const chosen = named.length
-  ? all.filter(f => named.includes(basename(f, '.mjs')))
-  : all.filter(f => !!metas.get(f).space === space);
+  ? all.filter(file => named.includes(basename(file, '.mjs')))
+  : all.filter(file => !!metas.get(file).space === space);
 
 if (!chosen.length) {
-  console.error(`no check named ${named.join(', ')} among ${all.map(f => basename(f, '.mjs')).join(', ')}`);
+  console.error(`no check named ${named.join(', ')} among ${all.map(file => basename(file, '.mjs')).join(', ')}`);
   process.exit(2);
 }
 
 const bin = compile();
 const results = [];
 
-for (const f of chosen) results.push(await runCheck(f, bin));
+for (const file of chosen) results.push(await runCheck(file, bin));
 
-const failed = results.filter(r => r.ok === false);
-const skipped = results.filter(r => r.skipped);
+const failed = results.filter(result => result.ok === false);
+const skipped = results.filter(result => result.skipped);
 
-for (const r of results) {
+for (const result of results) {
   console.log(
-    `${r.skipped ? 'NOT RUN' : r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.skipped ? ` — ${r.skipped}` : r.ok ? '' : ` — ${r.error.split('\n')[0]}`}`,
+    `${result.skipped ? 'NOT RUN' : result.ok ? 'PASS' : 'FAIL'}  ${result.name}${result.skipped ? ` — ${result.skipped}` : result.ok ? '' : ` — ${result.error.split('\n')[0]}`}`,
   );
 }
 

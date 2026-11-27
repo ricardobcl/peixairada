@@ -13,7 +13,7 @@ import { makeFixture } from '../fixture.mjs';
 export const meta = { server: true, fixture: 'auto' };
 
 const titles = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist > .card .title')].map(t => t.textContent)`);
-const type = (ctx, q) => ctx.fill('#q', q);
+const type = (ctx, query) => ctx.fill('#q', query);
 
 const keyIn = (ctx, key) =>
   ctx.evaluate(

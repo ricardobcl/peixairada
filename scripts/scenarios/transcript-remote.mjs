@@ -23,36 +23,36 @@ export default async function (ctx) {
     res.end();
   });
 
-  await new Promise(r => probe.listen(0, '127.0.0.1', r));
+  await new Promise(resolve => probe.listen(0, '127.0.0.1', resolve));
 
   try {
-    const P = `http://127.0.0.1:${probe.address().port}`;
+    const PROBE = `http://127.0.0.1:${probe.address().port}`;
     const GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
     const reply = [
       'The vectors, one a paragraph:',
       '',
-      `![md](${P}/md)`,
+      `![md](${PROBE}/md)`,
       '',
-      `ok <img alt="srcset" src="${GIF}" srcset="${P}/srcset 1x">`,
+      `ok <img alt="srcset" src="${GIF}" srcset="${PROBE}/srcset 1x">`,
       '',
-      `<picture><source srcset="${P}/picture"><img alt="pic" src="${GIF}"></picture>`,
+      `<picture><source srcset="${PROBE}/picture"><img alt="pic" src="${GIF}"></picture>`,
       '',
-      `<video poster="${P}/poster" src="${P}/videosrc"><track default src="${P}/track"></video>`,
+      `<video poster="${PROBE}/poster" src="${PROBE}/videosrc"><track default src="${PROBE}/track"></video>`,
       '',
-      `<audio src="${P}/audio"></audio>`,
+      `<audio src="${PROBE}/audio"></audio>`,
       '',
-      `<table background="${P}/tablebg"><tr><td background="${P}/tdbg">x</td></tr></table>`,
+      `<table background="${PROBE}/tablebg"><tr><td background="${PROBE}/tdbg">x</td></tr></table>`,
       '',
-      `<input type="image" src="${P}/input">`,
+      `<input type="image" src="${PROBE}/input">`,
       '',
-      `<svg width="20" height="20"><image href="${P}/svgimage" width="10" height="10"/><image xlink:href="${P}/svgxlink" width="10" height="10"/></svg>`,
+      `<svg width="20" height="20"><image href="${PROBE}/svgimage" width="10" height="10"/><image xlink:href="${PROBE}/svgxlink" width="10" height="10"/></svg>`,
       '',
-      `<svg width="20" height="20"><filter id="f"><feImage href="${P}/feimage"/></filter><rect width="5" height="5" filter="url(#f)"/></svg>`,
+      `<svg width="20" height="20"><filter id="f"><feImage href="${PROBE}/feimage"/></filter><rect width="5" height="5" filter="url(#f)"/></svg>`,
       '',
-      `<svg width="20" height="20"><use href="${P}/use.svg#a"/></svg>`,
+      `<svg width="20" height="20"><use href="${PROBE}/use.svg#a"/></svg>`,
       '',
-      `<svg width="20" height="20"><rect width="9" height="9" fill="url(${P}/fill.svg#p)" mask="url(${P}/mask.svg#m)" clip-path="url(${P}/clip.svg#c)" filter="url(${P}/filter.svg#f)"/><rect width="9" height="9" fill="\\75 rl(${P}/escaped.svg#p)"/></svg>`,
+      `<svg width="20" height="20"><rect width="9" height="9" fill="url(${PROBE}/fill.svg#p)" mask="url(${PROBE}/mask.svg#m)" clip-path="url(${PROBE}/clip.svg#c)" filter="url(${PROBE}/filter.svg#f)"/><rect width="9" height="9" fill="\\75 rl(${PROBE}/escaped.svg#p)"/></svg>`,
       '',
       `the inline one stays: <img alt="inline" src="${GIF}">`,
       '',
@@ -88,10 +88,10 @@ export default async function (ctx) {
     ctx.assert.ok(out.left.imgs.includes('inline:data:image'), 'a data: image stays an image');
     ctx.assert.equal(out.left.boxes, 2, "a task list's checkboxes stay");
     ctx.assert.ok(out.left.links >= 1, 'the markdown image is a link to it');
-    out.refused = ctx.console.filter(l => /CSP violation/.test(l));
+    out.refused = ctx.console.filter(line => /CSP violation/.test(line));
 
     ctx.assert.ok(
-      out.refused.every(l => l.includes(P)),
+      out.refused.every(line => line.includes(PROBE)),
       "what the page's policy refused was the probe's alone",
     );
 

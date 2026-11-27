@@ -15,7 +15,7 @@ const LONG =
   'A word long enough to run off the end of the line at any width the list can be, and on, and on, and on past all of it, which is how most of them are.';
 
 export default async function (ctx) {
-  const a = ctx.assert;
+  const assert = ctx.assert;
   const out = {};
   const cwd = join(tmpdir(), 'peix-card-line', 'line-repo');
 
@@ -115,7 +115,7 @@ export default async function (ctx) {
     await ctx.settle();
     out.line = await cards();
 
-    a.deepEqual(
+    assert.deepEqual(
       await ctx.evaluate(
         `({ on: document.querySelector('#cardsSize [aria-checked="true"]').textContent, cards: document.querySelector('#sessions').dataset.cards, line: document.querySelector('#sessions').hasAttribute('data-line'), even: document.querySelector('#sessions').hasAttribute('data-even'), pref: window.peix.prefs().cards })`,
       ),
@@ -123,29 +123,38 @@ export default async function (ctx) {
       "the stop, the list's two attributes",
     );
 
-    const c = out.line;
-    const long = Object.keys(c).find(k => k.startsWith('A title long'));
+    const oneLine = out.line;
+    const long = Object.keys(oneLine).find(title => title.startsWith('A title long'));
 
-    for (const [k, v] of Object.entries(c)) {
-      a.equal(v.node, true, `${k}: the card's node kept (the size re-renders nothing)`);
-      a.equal(v.title <= 19, true, `${k}: its title on one line (${v.title})`);
-      a.equal(v.h, even[k].h, `${k}: no taller than same height`);
+    for (const [title, card] of Object.entries(oneLine)) {
+      assert.equal(card.node, true, `${title}: the card's node kept (the size re-renders nothing)`);
+      assert.equal(card.title <= 19, true, `${title}: its title on one line (${card.title})`);
+      assert.equal(card.h, even[title].h, `${title}: no taller than same height`);
     }
 
-    a.equal(new Set(Object.values(c).map(v => v.h)).size, 1, `one height: ${Object.values(c).map(v => v.h)}`);
+    assert.equal(
+      new Set(Object.values(oneLine).map(card => card.h)).size,
+      1,
+      `one height: ${Object.values(oneLine).map(card => card.h)}`,
+    );
 
     // who has the row
-    a.deepEqual(
-      [c['Claude spoke last'].word, c['Claude spoke last'].wordH],
+    assert.deepEqual(
+      [oneLine['Claude spoke last'].word, oneLine['Claude spoke last'].wordH],
       [['claude'], 16],
       "the last word, Claude's, one line",
     );
 
-    a.deepEqual([c['You spoke last'].word, c['You spoke last'].wordH], [['you'], 16], 'the last word, yours');
-    a.deepEqual([c['Asking you'].word, c['Asking you'].ask], [[], 16], 'the question, not the word');
+    assert.deepEqual(
+      [oneLine['You spoke last'].word, oneLine['You spoke last'].wordH],
+      [['you'], 16],
+      'the last word, yours',
+    );
 
-    a.deepEqual(
-      [c['Watching a run'].word, c['Watching a run'].live],
+    assert.deepEqual([oneLine['Asking you'].word, oneLine['Asking you'].ask], [[], 16], 'the question, not the word');
+
+    assert.deepEqual(
+      [oneLine['Watching a run'].word, oneLine['Watching a run'].live],
       [['claude'], 0],
       'a monitor with no event yet says nothing: the word',
     );
@@ -156,11 +165,11 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-    a.deepEqual(doing, { words: 0, live: 16, same: true }, 'what it is doing, not the word');
-    a.equal(c[long].word.length, 1, 'a long title keeps its word');
+    assert.deepEqual(doing, { words: 0, live: 16, same: true }, 'what it is doing, not the word');
+    assert.equal(oneLine[long].word.length, 1, 'a long title keeps its word');
 
     // your word on a row with no process reads at its full ink
-    a.equal(
+    assert.equal(
       await ctx.evaluate(
         `getComputedStyle([...document.querySelectorAll('#slist > .card.gone .snip.you:not(.older)')].find(x => getComputedStyle(x).display !== 'none')).opacity`,
       ),
@@ -174,8 +183,8 @@ export default async function (ctx) {
         `(r => ({ off: r.classList.contains('off') && r.querySelector('input').disabled, say: r.querySelector('small').textContent }))(document.querySelector('${row}'))`,
       );
 
-    a.deepEqual(await dep('#laneRow'), { off: true, say: 'One line keeps every card one height' });
-    a.deepEqual(await dep('#evenRow'), { off: true, say: 'Only with compact cards' });
+    assert.deepEqual(await dep('#laneRow'), { off: true, say: 'One line keeps every card one height' });
+    assert.deepEqual(await dep('#evenRow'), { off: true, say: 'Only with compact cards' });
 
     // a PR at your move has the row: a stand-in of its line, as cardHtml writes it
     const moved = await ctx
@@ -184,13 +193,18 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-    a.deepEqual(moved.words, 0, 'your move, not the word');
-    a.equal(moved.h, c['Claude spoke last'].h, 'the same height with a move on the row');
+    assert.deepEqual(moved.words, 0, 'your move, not the word');
+    assert.equal(moved.h, oneLine['Claude spoke last'].h, 'the same height with a move on the row');
     await ctx.shot('one-line', { x: 0, y: 0, width: 420, height: 640 });
     // kept across a reload
     await ctx.reload();
-    a.equal(await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-line')`), true, 'kept');
-    a.equal(await ctx.evaluate(`document.querySelector('#cardsSize [aria-checked="true"]').textContent`), 'One line');
+    assert.equal(await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-line')`), true, 'kept');
+
+    assert.equal(
+      await ctx.evaluate(`document.querySelector('#cardsSize [aria-checked="true"]').textContent`),
+      'One line',
+    );
+
     return out;
   } finally {
     asker.kill();

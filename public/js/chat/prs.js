@@ -4,7 +4,7 @@
 // a tab. Either way a strip under the header says what gh knows about it: state, review, checks,
 // size, branches. Non-GitHub links in the app go to the system browser the same way.
 const inApp = !!window.webkit?.messageHandlers?.hub;
-const post = m => window.webkit?.messageHandlers?.hub?.postMessage(m);
+const post = message => window.webkit?.messageHandlers?.hub?.postMessage(message);
 
 // The whole board larger or smaller (2026-10-12, the settings' text size): the app's web view zooms (pageZoom — the
 // page's CSS px stay its own, the app turns its places between the two); a browser has its own View → Zoom, which ⌘+
@@ -20,8 +20,8 @@ const applyZoom = () => {
   zoomPick();
 };
 
-$('#zoomPick').addEventListener('change', e => {
-  prefs.pageZoom = +e.target.value || 1;
+$('#zoomPick').addEventListener('change', event => {
+  prefs.pageZoom = +event.target.value || 1;
   savePrefs();
   applyZoom();
 });
@@ -40,8 +40,8 @@ const applyFull = () => {
   fsPick();
 };
 
-$('#fsPick').addEventListener('change', e => {
-  prefs.fullSpace = e.target.value === 'space';
+$('#fsPick').addEventListener('change', event => {
+  prefs.fullSpace = event.target.value === 'space';
   savePrefs();
   applyFull();
 });
@@ -55,8 +55,8 @@ const IN_PANE = /^https?:\/\//; // every web page (2026-09-26; GitHub and the bo
 // to a / ? # or : — and the rest goes to the browser. A link out of a page in the pane to another site goes the same
 // way: the shell asks peixLinkOut. VS Code Web is the board's own, whatever the pick; an address typed into a blank tab
 // is asked for here.
-const siteOf = p =>
-  String(p)
+const siteOf = address =>
+  String(address)
     .trim()
     .replace(/^[a-z][\w+.-]*:\/\//i, '')
     .replace(/^www\./i, '')
@@ -66,44 +66,44 @@ const sitesKept = () => (prefs.boardSites || []).map(siteOf).filter(Boolean);
 
 const inBoard = url =>
   !prefs.pagesOut ||
-  sitesKept().some(p => {
-    const u = siteOf(url);
+  sitesKept().some(kept => {
+    const site = siteOf(url);
 
-    return u.startsWith(p) && (p.endsWith('/') || /^(?:$|[/?#:])/.test(u.slice(p.length)));
+    return site.startsWith(kept) && (kept.endsWith('/') || /^(?:$|[/?#:])/.test(site.slice(kept.length)));
   });
 
 window.peixLinkOut = url => inApp && IN_PANE.test(url) && !inBoard(url);
 
 const pagesPick = () => {
-  for (const b of document.querySelectorAll('#pagesPick [data-out]')) {
-    b.setAttribute('aria-checked', String(!!+b.dataset.out === !!prefs.pagesOut));
+  for (const button of document.querySelectorAll('#pagesPick [data-out]')) {
+    button.setAttribute('aria-checked', String(!!+button.dataset.out === !!prefs.pagesOut));
   }
 
-  const r = $('#sitesRow');
-  const say = r.querySelector('small');
+  const row = $('#sitesRow');
+  const say = row.querySelector('small');
   const box = $('#boardSites');
 
-  r.classList.toggle('off', !prefs.pagesOut);
+  row.classList.toggle('off', !prefs.pagesOut);
   box.disabled = !prefs.pagesOut;
   say.textContent = prefs.pagesOut ? say.dataset.d : say.dataset.off;
   if (document.activeElement !== box) box.value = (prefs.boardSites || []).join(', ');
   $('#linksRow').hidden = !inApp;
 };
 
-for (const b of document.querySelectorAll('#pagesPick [data-out]')) {
-  b.addEventListener('click', () => {
-    prefs.pagesOut = !!+b.dataset.out;
+for (const button of document.querySelectorAll('#pagesPick [data-out]')) {
+  button.addEventListener('click', () => {
+    prefs.pagesOut = !!+button.dataset.out;
     savePrefs();
     pagesPick();
   });
 }
 
-$('#boardSites').addEventListener('change', e => {
+$('#boardSites').addEventListener('change', event => {
   prefs.boardSites = [
     ...new Set(
-      e.target.value
+      event.target.value
         .split(/[\s,]+/)
-        .map(x => x.trim())
+        .map(site => site.trim())
         .filter(Boolean),
     ),
   ];
@@ -120,7 +120,10 @@ pagesPick();
 // link's click (a javascript: one would have run here), in the app as `external`, which gives the system any scheme.
 const OUT_OK = /^(?:https?:\/\/|mailto:|(?:vscode|vscode-insiders|zed):\/\/file\/)/i;
 
-function openExternal(url, { ide = false, s = state.sessions.get(state.current), folder = s?.cwd } = {}) {
+function openExternal(
+  url,
+  { ide = false, s: session = state.sessions.get(state.current), folder = session?.cwd } = {},
+) {
   if (!OUT_OK.test(String(url || ''))) {
     note($('#shead'), 'Not opened: the board opens web pages, mail and files in the editor', true);
     return;
@@ -131,16 +134,16 @@ function openExternal(url, { ide = false, s = state.sessions.get(state.current),
   if (!inApp) {
     if (IN_PANE.test(url)) window.open(url, '_blank', 'noopener');
     else {
-      const a = document.createElement('a');
+      const anchor = document.createElement('a');
 
-      a.href = url;
-      a.click();
+      anchor.href = url;
+      anchor.click();
     }
 
     return;
   }
 
-  if (!IN_PANE.test(url) || !s || (!ide && !inBoard(url))) {
+  if (!IN_PANE.test(url) || !session || (!ide && !inBoard(url))) {
     post({ type: 'external', url });
     return;
   } // vscode://, zed://, mailto:… — the system's; a page off the board's sites, the browser
@@ -151,31 +154,31 @@ function openExternal(url, { ide = false, s = state.sessions.get(state.current),
   // shows the one the tab says (syncTerm → postPane). The key's `gh:` is the name every page tab kept from when
   // GitHub's were the only ones. A page opened again is the tab it already has — while that tab is still at it: one
   // followed somewhere else leaves the page a new tab (2026-10-13, pageTab).
-  let k = ide ? `ide:${url}` : pageTab(s, url);
-  let fresh = !k;
+  let key = ide ? `ide:${url}` : pageTab(session, url);
+  let fresh = !key;
 
-  if (ide && folder !== s.cwd) {
-    const l = state.paneWt.get(s.id) || [];
+  if (ide && folder !== session.cwd) {
+    const urls = state.paneWt.get(session.id) || [];
 
-    fresh = !l.includes(url);
-    if (fresh) state.paneWt.set(s.id, [...l, url]);
+    fresh = !urls.includes(url);
+    if (fresh) state.paneWt.set(session.id, [...urls, url]);
   } // another tree's editor: a tab of its own (2026-10-13)
   else if (ide) {
     fresh = false;
 
-    if (s.cwd) {
-      fresh = state.paneIde.get(s.cwd) !== url;
-      state.paneIde.set(s.cwd, url);
+    if (session.cwd) {
+      fresh = state.paneIde.get(session.cwd) !== url;
+      state.paneIde.set(session.cwd, url);
     }
   } else if (fresh) {
-    k = pageKey(s, url);
-    state.paneGh.set(s.id, [...(state.paneGh.get(s.id) || []), k]);
+    key = pageKey(session, url);
+    state.paneGh.set(session.id, [...(state.paneGh.get(session.id) || []), key]);
   }
 
-  if (s.id !== state.current) return;
-  if (fresh) openNewTab(s, k);
-  else setTab(s, k);
-  syncTerm(s);
+  if (session.id !== state.current) return;
+  if (fresh) openNewTab(session, key);
+  else setTab(session, key);
+  syncTerm(session);
 }
 
 // The PR in front of you, for ⌥⌘G's picker to mark *current*. There was a strip under the header with what gh said
@@ -199,13 +202,13 @@ function showPr(url) {
 // selection and execCommand (a page that is not a secure context, an old engine) — and "copied" on the button for a
 // second. The button itself is what says whether it worked; there is no toast.
 for (const box of [$('#log'), $('#agv')]) {
-  box.addEventListener('click', async e => {
-    const b = e.target.closest('.codebox .copy');
+  box.addEventListener('click', async event => {
+    const button = event.target.closest('.codebox .copy');
 
-    if (!b) return;
+    if (!button) return;
 
     // the text as shown (2026-11-06): innerText leaves out what is not drawn, so a block cannot copy more than it shows
-    const pre = b.closest('.codebox').querySelector('pre');
+    const pre = button.closest('.codebox').querySelector('pre');
     const text = (pre.querySelector('code') || pre).innerText;
 
     let ok = false;
@@ -215,38 +218,38 @@ for (const box of [$('#log'), $('#agv')]) {
       ok = true;
     } catch {
       try {
-        const r = document.createRange();
+        const range = document.createRange();
 
-        r.selectNodeContents(pre);
+        range.selectNodeContents(pre);
         const sel = getSelection();
 
         sel.removeAllRanges();
-        sel.addRange(r);
+        sel.addRange(range);
         ok = document.execCommand('copy');
         sel.removeAllRanges();
       } catch {}
     }
 
-    b.textContent = ok ? 'copied' : 'failed';
-    b.classList.toggle('did', ok);
-    clearTimeout(b.timer);
+    button.textContent = ok ? 'copied' : 'failed';
+    button.classList.toggle('did', ok);
+    clearTimeout(button.timer);
 
-    b.timer = setTimeout(() => {
-      b.textContent = 'copy';
-      b.classList.remove('did');
+    button.timer = setTimeout(() => {
+      button.textContent = 'copy';
+      button.classList.remove('did');
     }, 1200);
   });
 }
 
 // The turn's footer (2026-10-08): copy what Claude said since your last word — every text of the turn, as written
 // (markdown), a blank line between — and the same "copied" on the button.
-$('#log').addEventListener('click', async e => {
-  const b = e.target.closest('.turnfoot .tcopy');
+$('#log').addEventListener('click', async event => {
+  const button = event.target.closest('.turnfoot .tcopy');
 
-  if (!b) return;
+  if (!button) return;
 
   const all = state.entries;
-  const end = all.findIndex(x => x.turnEnd && x.ts === b.dataset.ts);
+  const end = all.findIndex(entry => entry.turnEnd && entry.ts === button.dataset.ts);
 
   if (end < 0) return;
   let from = end;
@@ -255,8 +258,8 @@ $('#log').addEventListener('click', async e => {
 
   const text = all
     .slice(from, end + 1)
-    .filter(x => x.role === 'assistant' && x.kind === 'text')
-    .map(x => x.text.trim())
+    .filter(entry => entry.role === 'assistant' && entry.kind === 'text')
+    .map(entry => entry.text.trim())
     .join('\n\n');
 
   let ok = false;
@@ -266,53 +269,53 @@ $('#log').addEventListener('click', async e => {
     ok = true;
   } catch {}
 
-  const w = b.querySelector('span');
+  const label = button.querySelector('span');
 
-  w.textContent = ok ? 'copied' : 'failed';
-  b.classList.toggle('did', ok);
-  clearTimeout(b.timer);
+  label.textContent = ok ? 'copied' : 'failed';
+  button.classList.toggle('did', ok);
+  clearTimeout(button.timer);
 
-  b.timer = setTimeout(() => {
-    w.textContent = 'copy';
-    b.classList.remove('did');
+  button.timer = setTimeout(() => {
+    label.textContent = 'copy';
+    button.classList.remove('did');
   }, 1200);
 });
 
 // a message's sender, or where a SendMessage went (2026-10-31): that chat, its card located
-$('#log').addEventListener('click', e => {
+$('#log').addEventListener('click', event => {
   // an agent's row under the transcript, as on its card, or its call in it (2026-11-02)
-  const c = e.target.closest('.agcall[data-ag]');
-  const cs = c && state.sessions.get(state.current);
+  const call = event.target.closest('.agcall[data-ag]');
+  const cs = call && state.sessions.get(state.current);
 
   if (cs) {
-    agOpen(cs, { id: c.dataset.ag, asked: c.dataset.asked });
+    agOpen(cs, { id: call.dataset.ag, asked: call.dataset.asked });
     return;
   }
 
-  const b = e.target.closest('.presence .agr');
-  const s = b && state.sessions.get(state.current);
+  const rowElement = event.target.closest('.presence .agr');
+  const session = rowElement && state.sessions.get(state.current);
 
-  if (!s) return;
-  const k = b.dataset.k;
+  if (!session) return;
+  const key = rowElement.dataset.k;
 
-  if (k === '_more' || k === '_done' || k === '_sum') {
-    agSwitch(s.id, k === '_more' ? 'more' : 'done');
+  if (key === '_more' || key === '_done' || key === '_sum') {
+    agSwitch(session.id, key === '_more' ? 'more' : 'done');
     fillAgents();
     renderPresence();
     return;
   }
 
-  const r = s.agentRows?.find(x => x.id === b.dataset.ag);
+  const row = session.agentRows?.find(candidate => candidate.id === rowElement.dataset.ag);
 
-  if (r) agOpen(s, r);
+  if (row) agOpen(session, row);
 });
 
-$('#log').addEventListener('click', e => {
-  const b = e.target.closest('.peerlink[data-sid]');
+$('#log').addEventListener('click', event => {
+  const link = event.target.closest('.peerlink[data-sid]');
 
-  if (!b) return;
-  if (state.sessions.has(b.dataset.sid)) openSession(b.dataset.sid, { locate: true });
-  else note(b, 'That chat is not on the board');
+  if (!link) return;
+  if (state.sessions.has(link.dataset.sid)) openSession(link.dataset.sid, { locate: true });
+  else note(link, 'That chat is not on the board');
 });
 
 const sameOrigin = href => {
@@ -323,27 +326,27 @@ const sameOrigin = href => {
   }
 };
 
-$('#chat').addEventListener('click', e => {
-  const a = e.target.closest('a[href]');
+$('#chat').addEventListener('click', event => {
+  const anchor = event.target.closest('a[href]');
 
-  if (!a) return;
-  const href = a.getAttribute('href') || '';
+  if (!anchor) return;
+  const href = anchor.getAttribute('href') || '';
 
   if (href.startsWith('zed:') && zedMissing()) {
-    e.preventDefault();
-    zedNote(a);
+    event.preventDefault();
+    zedNote(anchor);
     return;
   }
 
-  if (GH_PR.test(href) && !a.dataset.ext) {
-    e.preventDefault();
+  if (GH_PR.test(href) && !anchor.dataset.ext) {
+    event.preventDefault();
     showPr(href.match(GH_PR)[0]);
     return;
   }
 
   // the board's own origin by its parts, never a prefix (2026-11-27): http://127.0.0.1:7331@elsewhere.example/ is elsewhere
   if (inApp && /^https?:/.test(href) && !sameOrigin(href)) {
-    e.preventDefault();
+    event.preventDefault();
     openExternal(href);
   }
 });

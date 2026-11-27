@@ -10,49 +10,54 @@ export const LINK_KINDS = new Set(['merge', 'fold', 'branch', 'continued']);
 export const LINKS_MAX = 2000;
 export let linkIdx = null; // chat id → its links as the summary says them, rebuilt after a change
 
-export function setLinkIdx(v) {
-  linkIdx = v;
+export function setLinkIdx(value) {
+  linkIdx = value;
 } // for the modules that write it: an import is read-only
 
 /** `from` tied to `to`: kept, said to both chats' pages. The ones neither of whose chats the board knows go. */
-export function addLink(k, from, to) {
-  if (!LINK_KINDS.has(k) || !from || !to || from === to) return;
-  setChatLinks(chatLinks.filter(l => !(l.k === k && l.from === from && l.to === to)));
-  chatLinks.push({ k, from, to, at: new Date().toISOString() });
-  if (!indexing) setChatLinks(chatLinks.filter(l => sessions.has(l.from) || sessions.has(l.to)));
+export function addLink(kind, from, to) {
+  if (!LINK_KINDS.has(kind) || !from || !to || from === to) return;
+  setChatLinks(chatLinks.filter(link => !(link.k === kind && link.from === from && link.to === to)));
+  chatLinks.push({ k: kind, from, to, at: new Date().toISOString() });
+  if (!indexing) setChatLinks(chatLinks.filter(link => sessions.has(link.from) || sessions.has(link.to)));
   if (chatLinks.length > LINKS_MAX) setChatLinks(chatLinks.slice(-LINKS_MAX));
   linkIdx = null;
   saveState();
 
   for (const id of [from, to]) {
-    const s = sessions.get(id);
+    const session = sessions.get(id);
 
-    if (s) schedulePush(s);
+    if (session) schedulePush(session);
   }
 }
 
 /** Whether two chats are tied already, whichever way and by what. */
-const tied = (a, b) => chatLinks.some(l => (l.from === a && l.to === b) || (l.from === b && l.to === a));
+const tied = (idA, idB) =>
+  chatLinks.some(link => (link.from === idA && link.to === idB) || (link.from === idB && link.to === idA));
+
 /** A copy Claude Code made is told by its first line (2026-11-04): `/branch`, `/fork`, `--fork-session` and a word in what `/bg`
  *  left all keep the chat's uuids under a new id, and name no origin in a shape they share. The oldest file is the chat, each
  *  other its branch, tied once; its copied past is no news (forkAt, as the board's own branch). */
 const firstLines = new Map(); // uuid of a chat's first user line -> the ids of the chats that begin with it
 
-export function noteFirstLine(s, line) {
-  if (s.firstUuid || line.type !== 'user' || line.isSidechain || !line.uuid) return;
-  s.firstUuid = line.uuid;
+export function noteFirstLine(session, line) {
+  if (session.firstUuid || line.type !== 'user' || line.isSidechain || !line.uuid) return;
+  session.firstUuid = line.uuid;
   let ids = firstLines.get(line.uuid);
 
   if (!ids) firstLines.set(line.uuid, (ids = new Set()));
-  ids.add(s.id);
+  ids.add(session.id);
   if (ids.size < 2) return;
 
   const others = [...ids]
-    .filter(id => id !== s.id)
+    .filter(id => id !== session.id)
     .map(id => sessions.get(id))
     .filter(Boolean);
 
-  if (others.some(o => (o.bornAt ?? Infinity) < (s.bornAt ?? Infinity))) s.forkAt ||= new Date().toISOString();
+  if (others.some(other => (other.bornAt ?? Infinity) < (session.bornAt ?? Infinity))) {
+    session.forkAt ||= new Date().toISOString();
+  }
+
   setImmediate(tieCopies, line.uuid); // the read under way holds this chat's object back from `sessions` (indexFile)
 }
 
@@ -60,19 +65,19 @@ function tieCopies(uuid) {
   const chats = [...(firstLines.get(uuid) || [])]
     .map(id => sessions.get(id))
     .filter(Boolean)
-    .sort((a, b) => (a.bornAt ?? Infinity) - (b.bornAt ?? Infinity));
+    .sort((left, right) => (left.bornAt ?? Infinity) - (right.bornAt ?? Infinity));
 
-  for (const c of chats.slice(1)) if (!tied(chats[0].id, c.id)) addLink('branch', chats[0].id, c.id);
+  for (const chat of chats.slice(1)) if (!tied(chats[0].id, chat.id)) addLink('branch', chats[0].id, chat.id);
 }
 
 /** `/bg` (2026-11-04): the chat went on under a new id in a process of its own, and its transcript's last word says which:
  *  `{type: continued-in, continuedInSessionId}`. Tied, and ticked done as a /clear's is: resuming it would be a second line
  *  from there. Once, by the tie: a later boot reads the line again, and the tick may have been undone since. */
-export function noteContinued(s, to, ts) {
+export function noteContinued(session, to, ts) {
   setImmediate(() => {
-    if (chatLinks.some(l => l.k === 'continued' && l.from === s.id && l.to === to)) return;
-    addLink('continued', s.id, to);
-    const was = sessions.get(s.id);
+    if (chatLinks.some(link => link.k === 'continued' && link.from === session.id && link.to === to)) return;
+    addLink('continued', session.id, to);
+    const was = sessions.get(session.id);
 
     if (!was || !ts || isDone(was) || String(was.lastActivity || '') > ts) return;
     doneMarks[was.id] = ts;
@@ -87,13 +92,13 @@ export function linksOf(id) {
   if (!linkIdx) {
     linkIdx = new Map();
 
-    for (const l of chatLinks) {
+    for (const link of chatLinks) {
       for (const [me, id2, dir] of [
-        [l.from, l.to, 'out'],
-        [l.to, l.from, 'in'],
+        [link.from, link.to, 'out'],
+        [link.to, link.from, 'in'],
       ]) {
         if (!linkIdx.has(me)) linkIdx.set(me, []);
-        linkIdx.get(me).push({ k: l.k, dir, id: id2, at: l.at });
+        linkIdx.get(me).push({ k: link.k, dir, id: id2, at: link.at });
       }
     }
   }
@@ -104,11 +109,11 @@ export function linksOf(id) {
 /** What a card says of its branches (2026-11-04): one that ended before its first word never wrote a line, and there is no
  *  chat at that end to open. Claude Code writes a fork's copy with that word. */
 export function linksShown(id) {
-  const ls = linksOf(id)?.filter(l => {
-    if (l.k !== 'branch' || l.dir !== 'out') return true;
-    const o = sessions.get(l.id);
+  const ls = linksOf(id)?.filter(link => {
+    if (link.k !== 'branch' || link.dir !== 'out') return true;
+    const target = sessions.get(link.id);
 
-    return !!o && (!!o.file || o.alive || termOf(o)?.exited === null);
+    return !!target && (!!target.file || target.alive || termOf(target)?.exited === null);
   });
 
   return ls?.length ? ls : null;
@@ -119,64 +124,68 @@ export function linksShown(id) {
 // reply where that came after; no `claude -p` asked to sum anything up. You read it, and may change it, before it goes.
 export const HANDOFF_TEXT = 1500;
 
-export function handoffItem(s) {
-  const sum = summary(s);
+export function handoffItem(session) {
+  const sum = summary(session);
 
   return {
-    id: s.id,
+    id: session.id,
     title: sum.title,
     cwd: sum.cwd ? tildePath(sum.cwd) : null,
-    branch: s.gitBranch && s.gitBranch !== 'HEAD' ? s.gitBranch : null,
-    prs: sum.prs.map(p => ({ url: p.url, state: p.state || null, title: p.title || null })),
-    first: s.truncatedHead ? null : s.firstPrompt,
-    last: s.lastPrompt,
-    away: s.away,
-    reply: s.replyText ? { text: s.replyText, at: s.lastReplyAt } : null,
-    file: s.file ? tildePath(s.file) : null,
+    branch: session.gitBranch && session.gitBranch !== 'HEAD' ? session.gitBranch : null,
+    prs: sum.prs.map(pr => ({ url: pr.url, state: pr.state || null, title: pr.title || null })),
+    first: session.truncatedHead ? null : session.firstPrompt,
+    last: session.lastPrompt,
+    away: session.away,
+    reply: session.replyText ? { text: session.replyText, at: session.lastReplyAt } : null,
+    file: session.file ? tildePath(session.file) : null,
   };
 }
 
 const handoffWhen = ts => {
-  const d = new Date(ts);
-  const p = n => String(n).padStart(2, '0');
+  const date = new Date(ts);
+  const pad = value => String(value).padStart(2, '0');
 
-  return isNaN(d)
+  return isNaN(date)
     ? ''
-    : `, ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    : `, ${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
-const quoted = t =>
-  String(t)
+const quoted = text =>
+  String(text)
     .trim()
     .split('\n')
-    .map(l => `> ${l}`.trimEnd())
+    .map(line => `> ${line}`.trimEnd())
     .join('\n');
 
 /** The handoff's words for `items` (handoffItem's): `merge`, the first prompt of a new chat; `fold`, typed into another. Pure. */
 export function handoffText(items, kind = 'merge') {
-  const n = items.length;
+  const count = items.length;
 
   const head =
     kind === 'fold'
       ? `Another chat of mine, folded into this one — where it stands, so its work goes on here.`
-      : `A handoff: ${n === 1 ? 'a chat' : `${n} chats`} of mine, merged into this one — where each stands, so we carry ${n === 1 ? 'it' : 'them'} on from here.`;
+      : `A handoff: ${count === 1 ? 'a chat' : `${count} chats`} of mine, merged into this one — where each stands, so we carry ${count === 1 ? 'it' : 'them'} on from here.`;
 
-  const parts = items.map((c, i) =>
+  const parts = items.map((item, index) =>
     [
-      `## ${n > 1 ? `${i + 1}. ` : ''}${c.title}`,
-      ...(c.cwd ? [`Folder: ${c.cwd}${c.branch ? ` · branch ${c.branch}` : ''}`] : []),
-      ...(c.prs?.length
+      `## ${count > 1 ? `${index + 1}. ` : ''}${item.title}`,
+      ...(item.cwd ? [`Folder: ${item.cwd}${item.branch ? ` · branch ${item.branch}` : ''}`] : []),
+      ...(item.prs?.length
         ? [
-            `PRs: ${c.prs.map(p => `${p.url}${p.state ? ` (${p.state})` : ''}${p.title ? ` — ${p.title}` : ''}`).join(' · ')}`,
+            `PRs: ${item.prs.map(pr => `${pr.url}${pr.state ? ` (${pr.state})` : ''}${pr.title ? ` — ${pr.title}` : ''}`).join(' · ')}`,
           ]
         : []),
-      ...(c.first && c.first !== c.last ? [`First asked: ${c.first}`] : []),
-      ...(c.last ? [`Last asked: ${c.last}`] : []),
-      ...(c.away ? [`Where it stands — Claude Code's recap${handoffWhen(c.away.at)}:\n${quoted(c.away.text)}`] : []),
-      ...(c.reply && (!c.away || String(c.reply.at || '') > String(c.away.at || ''))
-        ? [`${c.away ? 'After it, ' : ''}Claude's last reply${handoffWhen(c.reply.at)}:\n${quoted(c.reply.text)}`]
+      ...(item.first && item.first !== item.last ? [`First asked: ${item.first}`] : []),
+      ...(item.last ? [`Last asked: ${item.last}`] : []),
+      ...(item.away
+        ? [`Where it stands — Claude Code's recap${handoffWhen(item.away.at)}:\n${quoted(item.away.text)}`]
         : []),
-      ...(c.file ? [`Its transcript, to read for more: ${c.file}`] : []),
+      ...(item.reply && (!item.away || String(item.reply.at || '') > String(item.away.at || ''))
+        ? [
+            `${item.away ? 'After it, ' : ''}Claude's last reply${handoffWhen(item.reply.at)}:\n${quoted(item.reply.text)}`,
+          ]
+        : []),
+      ...(item.file ? [`Its transcript, to read for more: ${item.file}`] : []),
     ].join('\n'),
   );
 
@@ -193,18 +202,18 @@ export function handoffText(items, kind = 'merge') {
  *  line comes it goes by the title of the chat it copied, and the past it copies — lines from before `forkAt`, carried
  *  across its reads — is no news (queueNotify). */
 export function placeholder(id, cwd, forkOf = null) {
-  const s = newSession(id, null);
+  const session = newSession(id, null);
 
-  s.cwd = cwd;
-  s.startedAt = new Date().toISOString();
-  s.forkOf = forkOf;
-  if (forkOf) s.forkAt = s.startedAt;
-  sessions.set(id, s);
-  return s;
+  session.cwd = cwd;
+  session.startedAt = new Date().toISOString();
+  session.forkOf = forkOf;
+  if (forkOf) session.forkAt = session.startedAt;
+  sessions.set(id, session);
+  return session;
 }
 
-export const forkTitle = s => {
-  const o = !s.lastActivity && s.forkOf && sessions.get(s.forkOf);
+export const forkTitle = session => {
+  const source = !session.lastActivity && session.forkOf && sessions.get(session.forkOf);
 
-  return o ? titles[o.id] || o.customTitle || o.title || o.lastPrompt || null : null;
+  return source ? titles[source.id] || source.customTitle || source.title || source.lastPrompt || null : null;
 };

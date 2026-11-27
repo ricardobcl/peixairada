@@ -43,9 +43,9 @@ export default async function (ctx) {
 
   const [widgets, gadgets] = chats;
 
-  const key = k =>
+  const key = keyName =>
     ctx.evaluate(
-      `document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true }))`,
+      `document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(keyName)}, bubbles: true, cancelable: true }))`,
     );
 
   const rows = () =>
@@ -69,7 +69,7 @@ export default async function (ctx) {
   const menu = await rows();
 
   ctx.assert.deepEqual(
-    menu.map(r => r.text),
+    menu.map(row => row.text),
     [
       'Chats',
       'Projects',
@@ -116,7 +116,7 @@ export default async function (ctx) {
   });
 
   ctx.assert.ok(
-    (await rows()).every(r => r.kind === 'action' || r.kind === 'toggle'),
+    (await rows()).every(row => row.kind === 'action' || row.kind === 'toggle'),
     '> leaves only actions and switches',
   );
 
@@ -128,7 +128,7 @@ export default async function (ctx) {
   // Toggle ›: a switch flipped, the menu stays; ← back out
   await ctx.key('KeyL');
   await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the launcher once more' });
-  for (let i = 0; i < 4; i++) await key('ArrowDown');
+  for (let press = 0; press < 4; press++) await key('ArrowDown');
   await key('ArrowRight');
 
   await ctx.waitFor(
@@ -136,9 +136,9 @@ export default async function (ctx) {
     { what: 'the switches' },
   );
 
-  const sounds = (await rows()).findIndex(r => r.text === 'Sounds');
+  const sounds = (await rows()).findIndex(row => row.text === 'Sounds');
 
-  for (let i = 0; i < sounds; i++) await key('ArrowDown');
+  for (let press = 0; press < sounds; press++) await key('ArrowDown');
   ctx.assert.equal((await ctx.peix('prefs()')).sounds, false);
   await key('Enter');
 
@@ -149,7 +149,7 @@ export default async function (ctx) {
 
   // Auto-tiling is one of them (2026-11-26), the setting's own checkbox flipped
   ctx.assert.ok(
-    (await rows()).some(r => r.kind === 'toggle' && r.text.startsWith('Auto-tiling')),
+    (await rows()).some(row => row.kind === 'toggle' && row.text.startsWith('Auto-tiling')),
     'Auto-tiling among the switches',
   );
 

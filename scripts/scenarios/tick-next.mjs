@@ -9,8 +9,8 @@ import { makeFixture } from '../fixture.mjs';
 
 export const meta = { server: true, fixture: 'auto' };
 
-const byTitle = t =>
-  `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title').textContent === ${JSON.stringify(t)})`;
+const byTitle = title =>
+  `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title').textContent === ${JSON.stringify(title)})`;
 
 const order = ctx =>
   ctx.evaluate(
@@ -22,12 +22,12 @@ const current = ctx => ctx.evaluate(`window.peix.state().current`);
 export default async function (ctx) {
   const out = {};
   const cwd = join(tmpdir(), 'peix-tick-next', 'ticks-repo');
-  const m = n => new Date(Date.now() - n * 60_000);
+  const minutesAgo = minutes => new Date(Date.now() - minutes * 60_000);
 
   const [first, second, third] = makeFixture(ctx.fixture.dir, [
-    { cwd, title: 'First', prompt: 'one', reply: 'done one', at: m(10) },
-    { cwd, title: 'Second', prompt: 'two', reply: 'done two', at: m(20) },
-    { cwd, title: 'Third', prompt: 'three', reply: 'done three', at: m(30) },
+    { cwd, title: 'First', prompt: 'one', reply: 'done one', at: minutesAgo(10) },
+    { cwd, title: 'Second', prompt: 'two', reply: 'done two', at: minutesAgo(20) },
+    { cwd, title: 'Third', prompt: 'three', reply: 'done three', at: minutesAgo(30) },
   ]).chats;
 
   const [twoPrs, plain] = ctx.fixture.chats;
@@ -39,11 +39,11 @@ export default async function (ctx) {
   out.order = await order(ctx);
   ctx.assert.deepEqual(out.order, ['First', 'Second', 'Third', 'Plain chat', 'Two PRs mentioned'], 'the newest first');
 
-  const tick = async t => {
-    await ctx.evaluate(`${byTitle(t)}.querySelector('.act').click()`);
+  const tick = async title => {
+    await ctx.evaluate(`${byTitle(title)}.querySelector('.act').click()`);
   };
 
-  const isDone = id => ctx.peix(`session(${JSON.stringify(id)})`).then(s => s.done);
+  const isDone = id => ctx.peix(`session(${JSON.stringify(id)})`).then(session => session.done);
 
   // ---- ✓ on the open chat: the card below opens ----
   await ctx.openChat(second.id);

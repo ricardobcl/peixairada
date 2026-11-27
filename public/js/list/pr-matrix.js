@@ -12,7 +12,7 @@ const prRepo = pr => (pr.url || '').match(/github\.com\/([^/]+\/[^/]+)\/pull\//)
 
 /** A PR's stack among the chat's PRs, base first: each the one whose head is the next one's base, in one repo, no fork's. */
 function prChain(prs, pr) {
-  const ok = p => p.refs?.head && p.refs.base && !p.refs.fork && prRepo(p) === prRepo(pr);
+  const ok = other => other.refs?.head && other.refs.base && !other.refs.fork && prRepo(other) === prRepo(pr);
 
   if (!ok(pr)) return [pr];
 
@@ -20,14 +20,22 @@ function prChain(prs, pr) {
   const chain = [pr];
   const seen = new Set(chain);
 
-  for (let p = pr, q; (q = same.find(x => !seen.has(x) && x.refs.head === p.refs.base)); p = q) {
-    chain.unshift(q);
-    seen.add(q);
+  for (
+    let current = pr, next;
+    (next = same.find(other => !seen.has(other) && other.refs.head === current.refs.base));
+    current = next
+  ) {
+    chain.unshift(next);
+    seen.add(next);
   }
 
-  for (let p = pr, q; (q = same.find(x => !seen.has(x) && x.refs.base === p.refs.head)); p = q) {
-    chain.push(q);
-    seen.add(q);
+  for (
+    let current = pr, next;
+    (next = same.find(other => !seen.has(other) && other.refs.base === current.refs.head));
+    current = next
+  ) {
+    chain.push(next);
+    seen.add(next);
   }
 
   return chain;
@@ -35,20 +43,23 @@ function prChain(prs, pr) {
 
 /** The chat's PRs in the matrix's order: by repo and number, each stack whole where its first PR comes, base first. */
 function prGroups(prs) {
-  const sorted = [...prs].sort((a, b) => prRepo(a).localeCompare(prRepo(b)) || (a.number || 0) - (b.number || 0));
+  const sorted = [...prs].sort(
+    (left, right) => prRepo(left).localeCompare(prRepo(right)) || (left.number || 0) - (right.number || 0),
+  );
+
   const placed = new Set();
   const out = [];
 
-  for (const p of sorted) {
-    if (placed.has(p)) continue;
+  for (const pr of sorted) {
+    if (placed.has(pr)) continue;
 
-    const g = prChain(
-      sorted.filter(x => !placed.has(x)),
-      p,
+    const chain = prChain(
+      sorted.filter(other => !placed.has(other)),
+      pr,
     );
 
-    for (const x of g) placed.add(x);
-    out.push(g);
+    for (const member of chain) placed.add(member);
+    out.push(chain);
   }
 
   return out;
@@ -65,27 +76,27 @@ const prUpdatedAt = pr =>
           pr.turn?.at,
           pr.turn?.movedAt,
           pr.lastAt,
-          ...(pr.people || []).map(p => p.at),
-          ...(pr.rounds || []).flatMap(r => [r.from, r.end]),
-        ].map(t => Date.parse(t) || 0),
+          ...(pr.people || []).map(person => person.at),
+          ...(pr.rounds || []).flatMap(round => [round.from, round.end]),
+        ].map(time => Date.parse(time) || 0),
       );
 
 /** The PR the matrix numbers: the newest move's, else the one updated last (the chat's first of a tie). */
-function mxLead(s) {
-  const move = !s.done && movedPrs(s)[0];
+function mxLead(session) {
+  const move = !session.done && movedPrs(session)[0];
 
   if (move) return { pr: move, you: true };
-  const prs = s.prs || [];
+  const prs = session.prs || [];
 
   let pr = prs[0];
   let at = pr ? prUpdatedAt(pr) : 0;
 
-  for (const p of prs) {
-    const t = prUpdatedAt(p);
+  for (const candidate of prs) {
+    const updated = prUpdatedAt(candidate);
 
-    if (t > at) {
-      pr = p;
-      at = t;
+    if (updated > at) {
+      pr = candidate;
+      at = updated;
     }
   }
 
@@ -97,50 +108,52 @@ const prNum = pr => (pr.number != null ? `#${pr.number}` : pr.label);
 const mxSquare = (pr, lead, cls = '', attrs = '') =>
   `<a class="mxs${pr === lead.pr ? ' lead' : ''}${cls}" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"${attrs}><span class="vh">${esc(prNum(pr))}${pr.title ? ` ${esc(pr.title)}` : ''}, ${esc(pr.state || 'not known yet')}${prCk(pr) ? `, ${CK_SAID[prCk(pr)]}` : ''}${pr.turn?.you ? ', your move' : ''}</span></a>`;
 
-const mxNumber = (lead, n, ck = '') =>
-  `<a class="mxn${lead.you ? ' you' : ''}" data-url="${esc(lead.pr.url)}">${esc(prNum(lead.pr))}${ck}<span class="vh">${lead.you ? ', your move' : ', updated last'} — ${n} PR${n === 1 ? '' : 's'}: </span></a>`;
+const mxNumber = (lead, count, ck = '') =>
+  `<a class="mxn${lead.you ? ' you' : ''}" data-url="${esc(lead.pr.url)}">${esc(prNum(lead.pr))}${ck}<span class="vh">${lead.you ? ', your move' : ', updated last'} — ${count} PR${count === 1 ? '' : 's'}: </span></a>`;
 
-function cardMatrix(s) {
-  const prs = s.prs || [];
+function cardMatrix(session) {
+  const prs = session.prs || [];
 
   if (!prs.length) return '';
 
   const groups = prGroups(prs);
-  const lead = mxLead(s);
+  const lead = mxLead(session);
   const px = MX_PX;
 
-  const wide = groups.reduce((w, g) => w + g.length * px.q + (g.length - 1) * px.c, 0) + (groups.length - 1) * px.g; // the squares' own width
+  const wide =
+    groups.reduce((sum, chain) => sum + chain.length * px.q + (chain.length - 1) * px.c, 0) +
+    (groups.length - 1) * px.g; // the squares' own width
 
   const least = Math.min(wide, 3 * px.q + 2 * px.g) + 2 * MX_PAD;
   const num = prNum(lead.pr);
 
   return (
     `<span class="tmx" style="--nw:${Math.min(num.length, 9)}ch;--mn:${least}px">${mxNumber(lead, prs.length)}` +
-    `<span class="mxg">${groups.map(g => `<span class="mxc">${g.map(pr => mxSquare(pr, lead)).join('<s></s>')}</span>`).join('')}</span></span>`
+    `<span class="mxg">${groups.map(chain => `<span class="mxc">${chain.map(pr => mxSquare(pr, lead)).join('<s></s>')}</span>`).join('')}</span></span>`
   );
 }
 
 /** The chat header's PRs (2026-11-03): the card's matrix, its squares, order and number, in as many rows as fitHeadPrs finds room for; what only
  *  the header says, each PR's CI — the number's badge, data-checks on its square — and the chat's tickets, dots after the squares. A click on
  *  a square opens its PR, its card comes under the pointer, as on a card; the git mark beside it (#prToggle) lists them. */
-function headMatrix(s) {
-  const prs = s.prs || [];
-  const tks = s.tickets || [];
+function headMatrix(session) {
+  const prs = session.prs || [];
+  const tks = session.tickets || [];
 
   if (!prs.length && !tks.length) return '';
-  const lead = prs.length ? mxLead(s) : null;
+  const lead = prs.length ? mxLead(session) : null;
 
   const dots = tks
     .map(
-      t =>
-        `<a class="mxs tk" data-cat="${esc(t.cat)}" data-key="${esc(t.key)}" title="${esc(`${ticketTip(t)}\nClick: open it`)}"><span class="vh">${esc(t.key)}</span></a>`,
+      ticket =>
+        `<a class="mxs tk" data-cat="${esc(ticket.cat)}" data-key="${esc(ticket.key)}" title="${esc(`${ticketTip(ticket)}\nClick: open it`)}"><span class="vh">${esc(ticket.key)}</span></a>`,
     )
     .join('');
 
   return `<span class="tmx">${lead ? mxNumber(lead, prs.length, ckHtml(lead.pr)) : ''}<span class="mxg">${prGroups(prs)
     .map(
-      g =>
-        `<span class="mxc">${g.map((pr, i) => mxSquare(pr, lead, i ? ' j' : '', prCk(pr) ? ` data-checks="${prCk(pr)}"` : '')).join('')}</span>`,
+      chain =>
+        `<span class="mxc">${chain.map((pr, index) => mxSquare(pr, lead, index ? ' j' : '', prCk(pr) ? ` data-checks="${prCk(pr)}"` : '')).join('')}</span>`,
     )
     .join('')}${dots}</span></span>`;
 }
@@ -150,27 +163,27 @@ function headMatrix(s) {
  *  in it (its faces, the newest first) and when GitHub last updated it. */
 const MX_STATE = { open: 'Open', draft: 'Draft', merged: 'Merged', closed: 'Closed' };
 
-function mxCardHtml(pr, g) {
+function mxCardHtml(pr, chain) {
   const ck = prCk(pr);
-  const t = pr.turn;
+  const turn = pr.turn;
   const people = (pr.people || []).slice(0, 4);
   const at = pr.updated || '';
 
-  const move = t?.you
-    ? `<div class="mtm you">${RTAG.you}<span>${esc(t.why)}</span></div>`
-    : t?.waived
-      ? `<div class="mtm">${RTAG.let}<span>${esc(t.why)}</span></div>`
-      : t?.why
-        ? `<div class="mtm"><span>${esc(t.why)}</span></div>`
+  const move = turn?.you
+    ? `<div class="mtm you">${RTAG.you}<span>${esc(turn.why)}</span></div>`
+    : turn?.waived
+      ? `<div class="mtm">${RTAG.let}<span>${esc(turn.why)}</span></div>`
+      : turn?.why
+        ? `<div class="mtm"><span>${esc(turn.why)}</span></div>`
         : '';
 
   const stack =
-    g.length > 1
-      ? `<span class="mtk"><span class="mtc">${g.map(p => `<i class="rsq${p === pr ? ' on' : ''}" data-state="${esc(p.state || '')}"></i>`).join('<s></s>')}</span>${g.indexOf(pr) + 1} of ${g.length} in a stack</span>`
+    chain.length > 1
+      ? `<span class="mtk"><span class="mtc">${chain.map(member => `<i class="rsq${member === pr ? ' on' : ''}" data-state="${esc(member.state || '')}"></i>`).join('<s></s>')}</span>${chain.indexOf(pr) + 1} of ${chain.length} in a stack</span>`
       : '';
 
   const who = people.length
-    ? `<span class="mtp">${people.map(p => faceHtml(p)).join('')}</span><span class="mtw">${esc(people.map(p => p.login).join(', '))}</span>`
+    ? `<span class="mtp">${people.map(person => faceHtml(person)).join('')}</span><span class="mtw">${esc(people.map(person => person.login).join(', '))}</span>`
     : '';
 
   return (
@@ -198,23 +211,27 @@ const MXT_W = 290;
 const mxt = { el: null, a: null, sq: null, timer: 0, out: 0 };
 
 function mxtShow() {
-  const a = mxt.a;
-  const c = a?.isConnected && a.closest('#slist > .card');
-  const head = a?.isConnected && a.closest('#shead');
-  const inSpace = a?.isConnected && a.closest('#space'); // Space's marks name their chat (2026-11-18)
+  const anchor = mxt.a;
+  const card = anchor?.isConnected && anchor.closest('#slist > .card');
+  const head = anchor?.isConnected && anchor.closest('#shead');
+  const inSpace = anchor?.isConnected && anchor.closest('#space'); // Space's marks name their chat (2026-11-18)
 
-  const chat = inSpace && a.matches('.spbt') ? state.sessions.get(a.closest('.spt')?.dataset.id) : null; // a node's title: its chat's card (2026-11-24)
+  const chat = inSpace && anchor.matches('.spbt') ? state.sessions.get(anchor.closest('.spt')?.dataset.id) : null; // a node's title: its chat's card (2026-11-24)
 
-  const s =
+  const session =
     chat ||
-    (c
-      ? state.sessions.get(c.dataset.id)
+    (card
+      ? state.sessions.get(card.dataset.id)
       : inSpace
-        ? state.sessions.get(a.dataset.sid)
+        ? state.sessions.get(anchor.dataset.sid)
         : head && state.sessions.get(state.current));
 
-  const ag = !chat && a?.dataset.ag && (inSpace ? spRows(s) : s?.agentRows || []).find(r => r.id === a.dataset.ag); // a row of its agents': that one's card (2026-11-02); Space's, any round's
-  const pr = !ag && !chat && s?.prs?.find(p => p.url === a.dataset.url);
+  const ag =
+    !chat &&
+    anchor?.dataset.ag &&
+    (inSpace ? spRows(session) : session?.agentRows || []).find(row => row.id === anchor.dataset.ag); // a row of its agents': that one's card (2026-11-02); Space's, any round's
+
+  const pr = !ag && !chat && session?.prs?.find(chatPr => chatPr.url === anchor.dataset.url);
 
   if (!pr && !ag && !chat) return mxtHide();
   rpopHide();
@@ -222,23 +239,24 @@ function mxtShow() {
   const el = (mxt.el ||= Object.assign(document.createElement('div'), { id: 'mxtip', role: 'tooltip' }));
 
   if (!el.isConnected) document.body.append(el);
-  if (ag) agInfoSoon(s, ag, a);
+  if (ag) agInfoSoon(session, ag, anchor);
   if (inSpace && prefs.spCard === false) return mxtHide(); // Settings › Space: no card
 
   const html = chat
     ? spChatHtml(chat)
     : ag
       ? inSpace
-        ? spCardHtml(ag, s)
-        : agCardHtml(ag, s)
-      : mxCardHtml(pr, prGroups(s.prs).find(g => g.includes(pr)) || [pr]);
+        ? spCardHtml(ag, session)
+        : agCardHtml(ag, session)
+      : mxCardHtml(pr, prGroups(session.prs).find(chain => chain.includes(pr)) || [pr]);
 
   if (el._drawn !== html) {
     el.innerHTML = el._drawn = html;
     fillAges(el);
   }
 
-  const sq = ag || chat ? null : a.classList.contains('mxs') ? a : a.closest('.tmx')?.querySelector('.mxs.lead');
+  const sq =
+    ag || chat ? null : anchor.classList.contains('mxs') ? anchor : anchor.closest('.tmx')?.querySelector('.mxs.lead');
 
   if (mxt.sq !== sq) {
     mxt.sq?.classList.remove('hot');
@@ -246,29 +264,35 @@ function mxtShow() {
     mxt.sq = sq;
   }
 
-  const r = a.getBoundingClientRect();
+  const rect = anchor.getBoundingClientRect();
   const list = (head || (inSpace ? $('#space') : $('#sessions'))).getBoundingClientRect();
-  const w = Math.min(inSpace ? SP_CARD_W : MXT_W, list.width - 12);
+  const width = Math.min(inSpace ? SP_CARD_W : MXT_W, list.width - 12);
 
-  el.style.setProperty('--w', `${w}px`);
+  el.style.setProperty('--w', `${width}px`);
 
-  const h = el.offsetHeight;
-  const cx = r.left + r.width / 2;
-  const left = Math.max(list.left + 6, Math.min(cx - w / 2, list.right - 6 - w));
+  const height = el.offsetHeight;
+  const cx = rect.left + rect.width / 2;
+  const left = Math.max(list.left + 6, Math.min(cx - width / 2, list.right - 6 - width));
 
-  const above = r.top - 10 - h >= 8;
-  const y = above ? r.top - 10 - h : r.bottom + 10;
+  const above = rect.top - 10 - height >= 8;
+  const top = above ? rect.top - 10 - height : rect.bottom + 10;
 
   // from the header, in the app: a pane page under it would cover the card, so over the list, beside the column
   const far =
     !!head &&
-    list.left - w - 8 >= 8 &&
-    paneRects().some(p => p.left < left + w && left < p.left + p.width && p.top < y + h && y < p.top + p.height);
+    list.left - width - 8 >= 8 &&
+    paneRects().some(
+      pane =>
+        pane.left < left + width &&
+        left < pane.left + pane.width &&
+        pane.top < top + height &&
+        top < pane.top + pane.height,
+    );
 
   el.classList.toggle('below', !above);
   el.classList.toggle('far', far);
-  el.style.setProperty('--ax', `${Math.round(Math.max(14, Math.min(w - 14, cx - left)))}px`);
-  Object.assign(el.style, { left: `${Math.round(far ? list.left - w - 8 : left)}px`, top: `${Math.round(y)}px` });
+  el.style.setProperty('--ax', `${Math.round(Math.max(14, Math.min(width - 14, cx - left)))}px`);
+  Object.assign(el.style, { left: `${Math.round(far ? list.left - width - 8 : left)}px`, top: `${Math.round(top)}px` });
 
   if (!el.classList.contains('on')) {
     void el.offsetWidth;
@@ -285,22 +309,22 @@ function mxtHide() {
   mxt.el?.classList.remove('on');
 }
 
-const mxtOver = e => {
-  const a = e.target.closest?.(MX_AT);
+const mxtOver = event => {
+  const anchor = event.target.closest?.(MX_AT);
 
-  if (!a || e.pointerType === 'touch') return;
+  if (!anchor || event.pointerType === 'touch') return;
   clearTimeout(mxt.out);
-  if (a === mxt.a) return;
-  mxt.a = a;
+  if (anchor === mxt.a) return;
+  mxt.a = anchor;
   clearTimeout(mxt.timer);
   if (mxt.el?.classList.contains('on')) mxtShow();
-  else mxt.timer = setTimeout(mxtShow, a.matches('.spbt') ? MXT_CHAT : MXT_IN); // a node's title: a moment's rest first
+  else mxt.timer = setTimeout(mxtShow, anchor.matches('.spbt') ? MXT_CHAT : MXT_IN); // a node's title: a moment's rest first
 };
 
-const mxtOut = e => {
-  const a = e.target.closest?.(MX_AT);
+const mxtOut = event => {
+  const anchor = event.target.closest?.(MX_AT);
 
-  if (!a || a.contains(e.relatedTarget) || e.relatedTarget?.closest?.(MX_AT)) return;
+  if (!anchor || anchor.contains(event.relatedTarget) || event.relatedTarget?.closest?.(MX_AT)) return;
   clearTimeout(mxt.timer);
   mxt.out = setTimeout(mxtHide, MXT_OUT);
 };

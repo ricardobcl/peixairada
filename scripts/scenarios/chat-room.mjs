@@ -92,20 +92,20 @@ export default async function (ctx) {
       },
     ]);
 
-    const q = sel => `document.querySelector(${JSON.stringify(sel)})`;
+    const query = sel => `document.querySelector(${JSON.stringify(sel)})`;
 
     const panel = () =>
       ctx
         .evaluate(
-          `JSON.stringify({ open: ${q('#room')}.open, title: ${q('#rmTitle')}.textContent, tabs: document.querySelectorAll('#room [role=tab], #rmtabs').length,
+          `JSON.stringify({ open: ${query('#room')}.open, title: ${query('#rmTitle')}.textContent, tabs: document.querySelectorAll('#room [role=tab], #rmtabs').length,
       msgs: [...document.querySelectorAll('#rmlog .rmmsg')].map(m => (m.classList.contains('cont') ? '+' : '') + (m.querySelector('.rmwho b')?.textContent || '') + ': ' + m.querySelector('.rmbody').textContent.trim()),
-      people: !${q('#rmPeople')}.hidden, dels: document.querySelectorAll('#rmlog .rmdel').length, bar: ${q('#sbChat')}?.textContent || null })`,
+      people: !${query('#rmPeople')}.hidden, dels: document.querySelectorAll('#rmlog .rmdel').length, bar: ${query('#sbChat')}?.textContent || null })`,
         )
         .then(JSON.parse);
 
     const enter = sel =>
       ctx.evaluate(
-        `${q(sel)}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }))`,
+        `${query(sel)}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }))`,
       );
 
     const esc = () =>
@@ -115,10 +115,10 @@ export default async function (ctx) {
 
     const rect = sel =>
       ctx.evaluate(
-        `(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${q(sel)}.getBoundingClientRect())`,
+        `(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${query(sel)}.getBoundingClientRect())`,
       );
 
-    ctx.assert.equal(await ctx.evaluate(`!!${q('#sbChat')}`), false, 'no chat, no invitation: nothing in the bar');
+    ctx.assert.equal(await ctx.evaluate(`!!${query('#sbChat')}`), false, 'no chat, no invitation: nothing in the bar');
 
     // a setup naming a repo GitHub does not show you; Settings › Chat: that repo to forget, the chats you can read, and a
     // new one's box filled with the organization you own
@@ -130,14 +130,14 @@ export default async function (ctx) {
 
     await waitFor(async () => (await ctx.server.api('api/chat')).body.missing, { what: 'the repo said missing' });
     await ctx.cmd('Comma');
-    await ctx.waitFor(`${q('#settings')}.open`, { what: 'the settings' });
-    await ctx.evaluate(`${q('#settings .stabs [data-tab="chat"]')}.click()`);
-    await ctx.waitFor(`!!${q('#chatSet [data-repo]')}`, { what: 'Settings › Chat, with the chats found' });
+    await ctx.waitFor(`${query('#settings')}.open`, { what: 'the settings' });
+    await ctx.evaluate(`${query('#settings .stabs [data-tab="chat"]')}.click()`);
+    await ctx.waitFor(`!!${query('#chatSet [data-repo]')}`, { what: 'Settings › Chat, with the chats found' });
 
     out.off = await ctx
       .evaluate(
-        `JSON.stringify({ found: [...document.querySelectorAll('#chatSet [data-repo]')].map(b => b.dataset.repo).sort(), fresh: ${q('#chatSet .schatnew')}.value,
-      where: ${q('#chatSet .schatnew')}.closest('.srow').querySelector('small').textContent, gone: ${q('#chatSet .serr')}?.textContent, forget: ${q('#chatSet [data-chat="leave"]')}?.textContent })`,
+        `JSON.stringify({ found: [...document.querySelectorAll('#chatSet [data-repo]')].map(b => b.dataset.repo).sort(), fresh: ${query('#chatSet .schatnew')}.value,
+      where: ${query('#chatSet .schatnew')}.closest('.srow').querySelector('small').textContent, gone: ${query('#chatSet .serr')}?.textContent, forget: ${query('#chatSet [data-chat="leave"]')}?.textContent })`,
       )
       .then(JSON.parse);
 
@@ -158,40 +158,40 @@ export default async function (ctx) {
     await ctx.fill('#chatSet .schatnew', 'acme-chat/typed');
 
     await ctx.evaluate(
-      `document.activeElement.blur(); ${q('#settings .stabs [data-tab="general"]')}.click(); ${q('#settings .stabs [data-tab="chat"]')}.click()`,
+      `document.activeElement.blur(); ${query('#settings .stabs [data-tab="general"]')}.click(); ${query('#settings .stabs [data-tab="chat"]')}.click()`,
     );
 
     await ctx.waitFor(
-      `${q('#chatSet .schatnew')}?.value === 'acme-chat/typed' && ${q('#chatSet')}._drawn.includes('acme-chat/typed')`,
+      `${query('#chatSet .schatnew')}?.value === 'acme-chat/typed' && ${query('#chatSet')}._drawn.includes('acme-chat/typed')`,
       { what: 'the typed repo kept through a redraw' },
     );
 
     await ctx.fill('#chatSet .schatrepo', 'ana/hush');
-    await ctx.evaluate(`${q('#chatSet .schatrepo + [data-chat="use"]')}.click()`);
+    await ctx.evaluate(`${query('#chatSet .schatrepo + [data-chat="use"]')}.click()`);
 
     await ctx.waitFor(`/ana\\/hush is not a repo you can read/.test(document.querySelector('.note')?.textContent)`, {
       what: 'Use refusing a repo you cannot read',
     });
 
     ctx.assert.equal((await ctx.server.api('api/config')).body.chat.repo, 'acme-chat/acme-chat', 'nothing saved');
-    await ctx.evaluate(`${q('#chatSet [data-repo="acme-chat/room"]')}.click()`);
+    await ctx.evaluate(`${query('#chatSet [data-repo="acme-chat/room"]')}.click()`);
 
-    await ctx.waitFor(`/You are its admin/.test(${q('#chatSet')}.textContent)`, {
+    await ctx.waitFor(`/You are its admin/.test(${query('#chatSet')}.textContent)`, {
       what: 'the chat read, said in Settings',
     });
 
     ctx.assert.equal((await ctx.server.api('api/config')).body.chat.repo, 'acme-chat/room');
-    await ctx.evaluate(`${q('#settingsClose')}.click()`);
+    await ctx.evaluate(`${query('#settingsClose')}.click()`);
 
     // the bar's chat opens the panel: the chat, no rooms
-    await ctx.waitFor(`!!${q('#sbChat')}`, { what: 'the chat in the status bar' });
-    await ctx.evaluate(`${q('#sbChat')}.click()`);
+    await ctx.waitFor(`!!${query('#sbChat')}`, { what: 'the chat in the status bar' });
+    await ctx.evaluate(`${query('#sbChat')}.click()`);
     await ctx.waitFor(`document.querySelectorAll('#rmlog .rmmsg').length === 3`, { what: "the chat's messages" });
     out.open = await panel();
     ctx.assert.deepEqual([out.open.title, out.open.tabs], ['Chat', 0], 'one chat: no tabs, no name');
     ctx.assert.equal(out.open.msgs[0], 'ana: hello there');
     ctx.assert.equal(out.open.people, true, "the admin's people");
-    ctx.assert.equal(await ctx.evaluate(`document.activeElement === ${q('#rmbox')}`), true, 'the box has the keys');
+    ctx.assert.equal(await ctx.evaluate(`document.activeElement === ${query('#rmbox')}`), true, 'the box has the keys');
 
     // someone else's words: markdown, but no HTML, no image, no link but https
     out.safe = await ctx
@@ -217,7 +217,7 @@ export default async function (ctx) {
 
     // another board's message comes in; one typed here goes out
     gh.say('acme-chat/room', 1, 'ana', 'are you around?');
-    await ctx.waitFor(`/are you around/.test(${q('#rmlog')}.textContent)`, { what: "ana's new message" });
+    await ctx.waitFor(`/are you around/.test(${query('#rmlog')}.textContent)`, { what: "ana's new message" });
 
     // …in the log as ⏎ is pressed (2026-10-27): the send held here, it is drawn on its way, the box empty, and takes its
     // place as GitHub's comment once let go
@@ -237,7 +237,7 @@ export default async function (ctx) {
 
     out.going = {
       outs: await outs(),
-      box: await ctx.evaluate(`${q('#rmbox')}.value`),
+      box: await ctx.evaluate(`${query('#rmbox')}.value`),
       held: await ctx.evaluate(`window.__send.length`),
     };
 
@@ -248,7 +248,7 @@ export default async function (ctx) {
     );
 
     ctx.assert.equal(
-      await ctx.evaluate(`${q('#rmlog .rmmsg:last-of-type')}.matches('.mine.out')`),
+      await ctx.evaluate(`${query('#rmlog .rmmsg:last-of-type')}.matches('.mine.out')`),
       true,
       'the last in the log',
     );
@@ -276,18 +276,18 @@ export default async function (ctx) {
     await ctx.evaluate(`window.__fail = 'GitHub said no'`);
     await ctx.fill('#rmbox', 'second try');
     await enter('#rmbox');
-    await ctx.waitFor(`!!${q('#rmlog .rmmsg.out.fail')}`, { what: 'the message that did not go' });
+    await ctx.waitFor(`!!${query('#rmlog .rmmsg.out.fail')}`, { what: 'the message that did not go' });
     out.failed = await outs();
     ctx.assert.deepEqual(out.failed, [{ body: 'second try', fail: 'Not sent: GitHub said no', faded: '1' }]);
 
     ctx.assert.ok(
-      !gh.repo('acme-chat/room').issues[0].comments.some(c => c.body === 'second try'),
+      !gh.repo('acme-chat/room').issues[0].comments.some(comment => comment.body === 'second try'),
       'nobody else has it',
     );
 
     await ctx.settle();
     await ctx.shot('2c-not-sent', await rect('#room'));
-    await ctx.evaluate(`window.__fail = null; ${q('#rmlog .rmmsg.out.fail [data-rm="retry"]')}.click()`);
+    await ctx.evaluate(`window.__fail = null; ${query('#rmlog .rmmsg.out.fail [data-rm="retry"]')}.click()`);
 
     await ctx.waitFor(
       `[...document.querySelectorAll('#rmlog .rmmsg.mine[data-id]')].some(m => /second try/.test(m.textContent)) && !document.querySelector('#rmlog .rmmsg.out')`,
@@ -298,42 +298,42 @@ export default async function (ctx) {
     await ctx.evaluate(`window.__fail = 'offline'`);
     await ctx.fill('#rmbox', 'third');
     await enter('#rmbox');
-    await ctx.waitFor(`!!${q('#rmlog .rmmsg.out.fail')}`, { what: 'another that did not go' });
-    await ctx.evaluate(`window.__fail = null; ${q('#rmlog .rmmsg.out.fail [data-rm="edit"]')}.click()`);
+    await ctx.waitFor(`!!${query('#rmlog .rmmsg.out.fail')}`, { what: 'another that did not go' });
+    await ctx.evaluate(`window.__fail = null; ${query('#rmlog .rmmsg.out.fail [data-rm="edit"]')}.click()`);
 
     ctx.assert.deepEqual(
       [
-        await ctx.evaluate(`${q('#rmbox')}.value`),
-        await ctx.evaluate(`!!${q('#rmlog .rmmsg.out')}`),
-        await ctx.evaluate(`document.activeElement === ${q('#rmbox')}`),
+        await ctx.evaluate(`${query('#rmbox')}.value`),
+        await ctx.evaluate(`!!${query('#rmlog .rmmsg.out')}`),
+        await ctx.evaluate(`document.activeElement === ${query('#rmbox')}`),
       ],
       ['third', false, true],
       'its words back in the box, with the keys',
     );
 
     await ctx.evaluate(
-      `(b => { b.value = ''; b.dispatchEvent(new InputEvent('input', { bubbles: true })); })(${q('#rmbox')})`,
+      `(b => { b.value = ''; b.dispatchEvent(new InputEvent('input', { bubbles: true })); })(${query('#rmbox')})`,
     );
 
     // said while the panel is shut: unread in the bar; shown, it is read — and the other labelled issue is nobody's
-    await ctx.evaluate(`${q('#rmClose')}.click()`);
+    await ctx.evaluate(`${query('#rmClose')}.click()`);
     gh.say('acme-chat/room', 2, 'ana', 'in the other issue');
     gh.say('acme-chat/room', 1, 'ana', 'ping');
-    await ctx.waitFor(`${q('#sbChat')}.textContent === 'chat1'`, { what: 'the unread in the bar' });
-    await ctx.evaluate(`${q('#sbChat')}.click()`);
-    await ctx.waitFor(`/ping/.test(${q('#rmlog')}.textContent)`, { what: "ana's ping in the panel" });
+    await ctx.waitFor(`${query('#sbChat')}.textContent === 'chat1'`, { what: 'the unread in the bar' });
+    await ctx.evaluate(`${query('#sbChat')}.click()`);
+    await ctx.waitFor(`/ping/.test(${query('#rmlog')}.textContent)`, { what: "ana's ping in the panel" });
 
     ctx.assert.ok(
-      !/in the other issue/.test(await ctx.evaluate(`${q('#rmlog')}.textContent`)),
+      !/in the other issue/.test(await ctx.evaluate(`${query('#rmlog')}.textContent`)),
       'another labelled issue is not the chat',
     );
 
     await waitFor(async () => (await ctx.server.api('api/chat')).body.unread === 0, { what: 'read once shown' });
-    await ctx.waitFor(`${q('#sbChat')}.textContent === 'chat'`, { what: "the bar's count gone" });
+    await ctx.waitFor(`${query('#sbChat')}.textContent === 'chat'`, { what: "the bar's count gone" });
 
     // the people: eva suggested, rui invited by his login, ana removed after asking
-    await ctx.evaluate(`${q('#rmPeople')}.click()`);
-    await ctx.waitFor(`/eva/.test(${q('#rmplist')}.textContent)`, { what: 'the suggestions' });
+    await ctx.evaluate(`${query('#rmPeople')}.click()`);
+    await ctx.waitFor(`/eva/.test(${query('#rmplist')}.textContent)`, { what: 'the suggestions' });
 
     out.people = await ctx.evaluate(
       `[...document.querySelectorAll('#rmplist h6')].map(h => h.textContent + ': ' + [...(function* () { for (let n = h.nextElementSibling; n && n.tagName !== 'H6'; n = n.nextElementSibling) if (n.dataset.login) yield n.dataset.login; })()].join(','))`,
@@ -343,31 +343,31 @@ export default async function (ctx) {
     await ctx.settle();
     await ctx.shot('3-people', await rect('#room'));
     await ctx.fill('#rmfind', 'rui');
-    ctx.assert.match(await ctx.evaluate(`${q('#rmplist')}.textContent`), /Invite.*rui.*a GitHub login/);
+    ctx.assert.match(await ctx.evaluate(`${query('#rmplist')}.textContent`), /Invite.*rui.*a GitHub login/);
     await enter('#rmfind');
-    await ctx.waitFor(`/Invited.*rui/.test(${q('#rmplist')}.textContent)`, { what: 'rui invited' });
+    await ctx.waitFor(`/Invited.*rui/.test(${query('#rmplist')}.textContent)`, { what: 'rui invited' });
     ctx.assert.equal(gh.repo('acme-chat/room').invitations[0].login, 'rui');
-    await ctx.evaluate(`${q('#rmplist .rmp[data-login="ana"] [data-rm="sureRemove"]')}.click()`);
-    ctx.assert.match(await ctx.evaluate(`${q('#rmplist .rmsure')}.textContent`), /Remove ana\?/);
-    await ctx.evaluate(`${q('#rmplist .rmsure [data-rm="remove"]')}.click()`);
-    await ctx.waitFor(`!${q('#rmplist .rmp[data-login="ana"]')}`, { what: 'ana removed' });
+    await ctx.evaluate(`${query('#rmplist .rmp[data-login="ana"] [data-rm="sureRemove"]')}.click()`);
+    ctx.assert.match(await ctx.evaluate(`${query('#rmplist .rmsure')}.textContent`), /Remove ana\?/);
+    await ctx.evaluate(`${query('#rmplist .rmsure [data-rm="remove"]')}.click()`);
+    await ctx.waitFor(`!${query('#rmplist .rmp[data-login="ana"]')}`, { what: 'ana removed' });
     ctx.assert.equal(gh.repo('acme-chat/room').perms.ana, undefined);
     // Esc: the people first, then the panel
     await esc();
 
     ctx.assert.deepEqual(
-      [await ctx.evaluate(`${q('#room')}.open`), await ctx.evaluate(`${q('#rmlog')}.hidden`)],
+      [await ctx.evaluate(`${query('#room')}.open`), await ctx.evaluate(`${query('#rmlog')}.hidden`)],
       [true, false],
       'back to the messages',
     );
 
     const mine = await ctx.evaluate(`[...document.querySelectorAll('#rmlog .rmmsg.mine')].at(-1).dataset.id`);
 
-    await ctx.evaluate(`${q(`#rmlog .rmmsg.mine[data-id="${mine}"] .rmdel`)}.click()`);
-    await ctx.waitFor(`!${q(`#rmlog .rmmsg[data-id="${mine}"]`)}`, { what: 'your message deleted' });
-    ctx.assert.ok(!gh.repo('acme-chat/room').issues[0].comments.some(c => c.id === Number(mine)));
+    await ctx.evaluate(`${query(`#rmlog .rmmsg.mine[data-id="${mine}"] .rmdel`)}.click()`);
+    await ctx.waitFor(`!${query(`#rmlog .rmmsg[data-id="${mine}"]`)}`, { what: 'your message deleted' });
+    ctx.assert.ok(!gh.repo('acme-chat/room').issues[0].comments.some(comment => comment.id === Number(mine)));
     await esc();
-    ctx.assert.equal(await ctx.evaluate(`${q('#room')}.open`), false, 'Esc closes the panel');
+    ctx.assert.equal(await ctx.evaluate(`${query('#room')}.open`), false, 'Esc closes the panel');
 
     // a repo where you are a member: no people, no delete on another's words
     await ctx.server.api('api/config', {
@@ -377,11 +377,11 @@ export default async function (ctx) {
     });
 
     await waitFor(async () => (await ctx.server.api('api/chat')).body.ready, { what: 'ana/talk read' });
-    await ctx.evaluate(`${q('#sbChat')}.click()`);
-    await ctx.waitFor(`/welcome/.test(${q('#rmlog')}.textContent)`, { what: "ana/talk's chat" });
+    await ctx.evaluate(`${query('#sbChat')}.click()`);
+    await ctx.waitFor(`/welcome/.test(${query('#rmlog')}.textContent)`, { what: "ana/talk's chat" });
     out.member = await panel();
     ctx.assert.deepEqual([out.member.title, out.member.people, out.member.dels], ['Chat', false, 0]);
-    await ctx.evaluate(`${q('#rmClose')}.click()`);
+    await ctx.evaluate(`${query('#rmClose')}.click()`);
 
     // no chat, an invitation: the bar says so, Settings joins it
     await ctx.server.api('api/config', {
@@ -392,14 +392,14 @@ export default async function (ctx) {
 
     gh.invite('ana-chat/later', 'me', 'ana');
     await ctx.cmd('Comma');
-    await ctx.evaluate(`${q('#settings .stabs [data-tab="chat"]')}.click()`);
-    await ctx.waitFor(`!!${q('#chatSet [data-chat="join"]')}`, { what: 'the invitation in Settings' });
-    ctx.assert.match(await ctx.evaluate(`${q('#chatSet')}.textContent`), /ana invited you.*ana-chat\/later/);
-    ctx.assert.equal(await ctx.evaluate(`${q('#sbChat')}?.textContent`), 'invited');
+    await ctx.evaluate(`${query('#settings .stabs [data-tab="chat"]')}.click()`);
+    await ctx.waitFor(`!!${query('#chatSet [data-chat="join"]')}`, { what: 'the invitation in Settings' });
+    ctx.assert.match(await ctx.evaluate(`${query('#chatSet')}.textContent`), /ana invited you.*ana-chat\/later/);
+    ctx.assert.equal(await ctx.evaluate(`${query('#sbChat')}?.textContent`), 'invited');
     await ctx.settle();
     await ctx.shot('4-invited', await rect('#settings'));
-    await ctx.evaluate(`${q('#chatSet [data-chat="join"]')}.click()`);
-    await ctx.waitFor(`/You are a member/.test(${q('#chatSet')}.textContent)`, { what: 'joined' });
+    await ctx.evaluate(`${query('#chatSet [data-chat="join"]')}.click()`);
+    await ctx.waitFor(`/You are a member/.test(${query('#chatSet')}.textContent)`, { what: 'joined' });
     ctx.assert.equal((await ctx.server.api('api/config')).body.chat.repo, 'ana-chat/later');
     return out;
   } finally {

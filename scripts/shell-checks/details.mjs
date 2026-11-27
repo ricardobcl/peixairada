@@ -30,18 +30,18 @@ export default async function (ctx) {
   const inWindow = await about();
 
   ctx.assert.ok(
-    Object.values((await ctx.win()).panes).every(p => !p.up),
+    Object.values((await ctx.win()).panes).every(pane => !pane.up),
     'About over the page, not under it: a dialog up lowers the pane',
   );
 
   ctx.log(`\n${inWindow}`);
-  const w = await ctx.win();
+  const win = await ctx.win();
 
   ctx.assert.match(inWindow, /^macOS: .*\d/m, 'which macOS');
 
   ctx.assert.match(
     inWindow,
-    new RegExp(`^window: a normal window, ${w.w}×${w.h}, the page ${w.inset} pt down, zoom 1$`, 'm'),
+    new RegExp(`^window: a normal window, ${win.w}×${win.h}, the page ${win.inset} pt down, zoom 1$`, 'm'),
     'its shape',
   );
 
@@ -51,7 +51,7 @@ export default async function (ctx) {
     'the column, a page by its kind',
   );
 
-  const place = Object.values(w.panes)[0];
+  const place = Object.values(win.panes)[0];
   const body = /^half 2 in the page's px: strip (\d+)–(\d+), body (\d+)–(\d+), from x (\d+)$/m.exec(inWindow);
   const view = /^pages' views in the window's pt: (\d+)×(\d+) at (\d+),(\d+)$/m.exec(inWindow);
 
@@ -65,7 +65,7 @@ export default async function (ctx) {
 
   ctx.assert.equal(
     Number(view[4]) - Number(body[3]),
-    w.inset,
+    win.inset,
     "the page's px and the window's points apart by the inset: what a report of this bug would have shown",
   );
 

@@ -4,22 +4,22 @@ const setHidden = keys => {
   state.hidden = keys;
   renderBoard();
 
-  api('PUT', '/api/hidden', { hidden: keys }).catch(e =>
-    note($('#stitle'), `Could not save the hidden list: ${e.message}`, true),
+  api('PUT', '/api/hidden', { hidden: keys }).catch(error =>
+    note($('#stitle'), `Could not save the hidden list: ${error.message}`, true),
   );
 };
 
 const hideProject = key => {
-  if (key) setHidden([...state.hidden.filter(k => k !== key), key]);
+  if (key) setHidden([...state.hidden.filter(hiddenKey => hiddenKey !== key), key]);
 };
 
-const showProject = key => setHidden(state.hidden.filter(k => k !== key));
+const showProject = key => setHidden(state.hidden.filter(hiddenKey => hiddenKey !== key));
 
 /** What a hidden key is called now: a named project by its name, a folder by its own and where it is. A named
  *  project deleted while hidden leaves a key nothing answers — it is still listed, so it can be let go. */
 const hiddenLabel = key =>
   key.startsWith('c:')
-    ? { name: state.projects.find(x => `c:${x.id}` === key)?.name || 'a project that is gone', where: '' }
+    ? { name: state.projects.find(project => `c:${project.id}` === key)?.name || 'a project that is gone', where: '' }
     : { name: folderName(key), where: homePath(key) };
 
 function renderHidden() {
@@ -31,10 +31,10 @@ function renderHidden() {
   const drew = setHtml(
     box,
     state.hidden
-      .map(k => {
-        const l = hiddenLabel(k);
+      .map(key => {
+        const label = hiddenLabel(key);
 
-        return `<div class="srow set hrow"><span class="pn" title="${esc(l.where || k)}"><b>${esc(l.name)}</b>${l.where ? `<small>${esc(l.where)}</small>` : ''}</span><button type="button" class="btn" data-key="${esc(k)}" title="Put it back on the board">Show</button></div>`;
+        return `<div class="srow set hrow"><span class="pn" title="${esc(label.where || key)}"><b>${esc(label.name)}</b>${label.where ? `<small>${esc(label.where)}</small>` : ''}</span><button type="button" class="btn" data-key="${esc(key)}" title="Put it back on the board">Show</button></div>`;
       })
       .join(''),
   );
@@ -42,8 +42,8 @@ function renderHidden() {
   if (drew && $('#settings').open) settingsFind();
 }
 
-$('#hidden').addEventListener('click', e => {
-  const b = e.target.closest('button');
+$('#hidden').addEventListener('click', event => {
+  const button = event.target.closest('button');
 
-  if (b) showProject(b.dataset.key);
+  if (button) showProject(button.dataset.key);
 });

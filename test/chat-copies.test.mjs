@@ -10,8 +10,8 @@ import { randomUUID } from 'node:crypto';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { defaultFixture } from '../scripts/fixture.mjs';
 
-const chatOf = async (srv, id) => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
-const linksOf = async (srv, id) => ((await chatOf(srv, id))?.links || []).map(l => [l.k, l.dir, l.id]);
+const chatOf = async (srv, id) => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
+const linksOf = async (srv, id) => ((await chatOf(srv, id))?.links || []).map(link => [link.k, link.dir, link.id]);
 
 /** The chat's lines under a new id, uuids kept, as Claude Code writes a copy. */
 function copyOf(chat, id = randomUUID()) {
@@ -22,11 +22,11 @@ function copyOf(chat, id = randomUUID()) {
     readFileSync(chat.file, 'utf8')
       .split('\n')
       .filter(Boolean)
-      .map(l => {
-        const j = JSON.parse(l);
+      .map(line => {
+        const parsed = JSON.parse(line);
 
-        if ('sessionId' in j) j.sessionId = id;
-        return `${JSON.stringify(j)}\n`;
+        if ('sessionId' in parsed) parsed.sessionId = id;
+        return `${JSON.stringify(parsed)}\n`;
       })
       .join(''),
   );
@@ -49,14 +49,14 @@ async function alertsOf(srv) {
 
       if (done) break;
       buf += dec.decode(value, { stream: true });
-      let i;
+      let index;
 
-      while ((i = buf.indexOf('\n\n')) >= 0) {
-        const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i));
+      while ((index = buf.indexOf('\n\n')) >= 0) {
+        const match = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, index));
 
-        buf = buf.slice(i + 2);
-        if (m?.[1] === 'snapshot') resolve();
-        if (m?.[1] === 'alert') got.push(JSON.parse(m[2]));
+        buf = buf.slice(index + 2);
+        if (match?.[1] === 'snapshot') resolve();
+        if (match?.[1] === 'alert') got.push(JSON.parse(match[2]));
       }
     }
   })().catch(() => {});
@@ -72,18 +72,18 @@ test(
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
     const [other, chat] = fx.chats;
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
-    const a = await alertsOf(srv);
+    const alerts = await alertsOf(srv);
 
     try {
-      await new Promise(r => setTimeout(r, 30)); // a birth of its own
+      await new Promise(resolve => setTimeout(resolve, 30)); // a birth of its own
       const copy = copyOf(chat);
 
       await waitFor(async () => (await linksOf(srv, copy.id)).length, { what: 'the copy tied' });
       assert.deepEqual(await linksOf(srv, copy.id), [['branch', 'in', chat.id]], 'the copy, branched from the chat');
       assert.deepEqual(await linksOf(srv, chat.id), [['branch', 'out', copy.id]], 'the chat, its branch');
       assert.deepEqual(await linksOf(srv, other.id), [], 'and nothing on a chat that begins otherwise');
-      await new Promise(r => setTimeout(r, 900)); // the alert debounce is 400 ms
-      assert.deepEqual(a.got, [], 'its copied past is no news');
+      await new Promise(resolve => setTimeout(resolve, 900)); // the alert debounce is 400 ms
+      assert.deepEqual(alerts.got, [], 'its copied past is no news');
       await srv.restart();
 
       assert.deepEqual(
@@ -92,7 +92,7 @@ test(
         'a boot reads both and ties nothing twice',
       );
     } finally {
-      a.stop();
+      alerts.stop();
       await srv.stop();
     }
   },
@@ -140,16 +140,16 @@ test(
       const lines = readFileSync(chat.file, 'utf8')
         .split('\n')
         .filter(Boolean)
-        .map(l => JSON.parse(l))
-        .filter(l => l.type === 'user');
+        .map(line => JSON.parse(line))
+        .filter(line => line.type === 'user');
 
       appendFileSync(
         join(dirname(chat.file), `${to}.jsonl`),
-        lines.map(l => `${JSON.stringify({ ...l, sessionId: to })}\n`).join(''),
+        lines.map(line => `${JSON.stringify({ ...line, sessionId: to })}\n`).join(''),
       );
 
       await waitFor(async () => (await chatOf(srv, to)).lastUserAt, { what: 'its first lines read' });
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(resolve => setTimeout(resolve, 200));
       assert.deepEqual(await linksOf(srv, to), [['continued', 'in', chat.id]], 'one tie');
     } finally {
       await srv.stop();

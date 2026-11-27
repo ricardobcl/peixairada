@@ -14,22 +14,27 @@ export default async function (ctx) {
   await ctx.until(`document.documentElement.dataset.skin === 'flashbang'`, 'Flashbang worn');
   await paintStrips(ctx);
 
-  const w = await ctx.win();
+  const win = await ctx.win();
   const tall = await ctx.js(`return innerHeight`);
 
-  ctx.assert.ok(w.titled && w.barClear, 'a normal window, its bar clear');
-  ctx.assert.deepEqual([w.ground, w.under], ['ffffff', 'ffffff'], "the window's ground and WebKit's the theme's white");
+  ctx.assert.ok(win.titled && win.barClear, 'a normal window, its bar clear');
+
+  ctx.assert.deepEqual(
+    [win.ground, win.under],
+    ['ffffff', 'ffffff'],
+    "the window's ground and WebKit's the theme's white",
+  );
 
   ctx.assert.ok(
-    w.inset > 0 && w.webTop === w.inset,
-    `the board under the bar: ${w.webTop} pt down, the bar ${w.inset}`,
+    win.inset > 0 && win.webTop === win.inset,
+    `the board under the bar: ${win.webTop} pt down, the bar ${win.inset}`,
   );
 
   await ctx.openChat(plain.id);
   await ctx.link(page);
   const seen = await placed('a page under the clear bar', page, 'ff00ff');
 
-  ctx.assert.equal(seen.pageStarts, w.inset, 'the page starts where the overlay does');
+  ctx.assert.equal(seen.pageStarts, win.inset, 'the page starts where the overlay does');
   await ctx.full();
   ctx.assert.equal((await ctx.win()).webTop, 0, 'the fill: no bar to start under');
   await ctx.full();
@@ -38,11 +43,11 @@ export default async function (ctx) {
   const own = await ctx.win();
 
   ctx.assert.ok(
-    !own.barClear && own.webTop === w.webTop,
+    !own.barClear && own.webTop === win.webTop,
     `the board's own: macOS's bar, the board where it was (${own.webTop} pt down)`,
   );
 
   ctx.assert.deepEqual([own.ground, own.under], ['dedcd6', 'dedcd6'], "both grounds the board's light --frame again");
   ctx.assert.equal(await ctx.js(`return innerHeight`), tall, 'the page the same height under either bar');
-  return { flashbang: { inset: w.inset, webTop: w.webTop }, own: { webTop: own.webTop } };
+  return { flashbang: { inset: win.inset, webTop: win.webTop }, own: { webTop: own.webTop } };
 }

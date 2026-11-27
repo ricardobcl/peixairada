@@ -35,57 +35,69 @@ export function prEvents(pr, me, url = '') {
   if (!pr) return [];
   const ev = new Map();
   let from = null; // the window being read, until its first event is marked
-  const at = u => (!u ? {} : { u: url && u.toLowerCase().startsWith(url.toLowerCase()) ? u.slice(url.length) : u });
-  const whom = a => (isBot(a) ? null : a.login === me ? '' : a.login);
 
-  const add = (id, e) => {
-    ev.set(id, { id, ...e, ...(from && { edge: 1 }) });
+  const at = eventUrl =>
+    !eventUrl
+      ? {}
+      : { u: url && eventUrl.toLowerCase().startsWith(url.toLowerCase()) ? eventUrl.slice(url.length) : eventUrl };
+
+  const whom = actor => (isBot(actor) ? null : actor.login === me ? '' : actor.login);
+
+  const add = (id, event) => {
+    ev.set(id, { id, ...event, ...(from && { edge: 1 }) });
     from = null;
   };
 
-  const put = (k, by, a, more = {}) => {
-    if (!a || !by?.login || isBot(by)) return;
+  const put = (kind, by, when, more = {}) => {
+    if (!when || !by?.login || isBot(by)) return;
 
-    const id = `${k}:${by.login}:${a}${more.s ? `:${more.s}` : ''}`;
+    const id = `${kind}:${by.login}:${when}${more.s ? `:${more.s}` : ''}`;
     const was = ev.get(id);
 
     if (was) {
       was.n = (was.n || 1) + 1;
       from = null;
-    } else add(id, { k, w: by.login === me ? '' : by.login, a, ...more });
+    } else add(id, { k: kind, w: by.login === me ? '' : by.login, a: when, ...more });
   };
 
-  const read = (name, f) => {
+  const read = (name, visit) => {
     const nodes = pr[name]?.nodes || [];
 
     from = nodes.length >= WINDOWS[name] ? name : null;
-    for (const n of nodes) if (n) f(n);
+    for (const node of nodes) if (node) visit(node);
     from = null;
   };
 
   put('opened', pr.author, pr.createdAt);
 
-  read('reviews', r => {
-    if (r.state !== 'PENDING') put('review', r.author, r.submittedAt, { s: r.state, ...at(r.url) });
+  read('reviews', review => {
+    if (review.state !== 'PENDING') {
+      put('review', review.author, review.submittedAt, { s: review.state, ...at(review.url) });
+    }
   });
 
-  read('comments', c => put('comment', c.author, c.createdAt, at(c.url)));
+  read('comments', comment => put('comment', comment.author, comment.createdAt, at(comment.url)));
 
-  read('pushes', n => {
-    if (n.__typename === 'HeadRefForcePushedEvent') put('push', n.actor, n.createdAt, { f: 1 });
-    else put('push', n.commit?.author?.user || pr.author, n.commit?.committedDate, at(n.url)); // a commit GitHub ties to no one is the author's
+  read('pushes', node => {
+    if (node.__typename === 'HeadRefForcePushedEvent') put('push', node.actor, node.createdAt, { f: 1 });
+    else put('push', node.commit?.author?.user || pr.author, node.commit?.committedDate, at(node.url)); // a commit GitHub ties to no one is the author's
   });
 
-  read('asks', a => {
-    const r = a.requestedReviewer;
+  read('asks', ask => {
+    const reviewer = ask.requestedReviewer;
 
-    if (!a.createdAt || (isBot(r) && r?.login)) return; // a bot asked to review is nobody, as a bot's review is
+    if (!ask.createdAt || (isBot(reviewer) && reviewer?.login)) return; // a bot asked to review is nobody, as a bot's review is
 
-    if (r?.login === me) add(`ask:${a.createdAt}`, { k: 'ask', w: null, a: a.createdAt });
+    if (reviewer?.login === me) add(`ask:${ask.createdAt}`, { k: 'ask', w: null, a: ask.createdAt });
     else {
-      const x = r?.login || r?.slug || null;
+      const requested = reviewer?.login || reviewer?.slug || null;
 
-      add(`asked:${x}:${a.createdAt}`, { k: 'asked', w: a.actor ? whom(a.actor) : null, x, a: a.createdAt });
+      add(`asked:${requested}:${ask.createdAt}`, {
+        k: 'asked',
+        w: ask.actor ? whom(ask.actor) : null,
+        x: requested,
+        a: ask.createdAt,
+      });
     }
   });
 
@@ -96,14 +108,22 @@ export function prEvents(pr, me, url = '') {
     ReadyForReviewEvent: 'ready',
   };
 
-  const merged = (pr.marks?.nodes || []).filter(n => n?.__typename === 'MergedEvent').map(n => Date.parse(n.createdAt));
+  const merged = (pr.marks?.nodes || [])
+    .filter(node => node?.__typename === 'MergedEvent')
+    .map(node => Date.parse(node.createdAt));
 
-  read('marks', n => {
-    const k = MARKS[n.__typename];
+  read('marks', node => {
+    const kind = MARKS[node.__typename];
 
-    if (!k || !n.createdAt) return;
-    if (k === 'closed' && merged.some(m => Math.abs(m - Date.parse(n.createdAt)) < 60_000)) return; // GitHub writes a merge's close too
-    add(`${k}:${n.createdAt}`, { k, w: n.actor ? whom(n.actor) : null, a: n.createdAt, ...at(n.url) });
+    if (!kind || !node.createdAt) return;
+    if (kind === 'closed' && merged.some(mergedAt => Math.abs(mergedAt - Date.parse(node.createdAt)) < 60_000)) return; // GitHub writes a merge's close too
+
+    add(`${kind}:${node.createdAt}`, {
+      k: kind,
+      w: node.actor ? whom(node.actor) : null,
+      a: node.createdAt,
+      ...at(node.url),
+    });
   });
 
   return [...ev.values()];
@@ -117,9 +137,9 @@ export function prEvents(pr, me, url = '') {
 export function ciEvent(known, checks, head, now = Date.now()) {
   if (!known || known.missing || (checks !== 'pass' && checks !== 'fail')) return null;
   if (known.checks === checks && (!head || known.refs?.headOid === head)) return null;
-  const a = isoS(now);
+  const at = isoS(now);
 
-  return { id: `ci:${checks}:${head || a}`, k: 'ci', w: null, s: checks, a, u: '/checks' };
+  return { id: `ci:${checks}:${head || at}`, k: 'ci', w: null, s: checks, a: at, u: '/checks' };
 }
 
 const logOf = url => (prLogs[url] ||= { ev: [], r: [], v: 0 });
@@ -141,17 +161,17 @@ export function logEvents(url, evs) {
   if (!evs.length) return false;
 
   const log = logOf(url);
-  const byId = new Map(log.ev.map(e => [e.id, e]));
+  const byId = new Map(log.ev.map(event => [event.id, event]));
 
   let added = false;
   let older = false;
 
-  for (const { edge, ...e } of evs) {
-    const was = byId.get(e.id);
+  for (const { edge, ...event } of evs) {
+    const was = byId.get(event.id);
 
     if (was) {
-      if ((e.n || 1) > (was.n || 1)) {
-        was.n = e.n;
+      if ((event.n || 1) > (was.n || 1)) {
+        was.n = event.n;
         added = true;
       }
 
@@ -160,13 +180,13 @@ export function logEvents(url, evs) {
 
     if (edge) older = true;
 
-    if (log.ev.length >= LOG_EV_MAX && e.a < log.ev[0].a) {
+    if (log.ev.length >= LOG_EV_MAX && event.a < log.ev[0].a) {
       older = true;
       continue;
     }
 
-    log.ev.push(e);
-    byId.set(e.id, e);
+    log.ev.push(event);
+    byId.set(event.id, event);
     added = true;
   }
 
@@ -176,7 +196,7 @@ export function logEvents(url, evs) {
   }
 
   if (!added) return false;
-  log.ev.sort((a, b) => a.a.localeCompare(b.a));
+  log.ev.sort((left, right) => left.a.localeCompare(right.a));
 
   if (log.ev.length > LOG_EV_MAX) {
     log.ev.splice(0, log.ev.length - LOG_EV_MAX);
@@ -189,35 +209,35 @@ export function logEvents(url, evs) {
 
 /** What the board did with a PR — let go, back again — into its ledger. */
 export function logBoard(url, what, at = Date.now()) {
-  const a = isoS(at);
+  const stamp = isoS(at);
 
-  logEvents(url, [{ id: `board:${what}:${a}`, k: 'board', w: '', x: what, a }]);
+  logEvents(url, [{ id: `board:${what}:${stamp}`, k: 'board', w: '', x: what, a: stamp }]);
 }
 
 export const openRound = url => {
-  const r = prLogs[url]?.r.at(-1);
+  const round = prLogs[url]?.r.at(-1);
 
-  return r && !r.end ? r : null;
+  return round && !round.end ? round : null;
 };
 
 /** The rounds the page shows: the last three, the newest last. */
-export const roundsOf = url => (prLogs[url]?.r.length ? prLogs[url].r.slice(-3).map(r => ({ ...r })) : null);
+export const roundsOf = url => (prLogs[url]?.r.length ? prLogs[url].r.slice(-3).map(round => ({ ...round })) : null);
 
 /**
- * A look's turn (`t`, prTurn's) on the PR's rounds; `moved` is moveTurn's. At your move with no round open, one opens
+ * A look's turn (`turn`, prTurn's) on the PR's rounds; `moved` is moveTurn's. At your move with no round open, one opens
  * at GitHub's time for its reason; a move past a round let go ends that one and opens the next; more news keeps the
  * round and its new reasons. Their move closes the open round only on a word of yours at or after its start (`said`),
  * else it is marked (`them`) and ended as `gone` ROUND_GONE_MS later; at your move again, the mark goes. `null`: the PR
  * merged, closed, or none of yours — the round ends there.
  */
-export function noteRounds(url, t, moved, now = Date.now(), state = null) {
-  if (t === undefined) return false;
+export function noteRounds(url, turn, moved, now = Date.now(), state = null) {
+  if (turn === undefined) return false;
   const nowS = isoS(now);
 
   let open = openRound(url);
   let changed = false;
 
-  if (!t) {
+  if (!turn) {
     if (!open) return false;
     Object.assign(open, { end: nowS, how: state === 'merged' || state === 'closed' ? state : 'gone' });
     delete open.them;
@@ -225,18 +245,18 @@ export function noteRounds(url, t, moved, now = Date.now(), state = null) {
     return true;
   }
 
-  if (t.you) {
+  if (turn.you) {
     if (open?.let && moved) {
       Object.assign(open, { end: nowS, how: 'let go' });
       open = null;
     }
 
     if (!open) {
-      logOf(url).r.push({ from: t.at || nowS, why: t.why });
+      logOf(url).r.push({ from: turn.at || nowS, why: turn.why });
       changed = true;
     } else {
-      if (open.why !== t.why) {
-        open.why = t.why;
+      if (open.why !== turn.why) {
+        open.why = turn.why;
         changed = true;
       }
 
@@ -246,8 +266,8 @@ export function noteRounds(url, t, moved, now = Date.now(), state = null) {
       }
     }
   } else if (open) {
-    if (t.said && t.said >= open.from) {
-      Object.assign(open, { end: t.said, how: 'answered' }, byChat(url, open, nowS));
+    if (turn.said && turn.said >= open.from) {
+      Object.assign(open, { end: turn.said, how: 'answered' }, byChat(url, open, nowS));
       delete open.them;
       changed = true;
     } else if (!open.them) {
@@ -260,9 +280,9 @@ export function noteRounds(url, t, moved, now = Date.now(), state = null) {
     }
   }
 
-  const r = prLogs[url]?.r;
+  const rounds = prLogs[url]?.r;
 
-  if (r && r.length > LOG_ROUNDS_MAX) r.splice(0, r.length - LOG_ROUNDS_MAX);
+  if (rounds && rounds.length > LOG_ROUNDS_MAX) rounds.splice(0, rounds.length - LOG_ROUNDS_MAX);
   if (changed) bumpLog(url);
   return changed;
 }

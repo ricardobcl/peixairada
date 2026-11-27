@@ -17,7 +17,7 @@ export default async function (ctx) {
   const now = Date.now();
 
   const sleeps = [0, 1, 2, 3].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));
-  const live = (i, extra = {}) => ({ pid: sleeps[i].pid, startedAt: now - 3600_000, ...extra });
+  const live = (index, extra = {}) => ({ pid: sleeps[index].pid, startedAt: now - 3600_000, ...extra });
 
   try {
     const { chats } = makeFixture(ctx.fixture.dir, [
@@ -88,7 +88,7 @@ export default async function (ctx) {
     );
 
     ctx.assert.ok(
-      ['ring', 'sonar', 'wag', 'swim'].every(n => out.running.includes(n)),
+      ['ring', 'sonar', 'wag', 'swim'].every(name => out.running.includes(name)),
       `the lights on: ${JSON.stringify(out.running)}`,
     );
 
@@ -102,6 +102,6 @@ export default async function (ctx) {
 
     return out;
   } finally {
-    for (const s of sleeps) s.kill();
+    for (const child of sleeps) child.kill();
   }
 }

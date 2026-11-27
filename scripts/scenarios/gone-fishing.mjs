@@ -45,15 +45,15 @@ export default async function (ctx) {
   );
 
   // it holds a reply and a PR's move, and lets a question ring
-  const [a] = ctx.fixture.chats;
+  const [chat] = ctx.fixture.chats;
 
-  const alert = (kind, id = a.id) =>
+  const alert = (kind, id = chat.id) =>
     ctx.evaluate(`window.peix.alert({ kind: '${kind}', sessionId: '${id}', project: 'p', title: 't', snippet: '' })`);
 
   await alert('reply');
   await alert('pr');
   await alert('needs-input');
-  const told = (await posts('alert')).map(m => [m.kind, m.quiet]);
+  const told = (await posts('alert')).map(post => [post.kind, post.quiet]);
 
   ctx.assert.deepEqual(
     told,
@@ -71,13 +71,13 @@ export default async function (ctx) {
 
   // a reply lands; the sign's click comes back, and the catch says so
   appendFileSync(
-    a.file,
-    `${replyLines({ id: a.id, cwd: a.cwd, text: 'Done, have a look.', at: new Date() })
-      .map(l => JSON.stringify(l))
+    chat.file,
+    `${replyLines({ id: chat.id, cwd: chat.cwd, text: 'Done, have a look.', at: new Date() })
+      .map(line => JSON.stringify(line))
       .join('\n')}\n`,
   );
 
-  await ctx.waitFor(`window.__posts.filter(m => m.type === 'state').pop().replied.some(r => r.id === '${a.id}')`, {
+  await ctx.waitFor(`window.__posts.filter(m => m.type === 'state').pop().replied.some(r => r.id === '${chat.id}')`, {
     what: 'the reply in',
     timeout: 15000,
   });

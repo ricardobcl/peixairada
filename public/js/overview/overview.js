@@ -6,52 +6,56 @@
 const ov = { sel: 0, list: [], minis: new Map(), timer: 0, raf: 0, downOn: null };
 
 function ovColumns() {
-  const live = [...state.sessions.values()].filter(s => visible(s) && !s.done && !asleep(s)).sort(byWord);
+  const live = [...state.sessions.values()]
+    .filter(session => visible(session) && !session.done && !asleep(session))
+    .sort(byWord);
+
   const used = new Set();
 
-  const take = f => live.filter(s => !used.has(s.id) && f(s)).map(s => (used.add(s.id), s));
+  const take = test =>
+    live.filter(session => !used.has(session.id) && test(session)).map(session => (used.add(session.id), session));
 
   return [
-    ['ask', 'Asking you', take(s => asking(s))],
-    ['work', 'Clauding', take(s => rankOf(s) === 'working')], // by the list's rank (2026-10-31): a turn its own monitor woke stays Watching
-    ['watch', 'Watching', take(s => rankOf(s) === 'watching' || (s.alive && watching(s)))],
-    ['ready', 'New replies', take(s => replied(s) || (state.unread.get(s.id) || 0) > 0)],
+    ['ask', 'Asking you', take(session => asking(session))],
+    ['work', 'Clauding', take(session => rankOf(session) === 'working')], // by the list's rank (2026-10-31): a turn its own monitor woke stays Watching
+    ['watch', 'Watching', take(session => rankOf(session) === 'watching' || (session.alive && watching(session)))],
+    ['ready', 'New replies', take(session => replied(session) || (state.unread.get(session.id) || 0) > 0)],
   ];
 }
 
-function ovTile(s, n, sel) {
-  const d = drawerOf(s);
-  const st = diffStats.get(s.id);
-  const pr = (s.prs || []).find(p => p.state === 'open' || p.state === 'draft');
+function ovTile(session, number, sel) {
+  const term = drawerOf(session);
+  const st = diffStats.get(session.id);
+  const pr = (session.prs || []).find(chatPr => chatPr.state === 'open' || chatPr.state === 'draft');
 
-  const age = asking(s)
-    ? `<span class="wait">waiting on you <span data-at="${esc(s.statusSince || '')}"></span></span>`
-    : `<span data-at="${esc(wordAt(s))}"></span>${state.unread.get(s.id) || 0 ? `<b class="un">${state.unread.get(s.id)}</b>` : ''}`;
+  const age = asking(session)
+    ? `<span class="wait">waiting on you <span data-at="${esc(session.statusSince || '')}"></span></span>`
+    : `<span data-at="${esc(wordAt(session))}"></span>${state.unread.get(session.id) || 0 ? `<b class="un">${state.unread.get(session.id)}</b>` : ''}`;
 
   const ask =
-    asking(s) && s.ask
-      ? `<div class="q">${esc(s.ask.text || `waiting for ${s.ask.waitingFor || 'you'}`)}</div>${s.ask.labels?.length ? `<div class="ans">${s.ask.labels.map((l, i) => `<button data-ans="${i + 1}"${d ? '' : ' disabled'} title="${d ? `Opens the chat and types ${i + 1} into its drawer` : 'Not in a drawer here — answer it where it runs'}"><b>${i + 1}</b>${esc(l)}</button>`).join('')}</div>` : ''}`
+    asking(session) && session.ask
+      ? `<div class="q">${esc(session.ask.text || `waiting for ${session.ask.waitingFor || 'you'}`)}</div>${session.ask.labels?.length ? `<div class="ans">${session.ask.labels.map((label, index) => `<button data-ans="${index + 1}"${term ? '' : ' disabled'} title="${term ? `Opens the chat and types ${index + 1} into its drawer` : 'Not in a drawer here — answer it where it runs'}"><b>${index + 1}</b>${esc(label)}</button>`).join('')}</div>` : ''}`
       : '';
 
-  const tasks = (s.tasks || [])
+  const tasks = (session.tasks || [])
     .map(
-      t =>
-        `<div class="tl watch"><i></i><b>${t.kind === 'monitor' ? 'Monitor' : 'Bash'}</b><span>${esc(t.what)}</span><em>${esc(t.last || `${t.events} events`)}</em></div>`,
+      task =>
+        `<div class="tl watch"><i></i><b>${task.kind === 'monitor' ? 'Monitor' : 'Bash'}</b><span>${esc(task.what)}</span><em>${esc(task.last || `${task.events} events`)}</em></div>`,
     )
     .join('');
 
   const agents =
-    agOn(s) && s.agentRows?.length
-      ? `<div class="agl">${agItems(agPlan(s, false), s, true).map(agRowHtml).join('')}</div>`
+    agOn(session) && session.agentRows?.length
+      ? `<div class="agl">${agItems(agPlan(session, false), session, true).map(agRowHtml).join('')}</div>`
       : ''; // a line each (2026-11-02)
 
   if (agents) phaseAnims();
-  return `<article class="ot ${asking(s) ? 'ask' : bucket(s) === 'working' ? 'work' : ''}${sel ? ' sel' : ''}" data-id="${esc(s.id)}" style="${repoStyle(repoColor(s.cwd))}">
-      <header>${n <= 9 ? `<kbd>${n}</kbd>` : ''}<b>${projIcon(s.project)}${esc(s.project)}</b><span class="age">${age}</span></header>
-      <h3>${ticks(esc(s.title))}</h3>
-      <div class="obody${d ? ' live' : ''}" data-term="${d ? esc(d.id) : ''}">${d ? '' : tailHtml(tails.get(s.id), 7, s.cwd)}</div>
+  return `<article class="ot ${asking(session) ? 'ask' : bucket(session) === 'working' ? 'work' : ''}${sel ? ' sel' : ''}" data-id="${esc(session.id)}" style="${repoStyle(repoColor(session.cwd))}">
+      <header>${number <= 9 ? `<kbd>${number}</kbd>` : ''}<b>${projIcon(session.project)}${esc(session.project)}</b><span class="age">${age}</span></header>
+      <h3>${ticks(esc(session.title))}</h3>
+      <div class="obody${term ? ' live' : ''}" data-term="${term ? esc(term.id) : ''}">${term ? '' : tailHtml(tails.get(session.id), 7, session.cwd)}</div>
       ${tasks}${agents}${ask}
-      <footer>${pr ? `<span class="opr" data-state="${esc(pr.state)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>` : ''}${s.gitBranch && s.gitBranch !== 'HEAD' ? `<span class="br">${esc(s.gitBranch)}</span>` : ''}${st && (st.add || st.del) ? `<span class="a">+${st.add}</span><span class="d">−${st.del}</span>` : ''}<span class="r">${d ? 'in a drawer here' : s.alive ? entryLabel(s) : 'ended'}</span></footer>
+      <footer>${pr ? `<span class="opr" data-state="${esc(pr.state)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>` : ''}${session.gitBranch && session.gitBranch !== 'HEAD' ? `<span class="br">${esc(session.gitBranch)}</span>` : ''}${st && (st.add || st.del) ? `<span class="a">+${st.add}</span><span class="d">−${st.del}</span>` : ''}<span class="r">${term ? 'in a drawer here' : session.alive ? entryLabel(session) : 'ended'}</span></footer>
     </article>`;
 }
 
@@ -62,10 +66,10 @@ function renderOverview() {
   if (!dlg.open) return;
   const cols = ovColumns();
 
-  ov.list = cols.flatMap(c => c[2]);
+  ov.list = cols.flatMap(column => column[2]);
   ov.sel = Math.max(0, Math.min(ov.sel, ov.list.length - 1));
-  let n = 0;
-  const count = k => cols.find(c => c[0] === k)[2].length;
+  let number = 0;
+  const count = kind => cols.find(column => column[0] === kind)[2].length;
 
   setHtml(
     $('#ovchips'),
@@ -75,7 +79,7 @@ function renderOverview() {
       ['watch', 'watching'],
       ['ready', 'new replies'],
     ]
-      .map(([k, w]) => `<span class="${k}${count(k) ? '' : ' nil'}"><i></i>${count(k)} ${w}</span>`)
+      .map(([kind, label]) => `<span class="${kind}${count(kind) ? '' : ' nil'}"><i></i>${count(kind)} ${label}</span>`)
       .join(''),
   );
 
@@ -92,50 +96,50 @@ function renderOverview() {
   // overview drawn again on every event and every tails' ask took the tile under a press away before its click
   if (host.children.length !== cols.length) host.replaceChildren(...cols.map(() => document.createElement('section')));
 
-  cols.forEach(([k, name, list], i) => {
-    const sec = host.children[i];
-    const cls = `oc ${k}${list.length ? '' : ' nil'}`;
+  cols.forEach(([kind, name, list], index) => {
+    const sec = host.children[index];
+    const cls = `oc ${kind}${list.length ? '' : ' nil'}`;
 
     if (sec.className !== cls) sec.className = cls;
     const head = sec.querySelector(':scope > h2') || sec.appendChild(document.createElement('h2'));
 
     setHtml(head, `<i></i><span>${name}</span><b>${list.length}</b>`);
-    const had = new Map([...sec.querySelectorAll(':scope > .ot')].map(t => [t.dataset.id, t]));
+    const had = new Map([...sec.querySelectorAll(':scope > .ot')].map(tile => [tile.dataset.id, tile]));
     let prev = head;
 
-    for (const s of list) {
-      const html = ovTile(s, ++n, n - 1 === ov.sel);
-      let t = had.get(s.id);
+    for (const session of list) {
+      const html = ovTile(session, ++number, number - 1 === ov.sel);
+      let tile = had.get(session.id);
 
-      had.delete(s.id);
+      had.delete(session.id);
 
-      if (t?._drawn !== html) {
+      if (tile?._drawn !== html) {
         tpl.innerHTML = html;
         const nt = tpl.content.firstElementChild;
 
         nt._drawn = html;
-        if (t) t.replaceWith(nt);
-        t = nt;
+        if (tile) tile.replaceWith(nt);
+        tile = nt;
       }
 
-      if (prev.nextElementSibling !== t) prev.after(t);
-      prev = t;
+      if (prev.nextElementSibling !== tile) prev.after(tile);
+      prev = tile;
     }
 
-    for (const t of had.values()) t.remove();
+    for (const tile of had.values()) tile.remove();
   });
 
   fillAges(host);
 
   for (const host of $('#ovcols').querySelectorAll('.obody.live')) {
-    const s = state.sessions.get(host.closest('.ot').dataset.id);
-    const d = s && drawerOf(s);
+    const session = state.sessions.get(host.closest('.ot').dataset.id);
+    const term = session && drawerOf(session);
 
-    if (d) mountMini(ov.minis, host, d, !asking(s));
+    if (term) mountMini(ov.minis, host, term, !asking(session));
   }
 
   sweepMinis(ov.minis);
-  for (const s of ov.list) wantDiffStat(s);
+  for (const session of ov.list) wantDiffStat(session);
 }
 
 const ovSoon = () => {
@@ -147,65 +151,66 @@ const ovSoon = () => {
 // grows into the chat column as the overview goes (ovGo: a ghost of it in the top layer, over the closing dialog).
 function ovZoomIn() {
   if (REDUCED.matches) return;
-  let i = 0;
+  let index = 0;
 
-  for (const t of $('#ovcols').querySelectorAll('.ot')) {
-    const c = document.querySelector(`#slist > .card[data-id="${CSS.escape(t.dataset.id)}"]`);
-    const b = t.getBoundingClientRect();
+  for (const tile of $('#ovcols').querySelectorAll('.ot')) {
+    const card = document.querySelector(`#slist > .card[data-id="${CSS.escape(tile.dataset.id)}"]`);
+    const tileRect = tile.getBoundingClientRect();
 
-    const a = c?.getClientRects().length ? c.getBoundingClientRect() : null;
-    const seen = a && a.bottom > 0 && a.top < innerHeight && b.width && b.height;
+    const cardRect = card?.getClientRects().length ? card.getBoundingClientRect() : null;
+    const seen = cardRect && cardRect.bottom > 0 && cardRect.top < innerHeight && tileRect.width && tileRect.height;
 
-    t.animate(
+    tile.animate(
       [
         {
           transform: seen
-            ? `translate(${a.left - b.left}px, ${a.top - b.top}px) scale(${a.width / b.width}, ${a.height / b.height})`
+            ? `translate(${cardRect.left - tileRect.left}px, ${cardRect.top - tileRect.top}px) scale(${cardRect.width / tileRect.width}, ${cardRect.height / tileRect.height})`
             : 'translateY(8px) scale(.96)',
           opacity: seen ? 0.45 : 0,
         },
         { transform: 'none', opacity: 1 },
       ],
-      { duration: 300, easing: EASE_OUT, delay: Math.min(i++, 8) * 18, fill: 'backwards', id: 'ovzoom' },
+      { duration: 300, easing: EASE_OUT, delay: Math.min(index++, 8) * 18, fill: 'backwards', id: 'ovzoom' },
     );
   }
 
-  noteMotion(null, 'ovzoom', i);
+  noteMotion(null, 'ovzoom', index);
 }
 
-function ovGo(s, tile, how = () => openSession(s.id, { locate: true })) {
-  const a = tile?.getBoundingClientRect();
-  const b = $('#chat').getBoundingClientRect();
+function ovGo(session, tile, how = () => openSession(session.id, { locate: true })) {
+  const tileRect = tile?.getBoundingClientRect();
+  const chatRect = $('#chat').getBoundingClientRect();
 
   $('#ov').close();
   how();
-  if (!a || REDUCED.matches || !b.width) return;
-  const g = document.createElement('div');
+  if (!tileRect || REDUCED.matches || !chatRect.width) return;
+  const ghost = document.createElement('div');
 
-  g.className = 'ovghost';
-  g.popover = 'manual';
-  g.style.cssText = `left: ${a.left}px; top: ${a.top}px; width: ${a.width}px; height: ${a.height}px; --repo: ${repoColor(s.cwd) || 'var(--nocolor)'}`;
-  document.body.append(g);
+  ghost.className = 'ovghost';
+  ghost.popover = 'manual';
+  ghost.style.cssText = `left: ${tileRect.left}px; top: ${tileRect.top}px; width: ${tileRect.width}px; height: ${tileRect.height}px; --repo: ${repoColor(session.cwd) || 'var(--nocolor)'}`;
+  document.body.append(ghost);
 
   try {
-    g.showPopover();
+    ghost.showPopover();
   } catch {}
 
-  noteMotion(s.id, 'ovgrow');
+  noteMotion(session.id, 'ovgrow');
 
-  g.animate(
-    [
-      { transform: 'none', opacity: 1 },
-      { opacity: 0.85, offset: 0.7 },
-      {
-        transform: `translate(${b.left - a.left}px, ${b.top - a.top}px) scale(${b.width / a.width}, ${b.height / a.height})`,
-        opacity: 0,
-      },
-    ],
-    { duration: 320, easing: EASE_OUT, fill: 'forwards', id: 'ovgrow' },
-  )
+  ghost
+    .animate(
+      [
+        { transform: 'none', opacity: 1 },
+        { opacity: 0.85, offset: 0.7 },
+        {
+          transform: `translate(${chatRect.left - tileRect.left}px, ${chatRect.top - tileRect.top}px) scale(${chatRect.width / tileRect.width}, ${chatRect.height / tileRect.height})`,
+          opacity: 0,
+        },
+      ],
+      { duration: 320, easing: EASE_OUT, fill: 'forwards', id: 'ovgrow' },
+    )
     .finished.catch(() => {})
-    .then(() => g.remove());
+    .then(() => ghost.remove());
 }
 
 function ovOpen() {
@@ -222,7 +227,7 @@ function ovOpen() {
 
   const tick = () =>
     loadTails(
-      ov.list.filter(s => !drawerOf(s)).map(s => s.id),
+      ov.list.filter(session => !drawerOf(session)).map(session => session.id),
       ovSoon,
     );
 
@@ -238,44 +243,44 @@ $('#ov').addEventListener('close', () => {
 // A click on nothing closes it, as Mission Control's does (2026-10-11, late night): the room round and under the tiles, a column's
 // head, the bar's words — anything not a tile or a control. Pressed and let go there both: a press that began on a
 // tile (a selection dragged off it) lands its click on the column, and is not one.
-const ovNothing = t => !t.closest('.ot, button, a, input');
+const ovNothing = target => !target.closest('.ot, button, a, input');
 
-$('#ov').addEventListener('pointerdown', e => {
-  ov.downOn = ovNothing(e.target);
+$('#ov').addEventListener('pointerdown', event => {
+  ov.downOn = ovNothing(event.target);
 });
 
-$('#ov').addEventListener('click', e => {
-  if (e.target.closest('.ovclose') || (ov.downOn !== false && ovNothing(e.target))) return $('#ov').close();
+$('#ov').addEventListener('click', event => {
+  if (event.target.closest('.ovclose') || (ov.downOn !== false && ovNothing(event.target))) return $('#ov').close();
 
-  const ans = e.target.closest('[data-ans]');
-  const tile = e.target.closest('.ot');
+  const ans = event.target.closest('[data-ans]');
+  const tile = event.target.closest('.ot');
 
   if (!tile) return;
-  const s = state.sessions.get(tile.dataset.id);
+  const session = state.sessions.get(tile.dataset.id);
 
-  if (!s) return;
+  if (!session) return;
   if (ans) {
     $('#ov').close();
-    answerInDrawer(s, ans.dataset.ans);
-  } else ovGo(s, tile);
+    answerInDrawer(session, ans.dataset.ans);
+  } else ovGo(session, tile);
 });
 
-$('#ov').addEventListener('keydown', e => {
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-  const i = /^[1-9]$/.test(e.key) ? +e.key - 1 : e.key === 'Enter' ? ov.sel : -1;
+$('#ov').addEventListener('keydown', event => {
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  const index = /^[1-9]$/.test(event.key) ? +event.key - 1 : event.key === 'Enter' ? ov.sel : -1;
 
-  if (i >= 0) {
-    e.preventDefault();
-    const s = ov.list[i];
+  if (index >= 0) {
+    event.preventDefault();
+    const session = ov.list[index];
 
-    if (s) ovGo(s, $(`#ovcols .ot[data-id="${CSS.escape(s.id)}"]`));
+    if (session) ovGo(session, $(`#ovcols .ot[data-id="${CSS.escape(session.id)}"]`));
     return;
   }
 
-  const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+  const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key];
 
   if (step) {
-    e.preventDefault();
+    event.preventDefault();
     ov.sel = Math.max(0, Math.min(ov.list.length - 1, ov.sel + step));
     renderOverview();
     $('#ovcols .ot.sel')?.scrollIntoView({ block: 'nearest' });
@@ -283,16 +288,16 @@ $('#ov').addEventListener('keydown', e => {
 });
 
 /** An answer from the overview: the chat opened, and once its drawer is attached, the answer's digit typed into it. */
-async function answerInDrawer(s, digit) {
-  await openSession(s.id);
+async function answerInDrawer(session, digit) {
+  await openSession(session.id);
   if (!/^\d$/.test(String(digit))) return; // an answer's number, one key
 
   // the number, then ⏎ once the select shows it ringed (2026-11-24, spEnter) — none for an answer that wants words
-  const words = SP_WORDS.test(s.ask?.labels?.[digit - 1] || '');
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const words = SP_WORDS.test(session.ask?.labels?.[digit - 1] || '');
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-  for (let i = 0; i < 60; i++) {
-    const tm = claudeTm(s);
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const tm = claudeTm(session);
 
     if (!tm) {
       await sleep(100);
@@ -302,9 +307,9 @@ async function answerInDrawer(s, digit) {
     let ask = null; // its select off the drawer's screen, given a moment to come up after the attach
 
     for (
-      let j = 0;
-      j < 15 && !(ask = await new Promise(r => tm.xt.write('', () => r(spAskOf(spScreen(tm.xt))))));
-      j++
+      let look = 0;
+      look < 15 && !(ask = await new Promise(resolve => tm.xt.write('', () => resolve(spAskOf(spScreen(tm.xt))))));
+      look++
     ) {
       await sleep(100);
     }

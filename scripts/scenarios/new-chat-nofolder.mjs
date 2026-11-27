@@ -22,8 +22,8 @@ const rows = ctx =>
 export default async function (ctx) {
   const out = {};
 
-  const [a, b] = ctx.fixture.chats;
-  const known = [a.id, b.id];
+  const [chatA, chatB] = ctx.fixture.chats;
+  const known = [chatA.id, chatB.id];
 
   const scratch = join(realpathSync(ctx.server.dir), 'no folder');
 
@@ -48,18 +48,23 @@ export default async function (ctx) {
     `the first row, selected, saying where, no ✕: ${JSON.stringify(out.rows[0])}`,
   );
 
-  ctx.assert.equal(out.rows.filter(r => r.none).length, 1, 'one such row');
+  ctx.assert.equal(out.rows.filter(row => row.none).length, 1, 'one such row');
   ctx.assert.match(out.hint, /, or no folder at all · /, 'the box says it takes none');
 
   // ---- a name typed hides it; emptied, it is back ----
-  const project = a.cwd
+  const project = chatA.cwd
     .replace(/\/\.claude\/worktrees\/[^/]+$/, '')
     .split('/')
-    .pop(); // this checkout's — b's is the temp dir, T, which "new chat" holds
+    .pop(); // this checkout's — chatB's is the temp dir, T, which "new chat" holds
 
   await ctx.fill('#pickq', project);
   out.typed = await rows(ctx);
-  ctx.assert.ok(!out.typed.some(r => r.none), `a project's name typed: the row is gone — ${JSON.stringify(out.typed)}`);
+
+  ctx.assert.ok(
+    !out.typed.some(row => row.none),
+    `a project's name typed: the row is gone — ${JSON.stringify(out.typed)}`,
+  );
+
   ctx.assert.equal(out.typed[0].name, project, 'and the project leads');
   ctx.assert.ok(out.typed[0].sel, 'selected');
   await ctx.fill('#pickq', 'no folder');
@@ -71,7 +76,7 @@ export default async function (ctx) {
 
   // ---- a project in view keeps the selection, the row still first ----
   await ctx.evaluate(
-    `(() => { const p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'); p.project = ${JSON.stringify(b.cwd)}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })()`,
+    `(() => { const p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'); p.project = ${JSON.stringify(chatB.cwd)}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })()`,
   );
 
   await ctx.reload();
@@ -110,7 +115,7 @@ export default async function (ctx) {
 
   out.session = await ctx
     .peix(`session(${JSON.stringify(id)})`)
-    .then(s => ({ cwd: s.cwd, project: s.project, alive: s.alive }));
+    .then(session => ({ cwd: session.cwd, project: session.project, alive: session.alive }));
 
   out.made = existsSync(scratch);
   out.head = await ctx.evaluate(`document.querySelector('#shead .repo')?.textContent`);

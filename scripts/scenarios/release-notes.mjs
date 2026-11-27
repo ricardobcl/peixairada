@@ -5,11 +5,11 @@
 // checkout here is its throwaway one (test/update-project.mjs), the agent's restart a stand-in that writes it was asked.
 import { PAGE, project } from '../../test/update-project.mjs';
 
-const p = project();
+const repo = project();
 
 export const meta = {
   server: true,
-  env: { ...p.env, UPDATE_CHANNEL: 'releases', UPDATE_QUIET_MS: '0' },
+  env: { ...repo.env, UPDATE_CHANNEL: 'releases', UPDATE_QUIET_MS: '0' },
 };
 
 export default async function (ctx) {
@@ -40,7 +40,7 @@ export default async function (ctx) {
   await ctx.cmd('Comma');
   await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
   await ctx.evaluate(`document.querySelector('#stSystem').click()`);
-  p.push({ 'public/index.html': `${PAGE}<!-- a -->\n` }, 'a');
+  repo.push({ 'public/index.html': `${PAGE}<!-- a -->\n` }, 'a');
   await look('a look with a commit and no release');
   out.commit = { row: await row(), seg: await seg() };
   ctx.assert.deepEqual(out.commit.row.follow, ['releases'], 'releases by default');
@@ -50,7 +50,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.commit.seg, null, 'no news in the bar');
 
   // a release: its name in the bar and the settings, its notes drawn before it is taken
-  const r2 = p.release(
+  const r2 = repo.release(
     '0.2.0',
     '### New\n\n- **Space** (⌥⌘X) shows every chat as a node, its agents round it.\n- **Pinned** keeps the chats you pin above the lanes.\n\n### Fixed\n\n- Links in a drawer open when clicked.\n',
   );
@@ -70,7 +70,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#settings').close()`);
   await ctx.evaluate(`window.__mark = 1; document.querySelector('#sbLeft .upg[data-take]').click()`);
   await ctx.waitFor(`window.peix.update()?.running === '0.2.0'`, { what: 'the board on 0.2' });
-  ctx.assert.equal(p.head(), r2, 'onto the release');
+  ctx.assert.equal(repo.head(), r2, 'onto the release');
   await ctx.server.restart(); // what launchd.sh restart does: the same port, a new server
   // the page the update changed reloads once the new server answers
   await ctx.waitFor(`!window.__mark && window.peix?.state().snapshots > 0`, { what: 'the new page', timeout: 25_000 });
@@ -108,7 +108,7 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#news').open`), false, 'not again');
 
   // Every commit: the commits past the release are the news again
-  const b = p.push({ 'public/index.html': `${PAGE}<!-- b -->\n` }, 'b');
+  const commit = repo.push({ 'public/index.html': `${PAGE}<!-- b -->\n` }, 'b');
 
   await ctx.cmd('Comma');
   await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings again' });
@@ -125,7 +125,7 @@ export default async function (ctx) {
 
   ctx.assert.deepEqual(
     [out.main.row.follow, out.main.row.word, out.main.seg, out.main.up],
-    [['main'], '1 new commit', '1 new commit · update', b],
+    [['main'], '1 new commit', '1 new commit · update', commit],
   );
 
   ctx.assert.match(out.main.row.say, /^1 new commit on origin\/main — Update now takes them/);

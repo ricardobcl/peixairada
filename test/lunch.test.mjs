@@ -19,18 +19,18 @@ process.env.NOTIFY = 'off';
 const { cleanSetup, lunchPhase, dishesOn, closedOn, dayKey, readerArgs, readerDenies } = await import('../server.mjs');
 
 const DAY = 86_400_000;
-const at = (h, m = 0, from = Date.now()) => new Date(from).setHours(h, m, 0, 0);
+const at = (hours, minutes = 0, from = Date.now()) => new Date(from).setHours(hours, minutes, 0, 0);
 const earlier = () => Math.max(at(0, 1), Date.now() - 3600_000); // today, before now — just after midnight too
 
 test("readerArgs: a reader may only read — dontAsk always, the Slack one denies its connector's writes, the picture one has no MCP (2026-11-06)", () => {
-  const val = (a, flag) => a[a.indexOf(flag) + 1];
+  const val = (args, flag) => args[args.indexOf(flag) + 1];
 
   const pic = readerArgs({ schema: {} });
   const slack = readerArgs({ schema: {}, tools: ['mcp__claude_ai_Slack__slack_read_channel'] });
 
-  for (const a of [pic, slack]) {
-    assert.equal(val(a, '--permission-mode'), 'dontAsk');
-    assert.equal(val(a, '--tools'), '');
+  for (const args of [pic, slack]) {
+    assert.equal(val(args, '--permission-mode'), 'dontAsk');
+    assert.equal(val(args, '--tools'), '');
   }
 
   assert.ok(pic.includes('--strict-mcp-config') && !pic.includes('--allowedTools'));
@@ -75,14 +75,17 @@ test("readerDenies: every MCP server the user's allow rules name is the Slack re
     'mcp__notion',
   ]);
 
-  const val = (a, flag) => a[a.indexOf(flag) + 1];
+  const val = (args, flag) => args[args.indexOf(flag) + 1];
 
   const no = val(
     readerArgs({ schema: {}, tools: ['mcp__claude_ai_Slack__slack_read_channel'], deny }),
     '--disallowedTools',
   );
 
-  for (const d of [...deny, 'mcp__claude_ai_Slack__slack_add_list_comment']) assert.ok(no.split(',').includes(d), d);
+  for (const tool of [...deny, 'mcp__claude_ai_Slack__slack_add_list_comment']) {
+    assert.ok(no.split(',').includes(tool), tool);
+  }
+
   assert.ok(!no.includes('slack_read_channel'), 'its own read stays');
 
   assert.deepEqual(
@@ -254,51 +257,51 @@ test("lib/instagram.mjs: a post's time from its id, a profile's own posts and it
       9000,
     )}<script>{"profile_id":"42","user":{"username":"casa","latest_reel_media":1792270415,"biography":"b"}}</script>`;
 
-  const p = parseProfile(html, 'casa');
+  const profile = parseProfile(html, 'casa');
 
-  assert.equal(p.id, '42');
-  assert.equal(p.storyAt, 1792270415_000, "its own story's time, not a suggested account's");
+  assert.equal(profile.id, '42');
+  assert.equal(profile.storyAt, 1792270415_000, "its own story's time, not a suggested account's");
 
   assert.deepEqual(
-    p.posts.map(x => x.code),
+    profile.posts.map(post => post.code),
     ['DeYx_VNE7fz', 'DeM2L2oDqEK'],
     "its own, newest first — not a collaborator's",
   );
 
-  assert.equal(p.posts[0].caption, 'Ementa "da" semana');
+  assert.equal(profile.posts[0].caption, 'Ementa "da" semana');
 });
 
 const PNG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
 async function stream(srv) {
-  const r = await fetch(`${srv.url}events?key=${srv.key}`);
+  const response = await fetch(`${srv.url}events?key=${srv.key}`);
   const dec = new TextDecoder();
-  const reader = r.body.getReader();
+  const reader = response.body.getReader();
 
-  const s = { text: '', close: () => reader.cancel().catch(() => {}) };
+  const feed = { text: '', close: () => reader.cancel().catch(() => {}) };
 
   (async () => {
     for (;;) {
       const { value, done } = await reader.read().catch(() => ({ done: true }));
 
       if (done) return;
-      s.text += dec.decode(value, { stream: true });
+      feed.text += dec.decode(value, { stream: true });
     }
   })();
 
-  return s;
+  return feed;
 }
 
-const hm = t =>
-  `${String(new Date(t).getHours()).padStart(2, '0')}:${String(new Date(t).getMinutes()).padStart(2, '0')}`;
+const hm = time =>
+  `${String(new Date(time).getHours()).padStart(2, '0')}:${String(new Date(time).getMinutes()).padStart(2, '0')}`;
 
 test(
   "end to end: a week's post, a story through the channel, each picture read once, the reminder and what you say to it",
   { timeout: 60_000 },
-  async t => {
+  async context => {
     if (new Date().getHours() === 0 && new Date().getMinutes() < 3) {
-      return t.skip("a minute past midnight: lunch time a minute ago would be yesterday's");
+      return context.skip("a minute past midnight: lunch time a minute ago would be yesterday's");
     }
 
     const srv = await startTestServer();
@@ -391,7 +394,7 @@ test(
       assert.equal((await put(cfg)).status, 200);
 
       const lunch = async () => (await srv.api('api/lunch')).body;
-      const place = async n => (await lunch()).places.find(p => p.name === n);
+      const place = async name => (await lunch()).places.find(venue => venue.name === name);
 
       assert.equal((await lunch()).phase, 'before');
       await srv.post('api/lunch', { act: 'read' });
@@ -439,7 +442,7 @@ test(
       await waitFor(async () => !(await lunch()).busy, { what: 'the round done' });
 
       assert.equal(
-        reads().filter(r => r === 'ementa desta semana').length,
+        reads().filter(read => read === 'ementa desta semana').length,
         1,
         'a picture read once, whatever the rounds',
       );
@@ -450,7 +453,7 @@ test(
             readFileSync(srv.env.FAKEIG_LOG, 'utf8')
               .trim()
               .split('\n')
-              .map(l => l.split(' ')[0]),
+              .map(line => line.split(' ')[0]),
           ),
         ],
         ['look'],
@@ -501,8 +504,12 @@ test(
         }),
       );
 
-      await new Promise(r => setTimeout(r, 2000)); // a registry poll or two
-      assert.ok(!(await srv.api('api/sessions')).body.sessions.some(s => s.id === 'reader-0000'), 'not on the board');
+      await new Promise(resolve => setTimeout(resolve, 2000)); // a registry poll or two
+
+      assert.ok(
+        !(await srv.api('api/sessions')).body.sessions.some(session => session.id === 'reader-0000'),
+        'not on the board',
+      );
     } finally {
       sse.close();
       await srv.stop();
@@ -580,15 +587,20 @@ test(
         what: "the channel's over the month's",
       });
 
-      let r = await ramen(srv);
-
-      assert.deepEqual([r.dishes, r.month], [['Hummus e vegetais'], false], "today's, from the channel");
-      await srv.post('api/lunch', { act: 'read' });
-      await waitFor(() => idle(srv), { what: 'Read again done' });
-      r = await ramen(srv);
+      let ramenPlace = await ramen(srv);
 
       assert.deepEqual(
-        [r.dishes, r.src],
+        [ramenPlace.dishes, ramenPlace.month],
+        [['Hummus e vegetais'], false],
+        "today's, from the channel",
+      );
+
+      await srv.post('api/lunch', { act: 'read' });
+      await waitFor(() => idle(srv), { what: 'Read again done' });
+      ramenPlace = await ramen(srv);
+
+      assert.deepEqual(
+        [ramenPlace.dishes, ramenPlace.src],
         [['Hummus e vegetais'], 'slack'],
         "the month's post, looked at again, does not take the day's place",
       );

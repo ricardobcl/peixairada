@@ -33,25 +33,25 @@ test('the org folders are listed, and a clone is refused a name that is not one'
     assert.deepEqual(list.body.roots, [{ dir: root, org: 'acme' }]);
 
     assert.deepEqual(
-      list.body.folders.map(f => f.name),
+      list.body.folders.map(folder => folder.name),
       ['oracle', 'wallet-api', 'wallet-api-fix'],
       'directories only, by name — a file and a dotfolder are not folders here',
     );
 
     assert.deepEqual(
-      list.body.folders.map(f => f.git),
+      list.body.folders.map(folder => folder.git),
       [false, true, true],
       'a .git says which one is a clone already',
     );
 
     assert.deepEqual(
-      list.body.folders.map(f => !!f.worktree),
+      list.body.folders.map(folder => !!folder.worktree),
       [false, false, true],
       'and a .git file naming worktrees/ that it is a worktree (2026-10-09)',
     );
 
     assert.deepEqual(
-      list.body.folders.map(f => [f.root, f.org]),
+      list.body.folders.map(folder => [folder.root, folder.org]),
       [
         [root, 'acme'],
         [root, 'acme'],
@@ -80,7 +80,7 @@ test('the org folders are listed, and a clone is refused a name that is not one'
     const again = await srv.api('api/folders');
 
     assert.deepEqual(
-      again.body.folders.map(f => f.name),
+      again.body.folders.map(folder => folder.name),
       ['ledger-service', 'oracle', 'wallet-api', 'wallet-api-fix'],
       'a folder that appeared is listed on the next ask',
     );
@@ -114,14 +114,14 @@ test(
         const dec = new TextDecoder();
         let buf = '';
 
-        for await (const b of res.body) {
-          buf += dec.decode(b, { stream: true });
-          let i;
+        for await (const chunk of res.body) {
+          buf += dec.decode(chunk, { stream: true });
+          let index;
 
-          while ((i = buf.indexOf('\n\n')) >= 0) {
-            const msg = buf.slice(0, i);
+          while ((index = buf.indexOf('\n\n')) >= 0) {
+            const msg = buf.slice(0, index);
 
-            buf = buf.slice(i + 2);
+            buf = buf.slice(index + 2);
             if (/^event: clone$/m.test(msg)) events.push(JSON.parse(msg.match(/^data: (.*)$/m)[1]));
           }
         }
@@ -153,7 +153,7 @@ test(
       assert.deepEqual([elsewhere.status, elsewhere.body.clone], [409, null]);
       assert.match(elsewhere.body.error, /no folder of repos with an org holds it/);
 
-      const [a, b] = [
+      const [firstClone, secondClone] = [
         srv.post('api/clone', { name: 'widgets' }),
         (async () => {
           await sleep(300);
@@ -170,7 +170,7 @@ test(
         "the folder is there from git's first moment, and still not a checkout: the spawn waits on the clone",
       );
 
-      const [ra, rb] = await Promise.all([a, b]);
+      const [ra, rb] = await Promise.all([firstClone, secondClone]);
 
       assert.deepEqual(
         [ra.status, ra.body, rb.status, rb.body],
@@ -179,10 +179,10 @@ test(
       );
 
       assert.ok(existsSync(join(root, 'widgets', '.git', 'config')), 'cloned');
-      await waitFor(() => events.some(e => e.done), { what: "the clone's last event" });
-      const mine = events.filter(e => e.ref === 'acme/widgets');
+      await waitFor(() => events.some(event => event.done), { what: "the clone's last event" });
+      const mine = events.filter(event => event.ref === 'acme/widgets');
 
-      assert.equal(mine.filter(e => e.done).length, 1, 'one clone, one end');
+      assert.equal(mine.filter(event => event.done).length, 1, 'one clone, one end');
 
       assert.deepEqual(mine.at(-1), {
         ref: 'acme/widgets',
@@ -192,15 +192,17 @@ test(
         done: true,
       });
 
-      const pcts = mine.filter(e => !e.done).map(e => e.percent);
+      const pcts = mine.filter(event => !event.done).map(event => event.percent);
 
       assert.ok(
-        pcts.length >= 3 && pcts.every((p, i) => !i || p >= pcts[i - 1]) && pcts.some(p => p > 0 && p < 100),
+        pcts.length >= 3 &&
+          pcts.every((percent, index) => !index || percent >= pcts[index - 1]) &&
+          pcts.some(percent => percent > 0 && percent < 100),
         `how far, as it goes: ${pcts}`,
       );
 
       assert.ok(
-        mine.some(e => e.phase === 'Receiving objects'),
+        mine.some(event => event.phase === 'Receiving objects'),
         "git's own phases",
       );
 
@@ -216,7 +218,7 @@ test(
 
       assert.ok(!existsSync(join(root, 'no-such-repo')), 'nothing left behind');
 
-      await waitFor(() => events.some(e => e.ref === 'acme/no-such-repo' && e.done && e.error), {
+      await waitFor(() => events.some(event => event.ref === 'acme/no-such-repo' && event.done && event.error), {
         what: 'the failure said on the stream',
       });
     } finally {
@@ -249,8 +251,8 @@ test(
       GIT_CONFIG_NOSYSTEM: '1',
     };
 
-    const git = (cwd, ...a) =>
-      execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env })
+    const git = (cwd, ...args) =>
+      execFileSync('git', ['-C', cwd, ...args], { stdio: 'pipe', env })
         .toString()
         .trim();
 
@@ -276,7 +278,7 @@ test(
     const made = [];
 
     try {
-      const sum = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+      const sum = async id => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
 
       assert.deepEqual(
         [(await sum(inTree.id)).folderMissing, (await sum(inTree.id)).cloneRef, (await sum(inTree.id)).back],
@@ -285,34 +287,34 @@ test(
       );
 
       assert.deepEqual((await sum(inGone.id)).back, { near: repo });
-      const r = await srv.post(`api/sessions/${inTree.id}/terminal`, { cols: 100, rows: 30 });
+      const treeResume = await srv.post(`api/sessions/${inTree.id}/terminal`, { cols: 100, rows: 30 });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      made.push(r.body.terminal.id);
-      assert.deepEqual(r.body.back, { from: tree, cwd: tree, tree, branch: 'lunch', made: true });
+      assert.equal(treeResume.status, 201, JSON.stringify(treeResume.body));
+      made.push(treeResume.body.terminal.id);
+      assert.deepEqual(treeResume.body.back, { from: tree, cwd: tree, tree, branch: 'lunch', made: true });
       assert.equal(git(tree, 'branch', '--show-current'), 'lunch', 'the tree again, on the chat’s branch');
 
       await waitFor(
         async () => {
-          const s = await sum(inTree.id);
+          const session = await sum(inTree.id);
 
-          return s.alive && s.live?.cwd === tree;
+          return session.alive && session.live?.cwd === tree;
         },
         { what: 'the chat resumed in its tree' },
       );
 
       assert.match(srv.logText(), /worktrees\/lunch is gone — its worktree made again, on lunch/);
-      const g = await srv.post(`api/sessions/${inGone.id}/terminal`, { cols: 100, rows: 30 });
+      const goneResume = await srv.post(`api/sessions/${inGone.id}/terminal`, { cols: 100, rows: 30 });
 
-      assert.equal(g.status, 201, JSON.stringify(g.body));
-      made.push(g.body.terminal.id);
-      assert.deepEqual(g.body.back, { from: join(repo, 'packages', 'gone'), cwd: repo });
+      assert.equal(goneResume.status, 201, JSON.stringify(goneResume.body));
+      made.push(goneResume.body.terminal.id);
+      assert.deepEqual(goneResume.body.back, { from: join(repo, 'packages', 'gone'), cwd: repo });
 
       await waitFor(
         async () => {
-          const s = await sum(inGone.id);
+          const session = await sum(inGone.id);
 
-          return s.alive && s.live?.cwd === repo;
+          return session.alive && session.live?.cwd === repo;
         },
         { what: 'the other chat resumed in the repo' },
       );
@@ -320,24 +322,24 @@ test(
       // the screen's first frame: the fake printed the chat's history back, read from the transcript it found by its id
       const screen = () =>
         new Promise(res => {
-          const ws = new WebSocket(srv.ws(`api/terminals/${g.body.terminal.id}/ws`));
+          const ws = new WebSocket(srv.ws(`api/terminals/${goneResume.body.terminal.id}/ws`));
 
           ws.binaryType = 'arraybuffer';
 
-          const done = v => {
-            clearTimeout(t);
+          const done = text => {
+            clearTimeout(timer);
 
             try {
               ws.close();
             } catch {}
 
-            res(v);
+            res(text);
           };
 
-          const t = setTimeout(() => done(''), 1500);
+          const timer = setTimeout(() => done(''), 1500);
 
-          ws.onmessage = e => {
-            if (typeof e.data !== 'string') done(Buffer.from(e.data).toString('utf8'));
+          ws.onmessage = event => {
+            if (typeof event.data !== 'string') done(Buffer.from(event.data).toString('utf8'));
           };
 
           ws.onerror = () => done('');

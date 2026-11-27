@@ -28,22 +28,22 @@ const CLAUDE_DIR = process.env.CLAUDE_DIR;
 // The real one by what it is, not how it is spelt (2026-10-03: a string compare let `~/.claude/`, `~/.Claude`, a
 // symlink, a folder under it, and any run with $HOME pointed elsewhere — config.test does — write the real registry).
 // Every folder from CLAUDE_DIR up is compared by device and inode with ~/.claude, for $HOME's home and the account's.
-const inode = p => {
+const inode = path => {
   try {
-    const s = statSync(p);
+    const stats = statSync(path);
 
-    return `${s.dev}:${s.ino}`;
+    return `${stats.dev}:${stats.ino}`;
   } catch {
     return null;
   }
 };
 
-const realClaude = new Set([homedir(), userInfo().homedir].map(h => inode(join(h, '.claude'))).filter(Boolean));
+const realClaude = new Set([homedir(), userInfo().homedir].map(home => inode(join(home, '.claude'))).filter(Boolean));
 
-const underReal = d => {
-  for (let p = resolve(d); ; p = dirname(p)) {
-    if (realClaude.has(inode(p))) return true;
-    if (dirname(p) === p) return false;
+const underReal = dir => {
+  for (let folder = resolve(dir); ; folder = dirname(folder)) {
+    if (realClaude.has(inode(folder))) return true;
+    if (dirname(folder) === folder) return false;
   }
 };
 
@@ -60,23 +60,23 @@ const dd = all.indexOf('--');
 const args = dd >= 0 ? all.slice(0, dd) : all;
 const firstPrompt = dd >= 0 ? all.slice(dd + 1).join(' ') : null;
 
-const arg = f => {
-  const i = args.indexOf(f);
+const arg = flag => {
+  const index = args.indexOf(flag);
 
-  return i >= 0 ? args[i + 1] : null;
+  return index >= 0 ? args[index + 1] : null;
 };
 
 // `stop <job>` (2026-11-04): a background session ended by its id, as Claude Code does; the process is the registry's, whatever it is
 const inRegistry = job => {
-  const d = join(CLAUDE_DIR, 'sessions');
+  const dir = join(CLAUDE_DIR, 'sessions');
 
-  for (const n of existsSync(d) ? readdirSync(d) : []) {
-    if (!n.endsWith('.json')) continue;
+  for (const name of existsSync(dir) ? readdirSync(dir) : []) {
+    if (!name.endsWith('.json')) continue;
 
     try {
-      const r = JSON.parse(readFileSync(join(d, n), 'utf8'));
+      const entry = JSON.parse(readFileSync(join(dir, name), 'utf8'));
 
-      if (r.jobId === job) return { ...r, file: join(d, n) };
+      if (entry.jobId === job) return { ...entry, file: join(dir, name) };
     } catch {}
   }
 
@@ -84,19 +84,19 @@ const inRegistry = job => {
 };
 
 if (args[0] === 'stop') {
-  const r = inRegistry(args[1]);
+  const entry = inRegistry(args[1]);
 
-  if (!r) {
+  if (!entry) {
     console.error(`no such session: ${args[1]}`);
     process.exit(1);
   }
 
   try {
-    process.kill(r.pid, 'SIGTERM');
+    process.kill(entry.pid, 'SIGTERM');
   } catch {}
 
   try {
-    unlinkSync(r.file);
+    unlinkSync(entry.file);
   } catch {}
 
   process.exit(0);
@@ -135,19 +135,19 @@ const cwd = process.cwd();
 // `.claude/agents` and up, to its git root), yours, an enabled plugin's or its own, else it ends at once saying which there
 // are; '' is none, over a folder's settings' own. The transcript's first line says it (`agent-setting`), the registry's
 // `agent` the flag's. A resume keeps the transcript's.
-const jsonAt = p => {
+const jsonAt = path => {
   try {
-    return JSON.parse(readFileSync(p, 'utf8'));
+    return JSON.parse(readFileSync(path, 'utf8'));
   } catch {
     return null;
   }
 };
 
-const mdNames = d => {
+const mdNames = dir => {
   try {
-    return readdirSync(d)
-      .filter(n => n.endsWith('.md'))
-      .map(n => (/^name:\s*(\S+)/m.exec(readFileSync(join(d, n), 'utf8')) || [null, n.slice(0, -3)])[1]);
+    return readdirSync(dir)
+      .filter(name => name.endsWith('.md'))
+      .map(name => (/^name:\s*(\S+)/m.exec(readFileSync(join(dir, name), 'utf8')) || [null, name.slice(0, -3)])[1]);
   } catch {
     return [];
   }
@@ -165,7 +165,7 @@ let agent =
   agentFlag ??
   (arg('--resume') && !args.includes('--fork-session')
     ? null
-    : [2, 1, 0].map(i => settings[i]?.agent).find(a => typeof a === 'string' && a) || null);
+    : [2, 1, 0].map(index => settings[index]?.agent).find(value => typeof value === 'string' && value) || null);
 
 if (agentFlag) {
   const known = [
@@ -177,16 +177,16 @@ if (agentFlag) {
     ...mdNames(join(CLAUDE_DIR, 'agents')),
   ];
 
-  for (let d = cwd; d !== homedir(); d = dirname(d)) {
-    known.push(...mdNames(join(d, '.claude', 'agents')));
-    if (existsSync(join(d, '.git')) || dirname(d) === d) break;
+  for (let dir = cwd; dir !== homedir(); dir = dirname(dir)) {
+    known.push(...mdNames(join(dir, '.claude', 'agents')));
+    if (existsSync(join(dir, '.git')) || dirname(dir) === dir) break;
   }
 
   const plugins = jsonAt(join(CLAUDE_DIR, 'plugins', 'installed_plugins.json'))?.plugins || {};
 
-  for (const [key, on] of Object.entries(Object.assign({}, ...settings.map(s => s?.enabledPlugins || {})))) {
+  for (const [key, on] of Object.entries(Object.assign({}, ...settings.map(config => config?.enabledPlugins || {})))) {
     if (on === true && plugins[key]?.[0]?.installPath) {
-      known.push(...mdNames(join(plugins[key][0].installPath, 'agents')).map(n => `${key.split('@')[0]}:${n}`));
+      known.push(...mdNames(join(plugins[key][0].installPath, 'agents')).map(name => `${key.split('@')[0]}:${name}`));
     }
   }
 
@@ -211,8 +211,8 @@ mkdirSync(sessDir, { recursive: true });
 // its id in whichever project folder has it, one alone, and writes on there
 const foundById = id =>
   readdirSync(join(CLAUDE_DIR, 'projects'))
-    .map(d => join(CLAUDE_DIR, 'projects', d, `${id}.jsonl`))
-    .filter(f => existsSync(f));
+    .map(dir => join(CLAUDE_DIR, 'projects', dir, `${id}.jsonl`))
+    .filter(path => existsSync(path));
 
 if (arg('--resume') && !forkOf && !existsSync(file)) {
   const found = foundById(sessionId);
@@ -231,12 +231,12 @@ let owedCopy = !forkOf
           readFileSync(src, 'utf8')
             .split('\n')
             .filter(Boolean)
-            .map(l => {
+            .map(jsonLine => {
               try {
-                const j = JSON.parse(l);
+                const entry = JSON.parse(jsonLine);
 
-                if ('sessionId' in j) j.sessionId = sessionId;
-                return `${JSON.stringify(j)}\n`;
+                if ('sessionId' in entry) entry.sessionId = sessionId;
+                return `${JSON.stringify(entry)}\n`;
               } catch {
                 return '';
               }
@@ -250,7 +250,7 @@ const now = () => new Date().toISOString();
 let parent = null;
 let owedAgent = agent && !(arg('--resume') && !forkOf); // a new chat's agent, written with its first line
 
-const line = o => {
+const line = entry => {
   if (owedCopy) {
     const copy = owedCopy;
 
@@ -263,7 +263,7 @@ const line = o => {
     appendFileSync(file, `${JSON.stringify({ type: 'agent-setting', agentSetting: agent, sessionId })}\n`);
   }
 
-  appendFileSync(file, `${JSON.stringify(o)}\n`);
+  appendFileSync(file, `${JSON.stringify(entry)}\n`);
 };
 
 function userLine(text) {
@@ -372,9 +372,9 @@ for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => bye(sig
 // What is drawn waits behind an answer to a resize being written (FAKE_ANSWER, below): a chunk ends anywhere, in an escape.
 let sink = null;
 
-const out = s => {
-  if (sink) sink.push(s);
-  else process.stdout.write(s);
+const out = text => {
+  if (sink) sink.push(text);
+  else process.stdout.write(text);
 };
 
 const cols = () => process.stdout.columns || 80;
@@ -424,9 +424,9 @@ let dollars = 0; // the prompt's text and the cursor in it, in code points
 const rule = () => '─'.repeat(cols());
 
 const elapsed = () => {
-  const s = Math.floor((Date.now() - t0) / 1000);
+  const seconds = Math.floor((Date.now() - t0) / 1000);
 
-  return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
+  return `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, '0')}s`;
 };
 
 const status2prefix = () =>
@@ -442,14 +442,14 @@ const at = (row, col) => `\x1b[${row};${col}H`;
 let lastRows = 0;
 
 function drawLive() {
-  const r = rows();
+  const height = rows();
 
-  if (lastRows > r) out(at(r, 1) + '\n'.repeat(lastRows - r));
+  if (lastRows > height) out(at(height, 1) + '\n'.repeat(lastRows - height));
 
-  const top = r - LIVE + 1;
-  const from = lastRows && lastRows < r ? Math.min(top, lastRows - LIVE + 1) : top;
+  const top = height - LIVE + 1;
+  const from = lastRows && lastRows < height ? Math.min(top, lastRows - LIVE + 1) : top;
 
-  lastRows = r;
+  lastRows = height;
   // erased from the old region's top, drawn at the bottom: drawn from the old top (2026-10-03), the region sat mid-screen
   // after a grow while the cursor went to the bottom rows — a key typed then landed in the transcript
   out(`\x1b[?25l${at(from, 1)}\x1b[J${at(top, 1)}`);
@@ -457,7 +457,7 @@ function drawLive() {
   out(`\x1b[1m❯\x1b[0m ${promptText()}\n`);
   out(`\x1b[2m${rule()}\x1b[0m\n`);
 
-  if (SCREEN) out([0, 1, 2].map(i => SCREEN.status?.[i] || '').join('\n'));
+  if (SCREEN) out([0, 1, 2].map(index => SCREEN.status?.[index] || '').join('\n'));
   else {
     out(
       `${fitW(
@@ -484,18 +484,18 @@ function drawPrompt() {
 
 /** A line of FAKE_SCREEN's wrapped at its words to the width, the rest under its text — after a ⏺, a >, a ⎿ or a list's
  *  dash —, as Claude Code wraps; its colours carry over, the terminal keeping them across the rows. */
-const visible = l => [...l.replace(/\x1b\[[0-9;]*m/g, '')].length;
+const visible = text => [...text.replace(/\x1b\[[0-9;]*m/g, '')].length;
 
-function wrapScreen(l, w) {
-  if (visible(l) <= w) return [l];
+function wrapScreen(text, width) {
+  if (visible(text) <= width) return [text];
 
-  const ind = ' '.repeat(/^\s*(?:(?:⏺|>|⎿|-)\s+)?/.exec(l.replace(/\x1b\[[0-9;]*m/g, ''))[0].length);
+  const ind = ' '.repeat(/^\s*(?:(?:⏺|>|⎿|-)\s+)?/.exec(text.replace(/\x1b\[[0-9;]*m/g, ''))[0].length);
   const out = [];
 
   let cur = null;
 
-  for (const word of l.split(' ')) {
-    if (cur !== null && visible(cur.trim()) && visible(cur) + 1 + visible(word) > w) {
+  for (const word of text.split(' ')) {
+    if (cur !== null && visible(cur.trim()) && visible(cur) + 1 + visible(word) > width) {
       out.push(cur);
       cur = ind + word;
     } else cur = cur === null ? word : `${cur} ${word}`;
@@ -505,42 +505,42 @@ function wrapScreen(l, w) {
 }
 
 /** Under the mark, a status line no wider than the screen: one that wraps scrolls the mark off the top. */
-const fitW = l => (SIZE_MARK ? clipTo(l, cols() - 4) : l); // four for the wide glyphs, which count one here
+const fitW = text => (SIZE_MARK ? clipTo(text, cols() - 4) : text); // four for the wide glyphs, which count one here
 
 /** A line cut at the width, its escapes all kept. */
-function clipTo(l, w) {
-  let n = 0;
-  let o = '';
+function clipTo(text, width) {
+  let count = 0;
+  let clipped = '';
 
-  for (const part of l.split(/(\x1b\[[0-9;]*m)/)) {
+  for (const part of text.split(/(\x1b\[[0-9;]*m)/)) {
     if (part.startsWith('\x1b')) {
-      o += part;
+      clipped += part;
       continue;
     }
 
     for (const ch of part) {
-      if (n < w) {
-        o += ch;
-        n++;
+      if (count < width) {
+        clipped += ch;
+        count++;
       }
     }
   }
 
-  return o;
+  return clipped;
 }
 
 function paint() {
   // under the mark, every line within the width (2026-11-05): the real one never lets a line wrap, and an autowrapped row
   // drawn over is one the serialize addon brings back wrong, in the holder's snapshot the soak compares with
   const all = SCREEN
-    ? shown.flatMap(l => wrapScreen(l, cols()))
+    ? shown.flatMap(text => wrapScreen(text, cols()))
     : SIZE_MARK
-      ? shown.map(l => clipTo(l, cols()))
+      ? shown.map(text => clipTo(text, cols()))
       : shown;
 
   const view = all.slice(Math.max(0, all.length - (rows() - LIVE - 1)));
 
-  out(`\x1b[?25l\x1b[H\x1b[2J${sizeMark()}${view.map((l, i) => at(i + 2, 1) + l).join('')}`);
+  out(`\x1b[?25l\x1b[H\x1b[2J${sizeMark()}${view.map((text, index) => at(index + 2, 1) + text).join('')}`);
   lastRows = 0;
   drawLive();
 }
@@ -570,24 +570,24 @@ async function turn(text) {
   const knob = /^fake (real|silent|slow|stream)(?: (\d+))?$/.exec(text);
 
   if (knob) {
-    const [, k, n] = knob;
+    const [, mode, ms] = knob;
 
-    if (k === 'stream') stream(Number(n));
+    if (mode === 'stream') stream(Number(ms));
     else {
-      ANSWER = k === 'slow' ? 'real' : k;
-      if (k === 'slow') ANSWER_MS = Number(n);
+      ANSWER = mode === 'slow' ? 'real' : mode;
+      if (mode === 'slow') ANSWER_MS = Number(ms);
       else ANSWER_MS = 10;
     }
   }
 
   register('busy');
   userLine(text);
-  say([...text.split('\n').map((l, i) => `${i ? '  ' : '\x1b[36m>\x1b[0m '}${l}`), '']);
+  say([...text.split('\n').map((textLine, index) => `${index ? '  ' : '\x1b[36m>\x1b[0m '}${textLine}`), '']);
   commit();
   tokens += 900 + text.length * 7;
   dollars += 0.01;
-  const r = reply(text);
-  const chunks = r.split('\n');
+  const answer = reply(text);
+  const chunks = answer.split('\n');
   const acc = [];
   // `slow <s>` keeps the turn going that many seconds — a chat that stays clauding, for the tiles' and the overview's tests
   const slow = /^slow (\d+)/.exec(text);
@@ -597,13 +597,13 @@ async function turn(text) {
     await new Promise(res => setTimeout(res, Math.min(600, +slow[1]) * 1000));
   }
 
-  for (const c of chunks) {
-    acc.push(c);
+  for (const chunk of chunks) {
+    acc.push(chunk);
     say(['\x1b[2m● fake is thinking…\x1b[0m', ...acc]);
     await new Promise(res => setTimeout(res, 60));
   }
 
-  assistantLine(r);
+  assistantLine(answer);
   register('idle');
   say([`\x1b[32m●\x1b[0m ${chunks[0]}`, ...chunks.slice(1), '', `\x1b[2m✻ Done in ${elapsed()}\x1b[0m`]);
   commit();
@@ -695,14 +695,14 @@ const history = [];
 if (existsSync(file)) {
   for (const raw of readFileSync(file, 'utf8').split('\n')) {
     try {
-      const j = JSON.parse(raw);
+      const entry = JSON.parse(raw);
 
-      if (j.type === 'agent-setting' && agentFlag === null) agent = j.agentSetting || null;
-      const t = j.message?.content?.find?.(c => c.type === 'text')?.text;
+      if (entry.type === 'agent-setting' && agentFlag === null) agent = entry.agentSetting || null;
+      const text = entry.message?.content?.find?.(block => block.type === 'text')?.text;
 
-      if (t && (j.type === 'user' || j.type === 'assistant')) {
+      if (text && (entry.type === 'user' || entry.type === 'assistant')) {
         history.push(
-          `${j.type === 'user' ? '\x1b[36m>\x1b[0m' : '\x1b[32m●\x1b[0m'} ${t.split('\n')[0].slice(0, 200)}`,
+          `${entry.type === 'user' ? '\x1b[36m>\x1b[0m' : '\x1b[32m●\x1b[0m'} ${text.split('\n')[0].slice(0, 200)}`,
         );
       }
     } catch {}
@@ -826,20 +826,20 @@ function answerResize() {
 
     sink = [];
 
-    const next = i => {
+    const next = index => {
       if (gen !== answering) return;
 
-      if (i === parts.length) {
-        const q = sink;
+      if (index === parts.length) {
+        const held = sink;
 
         sink = null;
-        for (const x of q) out(x);
+        for (const chunk of held) out(chunk);
         return;
       }
 
-      process.stdout.write(parts[i]);
-      if (ANSWER_GAP) setTimeout(next, ANSWER_GAP, i + 1);
-      else setImmediate(next, i + 1);
+      process.stdout.write(parts[index]);
+      if (ANSWER_GAP) setTimeout(next, ANSWER_GAP, index + 1);
+      else setImmediate(next, index + 1);
     };
 
     next(0);
@@ -870,47 +870,47 @@ let focusView = false;
 const cps = () => [...input];
 
 const edit = (from, to, text = '') => {
-  const c = cps();
+  const chars = cps();
 
-  c.splice(from, to - from, ...text);
-  input = c.join('');
+  chars.splice(from, to - from, ...text);
+  input = chars.join('');
   cur = from + [...text].length;
 };
 
 const isWord = ch => /[\p{L}\p{N}_]/u.test(ch || '');
 
 const lineStart = () => {
-  const c = cps();
-  let i = cur;
+  const chars = cps();
+  let index = cur;
 
-  while (i > 0 && c[i - 1] !== '\n') i--;
-  return i;
+  while (index > 0 && chars[index - 1] !== '\n') index--;
+  return index;
 };
 
 const lineEnd = () => {
-  const c = cps();
-  let i = cur;
+  const chars = cps();
+  let index = cur;
 
-  while (i < c.length && c[i] !== '\n') i++;
-  return i;
+  while (index < chars.length && chars[index] !== '\n') index++;
+  return index;
 };
 
 const wordBack = () => {
-  const c = cps();
-  let i = cur;
+  const chars = cps();
+  let index = cur;
 
-  while (i > 0 && !isWord(c[i - 1])) i--;
-  while (i > 0 && isWord(c[i - 1])) i--;
-  return i;
+  while (index > 0 && !isWord(chars[index - 1])) index--;
+  while (index > 0 && isWord(chars[index - 1])) index--;
+  return index;
 };
 
 const wordAhead = () => {
-  const c = cps();
-  let i = cur;
+  const chars = cps();
+  let index = cur;
 
-  while (i < c.length && !isWord(c[i])) i++;
-  while (i < c.length && isWord(c[i])) i++;
-  return i;
+  while (index < chars.length && !isWord(chars[index])) index++;
+  while (index < chars.length && isWord(chars[index])) index++;
+  return index;
 };
 
 // every parameter byte (2026-11-25): an SGR mouse report, ESC [ < b ; x ; y M, is one sequence, not ESC [ and text typed
@@ -970,12 +970,12 @@ if (firstPrompt?.trim()) {
   }, 150);
 }
 
-process.stdin.on('data', async d => {
+process.stdin.on('data', async data => {
   const was = input;
   const wasAt = cur;
 
-  for (let i = 0; i < d.length;) {
-    const rest = d.slice(i);
+  for (let offset = 0; offset < data.length;) {
+    const rest = data.slice(offset);
     const ch = String.fromCodePoint(rest.codePointAt(0)); // a whole code point: an emoji is two halves
 
     if (pasting) {
@@ -984,7 +984,7 @@ process.stdin.on('data', async d => {
       const text = (end < 0 ? rest : rest.slice(0, end)).replace(/\r\n?/g, '\n');
 
       edit(cur, cur, text);
-      i += end < 0 ? rest.length : end + 6;
+      offset += end < 0 ? rest.length : end + 6;
       if (end >= 0) pasting = false;
       continue;
     }
@@ -1003,7 +1003,7 @@ process.stdin.on('data', async d => {
         else if (fin === '~' && (arg === '1' || arg === '7')) cur = lineStart();
         else if (fin === '~' && (arg === '4' || arg === '8')) cur = lineEnd();
         else if (fin === '~' && arg === '200') pasting = true;
-        i += all.length;
+        offset += all.length;
         continue; // the rest — a focus report (I, O), a mouse report (M, m), up and down, a paste's end out of place — is nothing to the prompt
       }
 
@@ -1017,7 +1017,7 @@ process.stdin.on('data', async d => {
         else if (fin === 'C') cur = Math.min(cps().length, cur + 1);
         else if (fin === 'H') cur = lineStart();
         else if (fin === 'F') cur = lineEnd();
-        i += 3;
+        offset += 3;
         continue;
       }
 
@@ -1032,11 +1032,11 @@ process.stdin.on('data', async d => {
         cur = wordAhead();
       } // ⌥← ⌥→, Meta as readline has them
       else if (next === 'd') edit(cur, wordAhead()); // ⌥⌦
-      i += next === undefined ? 1 : 2;
+      offset += next === undefined ? 1 : 2;
       continue; // a lone ESC, or Meta with any other key: nothing
     }
 
-    i += ch.length;
+    offset += ch.length;
 
     if (dialog) {
       // the dialog has the keys: ⏎ takes the highlighted Yes, a digit its option, any other key nothing

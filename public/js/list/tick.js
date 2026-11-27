@@ -26,12 +26,18 @@ function tickDone(id, done, anchor, mark = null, forGood = false) {
 // Delete from the board (2026-11-04; ⌥-click on any card's button, a card's menu, ···, the launcher): whatever the chat is
 // doing, its claude ended, its transcript left where it is. What it would interrupt asks once more, as a watching chat's ✓
 // does; an idle or ended chat goes at once. ⌥⌘K, typed, finds it, and a word in it, a resume or Put it back brings it back.
-const removeEnds = s =>
-  !s.alive ? '' : s.status === 'working' ? 'its turn' : asking(s) ? 'its question' : watchEnds(s);
+const removeEnds = session =>
+  !session.alive
+    ? ''
+    : session.status === 'working'
+      ? 'its turn'
+      : asking(session)
+        ? 'its question'
+        : watchEnds(session);
 
 function removeGate(id, anchor) {
-  const s = state.sessions.get(id);
-  const ends = s && removeEnds(s);
+  const session = state.sessions.get(id);
+  const ends = session && removeEnds(session);
 
   if (!ends) return true;
 
@@ -95,29 +101,29 @@ const altHeld = on => {
 
 addEventListener(
   'keydown',
-  e => {
-    if (e.key === 'Alt') altHeld(true);
+  event => {
+    if (event.key === 'Alt') altHeld(true);
   },
   true,
 );
 
 addEventListener(
   'keyup',
-  e => {
-    if (e.key === 'Alt') altHeld(false);
+  event => {
+    if (event.key === 'Alt') altHeld(false);
   },
   true,
 );
 
-addEventListener('pointermove', e => altHeld(e.altKey), { capture: true, passive: true });
+addEventListener('pointermove', event => altHeld(event.altKey), { capture: true, passive: true });
 addEventListener('blur', () => altHeld(false));
 
 function moveOn(id) {
   const cards = [...document.querySelectorAll('#slist > .card')];
-  const i = cards.findIndex(c => c.dataset.id === id);
+  const index = cards.findIndex(card => card.dataset.id === id);
 
-  const open = c => !c.classList.contains('done');
-  const next = i < 0 ? null : cards.slice(i + 1).find(open) || cards.slice(0, i).reverse().find(open);
+  const open = card => !card.classList.contains('done');
+  const next = index < 0 ? null : cards.slice(index + 1).find(open) || cards.slice(0, index).reverse().find(open);
 
   if (next) openSession(next.dataset.id);
 }

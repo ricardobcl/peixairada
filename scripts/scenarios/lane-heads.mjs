@@ -29,15 +29,15 @@ export default async function (ctx) {
   const cwd = realpathSync(tmpDir('peix-heads-'));
 
   const sleeps = Array.from({ length: 5 }, () => spawn('sleep', ['300'], { stdio: 'ignore' }));
-  const live = (i, extra = {}) => ({ pid: sleeps[i].pid, startedAt: now - 3600_000, ...extra });
+  const live = (index, extra = {}) => ({ pid: sleeps[index].pid, startedAt: now - 3600_000, ...extra });
 
-  const ago = m => new Date(now - m * 60_000);
+  const ago = minutes => new Date(now - minutes * 60_000);
 
-  const days = d => {
-    const t = new Date();
+  const days = back => {
+    const date = new Date();
 
-    t.setDate(t.getDate() - d);
-    return t;
+    date.setDate(date.getDate() - back);
+    return date;
   };
 
   const monitor = (id, task, at) =>
@@ -128,19 +128,19 @@ export default async function (ctx) {
           ...replyLines({ id, cwd, text: 'Under 1 %, still watching.', at: ago(55) }),
         ],
       },
-      ...ready.map((title, k) => ({
+      ...ready.map((title, index) => ({
         cwd,
         title,
         prompt: `${title.toLowerCase()}, please`,
         reply: 'Done, the tests pass.',
-        at: k < 4 ? ago(90 + k * 30) : days(1 + (k > 7)),
+        at: index < 4 ? ago(90 + index * 30) : days(1 + (index > 7)),
       })),
-      ...['Old spike on the search index', 'The flags cleanup', 'A wiki page'].map((title, k) => ({
+      ...['Old spike on the search index', 'The flags cleanup', 'A wiki page'].map((title, index) => ({
         cwd,
         title,
         prompt: 'this',
         reply: 'done',
-        at: days(8 + k),
+        at: days(8 + index),
       })),
     ]);
 
@@ -149,7 +149,7 @@ export default async function (ctx) {
       { what: 'the board' },
     );
 
-    await ctx.server.post(`api/sessions/${chats.find(c => c.title === 'A wiki page').id}/done`, { done: true });
+    await ctx.server.post(`api/sessions/${chats.find(chat => chat.title === 'A wiki page').id}/done`, { done: true });
     await ctx.waitFor(`document.querySelector('#slist > .gsep.lane.done')`, { what: 'a done lane' });
     await ctx.openChat(chats[1].id);
     await ctx.settle();
@@ -166,25 +166,25 @@ export default async function (ctx) {
     };
 
     const check = async (layout, caps) => {
-      const h = await heads(ctx);
+      const laneHeads = await heads(ctx);
 
       ctx.assert.deepEqual(
-        h.map(x => x.lane),
+        laneHeads.map(head => head.lane),
         ['asking', 'working', 'watching', 'ready', 'idle', 'done'],
         `${layout}: the six lanes, Watching after Clauding`,
       );
 
-      for (const x of h) {
-        ctx.assert.equal(x.glyph, want[x.lane], `${layout}: ${x.lane}'s glyph`);
+      for (const head of laneHeads) {
+        ctx.assert.equal(head.glyph, want[head.lane], `${layout}: ${head.lane}'s glyph`);
 
         ctx.assert.deepEqual(
-          [x.ink, x.bare, x.pos, x.caps, x.moving, x.pix],
+          [head.ink, head.bare, head.pos, head.caps, head.moving, head.pix],
           [true, true, 'sticky', caps, 0, false],
-          `${layout}: ${x.lane} — ink, a bare count, sticky, ${caps}, still: ${JSON.stringify(x)}`,
+          `${layout}: ${head.lane} — ink, a bare count, sticky, ${caps}, still: ${JSON.stringify(head)}`,
         );
       }
 
-      return h;
+      return laneHeads;
     };
 
     out.heads = await check('sidebar', 'none');
@@ -248,7 +248,7 @@ export default async function (ctx) {
       `[...document.querySelectorAll('#slist > .gsep.day')].map(d => d.textContent + ':' + getComputedStyle(d).position)`,
     );
 
-    ctx.assert.ok(out.days.length >= 1 && out.days.every(d => d.endsWith(':static')), `the day lines: ${out.days}`);
+    ctx.assert.ok(out.days.length >= 1 && out.days.every(day => day.endsWith(':static')), `the day lines: ${out.days}`);
 
     // the timeline's runs know the new lane
     await ctx.evaluate(
@@ -256,7 +256,7 @@ export default async function (ctx) {
     );
 
     await ctx.sleep(200);
-    out.runs = (await ctx.peix(`state().timeline.runs`)).map(r => r.g);
+    out.runs = (await ctx.peix(`state().timeline.runs`)).map(run => run.g);
 
     ctx.assert.ok(
       out.runs.includes('watching') && out.runs.indexOf('watching') < out.runs.indexOf('ready'),
@@ -316,7 +316,7 @@ export default async function (ctx) {
     await ctx.waitFor(`matchMedia('(prefers-reduced-motion: reduce)').matches`, { what: 'reduced motion' });
 
     ctx.assert.ok(
-      (await heads(ctx)).every(h => h.moving === 0),
+      (await heads(ctx)).every(head => head.moving === 0),
       'reduced: the heads as they are',
     );
 
@@ -337,7 +337,7 @@ export default async function (ctx) {
     );
 
     ctx.assert.ok(
-      out.bands.every(x => x.endsWith(':true')),
+      out.bands.every(band => band.endsWith(':true')),
       `each head on the list's ground: ${out.bands}`,
     );
 
@@ -362,9 +362,9 @@ export default async function (ctx) {
     await ctx.shot('dark-top', await crop());
     return out;
   } finally {
-    for (const p of sleeps) {
+    for (const child of sleeps) {
       try {
-        p.kill();
+        child.kill();
       } catch {}
     }
   }

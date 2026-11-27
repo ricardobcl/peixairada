@@ -38,7 +38,7 @@ export default async function (ctx) {
   const now = Date.now();
 
   const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));
-  const live = (i, extra = {}) => ({ pid: sleeps[i].pid, startedAt: now - 3600_000, ...extra });
+  const live = (index, extra = {}) => ({ pid: sleeps[index].pid, startedAt: now - 3600_000, ...extra });
 
   try {
     const { chats } = makeFixture(ctx.fixture.dir, [
@@ -120,8 +120,8 @@ export default async function (ctx) {
     ctx.assert.equal(out.reduced.heads, 0, 'nor the heads');
 
     // While Claude works, the arc beside the project (2026-11-25): a whole circle, still
-    const arcAt = v =>
-      ctx.evaluate(`(s => { s.value = ${JSON.stringify(v)}; s.dispatchEvent(new Event('change', { bubbles: true }));
+    const arcAt = look =>
+      ctx.evaluate(`(s => { s.value = ${JSON.stringify(look)}; s.dispatchEvent(new Event('change', { bubbles: true }));
       const a = document.querySelector('#slist > .card.working .top > .wkarc'); return a ? (getComputedStyle(a).display === 'none' ? 'hidden' : 'shown') + ' ' + getComputedStyle(a).animationName : 'none'; })(document.querySelector('#claudingLook'))`);
 
     out.reduced.arc = await arcAt('arc');
@@ -141,7 +141,7 @@ export default async function (ctx) {
     );
 
     await ctx.sleep(300);
-    out.moves = (await ctx.peix('motion()')).slice(n0).filter(m => ['flip', 'enter', 'leave'].includes(m.kind));
+    out.moves = (await ctx.peix('motion()')).slice(n0).filter(move => ['flip', 'enter', 'leave'].includes(move.kind));
     ctx.assert.deepEqual(out.moves, [], 'nothing slid, faded or folded');
 
     // lifted: the ring turns again
@@ -155,7 +155,7 @@ export default async function (ctx) {
     ctx.assert.equal(out.back.ring, 'ring', 'the ring turns again');
     ctx.assert.equal(out.back.blink, 'sonar', 'and the question pings');
   } finally {
-    for (const s of sleeps) s.kill();
+    for (const child of sleeps) child.kill();
   }
 
   return out;

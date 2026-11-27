@@ -7,15 +7,15 @@ export const meta = { space: true };
 export default async function (ctx) {
   // the window in or out, and a moment for the delegate's call after the style mask (the last sample is what's asserted)
   const settled = async (want, what) => {
-    let w;
+    let win;
 
-    for (const end = Date.now() + 15_000; Date.now() < end; await new Promise(r => setTimeout(r, 200))) {
-      w = await ctx.win();
-      if (w.full === want && w.barClear === !want) return w;
+    for (const end = Date.now() + 15_000; Date.now() < end; await new Promise(resolve => setTimeout(resolve, 200))) {
+      win = await ctx.win();
+      if (win.full === want && win.barClear === !want) return win;
     }
 
-    if (w?.full !== want) throw new Error(`timed out waiting for ${what}`);
-    return w;
+    if (win?.full !== want) throw new Error(`timed out waiting for ${what}`);
+    return win;
   };
 
   await ctx.board({ theme: 'flashbang', skinFollow: false, look: 'light', fullSpace: true });

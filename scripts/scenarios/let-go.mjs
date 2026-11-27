@@ -39,7 +39,7 @@ function write(head, pushes) {
     reviewRequests: { nodes: [] },
     reviews: { nodes: [{ author: user('me'), state: 'CHANGES_REQUESTED', submittedAt: ago(60) }] },
     comments: { nodes: [] },
-    pushes: { nodes: pushes.map(m => commit(ago(m), 'ana')) },
+    pushes: { nodes: pushes.map(minutes => commit(ago(minutes), 'ana')) },
     asks: { nodes: [] },
   };
 
@@ -84,19 +84,19 @@ export default async function (ctx) {
         `(r => r && ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(document.querySelector(${JSON.stringify(sel)})?.getBoundingClientRect())`,
       );
 
-    const mouse = (type, p, alt) =>
+    const mouse = (type, point, alt) =>
       ctx.send('Input.dispatchMouseEvent', {
         type,
-        x: p.x,
-        y: p.y,
+        x: point.x,
+        y: point.y,
         modifiers: alt ? 1 : 0,
         ...(type === 'mouseMoved' ? {} : { button: 'left', clickCount: 1 }),
       });
 
-    const altClick = async p => {
-      await mouse('mouseMoved', p, true);
-      await mouse('mousePressed', p, true);
-      await mouse('mouseReleased', p, true);
+    const altClick = async point => {
+      await mouse('mouseMoved', point, true);
+      await mouse('mousePressed', point, true);
+      await mouse('mouseReleased', point, true);
     };
 
     const tag = sel =>
@@ -215,7 +215,7 @@ export default async function (ctx) {
     out.alerts = await ctx.evaluate(`JSON.stringify(window.__alerts)`).then(JSON.parse);
 
     ctx.assert.deepEqual(
-      out.alerts.map(a => [a.kind, a.heading, a.sessionId]),
+      out.alerts.map(alert => [alert.kind, alert.heading, alert.sessionId]),
       [['pr', 'Your move · repo-a#12', two.id]],
       'one alert',
     );

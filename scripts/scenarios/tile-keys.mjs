@@ -6,12 +6,12 @@
 // (⌥⌘↑↓ the list's chats).
 export const meta = { server: true, fake: true, fixture: 'auto', prefs: { autoTile: true } };
 
-const grp = g => `document.querySelector('#groups > .grp[data-g="${g}"]')`;
+const grp = tile => `document.querySelector('#groups > .grp[data-g="${tile}"]')`;
 
-const box = (ctx, g) =>
+const box = (ctx, tile) =>
   ctx
     .evaluate(
-      `(() => { const e = ${grp(g)}; if (!e || e.hidden) return 'null'; const r = e.getBoundingClientRect(); return JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }); })()`,
+      `(() => { const e = ${grp(tile)}; if (!e || e.hidden) return 'null'; const r = e.getBoundingClientRect(); return JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }); })()`,
     )
     .then(JSON.parse);
 
@@ -26,13 +26,13 @@ const sized = async (ctx, what) => {
     .then(JSON.parse);
 
   ctx.assert.ok(
-    off.every(([, d]) => d < 1.5),
+    off.every(([, drift]) => drift < 1.5),
     `${what}: the tree's sizes are the tiles' own, to a pixel (${JSON.stringify(off)})`,
   );
 };
 
-const right = (a, b) => b.x >= a.x + a.w - 1;
-const below = (a, b) => b.y >= a.y + a.h - 1;
+const right = (anchor, other) => other.x >= anchor.x + anchor.w - 1;
+const below = (anchor, other) => other.y >= anchor.y + anchor.h - 1;
 
 const tiles = ctx => ctx.peix('state().tiles');
 const focus = ctx => ctx.peix('state().focusG');
@@ -143,27 +143,30 @@ export default async function (ctx) {
     );
   };
 
-  const ids = await Promise.all([0, 1, 2, 3].map(g => ctx.peix(`term(${g}).id`)));
+  const ids = await Promise.all([0, 1, 2, 3].map(tile => ctx.peix(`term(${tile}).id`)));
 
   // ← out of its stack: a column of its own between claude's and the stack — nothing cut in two, nothing re-attached
   await moved('ArrowLeft', ['row', 0, ['row', 3, ['col', 1, 2]]], 'the fourth a column of its own');
   ctx.assert.equal(await focus(ctx), 3, 'the keys went with it');
   await ctx.settle();
-  let b = await Promise.all([0, 3, 1, 2].map(g => box(ctx, g)));
+  let boxes = await Promise.all([0, 3, 1, 2].map(tile => box(ctx, tile)));
 
   ctx.assert.ok(
-    right(b[0], b[1]) && right(b[1], b[2]) && below(b[2], b[3]) && Math.abs(b[1].h - b[0].h) <= 2,
-    `0 | 3 | 1 over 2: ${JSON.stringify(b)}`,
+    right(boxes[0], boxes[1]) &&
+      right(boxes[1], boxes[2]) &&
+      below(boxes[2], boxes[3]) &&
+      Math.abs(boxes[1].h - boxes[0].h) <= 2,
+    `0 | 3 | 1 over 2: ${JSON.stringify(boxes)}`,
   );
 
   ctx.assert.deepEqual(
-    await Promise.all([0, 1, 2, 3].map(g => ctx.peix(`term(${g}).id`))),
+    await Promise.all([0, 1, 2, 3].map(tile => ctx.peix(`term(${tile}).id`))),
     ids,
     'the same terminals in the same tiles',
   );
 
   ctx.assert.ok(
-    (await Promise.all([0, 1, 2, 3].map(g => ctx.peix(`term(${g}).ws`)))).every(w => w === 1),
+    (await Promise.all([0, 1, 2, 3].map(tile => ctx.peix(`term(${tile}).ws`)))).every(readyState => readyState === 1),
     'every tile still attached',
   );
 
@@ -176,24 +179,24 @@ export default async function (ctx) {
   await moved('ArrowUp', ['row', 0, ['col', 1, ['col', 3, 2]]], 'over 2');
   await moved('ArrowUp', ['row', 0, ['col', 3, ['col', 1, 2]]], 'over 1');
   await moved('ArrowUp', ['col', 3, ['row', 0, ['col', 1, 2]]], 'the whole top');
-  const t = await tiles(ctx);
+  const tree = await tiles(ctx);
 
   await ctx.settle();
-  b = await Promise.all([3, 0, 1].map(g => box(ctx, g)));
+  boxes = await Promise.all([3, 0, 1].map(tile => box(ctx, tile)));
 
   ctx.assert.ok(
-    below(b[0], b[1]) && below(b[0], b[2]) && b[0].w > b[1].w + b[2].w - 20,
-    `across the top: ${JSON.stringify(b)}`,
+    below(boxes[0], boxes[1]) && below(boxes[0], boxes[2]) && boxes[0].w > boxes[1].w + boxes[2].w - 20,
+    `across the top: ${JSON.stringify(boxes)}`,
   );
 
   await shift('ArrowUp');
-  ctx.assert.deepEqual(await tiles(ctx), t, 'up again: it is the top already, nothing moves');
+  ctx.assert.deepEqual(await tiles(ctx), tree, 'up again: it is the top already, nothing moves');
   await ctx.shot('moved');
 
   // ⌥⌘⇧T in that tile: a zsh on a tab beside its own, the tree as it was — no tile cut
   await shift('KeyT');
   await ctx.waitFor(`window.peix.state().strips[3]?.length === 2`, { what: 'a second tab in the fourth tile' });
-  ctx.assert.deepEqual(await tiles(ctx), t, 'no new tile');
+  ctx.assert.deepEqual(await tiles(ctx), tree, 'no new tile');
   ctx.assert.equal(await focus(ctx), 3, 'the keys still in it');
   const [first, added] = await ctx.peix('state().strips[3]');
 
@@ -261,11 +264,11 @@ export default async function (ctx) {
   // ⌥⌘⇧ and the mouse (2026-11-26): held, the move cursor over the tiles; a press anywhere on a tile — one with no strip too —
   // lifts it whole: on another's middle its tabs join that tile's and it folds, on its outer quarter it goes to that side
   const shape = () =>
-    ctx.peix('state().tiles').then(n =>
+    ctx.peix('state().tiles').then(root =>
       JSON.stringify(
-        (function s(x) {
-          return 'g' in x ? x.g : [x.d, s(x.a), s(x.b)];
-        })(n),
+        (function flatten(node) {
+          return 'g' in node ? node.g : [node.d, flatten(node.a), flatten(node.b)];
+        })(root),
       ),
     );
 
@@ -281,23 +284,23 @@ export default async function (ctx) {
     '⌥⌘⇧ held: the move cursor',
   );
 
-  const mid = g =>
+  const mid = tile =>
     ctx
       .evaluate(
-        `(r => JSON.stringify({ x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height, l: r.left, t: r.top }))(document.querySelector('#groups > .grp[data-g="${g}"]').getBoundingClientRect())`,
+        `(r => JSON.stringify({ x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height, l: r.left, t: r.top }))(document.querySelector('#groups > .grp[data-g="${tile}"]').getBoundingClientRect())`,
       )
       .then(JSON.parse);
 
-  const tileDrag = async (g, at, look) => {
-    const a = await mid(g);
+  const tileDrag = async (tile, at, look) => {
+    const start = await mid(tile);
 
     await ctx.evaluate(
-      `document.querySelector('#groups > .grp[data-g="${g}"] .gbody').dispatchEvent(new PointerEvent('pointerdown', { clientX: ${a.x}, clientY: ${a.y}, button: 0, ${mods} }))`,
+      `document.querySelector('#groups > .grp[data-g="${tile}"] .gbody').dispatchEvent(new PointerEvent('pointerdown', { clientX: ${start.x}, clientY: ${start.y}, button: 0, ${mods} }))`,
     );
 
-    for (const f of [0.3, 0.7, 1]) {
+    for (const fraction of [0.3, 0.7, 1]) {
       await ctx.evaluate(
-        `document.dispatchEvent(new PointerEvent('pointermove', { clientX: ${a.x + (at.x - a.x) * f}, clientY: ${a.y + (at.y - a.y) * f}, ${mods} }))`,
+        `document.dispatchEvent(new PointerEvent('pointermove', { clientX: ${start.x + (at.x - start.x) * fraction}, clientY: ${start.y + (at.y - start.y) * fraction}, ${mods} }))`,
       );
     }
 
@@ -367,7 +370,7 @@ export default async function (ctx) {
   );
 
   ctx.assert.ok(
-    (await Promise.all([1, 2, 3, 4].map(g => ctx.peix(`term(${g}).ws`)))).every(w => w === 1),
+    (await Promise.all([1, 2, 3, 4].map(tile => ctx.peix(`term(${tile}).ws`)))).every(readyState => readyState === 1),
     'every tile still attached',
   );
 
@@ -461,7 +464,7 @@ export default async function (ctx) {
   await ctx.drag(`#groups > .grp[data-g="0"] .ptab[data-tab="chat"]`, `#groups > .grp[data-g="1"] > .gbody`);
   await ctx.waitFor(`window.peix.state().strips[1]?.includes('chat')`, { what: "the chat's tab in the second half" });
   await ctx.settle(); // the drop's click swallow gone (a setTimeout 0), or it takes the button's click
-  const held = await Promise.all([0, 1].map(g => ctx.peix(`term(${g}).id`)));
+  const held = await Promise.all([0, 1].map(tile => ctx.peix(`term(${tile}).id`)));
 
   await ctx.evaluate(`document.querySelector('#tidyBtn').click()`);
   ctx.assert.ok(await tiles(ctx), 'the halves as two tiles, to trade places');
@@ -470,7 +473,7 @@ export default async function (ctx) {
   ctx.assert.ok(right(await box(ctx, 1), await box(ctx, 0)), "Claude's half on the left");
 
   ctx.assert.deepEqual(
-    await Promise.all([0, 1].map(g => ctx.peix(`term(${g}).id`))),
+    await Promise.all([0, 1].map(tile => ctx.peix(`term(${tile}).id`))),
     held,
     'the same terminals in the same halves',
   );
@@ -486,5 +489,5 @@ export default async function (ctx) {
   ctx.assert.equal(await ctrlAlt('KeyT'), true, '⌃⌥⌘T left alone');
   ctx.assert.equal(await ctx.peix('state().tiles'), null, 'nothing cut');
   await walk(other.id, chat.id);
-  return { tree: t };
+  return { tree };
 }

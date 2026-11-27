@@ -21,13 +21,13 @@ import { chatLines, defaultFixture, slugOf } from '../scripts/fixture.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
-/** Attach like the page does: the first binary frame is the snapshot; `until` stops when a text is seen. `p.opened`
- *  is the socket open — a send before it throws — and `p.text()` what has come so far. */
+/** Attach like the page does: the first binary frame is the snapshot; `until` stops when a text is seen. `attached.opened`
+ *  is the socket open — a send before it throws — and `attached.text()` what has come so far. */
 function attach(srv, id, { until = null, timeout = 8000 } = {}) {
   const ws = new WebSocket(srv.ws(`api/terminals/${id}/ws`));
 
   ws.binaryType = 'arraybuffer';
-  ws.send2 = m => ws.send(JSON.stringify(m));
+  ws.send2 = message => ws.send(JSON.stringify(message));
 
   let first = null;
   let all = '';
@@ -35,9 +35,9 @@ function attach(srv, id, { until = null, timeout = 8000 } = {}) {
 
   const opened = new Promise(res => ws.addEventListener('open', res, { once: true }));
 
-  const p = new Promise(res => {
+  const attached = new Promise(res => {
     const finish = () => {
-      clearTimeout(t);
+      clearTimeout(timer);
 
       try {
         ws.close();
@@ -46,20 +46,20 @@ function attach(srv, id, { until = null, timeout = 8000 } = {}) {
       res({ first, all, exit });
     };
 
-    const t = setTimeout(finish, timeout);
+    const timer = setTimeout(finish, timeout);
 
-    ws.onmessage = e => {
-      if (typeof e.data === 'string') {
-        const m = JSON.parse(e.data);
+    ws.onmessage = event => {
+      if (typeof event.data === 'string') {
+        const message = JSON.parse(event.data);
 
-        if (m.t === 'exit') exit = m.code;
+        if (message.t === 'exit') exit = message.code;
         return;
       }
 
-      const s = Buffer.from(e.data).toString('utf8');
+      const text = Buffer.from(event.data).toString('utf8');
 
-      if (first === null) first = s;
-      all += s;
+      if (first === null) first = text;
+      all += text;
       if (until && all.includes(until)) finish();
     };
 
@@ -70,8 +70,8 @@ function attach(srv, id, { until = null, timeout = 8000 } = {}) {
     };
   });
 
-  Object.assign(p, { ws, opened, text: () => all });
-  return p;
+  Object.assign(attached, { ws, opened, text: () => all });
+  return attached;
 }
 
 test(
@@ -86,36 +86,40 @@ test(
       const list = await srv.api('api/sessions');
 
       assert.ok(
-        list.body.sessions.some(s => s.id === chat.id),
+        list.body.sessions.some(session => session.id === chat.id),
         'the fixture chat is on the board',
       );
 
       // resume it in a drawer
-      const r = await srv.api(`api/sessions/${chat.id}/terminal`, {
+      const response = await srv.api(`api/sessions/${chat.id}/terminal`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ cols: 100, rows: 30 }),
       });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      const t = r.body.terminal;
+      assert.equal(response.status, 201, JSON.stringify(response.body));
+      const term = response.body.terminal;
 
-      assert.ok(t.pid > 0 && t.holderPid > 0 && t.holderPid !== t.pid, 'the PTY and the holder have their own pids');
-      assert.ok(alive(t.holderPid) && alive(t.pid));
+      assert.ok(
+        term.pid > 0 && term.holderPid > 0 && term.holderPid !== term.pid,
+        'the PTY and the holder have their own pids',
+      );
+
+      assert.ok(alive(term.holderPid) && alive(term.pid));
 
       assert.deepEqual(
         readdirSync(join(srv.dir, 'terms'))
-          .filter(f => f.startsWith(t.id))
+          .filter(file => file.startsWith(term.id))
           .sort(),
-        [`${t.id}.json`, `${t.id}.log`, `${t.id}.sock`],
+        [`${term.id}.json`, `${term.id}.log`, `${term.id}.sock`],
       );
 
       // the fake registers → the chat is alive, with the drawer's process as its own
       await waitFor(
         async () => {
-          const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+          const session = (await srv.api('api/sessions')).body.sessions.find(candidate => candidate.id === chat.id);
 
-          return s.alive && s.live?.pid === t.pid && s.terminal?.id === t.id;
+          return session.alive && session.live?.pid === term.pid && session.terminal?.id === term.id;
         },
         { what: 'the resumed chat alive with the drawer as its process' },
       );
@@ -124,9 +128,9 @@ test(
       // fake has drawn, which it does right after it registers
       const a1 = await waitFor(
         async () => {
-          const a = await attach(srv, t.id, { until: 'fake mode on', timeout: 1500 });
+          const output = await attach(srv, term.id, { until: 'fake mode on', timeout: 1500 });
 
-          return a.first?.includes('fake mode on') && a;
+          return output.first?.includes('fake mode on') && output;
         },
         { what: 'a snapshot of the drawn screen' },
       );
@@ -144,54 +148,54 @@ test(
         'the server logged the snapshot at the PTY size',
       );
 
-      const sum1 = (await srv.terminals()).find(x => x.id === t.id);
+      const sum1 = (await srv.terminals()).find(drawer => drawer.id === term.id);
 
       assert.equal(sum1.cols, 100);
       assert.equal(sum1.connected, true);
       assert.ok(sum1.lastSnapshotChars > 100);
       // restart the server: the holder and the fake stay, the new server adopts them, the screen is still there
       await srv.restart();
-      assert.ok(alive(t.holderPid) && alive(t.pid), 'the holder and its claude outlive the server');
-      const adopted = (await srv.terminals()).find(x => x.id === t.id);
+      assert.ok(alive(term.holderPid) && alive(term.pid), 'the holder and its claude outlive the server');
+      const adopted = (await srv.terminals()).find(drawer => drawer.id === term.id);
 
       assert.ok(adopted, 'the new server lists the drawer');
-      assert.equal(adopted.pid, t.pid);
+      assert.equal(adopted.pid, term.pid);
       assert.equal(adopted.sessionId, chat.id);
       assert.equal(adopted.exited, null);
       assert.match(srv.logText(), /adopted — pid \d+, holder \d+, chat/);
-      const a2 = await attach(srv, t.id, { until: 'fake mode on' });
+      const a2 = await attach(srv, term.id, { until: 'fake mode on' });
 
       assert.ok(a2.first.includes('❯'), 'a page attaching after the restart gets the screen');
-      const s2 = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+      const s2 = (await srv.api('api/sessions')).body.sessions.find(session => session.id === chat.id);
 
-      assert.equal(s2.terminal?.id, t.id, 'the chat still points at its drawer');
+      assert.equal(s2.terminal?.id, term.id, 'the chat still points at its drawer');
       // type through the new server and see the fake answer
-      const p = attach(srv, t.id, { until: 'You said: ping', timeout: 8000 });
+      const attached = attach(srv, term.id, { until: 'You said: ping', timeout: 8000 });
 
-      await p.opened;
-      p.ws.send2({ t: 'in', d: 'ping\r' });
-      const a3 = await p;
+      await attached.opened;
+      attached.ws.send2({ t: 'in', d: 'ping\r' });
+      const a3 = await attached;
 
       assert.ok(a3.all.includes('You said: ping'), 'input reaches the PTY through the adopted holder');
       // end it: the fake exits, the registry entry goes, the holder lingers with the exit code then is let go
-      const d = await srv.api(`api/terminals/${t.id}`, { method: 'DELETE' });
+      const deleted = await srv.api(`api/terminals/${term.id}`, { method: 'DELETE' });
 
-      assert.equal(d.status, 200);
+      assert.equal(deleted.status, 200);
 
-      await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.exited != null, {
+      await waitFor(async () => (await srv.terminals()).find(drawer => drawer.id === term.id)?.exited != null, {
         what: 'the terminal reporting its exit',
       });
 
-      assert.ok(!alive(t.pid), 'the fake is gone');
-      const d2 = await srv.api(`api/terminals/${t.id}`, { method: 'DELETE' }); // an exited one is let go at once
+      assert.ok(!alive(term.pid), 'the fake is gone');
+      const d2 = await srv.api(`api/terminals/${term.id}`, { method: 'DELETE' }); // an exited one is let go at once
 
       assert.equal(d2.status, 200);
 
-      await waitFor(async () => !(await srv.terminals()).some(x => x.id === t.id), {
+      await waitFor(async () => !(await srv.terminals()).some(drawer => drawer.id === term.id), {
         what: 'the exited drawer forgotten',
       });
 
-      await waitFor(() => !existsSync(join(srv.dir, 'terms', `${t.id}.sock`)), {
+      await waitFor(() => !existsSync(join(srv.dir, 'terms', `${term.id}.sock`)), {
         what: 'the holder removing its socket',
       });
     } finally {
@@ -205,21 +209,21 @@ test('a new chat in a folder is tied to its session by pid when the fake registe
   const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
 
   try {
-    const r = await srv.api('api/terminals', {
+    const response = await srv.api('api/terminals', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ cwd: process.cwd(), cols: 90, rows: 24 }),
     });
 
-    assert.equal(r.status, 201, JSON.stringify(r.body));
-    assert.equal(r.body.terminal.sessionId, null);
+    assert.equal(response.status, 201, JSON.stringify(response.body));
+    assert.equal(response.body.terminal.sessionId, null);
 
     const linked = await waitFor(
-      async () => (await srv.terminals()).find(x => x.id === r.body.terminal.id)?.sessionId || null,
+      async () => (await srv.terminals()).find(drawer => drawer.id === response.body.terminal.id)?.sessionId || null,
       { what: 'the terminal learning its session id from the registry' },
     );
 
-    const meta = srv.holders().find(h => h.id === r.body.terminal.id);
+    const meta = srv.holders().find(holder => holder.id === response.body.terminal.id);
 
     assert.equal(meta.sessionId, linked, 'and told its holder, so an adoption after a restart knows it too');
   } finally {
@@ -234,44 +238,46 @@ test(
     const srv = await startTestServer({ fake: true });
 
     try {
-      const r = await srv.post('api/terminals', { cwd: tmpDir('peix-type-'), cols: 90, rows: 24 });
+      const response = await srv.post('api/terminals', { cwd: tmpDir('peix-type-'), cols: 90, rows: 24 });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      const id = r.body.terminal.id;
+      assert.equal(response.status, 201, JSON.stringify(response.body));
+      const id = response.body.terminal.id;
 
-      await waitFor(async () => (await srv.terminals()).find(x => x.id === id)?.sessionId || null, {
+      await waitFor(async () => (await srv.terminals()).find(drawer => drawer.id === id)?.sessionId || null, {
         what: 'the chat registered',
       });
 
-      const p = attach(srv, id, { timeout: 30_000 });
+      const attached = attach(srv, id, { timeout: 30_000 });
 
-      await p.opened;
+      await attached.opened;
       const answers = new Map();
 
-      p.ws.addEventListener('message', e => {
-        if (typeof e.data !== 'string') return;
-        const m = JSON.parse(e.data);
+      attached.ws.addEventListener('message', event => {
+        if (typeof event.data !== 'string') return;
+        const message = JSON.parse(event.data);
 
-        if (m.t === 'typed') answers.set(m.n, m.why);
+        if (message.t === 'typed') answers.set(message.n, message.why);
       });
 
-      const type = async (n, d, send) => {
-        p.ws.send2({ t: 'type', d, send, n });
-        return waitFor(() => (answers.has(n) ? { why: answers.get(n) } : null), { what: `the answer to ${n}` });
+      const type = async (number, text, send) => {
+        attached.ws.send2({ t: 'type', d: text, send, n: number });
+        return waitFor(() => (answers.has(number) ? { why: answers.get(number) } : null), {
+          what: `the answer to ${number}`,
+        });
       };
 
-      p.ws.send2({ t: 'in', d: '/permission\r' }); // your own keys: the dialog comes up
-      await waitFor(() => p.text().includes('Do you want to proceed?'), { what: 'the dialog' });
+      attached.ws.send2({ t: 'in', d: '/permission\r' }); // your own keys: the dialog comes up
+      await waitFor(() => attached.text().includes('Do you want to proceed?'), { what: 'the dialog' });
       assert.match((await type(1, 'thanks', true)).why, /asking you/, 'a reply with its ⏎ refused');
       assert.match((await type(2, '1', false)).why, /asking you/, 'a digit, unsent, refused too: it is an option');
       await sleep(400);
-      assert.ok(!p.text().includes('permission:'), 'the dialog answered nothing');
-      p.ws.send2({ t: 'in', d: '2' }); // you answer it
-      await waitFor(() => p.text().includes('permission: refused'), { what: 'your answer' });
+      assert.ok(!attached.text().includes('permission:'), 'the dialog answered nothing');
+      attached.ws.send2({ t: 'in', d: '2' }); // you answer it
+      await waitFor(() => attached.text().includes('permission: refused'), { what: 'your answer' });
       assert.equal((await type(3, 'a word from the board', true)).why, null, 'nothing asking: typed and sent');
-      await waitFor(() => p.text().includes('a word from the board'), { what: 'the words on the screen' });
-      assert.ok(!p.text().includes('permission: approved'), 'and never an approval');
-      p.ws.close();
+      await waitFor(() => attached.text().includes('a word from the board'), { what: 'the words on the screen' });
+      assert.ok(!attached.text().includes('permission: approved'), 'and never an approval');
+      attached.ws.close();
     } finally {
       await srv.stop();
     }
@@ -287,35 +293,40 @@ test(
 
     try {
       assert.equal(existsSync(scratch), false, 'nothing made before a chat asks for it');
-      const r = await srv.post('api/terminals', { cwd: scratch, cols: 90, rows: 24 });
+      const response = await srv.post('api/terminals', { cwd: scratch, cols: 90, rows: 24 });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
+      assert.equal(response.status, 201, JSON.stringify(response.body));
       assert.ok(existsSync(scratch), 'made for it');
 
       const id = await waitFor(
-        async () => (await srv.terminals()).find(x => x.id === r.body.terminal.id)?.sessionId || null,
+        async () => (await srv.terminals()).find(drawer => drawer.id === response.body.terminal.id)?.sessionId || null,
         { what: 'the chat registered' },
       );
 
-      const s = await waitFor(
-        async () => (await srv.api('api/sessions')).body.sessions.find(x => x.id === id && x.alive),
+      const session = await waitFor(
+        async () => (await srv.api('api/sessions')).body.sessions.find(chat => chat.id === id && chat.alive),
         { what: 'its card' },
       );
 
-      assert.deepEqual([s.cwd, s.project], [scratch, 'no folder'], 'claude runs there, and the project reads so');
-      const ws = new WebSocket(srv.ws(`api/terminals/${r.body.terminal.id}/ws`)); // a word: with none there is nothing to resume, and Claude Code says so
+      assert.deepEqual(
+        [session.cwd, session.project],
+        [scratch, 'no folder'],
+        'claude runs there, and the project reads so',
+      );
+
+      const ws = new WebSocket(srv.ws(`api/terminals/${response.body.terminal.id}/ws`)); // a word: with none there is nothing to resume, and Claude Code says so
 
       await new Promise(res => ws.addEventListener('open', res, { once: true }));
       ws.send(JSON.stringify({ t: 'in', d: 'a word\r' }));
 
-      await waitFor(async () => (await srv.api('api/sessions')).body.sessions.find(x => x.id === id)?.file, {
+      await waitFor(async () => (await srv.api('api/sessions')).body.sessions.find(chat => chat.id === id)?.file, {
         what: 'its transcript',
       });
 
       ws.close();
-      await srv.api(`api/terminals/${r.body.terminal.id}`, { method: 'DELETE' });
+      await srv.api(`api/terminals/${response.body.terminal.id}`, { method: 'DELETE' });
 
-      await waitFor(async () => !(await srv.api('api/sessions')).body.sessions.find(x => x.id === id)?.alive, {
+      await waitFor(async () => !(await srv.api('api/sessions')).body.sessions.find(chat => chat.id === id)?.alive, {
         what: 'its claude ended',
       });
 
@@ -387,13 +398,13 @@ test(
         'a clone in a trusted folder: its Taskfile not asked',
       );
 
-      const l = await srv.api(`api/launchers?cwd=${encodeURIComponent(cwd)}`);
+      const listing = await srv.api(`api/launchers?cwd=${encodeURIComponent(cwd)}`);
 
-      assert.equal(l.body.untrusted, false);
+      assert.equal(listing.body.untrusted, false);
       assert.deepEqual(runs(), ['--list --json'], 'trusted, task is asked');
 
       assert.deepEqual(
-        l.body.launchers,
+        listing.body.launchers,
         [{ name: 'production-workload', desc: 'Launch Claude Code against the production workload cluster' }],
         'only the task whose description mentions Claude',
       );
@@ -403,51 +414,60 @@ test(
 
       assert.equal(bad.status, 400);
       assert.match(bad.body.error, /no launcher named setup/);
-      const r = await post({ cwd, task: 'production-workload', cols: 90, rows: 24 });
+      const response = await post({ cwd, task: 'production-workload', cols: 90, rows: 24 });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      const t = r.body.terminal;
+      assert.equal(response.status, 201, JSON.stringify(response.body));
+      const term = response.body.terminal;
 
-      assert.equal(t.task, 'production-workload');
-      assert.equal(t.sessionId, null);
+      assert.equal(term.task, 'production-workload');
+      assert.equal(term.sessionId, null);
       assert.match(srv.logText(), /terminal t\d+-\w+: task production-workload in/);
 
-      const linked = await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.sessionId || null, {
-        what: "the terminal learning its session id although claude is not the PTY's process",
-      });
+      const linked = await waitFor(
+        async () => (await srv.terminals()).find(drawer => drawer.id === term.id)?.sessionId || null,
+        {
+          what: "the terminal learning its session id although claude is not the PTY's process",
+        },
+      );
 
-      const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === linked);
+      const session = (await srv.api('api/sessions')).body.sessions.find(chat => chat.id === linked);
 
-      assert.ok(s.alive, 'the chat is alive');
-      assert.notEqual(s.live.pid, t.pid, 'with a claude below task, not task itself');
-      assert.equal(s.terminal?.id, t.id, 'and the drawer is its');
-      const meta = srv.holders().find(h => h.id === t.id);
+      assert.ok(session.alive, 'the chat is alive');
+      assert.notEqual(session.live.pid, term.pid, 'with a claude below task, not task itself');
+      assert.equal(session.terminal?.id, term.id, 'and the drawer is its');
+      const meta = srv.holders().find(holder => holder.id === term.id);
 
       assert.equal(meta.task, 'production-workload');
-      assert.equal(meta.claudePid, s.live.pid, "the holder was told claude's pid, for an adoption after a restart");
-      const a = await attach(srv, t.id, { until: 'fake mode on' });
 
-      assert.ok(a.all.includes('❯'), "a page attaching sees claude's prompt through task");
+      assert.equal(
+        meta.claudePid,
+        session.live.pid,
+        "the holder was told claude's pid, for an adoption after a restart",
+      );
+
+      const output = await attach(srv, term.id, { until: 'fake mode on' });
+
+      assert.ok(output.all.includes('❯'), "a page attaching sees claude's prompt through task");
       // /clear there: the same claude under a new id — and claude is not the PTY's process, task is (2026-10-03: the
       // drawer stayed on the old chat, and the new one read as live in another terminal)
-      const p = attach(srv, t.id, { timeout: 3000 });
+      const attached = attach(srv, term.id, { timeout: 3000 });
 
-      await p.opened;
-      p.ws.send2({ t: 'in', d: '/clear\r' });
+      await attached.opened;
+      attached.ws.send2({ t: 'in', d: '/clear\r' });
 
       const moved = await waitFor(
         async () => {
-          const id = (await srv.terminals()).find(x => x.id === t.id)?.sessionId;
+          const id = (await srv.terminals()).find(drawer => drawer.id === term.id)?.sessionId;
 
           return id !== linked && id;
         },
         { what: 'the drawer following /clear to the new chat' },
       );
 
-      const s2 = (await srv.api('api/sessions')).body.sessions.find(s => s.id === moved);
+      const s2 = (await srv.api('api/sessions')).body.sessions.find(chat => chat.id === moved);
 
-      assert.equal(s2.terminal?.id, t.id, 'the new chat has the drawer');
-      assert.equal(s2.live.pid, s.live.pid, 'the same claude');
+      assert.equal(s2.terminal?.id, term.id, 'the new chat has the drawer');
+      assert.equal(s2.live.pid, session.live.pid, 'the same claude');
     } finally {
       await srv.stop();
     }
@@ -463,62 +483,66 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
 
     try {
-      const r = await srv.api(`api/sessions/${chat.id}/shell`, {
+      const response = await srv.api(`api/sessions/${chat.id}/shell`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ cols: 100, rows: 30 }),
       });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      const t = r.body.terminal;
+      assert.equal(response.status, 201, JSON.stringify(response.body));
+      const term = response.body.terminal;
 
-      assert.equal(t.shell, true);
-      assert.equal(t.sessionId, chat.id);
-      assert.equal(t.resume, false);
+      assert.equal(term.shell, true);
+      assert.equal(term.sessionId, chat.id);
+      assert.equal(term.resume, false);
       const again = await srv.api(`api/sessions/${chat.id}/shell`, { method: 'POST' });
 
       assert.equal(again.status, 200);
-      assert.equal(again.body.terminal.id, t.id, "the chat's zsh, answered with again");
+      assert.equal(again.body.terminal.id, term.id, "the chat's zsh, answered with again");
       // ⌘T (2026-10-13): `fresh` starts another beside it, every time
       const more = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30, fresh: true });
 
       assert.equal(more.status, 201, JSON.stringify(more.body));
-      assert.notEqual(more.body.terminal.id, t.id, 'a second zsh');
-      const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+      assert.notEqual(more.body.terminal.id, term.id, 'a second zsh');
+      const session = (await srv.api('api/sessions')).body.sessions.find(candidate => candidate.id === chat.id);
 
-      assert.equal(s.shell?.id, t.id, 'the chat carries its first zsh');
-      assert.equal(s.terminal, null, 'and it is not its claude drawer');
+      assert.equal(session.shell?.id, term.id, 'the chat carries its first zsh');
+      assert.equal(session.terminal, null, 'and it is not its claude drawer');
 
       assert.deepEqual(
-        s.shells.map(x => x.id),
-        [t.id, more.body.terminal.id],
+        session.shells.map(shell => shell.id),
+        [term.id, more.body.terminal.id],
         'and every zsh, oldest first',
       );
 
-      assert.equal(s.alive, false, 'a shell is no claude: the chat is not live');
-      const a = attach(srv, t.id, { until: 'peix-shell-22', timeout: 20_000 });
+      assert.equal(session.alive, false, 'a shell is no claude: the chat is not live');
+      const attached = attach(srv, term.id, { until: 'peix-shell-22', timeout: 20_000 });
 
-      await a.opened;
+      await attached.opened;
 
-      await waitFor(() => /[%$#] *$/.test(a.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), {
+      await waitFor(() => /[%$#] *$/.test(attached.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), {
         what: "the shell's prompt",
       });
 
-      a.ws.send2({ t: 'in', d: 'echo peix-shell-$((20+2))\r' });
-      const out = await a;
+      attached.ws.send2({ t: 'in', d: 'echo peix-shell-$((20+2))\r' });
+      const out = await attached;
 
       assert.ok(out.all.includes('peix-shell-22'), `the zsh ran the command: ${JSON.stringify(out.all.slice(-300))}`);
-      const d = await srv.api(`api/terminals/${t.id}`, { method: 'DELETE' });
+      const deleted = await srv.api(`api/terminals/${term.id}`, { method: 'DELETE' });
 
-      assert.equal(d.status, 200);
+      assert.equal(deleted.status, 200);
 
-      await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.exited != null, {
+      await waitFor(async () => (await srv.terminals()).find(drawer => drawer.id === term.id)?.exited != null, {
         what: 'the zsh ending',
       });
 
-      const after = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+      const after = (await srv.api('api/sessions')).body.sessions.find(candidate => candidate.id === chat.id);
 
-      assert.equal(after.shells.find(x => x.id === more.body.terminal.id)?.exited, null, 'the other zsh lives on');
+      assert.equal(
+        after.shells.find(shell => shell.id === more.body.terminal.id)?.exited,
+        null,
+        'the other zsh lives on',
+      );
     } finally {
       await srv.stop();
     }
@@ -538,15 +562,15 @@ test(
 
     try {
       const zsh = (await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30 })).body.terminal;
-      const r = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30, vim: true });
+      const response = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30, vim: true });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      const v = r.body.terminal;
+      assert.equal(response.status, 201, JSON.stringify(response.body));
+      const vim = response.body.terminal;
 
-      assert.deepEqual([v.shell, v.editor, v.resume, v.cwd], [true, 'vim', false, chat.cwd]);
+      assert.deepEqual([vim.shell, vim.editor, vim.resume, vim.cwd], [true, 'vim', false, chat.cwd]);
 
-      const a = attach(srv, v.id, { until: 'fake vim', timeout: 10_000 });
-      const out = await a;
+      const attached = attach(srv, vim.id, { until: 'fake vim', timeout: 10_000 });
+      const out = await attached;
 
       assert.match(
         out.all,
@@ -554,18 +578,18 @@ test(
         "vim ran in the chat's folder, on it",
       );
 
-      const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+      const session = (await srv.api('api/sessions')).body.sessions.find(candidate => candidate.id === chat.id);
 
       assert.deepEqual(
-        s.shells.map(x => [x.id, x.editor]),
+        session.shells.map(shell => [shell.id, shell.editor]),
         [
           [zsh.id, null],
-          [v.id, 'vim'],
+          [vim.id, 'vim'],
         ],
         "its tab among the zsh's",
       );
 
-      assert.equal(s.shell.id, zsh.id, "and never the chat's zsh");
+      assert.equal(session.shell.id, zsh.id, "and never the chat's zsh");
       const again = await srv.post(`api/sessions/${chat.id}/shell`, {});
 
       assert.equal(again.body.terminal.id, zsh.id, 'the zsh asked for again is the zsh');
@@ -575,13 +599,13 @@ test(
       assert.equal(there.body.terminal.cwd, other, 'another folder: a worktree of its PR');
       assert.equal((await srv.post(`api/sessions/${chat.id}/shell`, { vim: true, dir: 'relative/x' })).status, 400);
       // closed: asked to quit, and it does
-      assert.equal((await srv.api(`api/terminals/${v.id}`, { method: 'DELETE' })).status, 200);
+      assert.equal((await srv.api(`api/terminals/${vim.id}`, { method: 'DELETE' })).status, 200);
 
-      await waitFor(async () => (await srv.terminals()).find(x => x.id === v.id)?.exited === 0, {
+      await waitFor(async () => (await srv.terminals()).find(drawer => drawer.id === vim.id)?.exited === 0, {
         what: 'vim quitting on :qa',
       });
 
-      assert.ok(srv.logText().includes(`terminal ${v.id}: vim in `), 'the log names it');
+      assert.ok(srv.logText().includes(`terminal ${vim.id}: vim in `), 'the log names it');
     } finally {
       await srv.stop();
     }
@@ -590,17 +614,22 @@ test(
     const dirty = await startTestServer({ claudeDir: fx.dir, fake: true, env: { FAKE_VIM_DIRTY: '1' } });
 
     try {
-      const v = (await dirty.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30, vim: true })).body.terminal;
-      const a = attach(dirty, v.id, { until: 'E162', timeout: 10_000 });
+      const vim = (await dirty.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30, vim: true })).body.terminal;
+      const attached = attach(dirty, vim.id, { until: 'E162', timeout: 10_000 });
 
-      await a.opened;
-      await waitFor(() => a.text().includes('fake vim'), { what: 'vim up' });
-      await dirty.api(`api/terminals/${v.id}`, { method: 'DELETE' });
-      const out = await a;
+      await attached.opened;
+      await waitFor(() => attached.text().includes('fake vim'), { what: 'vim up' });
+      await dirty.api(`api/terminals/${vim.id}`, { method: 'DELETE' });
+      const out = await attached;
 
       assert.ok(out.all.includes('E162: No write since last change'), 'vim said why');
       await sleep(500);
-      assert.equal((await dirty.terminals()).find(x => x.id === v.id)?.exited, null, 'and lives on, the work in it');
+
+      assert.equal(
+        (await dirty.terminals()).find(drawer => drawer.id === vim.id)?.exited,
+        null,
+        'and lives on, the work in it',
+      );
     } finally {
       await dirty.stop();
     }
@@ -640,21 +669,21 @@ test(
 
     try {
       const ask = () => srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 });
-      const [a, b] = await Promise.all([ask(), ask()]);
+      const [first, second] = await Promise.all([ask(), ask()]);
 
-      assert.equal(a.body.terminal.id, b.body.terminal.id, "the second ask got the first one's drawer");
+      assert.equal(first.body.terminal.id, second.body.terminal.id, "the second ask got the first one's drawer");
 
       assert.equal(
-        (await srv.terminals()).filter(t => t.sessionId === chat.id && t.exited === null).length,
+        (await srv.terminals()).filter(term => term.sessionId === chat.id && term.exited === null).length,
         1,
         'one holder',
       );
 
       // liveness by pid and start (2026-10-14): the pid answers, but it is not the process that wrote the file
-      const s = (await srv.api('api/sessions')).body.sessions.find(x => x.id === other.id);
+      const session = (await srv.api('api/sessions')).body.sessions.find(candidate => candidate.id === other.id);
 
-      assert.equal(s.alive, false, 'a pid handed on is no claude');
-      assert.notEqual(s.status, 'needs-input', 'and nothing asks you');
+      assert.equal(session.alive, false, 'a pid handed on is no claude');
+      assert.notEqual(session.status, 'needs-input', 'and nothing asks you');
       const take = await srv.post(`api/sessions/${other.id}/takeover`, { cols: 90, rows: 24 });
 
       assert.equal(take.status, 409);
@@ -674,45 +703,45 @@ test(
     const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
     const chat = fx.chats[1];
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
-    const chatOf = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+    const chatOf = async id => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
 
     try {
-      const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 100, rows: 30 });
+      const response = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 100, rows: 30 });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      const t = r.body.terminal;
+      assert.equal(response.status, 201, JSON.stringify(response.body));
+      const term = response.body.terminal;
 
       await waitFor(async () => (await chatOf(chat.id))?.alive, { what: 'the resumed chat alive' });
-      const z = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30 });
+      const zsh = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30 });
 
-      assert.equal(z.status, 201, JSON.stringify(z.body));
-      const p = attach(srv, t.id, { timeout: 3000 });
+      assert.equal(zsh.status, 201, JSON.stringify(zsh.body));
+      const attached = attach(srv, term.id, { timeout: 3000 });
 
-      await p.opened;
-      p.ws.send2({ t: 'in', d: '/clear\r' });
+      await attached.opened;
+      attached.ws.send2({ t: 'in', d: '/clear\r' });
 
       const moved = await waitFor(
         async () => {
-          const id = (await srv.terminals()).find(x => x.id === t.id)?.sessionId;
+          const id = (await srv.terminals()).find(drawer => drawer.id === term.id)?.sessionId;
 
           return id !== chat.id && id;
         },
         { what: 'the drawer following /clear' },
       );
 
-      const zt = (await srv.terminals()).find(x => x.id === z.body.terminal.id);
+      const zt = (await srv.terminals()).find(drawer => drawer.id === zsh.body.terminal.id);
 
       assert.equal(zt.sessionId, moved, "the zsh is the new chat's, as the drawer is");
 
       assert.equal(
-        srv.holders().find(h => h.id === zt.id)?.sessionId,
+        srv.holders().find(holder => holder.id === zt.id)?.sessionId,
         moved,
         'and its holder was told, for an adoption after a restart',
       );
 
       await waitFor(
         async () =>
-          (await chatOf(moved))?.shells?.some(x => x.id === zt.id) && !(await chatOf(chat.id))?.shells?.length,
+          (await chatOf(moved))?.shells?.some(shell => shell.id === zt.id) && !(await chatOf(chat.id))?.shells?.length,
         { what: 'the new chat carrying the zsh, the old one none' },
       );
     } finally {
@@ -729,15 +758,15 @@ test(
     const src = [
       'server.mjs',
       ...readdirSync(join(ROOT, 'server'), { recursive: true })
-        .filter(f => f.endsWith('.mjs'))
-        .map(f => join('server', f)),
+        .filter(file => file.endsWith('.mjs'))
+        .map(file => join('server', file)),
     ]
-      .map(f => readFileSync(join(ROOT, f), 'utf8'))
+      .map(file => readFileSync(join(ROOT, file), 'utf8'))
       .join('\n');
 
-    const reads = new Set([...src.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)].map(m => m[1]));
+    const reads = new Set([...src.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)].map(match => match[1]));
 
-    for (const m of src.matchAll(/findBin\('([a-z]+)'/g)) reads.add(`${m[1].toUpperCase()}_BIN`);
+    for (const match of src.matchAll(/findBin\('([a-z]+)'/g)) reads.add(`${match[1].toUpperCase()}_BIN`);
 
     const KEEP = new Set([
       'CLAUDE_DIR',
@@ -753,23 +782,23 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TERM_LINGER_MS: '300000' } });
 
     try {
-      const z = await srv.post(`api/sessions/${fx.chats[1].id}/shell`, { cols: 100, rows: 30 });
+      const zsh = await srv.post(`api/sessions/${fx.chats[1].id}/shell`, { cols: 100, rows: 30 });
 
-      assert.equal(z.status, 201, JSON.stringify(z.body));
-      const a = attach(srv, z.body.terminal.id, { until: ':peix-end-42', timeout: 20_000 });
+      assert.equal(zsh.status, 201, JSON.stringify(zsh.body));
+      const attached = attach(srv, zsh.body.terminal.id, { until: ':peix-end-42', timeout: 20_000 });
 
-      await a.opened;
+      await attached.opened;
 
-      await waitFor(() => /[%$#] *$/.test(a.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), {
+      await waitFor(() => /[%$#] *$/.test(attached.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), {
         what: "the shell's prompt",
       });
 
-      a.ws.send2({
+      attached.ws.send2({
         t: 'in',
         d: "printf 'peix-env-%s:' $((40+2)); env | cut -d= -f1 | tr '\\n' ' '; printf ':peix-end-%s\\n' $((40+2))\r",
       });
 
-      const out = await a;
+      const out = await attached;
       const hit = out.all.match(/peix-env-42:([^:]*):peix-end-42/);
 
       assert.ok(hit, `the zsh listed its environment: ${JSON.stringify(out.all.slice(-300))}`);
@@ -786,7 +815,7 @@ test(
       );
 
       assert.deepEqual(
-        names.filter(n => reads.has(n) && !KEEP.has(n)),
+        names.filter(name => reads.has(name) && !KEEP.has(name)),
         [],
         'nothing else the server reads either',
       );
@@ -808,10 +837,10 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TERMS_DIR: deep } });
 
     try {
-      const r = await srv.post(`api/sessions/${fx.chats[1].id}/shell`, { cols: 100, rows: 30 });
+      const response = await srv.post(`api/sessions/${fx.chats[1].id}/shell`, { cols: 100, rows: 30 });
 
-      assert.equal(r.status, 500);
-      assert.match(r.body.error, /too deep for a socket: .* is \d+ bytes, macOS takes 103/);
+      assert.equal(response.status, 500);
+      assert.match(response.body.error, /too deep for a socket: .* is \d+ bytes, macOS takes 103/);
       assert.equal(existsSync(deep), false, 'no holder was started: not even its folder made');
     } finally {
       await srv.stop();
@@ -835,8 +864,8 @@ test(
       }),
     );
 
-    const h = spawn(process.execPath, [join(ROOT, 'lib', 'termhold.mjs'), deep, id], { stdio: 'ignore' });
-    const code = await new Promise(res => h.on('exit', res));
+    const holder = spawn(process.execPath, [join(ROOT, 'lib', 'termhold.mjs'), deep, id], { stdio: 'ignore' });
+    const code = await new Promise(res => holder.on('exit', res));
     const meta = JSON.parse(readFileSync(join(deep, `${id}.json`), 'utf8'));
 
     assert.equal(code, 1);
@@ -851,7 +880,7 @@ test(
   async () => {
     const { spawn } = await import('node:child_process');
     const { connect } = await import('node:net');
-    const { Terminal } = await import('@xterm/headless').then(m => m.default ?? m);
+    const { Terminal } = await import('@xterm/headless').then(imported => imported.default ?? imported);
 
     const dir = tmpDir('peix-h-');
     const id = 'tmodes';
@@ -875,7 +904,7 @@ test(
       }),
     );
 
-    const h = spawn(process.execPath, [join(ROOT, 'lib', 'termhold.mjs'), dir, id], {
+    const holder = spawn(process.execPath, [join(ROOT, 'lib', 'termhold.mjs'), dir, id], {
       stdio: 'ignore',
       env: { ...process.env, ZDOTDIR: zdot },
     });
@@ -886,10 +915,10 @@ test(
       sock = await waitFor(
         () =>
           new Promise(res => {
-            const s = connect(join(dir, `${id}.sock`));
+            const socket = connect(join(dir, `${id}.sock`));
 
-            s.once('connect', () => res(s));
-            s.once('error', () => res(null));
+            socket.once('connect', () => res(socket));
+            socket.once('error', () => res(null));
           }),
         { what: "the holder's socket" },
       );
@@ -899,15 +928,15 @@ test(
       let buf = '';
       let snap = null;
 
-      sock.on('data', c => {
-        buf += c;
-        let i;
+      sock.on('data', chunk => {
+        buf += chunk;
+        let index;
 
-        while ((i = buf.indexOf('\n')) >= 0) {
-          const m = JSON.parse(buf.slice(0, i));
+        while ((index = buf.indexOf('\n')) >= 0) {
+          const message = JSON.parse(buf.slice(0, index));
 
-          buf = buf.slice(i + 1);
-          if (m.t === 'snap') snap = m;
+          buf = buf.slice(index + 1);
+          if (message.t === 'snap') snap = message;
         }
       });
 
@@ -924,10 +953,10 @@ test(
       // the page: a fresh xterm written the snapshot, as attachTerm does after reset()
       const page = new Terminal({ cols: 80, rows: 24, scrollback: 5000, allowProposedApi: true });
 
-      await new Promise(r => page.write(snap.d, r));
+      await new Promise(resolve => page.write(snap.d, resolve));
 
       const core = page._core;
-      const b = page.buffer.active;
+      const buffer = page.buffer.active;
 
       assert.equal(page.modes.mouseTrackingMode, 'vt200', 'mouse tracking, which the addon did carry');
 
@@ -941,13 +970,13 @@ test(
       assert.deepEqual([core.buffer.scrollTop, core.buffer.scrollBottom], [2, 19], "the scroll region is the TUI's");
 
       assert.deepEqual(
-        [b.type, b.cursorY, b.cursorX],
+        [buffer.type, buffer.cursorY, buffer.cursorX],
         ['alternate', 4, 11],
         'and the cursor where the TUI left it, not homed by the region',
       );
 
       let sent = '';
-      const d = core.coreService.onData(s => (sent += s));
+      const subscription = core.coreService.onData(data => (sent += data));
 
       core.coreMouseService.triggerMouseEvent({
         col: 9,
@@ -961,12 +990,12 @@ test(
         shift: false,
       });
 
-      d.dispose();
+      subscription.dispose();
       assert.equal(sent, '\x1b[<64;10;5M', 'a wheel step reaches the TUI as it asked for it');
     } finally {
       sock?.end();
-      h.kill('SIGTERM');
-      await new Promise(r => (h.exitCode !== null ? r() : h.on('exit', r)));
+      holder.kill('SIGTERM');
+      await new Promise(resolve => (holder.exitCode !== null ? resolve() : holder.on('exit', resolve)));
     }
   },
 );
@@ -1007,9 +1036,12 @@ test(
     }); // where ps writes "Wed 14 Oct" for "Wed Oct 14"
 
     try {
-      await waitFor(async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id)?.alive, {
-        what: 'the chat live elsewhere',
-      });
+      await waitFor(
+        async () => (await srv.api('api/sessions')).body.sessions.find(session => session.id === chat.id)?.alive,
+        {
+          what: 'the chat live elsewhere',
+        },
+      );
 
       const take = await srv.post(`api/sessions/${chat.id}/takeover`, { cols: 90, rows: 24 });
 
@@ -1042,22 +1074,22 @@ test(
     writeFileSync(wrapper, `#!/bin/sh\n'${fake}' "$@"\nexit $?\n`);
     chmodSync(wrapper, 0o755);
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { CLAUDE_BIN: wrapper } });
-    const on = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+    const on = async id => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
 
     try {
-      const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 });
-      const tid = r.body.terminal.id;
+      const response = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 });
+      const tid = response.body.terminal.id;
 
-      const s = await waitFor(
+      const session = await waitFor(
         async () => {
-          const c = await on(chat.id);
+          const resumed = await on(chat.id);
 
-          return c?.alive && c;
+          return resumed?.alive && resumed;
         },
         { what: 'the claude below the wrapper up' },
       );
 
-      assert.notEqual(s.live.pid, r.body.terminal.pid, "the PTY's process is the wrapper");
+      assert.notEqual(session.live.pid, response.body.terminal.pid, "the PTY's process is the wrapper");
       const ws = new WebSocket(srv.ws(`api/terminals/${tid}/ws`));
 
       await new Promise(res => ws.addEventListener('open', res, { once: true }));
@@ -1067,12 +1099,12 @@ test(
       const moved = await waitFor(
         async () =>
           (await srv.api('api/sessions')).body.sessions.find(
-            c => c.id !== chat.id && c.alive && c.terminal?.id === tid,
+            candidate => candidate.id !== chat.id && candidate.alive && candidate.terminal?.id === tid,
           ),
         { what: 'the drawer on the chat its claude moved to' },
       );
 
-      assert.equal(moved.live.pid, s.live.pid, 'the same claude');
+      assert.equal(moved.live.pid, session.live.pid, 'the same claude');
       const left = await on(chat.id);
 
       assert.equal(left.alive, false);
@@ -1108,12 +1140,12 @@ test(
     const worker = spawn('sleep', ['60'], { stdio: 'ignore' });
     const spare = spawn('sleep', ['60'], { stdio: 'ignore' });
 
-    const entry = (p, more) =>
+    const entry = (child, more) =>
       JSON.stringify({
-        pid: p.pid,
+        pid: child.pid,
         cwd: chat.cwd,
         startedAt: Date.now(),
-        procStart: start(p.pid),
+        procStart: start(child.pid),
         kind: 'bg',
         entrypoint: 'cli',
         status: 'idle',
@@ -1132,34 +1164,34 @@ test(
     );
 
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
-    const on = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+    const on = async id => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
 
     try {
       await waitFor(async () => (await on(chat.id))?.alive, { what: 'the chat live in the background' });
       assert.equal((await on(spareId)) ?? null, null, "a spare is the daemon's, waiting for a chat");
-      const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 });
+      const response = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
+      assert.equal(response.status, 201, JSON.stringify(response.body));
       assert.match(srv.logText(), /claude attach abcd1234/, 'attached, where a chat live elsewhere is refused');
-      const s = await on(chat.id);
+      const session = await on(chat.id);
 
       assert.deepEqual(
-        [s.live.pid, s.live.kind, s.live.jobId, s.rivals],
+        [session.live.pid, session.live.kind, session.live.jobId, session.rivals],
         [worker.pid, 'bg', 'abcd1234', []],
         'the worker is its claude, and no rival',
       );
 
-      assert.equal(s.terminal.exited, null, 'in a drawer');
-      await srv.api(`api/terminals/${r.body.terminal.id}`, { method: 'DELETE' });
+      assert.equal(session.terminal.exited, null, 'in a drawer');
+      await srv.api(`api/terminals/${response.body.terminal.id}`, { method: 'DELETE' });
       await waitFor(async () => (await on(chat.id)).terminal?.exited != null, { what: 'the drawer closed' });
       assert.equal(worker.exitCode ?? worker.signalCode ?? null, null, 'and the session runs on');
       await srv.post(`api/sessions/${chat.id}/done`, { done: true });
       await waitFor(() => worker.exitCode !== null || worker.signalCode, { what: 'Done stopped it by its job' });
       await waitFor(async () => !(await on(chat.id)).alive, { what: 'the chat with no claude' });
     } finally {
-      for (const p of [worker, spare]) {
+      for (const child of [worker, spare]) {
         try {
-          p.kill();
+          child.kill();
         } catch {}
       }
 
@@ -1203,15 +1235,15 @@ test(
         (await waitFor(() => /listening on http:\/\/127\.0\.0\.1:(\d+)/.exec(log()), { what: 'the port taken' }))[1],
       );
 
-      const c = connect(port, '127.0.0.1', () => {
-        c.write(
+      const socket = connect(port, '127.0.0.1', () => {
+        socket.write(
           `GET /api/terminals/t1-mute/ws HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n`,
         );
 
-        setTimeout(() => c.resetAndDestroy(), 300); // while the boot still waits for the mute holder's hello
+        setTimeout(() => socket.resetAndDestroy(), 300); // while the boot still waits for the mute holder's hello
       });
 
-      c.on('error', () => {});
+      socket.on('error', () => {});
       const { srv, err } = await up;
 
       assert.equal(err, undefined, `the server came up: ${err?.message.split('\n')[0]}`);
@@ -1244,20 +1276,20 @@ test(
     writeFileSync(
       join(dir, `${id}.jsonl`),
       `${chatLines({ id, cwd: process.cwd(), prompt: 'hi', reply: 'hello' })
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
 
     try {
-      await waitFor(async () => (await srv.api('api/sessions')).body.sessions.some(s => s.id === id), {
+      await waitFor(async () => (await srv.api('api/sessions')).body.sessions.some(session => session.id === id), {
         what: 'the crafted chat on the board',
       });
 
-      const r = await srv.post(`api/sessions/${id}/terminal`, { cols: 90, rows: 24 });
+      const response = await srv.post(`api/sessions/${id}/terminal`, { cols: 90, rows: 24 });
 
-      assert.deepEqual([r.status, r.body.error], [400, 'not a chat id']);
+      assert.deepEqual([response.status, response.body.error], [400, 'not a chat id']);
       assert.deepEqual(await srv.terminals(), [], 'nothing spawned');
     } finally {
       await srv.stop();

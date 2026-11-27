@@ -15,10 +15,10 @@ process.env.NOTIFY = 'off';
 const { projectInput, movePeacock, termSummary, summarizeToolInput, toolResultSnippet } = await import('../server.mjs');
 
 test('projectInput: a name and absolute folders, trimmed and deduplicated; errors for the rest', () => {
-  const v = projectInput({ name: '  Fees  ', cwds: ['/a/b', '/a/b/', ' /c ', ''] }, { cwds: [] });
+  const project = projectInput({ name: '  Fees  ', cwds: ['/a/b', '/a/b/', ' /c ', ''] }, { cwds: [] });
 
-  assert.equal(v.name, 'Fees');
-  assert.deepEqual(v.cwds, ['/a/b', '/c']);
+  assert.equal(project.name, 'Fees');
+  assert.deepEqual(project.cwds, ['/a/b', '/c']);
 
   assert.deepEqual(
     projectInput({ name: 'x', cwds: ['~/code/x'] }, {}).cwds,
@@ -132,7 +132,7 @@ test(
     const srv = await startTestServer({ dir });
 
     try {
-      const bad = readdirSync(dir).filter(f => f.startsWith('state.json.bad-'));
+      const bad = readdirSync(dir).filter(file => file.startsWith('state.json.bad-'));
 
       assert.equal(bad.length, 1, 'kept beside itself');
       assert.equal(readFileSync(join(dir, bad[0]), 'utf8'), '{"done": {"x": "2026-10-0', 'as it was');
@@ -155,7 +155,7 @@ test(
       );
 
       assert.deepEqual(
-        readdirSync(dir).filter(f => f.endsWith('.tmp')),
+        readdirSync(dir).filter(file => file.endsWith('.tmp')),
         [],
         'and leaves nothing behind',
       );
@@ -175,17 +175,17 @@ test(
     const { startTestServer, waitFor, sleep } = await import('../lib/testserver.mjs');
     const { spawn } = await import('node:child_process');
     const { closeSync, openSync } = await import('node:fs');
-    const a = await startTestServer({ keep: true });
+    const firstServer = await startTestServer({ keep: true });
 
-    const blog = join(a.dir, 'b.log');
+    const blog = join(firstServer.dir, 'b.log');
     const fd = openSync(blog, 'a');
 
-    // stdin a pipe, held open: a.env carries PEIX_TEST_PARENT, and a test server ends when its stdin does
-    let b;
+    // stdin a pipe, held open: firstServer.env carries PEIX_TEST_PARENT, and a test server ends when its stdin does
+    let secondServer;
 
     try {
-      b = spawn(process.execPath, [join(import.meta.dirname, '..', 'server.mjs')], {
-        env: a.env,
+      secondServer = spawn(process.execPath, [join(import.meta.dirname, '..', 'server.mjs')], {
+        env: firstServer.env,
         stdio: ['pipe', fd, fd],
       });
     } finally {
@@ -195,11 +195,11 @@ test(
     const said = re => re.test(readFileSync(blog, 'utf8'));
 
     const put = (path, body) =>
-      fetch(a.url + path, {
+      fetch(firstServer.url + path, {
         method: 'PUT',
-        headers: { 'content-type': 'application/json', 'x-peix-key': a.key },
+        headers: { 'content-type': 'application/json', 'x-peix-key': firstServer.key },
         body: JSON.stringify(body),
-      }).then(r => r.json());
+      }).then(response => response.json());
 
     try {
       await waitFor(() => said(/port \d+ is busy/), { what: 'the second server waiting on the port' });
@@ -208,13 +208,13 @@ test(
         '/acme/made-while-it-waited',
       ]);
 
-      await a.stop();
+      await firstServer.stop();
       await waitFor(() => said(/listening on/), { what: 'the second server taking the port' });
 
       await waitFor(
         async () => {
           try {
-            return (await fetch(`${a.url}api/alive`)).ok;
+            return (await fetch(`${firstServer.url}api/alive`)).ok;
           } catch {
             return false;
           }
@@ -223,22 +223,22 @@ test(
       );
 
       assert.deepEqual(
-        (await a.api('api/sessions')).body.pins,
+        (await firstServer.api('api/sessions')).body.pins,
         ['/acme/made-while-it-waited'],
         'the pin made while it waited',
       );
 
       await put('api/notifications', { on: false }); // a save
-      const st = JSON.parse(readFileSync(a.env.STATE_FILE, 'utf8'));
+      const st = JSON.parse(readFileSync(firstServer.env.STATE_FILE, 'utf8'));
 
       assert.deepEqual([st.pinned, st.notifications], [['/acme/made-while-it-waited'], false], 'saved over nothing');
     } finally {
-      if (b.exitCode === null) {
-        b.kill('SIGTERM');
+      if (secondServer.exitCode === null) {
+        secondServer.kill('SIGTERM');
 
-        await waitFor(() => b.exitCode !== null || b.signalCode, { what: 'the second server ended' }).catch(() =>
-          b.kill('SIGKILL'),
-        );
+        await waitFor(() => secondServer.exitCode !== null || secondServer.signalCode, {
+          what: 'the second server ended',
+        }).catch(() => secondServer.kill('SIGKILL'));
       }
 
       await sleep(100);
@@ -264,7 +264,7 @@ test(
     writeFileSync(legacy, JSON.stringify({ done: { x: '2026-10-01T00:00:00.000Z' } }));
     const env = { ...process.env, HOME: home, CLAUDE_DIR: join(home, 'claude'), USAGE: 'off', NOTIFY: 'off' };
 
-    for (const k of ['STATE_FILE', 'CONFIG_FILE', 'XDG_CONFIG_HOME', 'XDG_STATE_HOME']) delete env[k];
+    for (const name of ['STATE_FILE', 'CONFIG_FILE', 'XDG_CONFIG_HOME', 'XDG_STATE_HOME']) delete env[name];
 
     const out = execFileSync(
       process.execPath,
@@ -305,10 +305,10 @@ test(
       }); // a save
 
       assert.equal(statSync(join(dir, 'state.json')).mode & 0o777, 0o600, "the state file, written this user's alone");
-      const r = await srv.post('api/terminals', { cwd: dir, shell: true });
+      const response = await srv.post('api/terminals', { cwd: dir, shell: true });
 
-      assert.equal(r.status, 500);
-      assert.match(r.body.error, /is not a folder of this user's — not used/);
+      assert.equal(response.status, 500);
+      assert.match(response.body.error, /is not a folder of this user's — not used/);
     } finally {
       await srv.stop();
     }

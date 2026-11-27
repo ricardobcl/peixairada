@@ -82,8 +82,8 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.zed.checked, ['vscode:false', 'zed:true']);
 
   ctx.assert.deepEqual(
-    out.zed.anchors.map(a => a[1]),
-    out.anchors.map(a => a[1].replace(/^vscode:/, 'zed:')),
+    out.zed.anchors.map(anchor => anchor[1]),
+    out.anchors.map(anchor => anchor[1].replace(/^vscode:/, 'zed:')),
     'the same links, each a zed://file one',
   );
 

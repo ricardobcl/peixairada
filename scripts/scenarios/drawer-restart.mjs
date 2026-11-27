@@ -32,7 +32,7 @@ export default async function (ctx) {
   await ctx.shot('1-after-restart', { x: 430, y: 0, width: 1270, height: 1000 });
 
   ctx.assert.ok(
-    screen.some(r => /fake mode on/.test(r)) && screen.some(r => /^❯/.test(r)),
+    screen.some(row => /fake mode on/.test(row)) && screen.some(row => /^❯/.test(row)),
     'the screen is whole after the restart',
   );
 

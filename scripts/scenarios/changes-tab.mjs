@@ -14,8 +14,8 @@ const repo = join(realpathSync(tmpDir('peix-chg-')), 'shop');
 
 mkdirSync(join(repo, 'src'), { recursive: true });
 
-const g = (...a) =>
-  execFileSync('git', ['-C', repo, ...a], {
+const git = (...args) =>
+  execFileSync('git', ['-C', repo, ...args], {
     stdio: 'pipe',
     env: {
       ...process.env,
@@ -26,7 +26,7 @@ const g = (...a) =>
     },
   });
 
-g('init', '-q', '-b', 'main');
+git('init', '-q', '-b', 'main');
 
 writeFileSync(
   join(repo, 'src', 'cart.js'),
@@ -34,9 +34,9 @@ writeFileSync(
 );
 
 writeFileSync(join(repo, 'README.md'), '# shop\n');
-g('add', '.');
-g('commit', '-q', '-m', 'base');
-g('checkout', '-q', '-b', 'feat/tax');
+git('add', '.');
+git('commit', '-q', '-m', 'base');
+git('checkout', '-q', '-b', 'feat/tax');
 
 writeFileSync(
   join(repo, 'src', 'cart.js'),

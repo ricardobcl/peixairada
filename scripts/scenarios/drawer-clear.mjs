@@ -82,7 +82,7 @@ export default async function (ctx) {
   // its scrollback too: in a half stood over another the drawer is short, and the fake's repaint after the nudge scrolls
   // its first lines off the screen
   ctx.assert.ok(
-    (await ctx.evaluate('window.peix.buffer(0)')).some(r => /\(cleared\)/.test(r)),
+    (await ctx.evaluate('window.peix.buffer(0)')).some(row => /\(cleared\)/.test(row)),
     'the fake started over in the drawer',
   );
 
@@ -114,12 +114,12 @@ export default async function (ctx) {
   const terms = await ctx.server.terminals();
 
   ctx.assert.equal(
-    terms.filter(t => !t.shell && t.exited === null).length,
+    terms.filter(term => !term.shell && term.exited === null).length,
     1,
     'one claude process, not a second resume',
   );
 
-  ctx.assert.equal(terms.find(t => !t.shell).sessionId, after.current, "the holder is the new chat's");
+  ctx.assert.equal(terms.find(term => !term.shell).sessionId, after.current, "the holder is the new chat's");
   await ctx.shot('cleared', { x: 430, y: 0, width: 1270, height: 600 });
   return { ...out, from: chat.id, to: after.current, term: after.termId };
 }

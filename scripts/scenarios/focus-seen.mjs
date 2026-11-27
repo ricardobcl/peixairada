@@ -24,7 +24,7 @@ export default async function (ctx) {
   appendFileSync(
     chat.file,
     `${replyLines({ id: chat.id, cwd: chat.cwd, text: 'A reply while you were in another window.', at })
-      .map(l => JSON.stringify(l))
+      .map(line => JSON.stringify(line))
       .join('\n')}\n`,
   );
 

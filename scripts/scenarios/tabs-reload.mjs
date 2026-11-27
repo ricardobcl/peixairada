@@ -15,7 +15,7 @@ export default async function (ctx) {
 
   await ctx.reload();
   await ctx.openChat(two.id);
-  const [a, b] = await ctx.peix(`session(${JSON.stringify(two.id)}).prs.map(p => p.url)`);
+  const [firstPr, secondPr] = await ctx.peix(`session(${JSON.stringify(two.id)}).prs.map(p => p.url)`);
 
   const chip = url =>
     ctx.evaluate(
@@ -36,16 +36,16 @@ export default async function (ctx) {
 
   // two PRs on tabs of their own (the column splits for the first), the editor, the halves stood one over the other,
   // the first PR followed into its files and brought back in front
-  await chip(a);
+  await chip(firstPr);
 
-  await ctx.waitFor(`window.peix.state().halves[1] === ${JSON.stringify(`gh:${a}`)}`, {
+  await ctx.waitFor(`window.peix.state().halves[1] === ${JSON.stringify(`gh:${firstPr}`)}`, {
     what: 'the first PR on a tab',
   });
 
   await ctx.cmd('Digit1');
-  await chip(b);
+  await chip(secondPr);
 
-  await ctx.waitFor(`window.peix.state().halves[1] === ${JSON.stringify(`gh:${b}`)}`, {
+  await ctx.waitFor(`window.peix.state().halves[1] === ${JSON.stringify(`gh:${secondPr}`)}`, {
     what: 'the second PR beside it',
   });
 
@@ -53,16 +53,16 @@ export default async function (ctx) {
   await ctx.waitFor(`/^ide:/.test(window.peix.state().halves[1] || '')`, { what: 'the editor on a tab' });
   await ctx.key('Digit2');
   await ctx.waitFor(`window.peix.state().stacked`, { what: 'the halves one over the other' });
-  await ctx.evaluate(`window.peixPaneUrl(${JSON.stringify(`gh:${a}`)}, ${JSON.stringify(`${a}/files`)})`);
-  await ctx.evaluate(`document.querySelector(${JSON.stringify(`#ptabsB .ptab[data-tab="gh:${a}"]`)}).click()`);
+  await ctx.evaluate(`window.peixPaneUrl(${JSON.stringify(`gh:${firstPr}`)}, ${JSON.stringify(`${firstPr}/files`)})`);
+  await ctx.evaluate(`document.querySelector(${JSON.stringify(`#ptabsB .ptab[data-tab="gh:${firstPr}"]`)}).click()`);
 
-  await ctx.waitFor(`window.peix.state().halves[1] === ${JSON.stringify(`gh:${a}`)}`, {
+  await ctx.waitFor(`window.peix.state().halves[1] === ${JSON.stringify(`gh:${firstPr}`)}`, {
     what: 'the first PR in front again',
   });
 
   out.before = await column();
   ctx.assert.equal(out.before.strips[1].length, 3, 'two PRs and the editor in the second half');
-  ctx.assert.equal(out.before.addr, `${a}/files`);
+  ctx.assert.equal(out.before.addr, `${firstPr}/files`);
   await ctx.settle();
   await ctx.shot('before');
 
@@ -70,7 +70,7 @@ export default async function (ctx) {
   await ctx.reload();
 
   await ctx.waitFor(
-    `document.querySelector('#log')?.dataset.sid === ${JSON.stringify(two.id)} && window.peix.state().halves[1] === ${JSON.stringify(`gh:${a}`)}`,
+    `document.querySelector('#log')?.dataset.sid === ${JSON.stringify(two.id)} && window.peix.state().halves[1] === ${JSON.stringify(`gh:${firstPr}`)}`,
     { what: 'the chat again, its page in front' },
   );
 
@@ -78,26 +78,28 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.after, out.before, 'the tabs, the split and the address as they stood');
   out.pane = await lastPane();
   ctx.assert.deepEqual(out.pane.keys, out.before.strips[1], "the shell hears the chat's pages again");
-  ctx.assert.equal(out.pane.show, `gh:${a}`, '…and shows the one in front, whose view it kept');
+  ctx.assert.equal(out.pane.show, `gh:${firstPr}`, '…and shows the one in front, whose view it kept');
   await ctx.settle();
   await ctx.shot('after');
 
   // a tab closed stays closed, the split the board made going with the last of them
-  await ctx.evaluate(`document.querySelector(${JSON.stringify(`#ptabsB .ptab[data-tab="gh:${b}"] .x`)}).click()`);
+  await ctx.evaluate(
+    `document.querySelector(${JSON.stringify(`#ptabsB .ptab[data-tab="gh:${secondPr}"] .x`)}).click()`,
+  );
 
-  await ctx.waitFor(`!window.peix.state().strips[1].includes(${JSON.stringify(`gh:${b}`)})`, {
+  await ctx.waitFor(`!window.peix.state().strips[1].includes(${JSON.stringify(`gh:${secondPr}`)})`, {
     what: 'the second PR closed',
   });
 
   await ctx.reload();
 
   await ctx.waitFor(
-    `document.querySelector('#log')?.dataset.sid === ${JSON.stringify(two.id)} && window.peix.state().halves[1] === ${JSON.stringify(`gh:${a}`)}`,
+    `document.querySelector('#log')?.dataset.sid === ${JSON.stringify(two.id)} && window.peix.state().halves[1] === ${JSON.stringify(`gh:${firstPr}`)}`,
     { what: 'the chat again' },
   );
 
   out.closed = await column();
-  ctx.assert.ok(!out.closed.strips[1].includes(`gh:${b}`), 'the closed PR does not come back');
+  ctx.assert.ok(!out.closed.strips[1].includes(`gh:${secondPr}`), 'the closed PR does not come back');
   ctx.assert.equal(out.closed.strips[1].length, 2);
   ctx.assert.deepEqual(await ctx.evaluate('JSON.stringify(window.__errs)').then(JSON.parse), [], 'nothing threw');
   return out;

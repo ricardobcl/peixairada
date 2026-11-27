@@ -10,7 +10,7 @@
 // between them (the sidebar's; the tiles' 8 px gap and 2 px borders until 2026-11-01), a lone strip nothing at all.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
-const halves = ctx => ctx.peix('state().halves').then(h => h.map(k => k && k.split(':')[0])); // a zsh's tab is shell:<its id>
+const halves = ctx => ctx.peix('state().halves').then(keys => keys.map(key => key && key.split(':')[0])); // a zsh's tab is shell:<its id>
 
 const strips = ctx =>
   ctx
@@ -52,15 +52,15 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.peix('state().focusG'), 1, '⌘2 put the keys in the right half');
   ctx.assert.deepEqual(await halves(ctx), ['chat', null], 'the chat stayed on the left');
   ctx.assert.ok((await shown(ctx)).empty, 'the empty half says what would fill it');
-  const e = await rules(ctx);
+  const stripRules = await rules(ctx);
 
   ctx.assert.deepEqual(
-    e.map(x => x.lone),
+    stripRules.map(rule => rule.lone),
     [true, false],
     'claude alone has no strip; the empty half keeps its strip',
   );
 
-  ctx.assert.equal(e[0].h, 0, 'nothing at all where it would be');
+  ctx.assert.equal(stripRules[0].h, 0, 'nothing at all where it would be');
 
   ctx.assert.equal(
     await ctx.evaluate(
@@ -121,7 +121,7 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.term(1).ws === 1 && window.peix.term(0).ws === 1`, { what: 'both halves attached' });
 
   ctx.assert.deepEqual(
-    await ctx.peix('state().strips').then(s => s.map(l => l.map(k => k.split(':')[0]))),
+    await ctx.peix('state().strips').then(stripKeys => stripKeys.map(keys => keys.map(key => key.split(':')[0]))),
     [['chat'], ['shell']],
     'each half holds its own tab',
   );
@@ -129,7 +129,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await strips(ctx), [[], []], 'one tab each: neither strip lists anything');
 
   ctx.assert.deepEqual(
-    (await rules(ctx)).map(x => [x.lone, x.h]),
+    (await rules(ctx)).map(rule => [rule.lone, rule.h]),
     [
       [true, 0],
       [true, 0],
@@ -168,12 +168,12 @@ export default async function (ctx) {
   await ctx.shot('split');
 
   // the fit is each half's own: neither terminal runs past its body
-  for (const g of [0, 1]) {
-    const d = await ctx.peix(`term(${g})`);
+  for (const half of [0, 1]) {
+    const term = await ctx.peix(`term(${half})`);
 
     ctx.assert.ok(
-      d.screen.w <= d.body.w + 0.5 && d.screen.h <= d.body.h + 0.5,
-      `half ${g}: the screen (${d.screen.w}×${d.screen.h}) fits the body (${d.body.w}×${d.body.h})`,
+      term.screen.w <= term.body.w + 0.5 && term.screen.h <= term.body.h + 0.5,
+      `half ${half}: the screen (${term.screen.w}×${term.screen.h}) fits the body (${term.body.w}×${term.body.h})`,
     );
   }
 
@@ -210,7 +210,9 @@ export default async function (ctx) {
 
   // ⌘1 goes back to the left half — and neither terminal changes size, the border being as wide lit as not; ⌥⌘→ walks
   // the halves as one row, into the zsh on the right
-  const sizes = () => Promise.all([0, 1].map(g => ctx.peix(`term(${g})`).then(d => `${d.cols}×${d.rows}`)));
+  const sizes = () =>
+    Promise.all([0, 1].map(half => ctx.peix(`term(${half})`).then(term => `${term.cols}×${term.rows}`)));
+
   const was = await sizes();
 
   await ctx.cmd('Digit1');
@@ -280,13 +282,13 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.peix('state().focusG'), 0, 'the keys went back to claude');
 
   ctx.assert.deepEqual(
-    (await rules(ctx)).map(x => x.lone),
+    (await rules(ctx)).map(rule => rule.lone),
     [true, false],
     'the empty half has its strip again',
   );
 
   ctx.assert.ok(
-    (await ctx.server.terminals()).every(t => !t.shell || t.exited !== null),
+    (await ctx.server.terminals()).every(term => !term.shell || term.exited !== null),
     'the server ended the zsh',
   );
 

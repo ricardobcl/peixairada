@@ -14,7 +14,7 @@ export default async function (ctx) {
   const cwd = process.cwd();
 
   const {
-    chats: [c],
+    chats: [chat],
   } = makeFixture(ctx.fixture.dir, [
     {
       cwd,
@@ -30,19 +30,19 @@ export default async function (ctx) {
     userType: 'external',
     entrypoint: 'cli',
     cwd,
-    sessionId: c.id,
+    sessionId: chat.id,
     version: 'fixture',
     gitBranch: 'main',
   };
 
-  const at = m => new Date(now - m * 60_000).toISOString();
+  const at = minutes => new Date(now - minutes * 60_000).toISOString();
 
-  const say = (m, text, stop, more = []) => ({
+  const say = (minutes, text, stop, more = []) => ({
     ...base,
     parentUuid: null,
     type: 'assistant',
     uuid: randomUUID(),
-    timestamp: at(m),
+    timestamp: at(minutes),
     message: {
       model: 'fixture-1',
       id: `msg_${randomUUID().slice(0, 8)}`,
@@ -69,7 +69,7 @@ export default async function (ctx) {
       { type: 'tool_use', id: 'toolu_x1', name: 'Bash', input: { command: 'npm test' } },
     ]),
     ...toolLines({
-      id: c.id,
+      id: chat.id,
       cwd,
       name: 'Read',
       input: { file_path: '/src/fees.ts' },
@@ -79,13 +79,13 @@ export default async function (ctx) {
     say(6, 'Done: the big markets render in **180 ms**, the small ones as before.', 'end_turn'),
   ];
 
-  appendFileSync(c.file, `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
+  appendFileSync(chat.file, `${lines.map(line => JSON.stringify(line)).join('\n')}\n`);
 
-  await ctx.waitFor(`window.peix.session(${JSON.stringify(c.id)})?.lastReply?.startsWith('Done')`, {
+  await ctx.waitFor(`window.peix.session(${JSON.stringify(chat.id)})?.lastReply?.startsWith('Done')`, {
     what: 'the second turn read',
   });
 
-  await ctx.openChat(c.id);
+  await ctx.openChat(chat.id);
   await ctx.waitFor(`document.querySelectorAll('#log .turnfoot').length === 2`, { what: 'two turns closed' });
   await ctx.settle();
 
@@ -137,7 +137,7 @@ export default async function (ctx) {
 
   // the tabs wear their marks: Claude's burst on the chat's, the prompt on the shell's
   await ctx.key('KeyT');
-  await ctx.waitFor(`!!window.peix.session(${JSON.stringify(c.id)})?.shell`, { timeout: 15_000, what: 'the shell' });
+  await ctx.waitFor(`!!window.peix.session(${JSON.stringify(chat.id)})?.shell`, { timeout: 15_000, what: 'the shell' });
   await ctx.cmd('Digit1');
   await ctx.cmd('Digit0');
 

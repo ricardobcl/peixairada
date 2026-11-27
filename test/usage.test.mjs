@@ -26,7 +26,7 @@ test("a Max plan: the rolling windows and a model's own week", () => {
   });
 
   assert.deepEqual(
-    windows.map(w => [w.key, w.percent]),
+    windows.map(usageWindow => [usageWindow.key, usageWindow.percent]),
     [
       ['seven_day', 22],
       ['limits:weekly_scoped:Fable', 8],
@@ -34,7 +34,7 @@ test("a Max plan: the rolling windows and a model's own week", () => {
   );
 
   assert.ok(
-    windows.every(w => !('limit' in w)),
+    windows.every(usageWindow => !('limit' in usageWindow)),
     'no money on a plan of windows',
   );
 
@@ -50,7 +50,7 @@ test('the five-hour window is gone: a field or a row still naming it is no windo
     });
 
     assert.deepEqual(
-      windows.map(w => w.key),
+      windows.map(usageWindow => usageWindow.key),
       ['seven_day'],
     );
 
@@ -98,7 +98,7 @@ test('several caps: the dollars go with the active one only', () => {
   });
 
   assert.deepEqual(
-    windows.map(w => [w.key, w.label, w.limit ?? null]),
+    windows.map(usageWindow => [usageWindow.key, usageWindow.label, usageWindow.limit ?? null]),
     [
       ['spend:daily', 'spend · today', 20],
       ['spend:monthly', 'spend · this month', null],
@@ -113,7 +113,7 @@ test('extra usage on a plan of windows, with no spend row: a window of its own',
   });
 
   assert.deepEqual(
-    windows.map(w => w.key),
+    windows.map(usageWindow => usageWindow.key),
     ['seven_day', 'extra_usage'],
   );
 

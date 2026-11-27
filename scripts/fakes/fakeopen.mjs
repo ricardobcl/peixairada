@@ -8,8 +8,8 @@ let script = '';
 
 process.stdin.setEncoding('utf8');
 
-process.stdin.on('data', c => {
-  script += c;
+process.stdin.on('data', chunk => {
+  script += chunk;
 });
 
 process.stdin.on('end', () => {

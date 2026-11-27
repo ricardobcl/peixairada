@@ -52,7 +52,7 @@ export default async function (ctx) {
   );
 
   // a click opens Done; another folds Ready
-  const click = g => ctx.evaluate(`document.querySelector('#slist > .gsep.lane[data-lane="${g}"]').click()`);
+  const click = lane => ctx.evaluate(`document.querySelector('#slist > .gsep.lane[data-lane="${lane}"]').click()`);
 
   await click('done');
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 2`, { what: 'the done card back' });
@@ -64,7 +64,9 @@ export default async function (ctx) {
 
   out.folded = {
     lanes: await lanes(ctx),
-    moves: (await ctx.peix('motion()')).filter(m => m.kind === 'leave' || m.kind === 'fold').map(m => m.kind),
+    moves: (await ctx.peix('motion()'))
+      .filter(move => move.kind === 'leave' || move.kind === 'fold')
+      .map(move => move.kind),
   };
 
   ctx.assert.deepEqual(
@@ -155,7 +157,7 @@ export default async function (ctx) {
   appendFileSync(
     join(ctx.fixture.dir, 'projects', slugOf(one.cwd), `${one.id}.jsonl`),
     `${replyLines({ id: one.id, cwd: one.cwd, text: 'And one more thing.' })
-      .map(l => JSON.stringify(l))
+      .map(line => JSON.stringify(line))
       .join('\n')}\n`,
   );
 
@@ -180,12 +182,12 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-  const choose = async t => {
+  const choose = async label => {
     await ctx.evaluate(`document.querySelector('#fBtn').click()`);
     await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: "the funnel's menu" });
 
     await ctx.evaluate(
-      `[...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith(${JSON.stringify(t)})).click()`,
+      `[...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith(${JSON.stringify(label)})).click()`,
     );
   };
 
@@ -257,7 +259,7 @@ export default async function (ctx) {
   const sleeper = spawn('/bin/sh', ['-c', "trap '' TERM; exec sleep 120"], { stdio: 'ignore' });
 
   try {
-    const [q] = makeFixture(ctx.fixture.dir, [
+    const [asking] = makeFixture(ctx.fixture.dir, [
       {
         cwd: one.cwd,
         title: 'a question',
@@ -268,17 +270,20 @@ export default async function (ctx) {
       },
     ]).chats;
 
-    await ctx.waitFor(`window.peix.session('${q.id}')?.status === 'needs-input' && document.title.startsWith('(1) ')`, {
-      what: 'the question, counted in the title',
-    });
+    await ctx.waitFor(
+      `window.peix.session('${asking.id}')?.status === 'needs-input' && document.title.startsWith('(1) ')`,
+      {
+        what: 'the question, counted in the title',
+      },
+    );
 
-    await ctx.server.post(`api/sessions/${q.id}/done`, { done: true });
-    await ctx.waitFor(`window.peix.session('${q.id}')?.done === true`, { what: 'the asking chat ticked done' });
+    await ctx.server.post(`api/sessions/${asking.id}/done`, { done: true });
+    await ctx.waitFor(`window.peix.session('${asking.id}')?.done === true`, { what: 'the asking chat ticked done' });
     await ctx.sleep(300);
 
     out.doneAsking = await ctx
       .evaluate(
-        `JSON.stringify({ title: document.title, alive: window.peix.session('${q.id}').alive, status: window.peix.session('${q.id}').status, bar: !!document.querySelector('#sbar .seg.ask') })`,
+        `JSON.stringify({ title: document.title, alive: window.peix.session('${asking.id}').alive, status: window.peix.session('${asking.id}').status, bar: !!document.querySelector('#sbar .seg.ask') })`,
       )
       .then(JSON.parse);
 

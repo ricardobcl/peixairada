@@ -31,11 +31,11 @@ test(
   'a pull, asked for: fast-forwarded, what it touched started again, a commit that does not start held back, and over a change here only when asked',
   { timeout: 60_000 },
   async () => {
-    const p = project();
+    const testProject = project();
     const dir = tmpDir('peix-');
 
     writeFileSync(join(dir, 'state.json'), JSON.stringify({ autoUpdate: true })); // as every save wrote it on 2026-10-12, when on was the default
-    const srv = await startTestServer({ dir, env: { ...p.env, UPDATE_QUIET_MS: '60000' } });
+    const srv = await startTestServer({ dir, env: { ...testProject.env, UPDATE_QUIET_MS: '60000' } });
     const look = async (body = {}) => (await srv.post('api/update', body)).body;
 
     const turn = async on =>
@@ -50,9 +50,9 @@ test(
     try {
       const st0 = await waitFor(
         async () => {
-          const b = (await srv.api('api/update')).body;
+          const status = (await srv.api('api/update')).body;
 
-          return b.checkout && b;
+          return status.checkout && status;
         },
         { what: 'the checkout read at boot' },
       );
@@ -66,35 +66,40 @@ test(
       assert.equal((await look()).why, 'current', 'nothing new');
 
       // off (2026-10-13): a new commit said — the status bar's alert — and not taken
-      const first = p.head();
-      const a = p.push({ 'public/index.html': `${PAGE}<!-- a -->\n` }, 'the page');
+      const first = testProject.head();
+      const pageCommit = testProject.push({ 'public/index.html': `${PAGE}<!-- a -->\n` }, 'the page');
 
       let st = await look();
 
-      assert.deepEqual([st.why, st.behind, st.up, p.head()], ['off', 1, a, first], 'seen, not pulled');
+      assert.deepEqual(
+        [st.why, st.behind, st.up, testProject.head()],
+        ['off', 1, pageCommit, first],
+        'seen, not pulled',
+      );
+
       assert.equal(await turn(true), true);
 
       // the page: fast-forwarded, nothing restarted (the page reloads itself)
       st = await look();
-      assert.equal(p.head(), a, 'fast-forwarded');
+      assert.equal(testProject.head(), pageCommit, 'fast-forwarded');
 
       assert.deepEqual(
         [st.why, st.error, st.behind, st.last.count, st.last.parts, st.last.to],
-        ['current', null, 0, 1, ['page'], a],
+        ['current', null, 0, 1, ['page'], pageCommit],
       );
 
-      assert.deepEqual(p.asked(), [], 'nothing restarted for a page');
+      assert.deepEqual(testProject.asked(), [], 'nothing restarted for a page');
 
       // the server and the app: the agent restarted, the app rebuilt — each a step the status bar says
       const swift = readFileSync(join(ROOT, 'mac/Sources/main.swift'), 'utf8');
 
-      const b = p.push(
+      const serverCommit = testProject.push(
         { 'server.mjs': `${TINY}// b\n`, 'mac/Sources/main.swift': `${swift}// b\n` },
         'the server and the app',
       );
 
       st = await look();
-      assert.deepEqual([p.head(), st.last.parts, st.restarting], [b, ['server', 'app'], true]);
+      assert.deepEqual([testProject.head(), st.last.parts, st.restarting], [serverCommit, ['server', 'app'], true]);
 
       assert.deepEqual(
         [st.steps, st.step],
@@ -102,14 +107,14 @@ test(
         'the steps, and the last one reached',
       );
 
-      await waitFor(() => p.asked().length === 2, { what: 'the restart and the build' });
-      assert.deepEqual(p.asked().sort(), ['build install --detached', 'restart restart --detached']);
+      await waitFor(() => testProject.asked().length === 2, { what: 'the restart and the build' });
+      assert.deepEqual(testProject.asked().sort(), ['build install --detached', 'restart restart --detached']);
 
       st = await waitFor(
         async () => {
-          const b = (await srv.api('api/update')).body;
+          const status = (await srv.api('api/update')).body;
 
-          return b.build?.done && b;
+          return status.build?.done && status;
         },
         { what: "the build's end" },
       );
@@ -118,17 +123,17 @@ test(
 
       st = await waitFor(
         async () => {
-          const b = (await srv.api('api/update')).body;
+          const status = (await srv.api('api/update')).body;
 
-          return b.app?.behind === false && b;
+          return status.app?.behind === false && status;
         },
         { what: 'the app stamped as built' },
       );
 
       // a rebuild that outlives the server's restart: followed by the new server, and one that fails is said
-      p.flag('build-slow', true);
-      p.flag('build-fails', true);
-      p.push({ 'mac/Sources/main.swift': `${swift}// b2\n` }, 'the app again');
+      testProject.flag('build-slow', true);
+      testProject.flag('build-fails', true);
+      testProject.push({ 'mac/Sources/main.swift': `${swift}// b2\n` }, 'the app again');
       st = await look();
       assert.equal(st.building, true, 'building');
       await srv.restart();
@@ -137,9 +142,9 @@ test(
 
       st = await waitFor(
         async () => {
-          const b = (await srv.api('api/update')).body;
+          const status = (await srv.api('api/update')).body;
 
-          return b.build?.done && b;
+          return status.build?.done && status;
         },
         { what: "the build's end, seen from the new server" },
       );
@@ -149,101 +154,116 @@ test(
         [false, false, "swiftc: error: no such module 'Cocoa'"],
       );
 
-      p.flag('build-slow', false);
-      p.flag('build-fails', false);
+      testProject.flag('build-slow', false);
+      testProject.flag('build-fails', false);
 
       // a server that does not start: undone, and held back until a newer commit comes
-      const kept = p.head();
-      const c = p.push({ 'server.mjs': "throw new Error('boom: this server does not start');\n" }, 'a broken server');
+      const kept = testProject.head();
+
+      const brokenServer = testProject.push(
+        { 'server.mjs': "throw new Error('boom: this server does not start');\n" },
+        'a broken server',
+      );
 
       st = await look();
-      assert.equal(p.head(), kept, 'undone');
+      assert.equal(testProject.head(), kept, 'undone');
 
       assert.match(
         st.error,
-        new RegExp(`^${c.slice(0, 7)} was not kept: its server did not start \\(.*boom: this server does not start`),
+        new RegExp(
+          `^${brokenServer.slice(0, 7)} was not kept: its server did not start \\(.*boom: this server does not start`,
+        ),
       );
 
       assert.deepEqual(
         [st.why, st.held.to, st.behind, st.failed],
-        ['held', c, 1, st.error],
+        ['held', brokenServer, 1, st.error],
         'the update itself failed: the status bar says so',
       );
 
-      assert.equal(p.git(p.co, 'status', '--porcelain'), '', 'the checkout as it was');
+      assert.equal(testProject.git(testProject.co, 'status', '--porcelain'), '', 'the checkout as it was');
       st = await look();
 
       assert.deepEqual(
-        [st.why, st.error, p.head()],
+        [st.why, st.error, testProject.head()],
         ['held', null, kept],
         'asked again: still held, and said without an error',
       );
 
-      const d = p.push({ 'server.mjs': `${TINY}// d\n` }, 'the fix');
+      const fixCommit = testProject.push({ 'server.mjs': `${TINY}// d\n` }, 'the fix');
 
       st = await look();
 
       assert.deepEqual(
-        [p.head(), st.held, st.failed, st.last.count],
-        [d, null, null, 2],
+        [testProject.head(), st.held, st.failed, st.last.count],
+        [fixCommit, null, null, 2],
         'the next commit taken, the held one with it',
       );
 
       // a page whose script does not compile: held back the same way
-      const e = p.push(
+      const brokenPage = testProject.push(
         { 'public/index.html': PAGE.replace('</body>', '<script>let x = ;</script></body>') },
         'a broken page',
       );
 
       st = await look();
       assert.match(st.error, /was not kept: its page does not compile \(public\/index\.html: Unexpected token/);
-      assert.deepEqual([p.head(), st.held.to], [d, e]);
-      p.push({ 'public/index.html': PAGE }, 'the page fixed');
+      assert.deepEqual([testProject.head(), st.held.to], [fixCommit, brokenPage]);
+      testProject.push({ 'public/index.html': PAGE }, 'the page fixed');
       st = await look();
       assert.deepEqual([st.why, st.held], ['current', null]);
 
       // the packages: npm install, then the server
-      p.push({ 'package.json': '{ "name": "tiny", "version": "2.0.0" }\n' }, 'a package');
+      testProject.push({ 'package.json': '{ "name": "tiny", "version": "2.0.0" }\n' }, 'a package');
       st = await look();
       assert.deepEqual(st.last.parts, ['deps', 'server']);
-      assert.ok(p.asked().includes('npm ci --ignore-scripts --no-audit --no-fund'), p.asked().join('\n'));
+
+      assert.ok(
+        testProject.asked().includes('npm ci --ignore-scripts --no-audit --no-fund'),
+        testProject.asked().join('\n'),
+      );
 
       // a tracked file changed here: said by name, and never pulled over by itself — update now pulls over it, and keeps
       // it (2026-10-15: a package-lock.json npm rewrote left a board with no way to its updates)
-      p.write(p.co, { 'README.md': 'mine\n' });
-      const f0 = p.push({ 'public/index.html': `${PAGE}<!-- f -->\n` });
-      let before = p.head();
+      testProject.write(testProject.co, { 'README.md': 'mine\n' });
+      const f0 = testProject.push({ 'public/index.html': `${PAGE}<!-- f -->\n` });
+      let before = testProject.head();
 
       st = await look();
 
       assert.deepEqual(
-        [st.why, st.dirty, st.changed, st.clash, st.behind, p.head()],
+        [st.why, st.dirty, st.changed, st.clash, st.behind, testProject.head()],
         ['changes', 1, ['README.md'], [], 1, before],
       );
 
       st = await look({ apply: true });
 
       assert.deepEqual(
-        [st.why, st.error, p.head(), readFileSync(join(p.co, 'README.md'), 'utf8')],
+        [st.why, st.error, testProject.head(), readFileSync(join(testProject.co, 'README.md'), 'utf8')],
         ['current', null, f0, 'mine\n'],
         'pulled, the change kept',
       );
 
       // ...but not over a file the new commits change too: said by name, update now or not
-      before = p.head();
-      p.push({ 'README.md': 'theirs\n' }, 'the readme');
+      before = testProject.head();
+      testProject.push({ 'README.md': 'theirs\n' }, 'the readme');
       st = await look({ apply: true });
-      assert.deepEqual([st.why, st.clash, st.behind, st.error, p.head()], ['changes', ['README.md'], 1, null, before]);
-      p.git(p.co, 'checkout', 'HEAD', '--', 'README.md');
+
+      assert.deepEqual(
+        [st.why, st.clash, st.behind, st.error, testProject.head()],
+        ['changes', ['README.md'], 1, null, before],
+      );
+
+      testProject.git(testProject.co, 'checkout', 'HEAD', '--', 'README.md');
 
       // a file not in git here that the commits add: git refuses the fast-forward, and the refusal is said in words
-      p.write(p.co, { 'new.txt': 'mine\n' });
-      const f1 = p.push({ 'new.txt': 'theirs\n' }, 'a new file');
+      testProject.write(testProject.co, { 'new.txt': 'mine\n' });
+      const f1 = testProject.push({ 'new.txt': 'theirs\n' }, 'a new file');
 
       st = await look({ apply: true });
 
       assert.deepEqual(
-        [st.error, st.failed, p.head()],
+        [st.error, st.failed, testProject.head()],
         [
           'not pulled: new.txt, not in git here, would be written over by the new commits — move it away, then check now',
           st.error,
@@ -251,19 +271,19 @@ test(
         ],
       );
 
-      rmSync(join(p.co, 'new.txt'));
+      rmSync(join(testProject.co, 'new.txt'));
       st = await look({ apply: true });
-      assert.deepEqual([st.why, st.failed, p.head()], ['current', null, f1]);
+      assert.deepEqual([st.why, st.failed, testProject.head()], ['current', null, f1]);
 
       // the switch off: said, not taken — unless asked to (update now)
-      before = p.head();
-      const f = p.push({ 'public/index.html': `${PAGE}<!-- f2 -->\n` });
+      before = testProject.head();
+      const offCommit = testProject.push({ 'public/index.html': `${PAGE}<!-- f2 -->\n` });
 
       assert.equal(await turn(false), false);
       st = await look();
-      assert.deepEqual([st.why, st.behind, p.head()], ['off', 1, before]);
+      assert.deepEqual([st.why, st.behind, testProject.head()], ['off', 1, before]);
       st = await look({ apply: true });
-      assert.deepEqual([st.why, p.head()], ['current', f]);
+      assert.deepEqual([st.why, testProject.head()], ['current', offCommit]);
       const saved = JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8'));
 
       assert.deepEqual(
@@ -273,14 +293,14 @@ test(
       );
 
       // a branch that moved on its own: never merged, never rebased
-      p.write(p.co, { 'mine.txt': 'a commit of mine\n' });
-      p.git(p.co, 'add', 'mine.txt');
-      p.git(p.co, 'commit', '-q', '-m', 'mine');
-      const mine = p.head();
+      testProject.write(testProject.co, { 'mine.txt': 'a commit of mine\n' });
+      testProject.git(testProject.co, 'add', 'mine.txt');
+      testProject.git(testProject.co, 'commit', '-q', '-m', 'mine');
+      const mine = testProject.head();
 
-      p.push({ 'public/index.html': `${PAGE}<!-- g -->\n` });
+      testProject.push({ 'public/index.html': `${PAGE}<!-- g -->\n` });
       st = await look({ apply: true });
-      assert.deepEqual([st.why, st.ahead, st.behind, p.head()], ['diverged', 1, 1, mine]);
+      assert.deepEqual([st.why, st.ahead, st.behind, testProject.head()], ['diverged', 1, 1, mine]);
     } finally {
       await srv.stop();
     }
@@ -319,9 +339,9 @@ test(
 
           if (done) throw new Error('the stream ended before its snapshot');
           buf += dec.decode(value, { stream: true });
-          const m = /^event: snapshot\ndata: (.*?)\n\n/s.exec(buf);
+          const match = /^event: snapshot\ndata: (.*?)\n\n/s.exec(buf);
 
-          if (m) return JSON.parse(m[1]);
+          if (match) return JSON.parse(match[1]);
         }
       } finally {
         reader.cancel().catch(() => {});
@@ -330,29 +350,29 @@ test(
 
     try {
       const html = await (await fetch(srv.url)).text();
-      const m = /<meta name="peix-page" content="([0-9a-f]{12})" data-since="(\d+)">/.exec(html);
+      const match = /<meta name="peix-page" content="([0-9a-f]{12})" data-since="(\d+)">/.exec(html);
 
-      assert.ok(m, 'the head carries the stamp and the boot');
+      assert.ok(match, 'the head carries the stamp and the boot');
 
       assert.equal(
-        m[1],
+        match[1],
         createHash('sha1').update(readPage()).digest('hex').slice(0, 12),
         "the stamp is the page's as put together, not as served",
       );
 
-      const a = await snapshot();
+      const firstSnapshot = await snapshot();
 
       assert.deepEqual(
-        [a.page, a.about.since],
-        [m[1], Number(m[2])],
+        [firstSnapshot.page, firstSnapshot.about.since],
+        [match[1], Number(match[2])],
         'the server that served it: the same page, the same boot',
       );
 
       await srv.restart();
-      const b = await snapshot();
+      const nextSnapshot = await snapshot();
 
-      assert.equal(b.page, m[1], 'the same page on disk');
-      assert.notEqual(b.about.since, Number(m[2]), 'another boot');
+      assert.equal(nextSnapshot.page, match[1], 'the same page on disk');
+      assert.notEqual(nextSnapshot.about.since, Number(match[2]), 'another boot');
     } finally {
       await srv.stop();
     }
@@ -363,20 +383,20 @@ test(
   'a commit made here while the pre-flight runs is never undone with the commit that failed it (2026-10-14)',
   { timeout: 60_000 },
   async () => {
-    const p = project();
+    const testProject = project();
     // npm install, as the update runs it: meanwhile a session commits in the checkout (once — the undo would install again)
-    const npm = join(p.root, 'npm-commits');
+    const npm = join(testProject.root, 'npm-commits');
 
     writeFileSync(
       npm,
-      `#!/bin/sh\n[ -f "${p.root}/committed" ] && exit 0\ntouch "${p.root}/committed"\necho mine > "${p.co}/mine.txt"\ngit -c commit.gpgsign=false -c core.hooksPath=/dev/null -c user.name=t -c user.email=t@t -C "${p.co}" add mine.txt\ngit -c commit.gpgsign=false -c core.hooksPath=/dev/null -c user.name=t -c user.email=t@t -C "${p.co}" commit -q -m 'mine, mid-update'\n`,
+      `#!/bin/sh\n[ -f "${testProject.root}/committed" ] && exit 0\ntouch "${testProject.root}/committed"\necho mine > "${testProject.co}/mine.txt"\ngit -c commit.gpgsign=false -c core.hooksPath=/dev/null -c user.name=t -c user.email=t@t -C "${testProject.co}" add mine.txt\ngit -c commit.gpgsign=false -c core.hooksPath=/dev/null -c user.name=t -c user.email=t@t -C "${testProject.co}" commit -q -m 'mine, mid-update'\n`,
     );
 
     chmodSync(npm, 0o755);
-    const srv = await startTestServer({ env: { ...p.env, NPM_BIN: npm, UPDATE_QUIET_MS: '60000' } });
+    const srv = await startTestServer({ env: { ...testProject.env, NPM_BIN: npm, UPDATE_QUIET_MS: '60000' } });
 
     try {
-      const c = p.push(
+      const brokenCommit = testProject.push(
         {
           'package.json': '{ "name": "tiny", "version": "2.0.0" }\n',
           'server.mjs': "throw new Error('boom: this server does not start');\n",
@@ -389,18 +409,18 @@ test(
       assert.match(
         st.error,
         new RegExp(
-          `^${c.slice(0, 7)} was not kept: its server did not start .* — not undone: [0-9a-f]{7} was committed on it since; the checkout stays as it is`,
+          `^${brokenCommit.slice(0, 7)} was not kept: its server did not start .* — not undone: [0-9a-f]{7} was committed on it since; the checkout stays as it is`,
         ),
       );
 
       assert.equal(
-        p.git(p.co, 'log', '-1', '--format=%s'),
+        testProject.git(testProject.co, 'log', '-1', '--format=%s'),
         'mine, mid-update',
         "the commit made meanwhile is still the branch's",
       );
 
-      assert.equal(p.git(p.co, 'rev-parse', 'HEAD~1'), c);
-      assert.deepEqual([st.why, st.held.to], ['held', c]);
+      assert.equal(testProject.git(testProject.co, 'rev-parse', 'HEAD~1'), brokenCommit);
+      assert.deepEqual([st.why, st.held.to], ['held', brokenCommit]);
     } finally {
       await srv.stop();
     }
@@ -411,70 +431,87 @@ test(
   'only a signed commit is taken (2026-11-06): not one unsigned, nor one a key off the list signed — not even by update now; a key the list gains is trusted once a trusted one signed it',
   { timeout: 60_000 },
   async () => {
-    const p = project();
-    const srv = await startTestServer({ env: { ...p.env, UPDATE_QUIET_MS: '60000' } });
+    const testProject = project();
+    const srv = await startTestServer({ env: { ...testProject.env, UPDATE_QUIET_MS: '60000' } });
     const look = async (body = {}) => (await srv.post('api/update', body)).body;
 
     try {
       await waitFor(async () => (await srv.api('api/update')).body.checkout, { what: 'the checkout read at boot' });
-      const first = p.head();
-      const a = p.push({ 'public/index.html': `${PAGE}<!-- unsigned -->\n` }, 'unsigned', { sign: false });
+      const first = testProject.head();
+
+      const unsignedCommit = testProject.push({ 'public/index.html': `${PAGE}<!-- unsigned -->\n` }, 'unsigned', {
+        sign: false,
+      });
+
       let st = await look({ apply: true });
 
       assert.deepEqual(
-        [st.why, st.sign.ok, st.sign.why, st.behind, p.head()],
+        [st.why, st.sign.ok, st.sign.why, st.behind, testProject.head()],
         ['unsigned', false, 'is not signed', 1, first],
         'unsigned: said, not taken',
       );
 
       assert.deepEqual(
-        st.commits.map(c => [c.h, c.s]),
-        [[a.slice(0, 7), 'unsigned']],
+        st.commits.map(commit => [commit.h, commit.s]),
+        [[unsignedCommit.slice(0, 7), 'unsigned']],
         'the commits it would take, named',
       );
 
-      const stranger = p.keygen('stranger');
+      const stranger = testProject.keygen('stranger');
 
-      p.push({ 'public/index.html': `${PAGE}<!-- a stranger -->\n` }, "a stranger's", { sign: stranger });
+      testProject.push({ 'public/index.html': `${PAGE}<!-- a stranger -->\n` }, "a stranger's", { sign: stranger });
       // where the list went before 2026-11-27, a name of the server's pid in the temp folder: another account's to plant
       // first. Nothing reads it now, nor writes over it
       const planted = join(tmpdir(), `peixairada-signers.${srv.proc.pid}`);
 
-      writeFileSync(planted, p.signers(stranger));
+      writeFileSync(planted, testProject.signers(stranger));
       st = await look({ apply: true });
 
       assert.deepEqual(
-        [st.why, st.sign.why, p.head()],
+        [st.why, st.sign.why, testProject.head()],
         ['unsigned', 'is not signed by a key this board trusts', first],
       );
 
-      assert.equal(readFileSync(planted, 'utf8'), p.signers(stranger), 'the list went to a folder of its own');
+      assert.equal(
+        readFileSync(planted, 'utf8'),
+        testProject.signers(stranger),
+        'the list went to a folder of its own',
+      );
+
       rmSync(planted);
+
       // a stranger's commit that names its own key: the list at HEAD decides, not the one it brings
-      p.push({ '.github/allowed_signers': p.signers(p.signer, stranger) }, 'trust me', { sign: stranger });
+      testProject.push({ '.github/allowed_signers': testProject.signers(testProject.signer, stranger) }, 'trust me', {
+        sign: stranger,
+      });
+
       st = await look({ apply: true });
-      assert.deepEqual([st.why, p.head()], ['unsigned', first]);
+      assert.deepEqual([st.why, testProject.head()], ['unsigned', first]);
 
       // the same list signed by the trusted key: taken, and then the new key is trusted too
-      const b = p.push(
-        { '.github/allowed_signers': p.signers(p.signer, stranger), 'README.md': 'a second key\n' },
+      const keyCommit = testProject.push(
+        { '.github/allowed_signers': testProject.signers(testProject.signer, stranger), 'README.md': 'a second key\n' },
         'a second key',
       );
 
       st = await look({ apply: true });
 
       assert.deepEqual(
-        [st.why, st.sign, p.head()],
-        ['current', null, b],
+        [st.why, st.sign, testProject.head()],
+        ['current', null, keyCommit],
         'the tip signed by a trusted key brings the commits under it',
       );
 
-      const c = p.push({ 'public/index.html': `${PAGE}<!-- the second key -->\n` }, 'by the second key', {
-        sign: stranger,
-      });
+      const secondKeyCommit = testProject.push(
+        { 'public/index.html': `${PAGE}<!-- the second key -->\n` },
+        'by the second key',
+        {
+          sign: stranger,
+        },
+      );
 
       st = await look({ apply: true });
-      assert.deepEqual([st.why, p.head()], ['current', c]);
+      assert.deepEqual([st.why, testProject.head()], ['current', secondKeyCommit]);
     } finally {
       await srv.stop();
     }
@@ -485,10 +522,10 @@ test(
   "a rewritten history (2026-11-06) is followed when every commit here is one its tip names as rewritten, and signed — not unsigned, not over a commit of this checkout's own",
   { timeout: 90_000 },
   async () => {
-    const p = project();
-    const dev = join(p.root, 'dev');
+    const testProject = project();
+    const dev = join(testProject.root, 'dev');
 
-    const srv = await startTestServer({ env: { ...p.env, UPDATE_QUIET_MS: '60000' } });
+    const srv = await startTestServer({ env: { ...testProject.env, UPDATE_QUIET_MS: '60000' } });
     const look = async (body = {}) => (await srv.post('api/update', body)).body;
 
     // every commit made again, a name taken out of the README, the rewrite signed throughout; its tip names the old ones
@@ -496,20 +533,20 @@ test(
       const named = existsSync(join(dev, '.github/rewritten'))
         ? readFileSync(join(dev, '.github/rewritten'), 'utf8')
             .split('\n')
-            .filter(l => /^[0-9a-f]{40}$/.test(l))
+            .filter(line => /^[0-9a-f]{40}$/.test(line))
         : [];
 
-      const old = [...named, ...p.git(dev, 'rev-list', 'HEAD').split('\n')]; // a rewrite of a rewrite names both
+      const old = [...named, ...testProject.git(dev, 'rev-list', 'HEAD').split('\n')]; // a rewrite of a rewrite names both
 
-      for (const [k, v] of [
+      for (const [setting, value] of [
         ['gpg.format', 'ssh'],
-        ['user.signingkey', p.signer],
+        ['user.signingkey', testProject.signer],
         ['commit.gpgsign', 'true'],
       ]) {
-        p.git(dev, 'config', k, v);
+        testProject.git(dev, 'config', setting, value);
       }
 
-      p.git(
+      testProject.git(
         dev,
         'rebase',
         '-q',
@@ -519,28 +556,28 @@ test(
         "sed -i '' 's/the old name/a name/' README.md; git add -A && git commit -q --amend --no-edit --allow-empty",
       );
 
-      p.write(dev, { '.github/rewritten': `# the commits this history replaces\n${old.join('\n')}\n` });
-      p.git(dev, 'add', '-A');
-      p.git(dev, '-c', `commit.gpgsign=${sign}`, 'commit', '-q', '-m', 'the commits it replaces');
-      p.git(dev, 'push', '-q', '--force');
-      return p.git(dev, 'rev-parse', 'HEAD');
+      testProject.write(dev, { '.github/rewritten': `# the commits this history replaces\n${old.join('\n')}\n` });
+      testProject.git(dev, 'add', '-A');
+      testProject.git(dev, '-c', `commit.gpgsign=${sign}`, 'commit', '-q', '-m', 'the commits it replaces');
+      testProject.git(dev, 'push', '-q', '--force');
+      return testProject.git(dev, 'rev-parse', 'HEAD');
     };
 
     try {
       await waitFor(async () => (await srv.api('api/update')).body.checkout, { what: 'the checkout read at boot' });
-      p.push({ 'README.md': 'tiny, with the old name\n' }, 'a line that names it');
-      p.push({ 'public/index.html': `${PAGE}<!-- b -->\n` }, 'the page');
+      testProject.push({ 'README.md': 'tiny, with the old name\n' }, 'a line that names it');
+      testProject.push({ 'public/index.html': `${PAGE}<!-- b -->\n` }, 'the page');
       let st = await look({ apply: true });
 
       assert.equal(st.why, 'current');
-      const was = p.head();
+      const was = testProject.head();
 
-      const a = rewrite(false); // its tip unsigned: never followed
+      const unsignedRewrite = rewrite(false); // its tip unsigned: never followed
 
       st = await look({ apply: true });
-      assert.deepEqual([st.why, st.rewritten, p.head()], ['unsigned', true, was]);
+      assert.deepEqual([st.why, st.rewritten, testProject.head()], ['unsigned', true, was]);
 
-      const b = rewrite();
+      const signedRewrite = rewrite();
 
       st = await look();
 
@@ -553,19 +590,25 @@ test(
       st = await look({ apply: true });
 
       assert.deepEqual(
-        [st.why, p.head(), readFileSync(join(p.co, 'README.md'), 'utf8'), st.last.rewritten, st.last.count],
-        ['current', b, 'tiny, with a name\n', true, 3],
+        [
+          st.why,
+          testProject.head(),
+          readFileSync(join(testProject.co, 'README.md'), 'utf8'),
+          st.last.rewritten,
+          st.last.count,
+        ],
+        ['current', signedRewrite, 'tiny, with a name\n', true, 3],
         'onto the rewritten history',
       );
 
-      assert.notEqual(a, b);
+      assert.notEqual(unsignedRewrite, signedRewrite);
 
       // a commit of this checkout's own, then another rewrite: diverged, as ever — never reset away
-      const mine = p.commit({ 'mine.txt': 'mine\n' });
+      const mine = testProject.commit({ 'mine.txt': 'mine\n' });
 
       rewrite();
       st = await look({ apply: true });
-      assert.deepEqual([st.why, st.rewritten, p.head()], ['diverged', false, mine]);
+      assert.deepEqual([st.why, st.rewritten, testProject.head()], ['diverged', false, mine]);
     } finally {
       await srv.stop();
     }

@@ -15,7 +15,7 @@
 // round makes him AGENT ZÉ (sunglasses, an earpiece, a TOP SECRET stamp), one kick in six is KRAV MAGA, a falafel is
 // a green, the Focus says YALLA.
 // The next round (2026-10-30, late at night, the ideas sheet's picks): his body in pixels too (zeBuild), Barcelos on the
-// horizon and a sky a level (zeTown, ZE_SKIES), a title that plays (g.demo), squash, hit-stop, chunks, afterimages
+// horizon and a sky a level (zeTown, ZE_SKIES), a title that plays (game.demo), squash, hit-stop, chunks, afterimages
 // and smoke, MONSTRO; the band hearing the cars and his bulk (zeMode), the malhão; the galo's miracle; power-ups, the
 // nunchaku, the Avó da Horta every fifth level, the awning and the sign, a dash, the day's round (zeSeed), twelve
 // trophies, fish, the galo as player two; the board in it — a chat asking stops it (zeHeard), today's lunch falls,
@@ -75,48 +75,48 @@ const ZE_POWERS = {
     name: 'FRANCESINHA!',
     say: 'FULL BULK AND A WIDE MOUTH',
     c: '#e0612b',
-    draw(P, E) {
-      E(8, 13, 7.6, 2.6, '#b8401c');
-      E(8, 12.8, 6.2, 1.7, '#e0612b');
-      P(3, 7, 10, 5, '#d9a05b');
-      P(3, 9, 10, 1, '#8a3a22');
-      P(3, 11, 10, 1, '#a8703a');
-      P(2, 5, 12, 2, '#ffe08a');
-      P(3, 7, 1, 2, '#ffe08a');
-      P(7, 7, 1, 3, '#ffe08a');
-      P(11, 7, 1, 2, '#ffe08a');
-      P(13, 7, 1, 1, '#ffe08a');
-      E(8, 3.6, 3.4, 2.3, '#fffaf0');
-      E(8.4, 3.4, 1.4, 1.2, '#ffb700');
+    draw(rect, ellipse) {
+      ellipse(8, 13, 7.6, 2.6, '#b8401c');
+      ellipse(8, 12.8, 6.2, 1.7, '#e0612b');
+      rect(3, 7, 10, 5, '#d9a05b');
+      rect(3, 9, 10, 1, '#8a3a22');
+      rect(3, 11, 10, 1, '#a8703a');
+      rect(2, 5, 12, 2, '#ffe08a');
+      rect(3, 7, 1, 2, '#ffe08a');
+      rect(7, 7, 1, 3, '#ffe08a');
+      rect(11, 7, 1, 2, '#ffe08a');
+      rect(13, 7, 1, 1, '#ffe08a');
+      ellipse(8, 3.6, 3.4, 2.3, '#fffaf0');
+      ellipse(8.4, 3.4, 1.4, 1.2, '#ffb700');
     },
   },
   vinho: {
     name: 'VINHO VERDE!',
     say: 'SLOW MOTION',
     c: '#9be15d',
-    draw(P) {
-      P(7, 0, 2, 2, '#c9a46a');
-      P(7, 2, 2, 3, '#2f6f2a');
-      P(6, 5, 4, 1, '#2f6f2a');
-      P(5, 6, 6, 10, '#3f8f3a');
-      P(6, 7, 1, 8, '#9ad26a');
-      P(5, 9, 6, 4, '#f2ead8');
-      P(5, 10, 6, 1, '#c8322f');
-      P(7, 12, 2, 1, '#2f6f2a');
+    draw(rect) {
+      rect(7, 0, 2, 2, '#c9a46a');
+      rect(7, 2, 2, 3, '#2f6f2a');
+      rect(6, 5, 4, 1, '#2f6f2a');
+      rect(5, 6, 6, 10, '#3f8f3a');
+      rect(6, 7, 1, 8, '#9ad26a');
+      rect(5, 9, 6, 4, '#f2ead8');
+      rect(5, 10, 6, 1, '#c8322f');
+      rect(7, 12, 2, 1, '#2f6f2a');
     },
   },
   bifana: {
     name: 'BIFANA!',
     say: 'A MAGNET FOR MEAT',
     c: '#c9843f',
-    draw(P, E) {
-      E(8, 11.5, 7, 2.4, '#e3a865');
-      P(1, 9, 14, 2, '#8a4a2a');
-      P(0, 10, 1, 1, '#8a4a2a');
-      P(15, 9, 1, 1, '#8a4a2a');
-      E(8, 7.2, 6.6, 2.8, '#c9843f');
-      P(5, 5, 3, 1, '#f4cf8f');
-      P(4, 11, 7, 1, '#e8c32a');
+    draw(rect, ellipse) {
+      ellipse(8, 11.5, 7, 2.4, '#e3a865');
+      rect(1, 9, 14, 2, '#8a4a2a');
+      rect(0, 10, 1, 1, '#8a4a2a');
+      rect(15, 9, 1, 1, '#8a4a2a');
+      ellipse(8, 7.2, 6.6, 2.8, '#c9843f');
+      rect(5, 5, 3, 1, '#f4cf8f');
+      rect(4, 11, 7, 1, '#e8c32a');
     },
   },
 };
@@ -300,7 +300,7 @@ const ZE_DIFFS = [
 // level 1 + cap, each level costs up × more than the last, and every bite levels a green takes one more: meat and greens
 // kept level with each other at any speed of falling, so that last one is what ends a round
 const ZE_PACE = { cap: 10, up: 0.2, bite: 5 };
-const zeBite = g => 1 + Math.floor((g.level - 1) / ZE_PACE.bite);
+const zeBite = game => 1 + Math.floor((game.level - 1) / ZE_PACE.bite);
 
 const ZE_DRAGON_LEVEL = 3;
 const ZE_DRAGON = 16;
@@ -496,224 +496,225 @@ const ZE_SUIT = {
 };
 
 const ZE_POSES = {
-  stand: (c, t, B) => ({
+  stand: (centerX, top, bulk) => ({
     arms: [
       [
-        [c - B.hw + 1, t + 2],
-        [c - B.hw - 3, t + 8],
-        [c - B.hw + 2, t + 11],
+        [centerX - bulk.hw + 1, top + 2],
+        [centerX - bulk.hw - 3, top + 8],
+        [centerX - bulk.hw + 2, top + 11],
       ],
       [
-        [c + B.hw - 1, t + 2],
-        [c + B.hw + 4, t + 7],
-        [c + B.hw + 4, t],
+        [centerX + bulk.hw - 1, top + 2],
+        [centerX + bulk.hw + 4, top + 7],
+        [centerX + bulk.hw + 4, top],
       ],
     ],
     legs: [
       [
-        [c - 3, t + 15],
-        [c - 5, t + 25],
-        [c - 6, t + 34],
+        [centerX - 3, top + 15],
+        [centerX - 5, top + 25],
+        [centerX - 6, top + 34],
       ],
       [
-        [c + 3, t + 15],
-        [c + 5, t + 25],
-        [c + 6, t + 34],
+        [centerX + 3, top + 15],
+        [centerX + 5, top + 25],
+        [centerX + 6, top + 34],
       ],
     ],
   }),
-  run1: (c, t, B) => ({
+  run1: (centerX, top, bulk) => ({
     arms: [
       [
-        [c - B.hw + 1, t + 2],
-        [c - B.hw - 4, t + 7],
-        [c - B.hw - 7, t + 11],
+        [centerX - bulk.hw + 1, top + 2],
+        [centerX - bulk.hw - 4, top + 7],
+        [centerX - bulk.hw - 7, top + 11],
       ],
       [
-        [c + B.hw - 1, t + 2],
-        [c + B.hw + 5, t + 6],
-        [c + B.hw + 6, t + 1],
+        [centerX + bulk.hw - 1, top + 2],
+        [centerX + bulk.hw + 5, top + 6],
+        [centerX + bulk.hw + 6, top + 1],
       ],
     ],
     legs: [
       [
-        [c - 2, t + 15],
-        [c - 6, t + 23],
-        [c - 11, t + 29],
+        [centerX - 2, top + 15],
+        [centerX - 6, top + 23],
+        [centerX - 11, top + 29],
       ],
       [
-        [c + 2, t + 15],
-        [c + 6, t + 24],
-        [c + 7, t + 34],
+        [centerX + 2, top + 15],
+        [centerX + 6, top + 24],
+        [centerX + 7, top + 34],
       ],
     ],
   }),
-  run2: (c, t, B) => ({
+  run2: (centerX, top, bulk) => ({
     arms: [
       [
-        [c - B.hw + 1, t + 2],
-        [c - B.hw - 2, t + 9],
-        [c - B.hw + 2, t + 13],
+        [centerX - bulk.hw + 1, top + 2],
+        [centerX - bulk.hw - 2, top + 9],
+        [centerX - bulk.hw + 2, top + 13],
       ],
       [
-        [c + B.hw - 1, t + 2],
-        [c + B.hw + 3, t + 9],
-        [c + B.hw + 1, t + 13],
+        [centerX + bulk.hw - 1, top + 2],
+        [centerX + bulk.hw + 3, top + 9],
+        [centerX + bulk.hw + 1, top + 13],
       ],
     ],
     legs: [
       [
-        [c - 2, t + 15],
-        [c - 1, t + 25],
-        [c - 2, t + 34],
+        [centerX - 2, top + 15],
+        [centerX - 1, top + 25],
+        [centerX - 2, top + 34],
       ],
       [
-        [c + 2, t + 15],
-        [c + 3, t + 24],
-        [c - 1, t + 30],
+        [centerX + 2, top + 15],
+        [centerX + 3, top + 24],
+        [centerX - 1, top + 30],
       ],
     ],
   }),
-  kick: (c, t, B) => ({
+  kick: (centerX, top, bulk) => ({
     arms: [
       [
-        [c - B.hw + 1, t + 2],
-        [c - B.hw - 6, t + 4],
-        [c - B.hw - 11, t + 2],
+        [centerX - bulk.hw + 1, top + 2],
+        [centerX - bulk.hw - 6, top + 4],
+        [centerX - bulk.hw - 11, top + 2],
       ],
       [
-        [c + B.hw - 1, t + 2],
-        [c + B.hw + 3, t + 6],
-        [c + B.hw + 2, t - 1],
+        [centerX + bulk.hw - 1, top + 2],
+        [centerX + bulk.hw + 3, top + 6],
+        [centerX + bulk.hw + 2, top - 1],
       ],
     ],
     legs: [
       [
-        [c - 2, t + 15],
-        [c - 3, t + 25],
-        [c - 4, t + 34],
+        [centerX - 2, top + 15],
+        [centerX - 3, top + 25],
+        [centerX - 4, top + 34],
       ],
       [
-        [c + 2, t + 14],
-        [c + 12, t + 12],
-        [c + 23, t + 10],
+        [centerX + 2, top + 14],
+        [centerX + 12, top + 12],
+        [centerX + 23, top + 10],
       ],
     ],
     kick: true,
   }),
-  jump: (c, t, B) => ({
+  jump: (centerX, top, bulk) => ({
     arms: [
       [
-        [c - B.hw + 1, t + 2],
-        [c - B.hw - 4, t - 2],
-        [c - B.hw - 3, t - 7],
+        [centerX - bulk.hw + 1, top + 2],
+        [centerX - bulk.hw - 4, top - 2],
+        [centerX - bulk.hw - 3, top - 7],
       ],
       [
-        [c + B.hw - 1, t + 2],
-        [c + B.hw + 4, t - 2],
-        [c + B.hw + 3, t - 7],
+        [centerX + bulk.hw - 1, top + 2],
+        [centerX + bulk.hw + 4, top - 2],
+        [centerX + bulk.hw + 3, top - 7],
       ],
     ],
     legs: [
       [
-        [c - 3, t + 15],
-        [c - 1, t + 21],
-        [c - 7, t + 26],
+        [centerX - 3, top + 15],
+        [centerX - 1, top + 21],
+        [centerX - 7, top + 26],
       ],
       [
-        [c + 3, t + 15],
-        [c + 8, t + 20],
-        [c + 3, t + 27],
+        [centerX + 3, top + 15],
+        [centerX + 8, top + 20],
+        [centerX + 3, top + 27],
       ],
     ],
   }),
-  sit: (c, t, B) => ({
+  sit: (centerX, top, bulk) => ({
     arms: [
       [
-        [c - B.hw + 1, t + 2],
-        [c - B.hw + 3, t + 9],
-        [c + B.hw + 6, t + 8],
+        [centerX - bulk.hw + 1, top + 2],
+        [centerX - bulk.hw + 3, top + 9],
+        [centerX + bulk.hw + 6, top + 8],
       ],
       [
-        [c + B.hw - 1, t + 2],
-        [c + B.hw + 4, t + 9],
-        [c + B.hw + 9, t + 7],
+        [centerX + bulk.hw - 1, top + 2],
+        [centerX + bulk.hw + 4, top + 9],
+        [centerX + bulk.hw + 9, top + 7],
       ],
     ],
     legs: [
       [
-        [c - 2, t + 15],
-        [c + 8, t + 15],
-        [c + 9, t + 24],
+        [centerX - 2, top + 15],
+        [centerX + 8, top + 15],
+        [centerX + 9, top + 24],
       ],
       [
-        [c + 2, t + 15],
-        [c + 11, t + 14],
-        [c + 12, t + 23],
+        [centerX + 2, top + 15],
+        [centerX + 11, top + 14],
+        [centerX + 12, top + 23],
       ],
     ],
   }),
-  flex: (c, t, B) => ({
+  flex: (centerX, top, bulk) => ({
     arms: [
       [
-        [c - B.hw + 1, t + 2],
-        [c - B.hw - 6, t + 2],
-        [c - B.hw - 5, t - 7],
+        [centerX - bulk.hw + 1, top + 2],
+        [centerX - bulk.hw - 6, top + 2],
+        [centerX - bulk.hw - 5, top - 7],
       ],
       [
-        [c + B.hw - 1, t + 2],
-        [c + B.hw + 6, t + 2],
-        [c + B.hw + 5, t - 7],
+        [centerX + bulk.hw - 1, top + 2],
+        [centerX + bulk.hw + 6, top + 2],
+        [centerX + bulk.hw + 5, top - 7],
       ],
     ],
     legs: [
       [
-        [c - 3, t + 15],
-        [c - 7, t + 25],
-        [c - 9, t + 34],
+        [centerX - 3, top + 15],
+        [centerX - 7, top + 25],
+        [centerX - 9, top + 34],
       ],
       [
-        [c + 3, t + 15],
-        [c + 7, t + 25],
-        [c + 9, t + 34],
+        [centerX + 3, top + 15],
+        [centerX + 7, top + 25],
+        [centerX + 9, top + 34],
       ],
     ],
   }),
 };
 
-const zePick = a => a[(Math.random() * a.length) | 0];
-const zeHz = n => 440 * 2 ** ((n - 69) / 12);
+const zePick = list => list[(Math.random() * list.length) | 0];
+const zeHz = midi => 440 * 2 ** ((midi - 69) / 12);
 
 const zeDiff = () => ZE_DIFFS[prefs.zeDiff] || ZE_DIFFS[1];
 
 /** Today's best of each way to play (the day's round, prefs.zeDay), a new day's empty. */
 const zeTrophies = () => {
-  const t = prefs.zeTrophies && typeof prefs.zeTrophies === 'object' ? prefs.zeTrophies : (prefs.zeTrophies = {});
+  const trophies =
+    prefs.zeTrophies && typeof prefs.zeTrophies === 'object' ? prefs.zeTrophies : (prefs.zeTrophies = {});
 
-  t.won ||= {};
-  return t;
+  trophies.won ||= {};
+  return trophies;
 };
 
-/** A trophy won, once ever: said at the top of the picture for a while (g.trophy) — never in the title's demo. */
-function zeTrophy(g, id) {
-  const T = zeTrophies();
+/** A trophy won, once ever: said at the top of the picture for a while (game.trophy) — never in the title's demo. */
+function zeTrophy(game, id) {
+  const trophies = zeTrophies();
 
-  if (g.demo || T.won[id]) return;
-  T.won[id] = zeToday();
+  if (game.demo || trophies.won[id]) return;
+  trophies.won[id] = zeToday();
   savePrefs();
-  const [, e, name] = ZE_TROPHIES.find(t => t[0] === id);
+  const [, emoji, name] = ZE_TROPHIES.find(trophy => trophy[0] === id);
 
-  g.trophy = { e, name, t: 2.6 };
+  game.trophy = { e: emoji, name, t: 2.6 };
   zeSfx('level');
 }
 
-/** One more of a count that outlives a round — kicked, agents —, and the trophy at n. */
-const zeCount = (g, k, n, id) => {
-  if (g.demo) return;
-  const T = zeTrophies();
+/** One more of a count that outlives a round — kicked, agents —, and the trophy at goal. */
+const zeCount = (game, key, goal, id) => {
+  if (game.demo) return;
+  const trophies = zeTrophies();
 
-  T[k] = (T[k] || 0) + 1;
-  if (T[k] >= n) zeTrophy(g, id);
+  trophies[key] = (trophies[key] || 0) + 1;
+  if (trophies[key] >= goal) zeTrophy(game, id);
 };
 
 const zeDayBests = () => {
@@ -831,7 +832,7 @@ const ze = {
 };
 
 const zeCalm = () => REDUCED.matches;
-const zeBlink = (g, hz) => zeCalm() || Math.floor(g.t * hz) % 2 === 0; // a blink, or steady under reduced motion
+const zeBlink = (game, hz) => zeCalm() || Math.floor(game.t * hz) % 2 === 0; // a blink, or steady under reduced motion
 
 const zeLabels = () => {
   $('#zeSnd').textContent = prefs.zeSound ? 'sound on' : 'sound off';
@@ -897,13 +898,13 @@ function zeWeather(dt) {
 
   if (zeCalm() || ze.g.freeze > 0) return;
 
-  for (const d of ze.drops) {
-    d.y += d.v * dt;
-    d.x -= d.v * 0.22 * dt;
+  for (const drop of ze.drops) {
+    drop.y += drop.v * dt;
+    drop.x -= drop.v * 0.22 * dt;
 
-    if (d.y > ZE_FLOOR + 10) {
-      d.y = -20;
-      d.x = Math.random() * 800;
+    if (drop.y > ZE_FLOOR + 10) {
+      drop.y = -20;
+      drop.x = Math.random() * 800;
     }
   }
 }
@@ -931,13 +932,13 @@ function zeTick(now) {
 
 /** The canvas's pixels are its box's at the screen's density; the logic is ZE_W × ZE_H whatever they are. */
 function zeSize() {
-  const c = $('#zeCanvas');
-  const w = Math.round(c.clientWidth * (devicePixelRatio || 1)) || ZE_W;
-  const h = Math.round((w * ZE_H) / ZE_W);
+  const canvas = $('#zeCanvas');
+  const width = Math.round(canvas.clientWidth * (devicePixelRatio || 1)) || ZE_W;
+  const height = Math.round((width * ZE_H) / ZE_W);
 
-  if (c.width === w && c.height === h) return;
-  c.width = w;
-  c.height = h;
+  if (canvas.width === width && canvas.height === height) return;
+  canvas.width = width;
+  canvas.height = height;
   ze.scene = ze.was = null;
   if ($('#zeGame').open && !ze.raf) zeDraw();
 }
@@ -962,10 +963,10 @@ function zeMenu() {
   zeGo();
 }
 
-function zeSetDiff(i) {
-  i = (i + ZE_DIFFS.length) % ZE_DIFFS.length;
-  if (i === prefs.zeDiff) return;
-  prefs.zeDiff = i;
+function zeSetDiff(index) {
+  index = (index + ZE_DIFFS.length) % ZE_DIFFS.length;
+  if (index === prefs.zeDiff) return;
+  prefs.zeDiff = index;
   savePrefs();
 }
 
@@ -987,17 +988,17 @@ function zePause(on) {
 
 /** The K.O. (2026-11-01): the last bite in slow motion, the camera going in, the lights going down on him, and then the bones and the card. At once under reduced motion. */
 const ZE_KO_T = 0.9;
-const zeKoK = g => (g.phase === 'over' ? 1 - (1 - Math.min(1, g.koT / ZE_KO_T)) ** 2 : 0);
+const zeKoK = game => (game.phase === 'over' ? 1 - (1 - Math.min(1, game.koT / ZE_KO_T)) ** 2 : 0);
 
-function zeOver(g) {
-  if (g.ride) zeLeave(g);
+function zeOver(game) {
+  if (game.ride) zeLeave(game);
 
-  Object.assign(g, {
+  Object.assign(game, {
     phase: 'over',
     koT: zeCalm() ? ZE_KO_T : 0,
     quote: zePick(ZE_LEE),
     mass: 0,
-    ko: g.agent ? 'the Mossad has never heard of him' : g.avo ? 'the avó won: he ate his soup' : zePick(ZE_KO),
+    ko: game.agent ? 'the Mossad has never heard of him' : game.avo ? 'the avó won: he ate his soup' : zePick(ZE_KO),
     hurt: 0,
     overT: 0,
     sel: 0,
@@ -1007,81 +1008,81 @@ function zeOver(g) {
     avo: null,
   });
 
-  g.words.length = 0;
-  g.flames.length = 0;
+  game.words.length = 0;
+  game.flames.length = 0;
 
   const bests = zeBests();
   const id = zeDiff().id;
   const today = zeDayBests();
 
-  if (g.score > (bests[id] || 0)) {
-    bests[id] = g.score;
-    g.best = true;
+  if (game.score > (bests[id] || 0)) {
+    bests[id] = game.score;
+    game.best = true;
   }
 
-  if (g.score > (today[id] || 0)) {
-    today[id] = g.score;
-    g.todays = true;
+  if (game.score > (today[id] || 0)) {
+    today[id] = game.score;
+    game.todays = true;
   }
 
   savePrefs();
-  zeHold(g, 0.12);
-  zeBump(g, 'generic');
+  zeHold(game, 0.12);
+  zeBump(game, 'generic');
   zeGroove(false);
   zeSfx('over');
-  const m = ze.music;
+  const music = ze.music;
 
-  if (m) m.rest = setTimeout(() => m.ac.suspend().catch(() => {}), 2600); // after the trombone
+  if (music) music.rest = setTimeout(() => music.ac.suspend().catch(() => {}), 2600); // after the trombone
 }
 
-function zeKick(g) {
-  if (g.cool > 0) {
-    g.kickBuf = ZE_FORGIVE;
+function zeKick(game) {
+  if (game.cool > 0) {
+    game.kickBuf = ZE_FORGIVE;
     return;
   }
 
-  g.cool = 0.48;
+  game.cool = 0.48;
 
-  if (!g.ride) {
-    g.kick = 0.34;
+  if (!game.ride) {
+    game.kick = 0.34;
     zeSfx('whoosh');
     return;
   }
 
-  const focus = g.ride.kind === 'focus'; // in a car the key is its horn
+  const focus = game.ride.kind === 'focus'; // in a car the key is its horn
 
   zeSfx(focus ? 'beep' : 'meep');
-  zeWord(g, focus ? 'BEEP BEEP!' : 'meep…', g.x, g.y - 200 * zeSz(g), '#fff3c4');
+  zeWord(game, focus ? 'BEEP BEEP!' : 'meep…', game.x, game.y - 200 * zeSz(game), '#fff3c4');
 }
 
-/** The nunchaku (2026-10-30, the next round): kicks that land fill it (g.nun); full, space held and let go — the
+/** The nunchaku (2026-10-30, the next round): kicks that land fill it (game.nun); full, space held and let go — the
  *  pointer too — and it sweeps every green off the screen, five each. Not from a car. */
-function zeLetGo(g) {
-  const held = g.holdAt == null ? 0 : g.t - g.holdAt;
+function zeLetGo(game) {
+  const held = game.holdAt == null ? 0 : game.t - game.holdAt;
 
-  g.holdAt = null;
-  if (g.phase !== 'play' || g.nun < ZE_NUN || held < 0.3 || g.ride) return;
-  const greens = g.items.filter(it => it.kind === 'veg' && !it.out);
+  game.holdAt = null;
+  if (game.phase !== 'play' || game.nun < ZE_NUN || held < 0.3 || game.ride) return;
+  const greens = game.items.filter(it => it.kind === 'veg' && !it.out);
 
   for (const it of greens) {
-    const f = Math.sign(it.x - g.x) || 1;
+    const direction = Math.sign(it.x - game.x) || 1;
 
     Object.assign(it, {
       out: true,
-      vx: f * (500 + Math.random() * 300),
+      vx: direction * (500 + Math.random() * 300),
       vy: -420 - Math.random() * 200,
-      spin: f * 16,
+      spin: direction * 16,
       g: 900,
     });
 
-    zeChunks(g, it.x, it.y, 'veg', 8);
+    zeChunks(game, it.x, it.y, 'veg', 8);
   }
 
-  Object.assign(g, { nun: 0, sweep: 0.35, shake: Math.max(g.shake, 0.25) });
-  zeHold(g, 0.14, true);
+  Object.assign(game, { nun: 0, sweep: 0.35, shake: Math.max(game.shake, 0.25) });
+  zeHold(game, 0.14, true);
 
   zeBanner(
-    g,
+    game,
     'NUNCHAKU!',
     greens.length
       ? `${greens.length} GREEN${greens.length === 1 ? '' : 'S'} SWEPT OFF THE SCREEN`
@@ -1092,8 +1093,8 @@ function zeLetGo(g) {
 
   zeSfx('whoosh');
   zeSfx('smash');
-  zeScore(g, greens.length * 5);
-  if (greens.length >= 5) zeTrophy(g, 'nunchaku');
+  zeScore(game, greens.length * 5);
+  if (greens.length >= 5) zeTrophy(game, 'nunchaku');
   return greens.length;
 }
 
@@ -1105,24 +1106,24 @@ const ZE_SHAVE = 34; // how near a green must pass for a RASPÃO (2026-11-01): g
 
 /** ↑: a jump from what he stands on, high enough for Trota's awning (2026-10-30, the next round) — and at his full
  *  bulk, a second one in the air. ↓ drops him through the awning or the sign. */
-function zeJump(g) {
-  if ((g.phase !== 'play' && !g.demo) || g.ride) return;
+function zeJump(game) {
+  if ((game.phase !== 'play' && !game.demo) || game.ride) return;
 
-  if (g.y >= g.gy - 0.5 || g.coyote > 0) {
-    g.vy = -640;
-    g.jumps = 1;
-    g.coyote = 0;
-    g.jumpBuf = 0;
-  } else if (g.mass >= ZE_MASS_MAX && g.jumps < 2) {
-    g.vy = -580;
-    g.jumps = 2;
-    zeWord(g, 'DOUBLE!', g.x, g.y - 190 * zeSz(g), '#fff3c4');
+  if (game.y >= game.gy - 0.5 || game.coyote > 0) {
+    game.vy = -640;
+    game.jumps = 1;
+    game.coyote = 0;
+    game.jumpBuf = 0;
+  } else if (game.mass >= ZE_MASS_MAX && game.jumps < 2) {
+    game.vy = -580;
+    game.jumps = 2;
+    zeWord(game, 'DOUBLE!', game.x, game.y - 190 * zeSz(game), '#fff3c4');
   } else {
-    g.jumpBuf = ZE_FORGIVE;
+    game.jumpBuf = ZE_FORGIVE;
     return;
   }
 
-  zeSquash(g, 'jump', 0.16);
+  zeSquash(game, 'jump', 0.16);
   zeSfx('jump');
 }
 
@@ -1130,89 +1131,94 @@ function zeJump(g) {
  *  unharmed. Not in a car; a little while between two. */
 const ZE_TAP = 0.25;
 
-function zeDash(g, f) {
-  if (g.phase !== 'play' || g.ride || g.dashCool > 0) return;
-  Object.assign(g, { dash: 0.2, dashF: f, dashCool: 0.55, f });
+function zeDash(game, facing) {
+  if (game.phase !== 'play' || game.ride || game.dashCool > 0) return;
+  Object.assign(game, { dash: 0.2, dashF: facing, dashCool: 0.55, f: facing });
   zeSfx('whoosh');
 }
 
 /** W: the galo flaps — off the floor, or again in the air, three times before it lands. */
-function zeFlap(b) {
-  if (b.flaps >= 3) return;
-  b.vy = -430;
-  b.flaps++;
+function zeFlap(galo) {
+  if (galo.flaps >= 3) return;
+  galo.vy = -430;
+  galo.flaps++;
   zeSfx('flap');
 }
 
 /** The galo's turn: A D run it, it falls slower than him, and what its beak meets — a green pecked out of the sky (five,
  *  the team's in CO-OP, its own in VERSUS), or in VERSUS meat stolen from under his nose (its points, his streak gone). */
-function zeGaloStep(g, dt) {
-  const b = g.galo;
+function zeGaloStep(game, dt) {
+  const galo = game.galo;
   const want = ze.keys2.r - ze.keys2.l;
 
-  b.t += dt;
-  b.peck = Math.max(0, b.peck - dt);
-  b.vx += (want * 330 - b.vx) * Math.min(1, dt * 12);
-  if (want) b.f = want;
-  b.x = Math.max(24, Math.min(ZE_W - 24, b.x + b.vx * dt));
-  b.vy += 1100 * dt;
-  b.y = Math.min(ZE_FLOOR, b.y + b.vy * dt);
+  galo.t += dt;
+  galo.peck = Math.max(0, galo.peck - dt);
+  galo.vx += (want * 330 - galo.vx) * Math.min(1, dt * 12);
+  if (want) galo.f = want;
+  galo.x = Math.max(24, Math.min(ZE_W - 24, galo.x + galo.vx * dt));
+  galo.vy += 1100 * dt;
+  galo.y = Math.min(ZE_FLOOR, galo.y + galo.vy * dt);
 
-  if (b.y >= ZE_FLOOR) {
-    b.vy = 0;
-    b.flaps = 0;
+  if (galo.y >= ZE_FLOOR) {
+    galo.vy = 0;
+    galo.flaps = 0;
   }
 
-  const beak = { l: b.x + Math.min(b.f * 6, b.f * 30), r: b.x + Math.max(b.f * 6, b.f * 30), t: b.y - 46, b: b.y - 14 };
+  const beak = {
+    l: galo.x + Math.min(galo.f * 6, galo.f * 30),
+    r: galo.x + Math.max(galo.f * 6, galo.f * 30),
+    t: galo.y - 46,
+    b: galo.y - 14,
+  };
 
-  for (const it of g.items) {
+  for (const it of game.items) {
     if (it.out || it.dead || !zeTouch(it, beak, 18)) continue;
-    const vs = b.mode === 'versus';
+    const vs = galo.mode === 'versus';
 
     if (it.kind === 'veg') {
-      Object.assign(it, { out: true, vx: b.f * 300, vy: -300, spin: b.f * 10, g: 900 });
-      b.peck = 0.2;
-      zeWord(g, 'PIC!', it.x, it.y - 20, '#ffcc33');
-      zeChunks(g, it.x, it.y, 'veg', 6);
+      Object.assign(it, { out: true, vx: galo.f * 300, vy: -300, spin: galo.f * 10, g: 900 });
+      galo.peck = 0.2;
+      zeWord(game, 'PIC!', it.x, it.y - 20, '#ffcc33');
+      zeChunks(game, it.x, it.y, 'veg', 6);
       zeSfx('peck');
-      if (vs) b.score += 5;
-      else zeScore(g, 5);
+      if (vs) galo.score += 5;
+      else zeScore(game, 5);
     } else if (vs && ['meat', 'fish', 'gold', 'galo'].includes(it.kind)) {
       it.dead = true;
-      b.peck = 0.2;
-      b.score += it.pts || 10;
-      g.streak = 0;
-      g.mult = 1;
-      zeWord(g, 'ROUBADO!', it.x, it.y - 20, '#ff5a64', true);
-      zeChunks(g, it.x, it.y, it.kind === 'fish' ? 'fish' : 'meat', 6);
+      galo.peck = 0.2;
+      galo.score += it.pts || 10;
+      game.streak = 0;
+      game.mult = 1;
+      zeWord(game, 'ROUBADO!', it.x, it.y - 20, '#ff5a64', true);
+      zeChunks(game, it.x, it.y, it.kind === 'fish' ? 'fish' : 'meat', 6);
       zeSfx('peck');
     }
   }
 }
 
-function zeFallThrough(g) {
-  if (g.phase === 'play' && g.gy < ZE_FLOOR && g.y >= g.gy - 0.5) {
-    g.drop = 0.25;
-    g.vy = 60;
+function zeFallThrough(game) {
+  if (game.phase === 'play' && game.gy < ZE_FLOOR && game.y >= game.gy - 0.5) {
+    game.drop = 0.25;
+    game.vy = 60;
   }
 }
 
-/** Squash and stretch (2026-10-30, the next round): flat as he lands and as he chews, long as he jumps — eased out over d. */
-const zeSquash = (g, k, d) => {
-  g.sq = { k, t: d, d };
+/** Squash and stretch (2026-10-30, the next round): flat as he lands and as he chews, long as he jumps — eased out over duration. */
+const zeSquash = (game, kind, duration) => {
+  game.sq = { k: kind, t: duration, d: duration };
 };
 
 /** The trackpad feels it (2026-10-30, the next round): the board's haptic bump on a kick that lands, a car arriving and
  *  the K.O. — the app's, never the demo's. */
-const zeBump = (g, kind) => {
-  if (!g.demo) haptic(kind);
+const zeBump = (game, kind) => {
+  if (!game.demo) haptic(kind);
 };
 
-/** A hit-stop (2026-10-30, the next round): the picture holds d — a kick that lands, a bite, a combo, the K.O. —, and a
- *  combo punches the camera in a little (g.punch, none under reduced motion). */
-const zeHold = (g, d, punch = false) => {
-  g.freeze = Math.max(g.freeze, d);
-  if (punch) g.punch = 0.2;
+/** A hit-stop (2026-10-30, the next round): the picture holds for duration — a kick that lands, a bite, a combo, the K.O. —, and a
+ *  combo punches the camera in a little (game.punch, none under reduced motion). */
+const zeHold = (game, duration, punch = false) => {
+  game.freeze = Math.max(game.freeze, duration);
+  if (punch) game.punch = 0.2;
 };
 
 function zeMute() {
@@ -1229,31 +1235,31 @@ function zeMute() {
 
 /** Zé hears the board (2026-10-30, the next round): a chat that starts asking you while the game is up stops it with a
  *  card — who asks, and what; ⏎ goes to the chat, esc (or space) plays on. What landed or asked during a round is
- *  kept for the K.O. (g.news). From the stream's session events. */
-function zeHeard(s, was, landed) {
-  if (!$('#zeGame').open || s.muted) return;
+ *  kept for the K.O. (game.news). From the stream's session events. */
+function zeHeard(session, was, landed) {
+  if (!$('#zeGame').open || session.muted) return;
 
-  const g = ze.g;
-  const now = asking(s) && visible(s) && !(was && asking(was));
+  const game = ze.g;
+  const now = asking(session) && visible(session) && !(was && asking(was));
 
-  if (now) zeCall(g, s);
+  if (now) zeCall(game, session);
 
-  if ((landed || now) && !g.demo) {
-    g.news = g.news.filter(n => n.id !== s.id);
-    g.news.push({ id: s.id, project: s.project, title: s.title, asks: !landed });
+  if ((landed || now) && !game.demo) {
+    game.news = game.news.filter(item => item.id !== session.id);
+    game.news.push({ id: session.id, project: session.project, title: session.title, asks: !landed });
   }
 }
 
-function zeCall(g, s) {
-  if (g.phase === 'call') {
-    g.call.s = s;
+function zeCall(game, session) {
+  if (game.phase === 'call') {
+    game.call.s = session;
     zeDraw();
     return;
   } // the newest one asking
 
-  g.call = { s, from: g.phase };
-  if (g.phase === 'play') ze.music?.ac.suspend().catch(() => {});
-  g.phase = 'call';
+  game.call = { s: session, from: game.phase };
+  if (game.phase === 'play') ze.music?.ac.suspend().catch(() => {});
+  game.phase = 'call';
   ze.keys = { l: 0, r: 0 };
   zeStop();
   zeDraw();
@@ -1261,25 +1267,25 @@ function zeCall(g, s) {
 
 /** The call answered: to the chat (the game closes), or back to where the game was. True if there was one. */
 function zeCallEnd(go) {
-  const g = ze.g;
-  const c = g.call;
+  const game = ze.g;
+  const call = game.call;
 
-  if (g.phase !== 'call' || !c) return false;
-  g.call = null;
+  if (game.phase !== 'call' || !call) return false;
+  game.call = null;
 
   if (go) {
-    g.phase = c.from === 'play' ? 'pause' : c.from;
+    game.phase = call.from === 'play' ? 'pause' : call.from;
     $('#zeGame').close();
-    openSession(c.s.id, { locate: true });
+    openSession(call.s.id, { locate: true });
     return true;
   }
 
-  if (c.from === 'play') {
-    g.phase = 'pause';
+  if (call.from === 'play') {
+    game.phase = 'pause';
     zePause(false);
   } else {
-    g.phase = c.from;
-    if (c.from === 'pause') zeDraw();
+    game.phase = call.from;
+    if (call.from === 'pause') zeDraw();
     else zeGo();
   }
 
@@ -1306,11 +1312,11 @@ function zeTune() {
   prefs.zeBand = { vira: 'malhao', malhao: 'funk' }[prefs.zeBand] || 'vira';
   savePrefs();
   zeLabels();
-  const m = ze.music;
+  const music = ze.music;
 
-  if (m?.track === 'band') {
-    m.step = 0;
-    m.at = m.ac.currentTime + 0.05;
+  if (music?.track === 'band') {
+    music.step = 0;
+    music.at = music.ac.currentTime + 0.05;
   }
 }
 
@@ -1319,51 +1325,51 @@ $('#zeTune').addEventListener('click', () => {
   $('#zeGame').focus();
 });
 
-$('#zeGame').addEventListener('keydown', e => {
-  if (e.metaKey || e.ctrlKey || e.altKey) return; // ⌥⌘Z, ⌘W and the rest are the board's
+$('#zeGame').addEventListener('keydown', event => {
+  if (event.metaKey || event.ctrlKey || event.altKey) return; // ⌥⌘Z, ⌘W and the rest are the board's
 
-  const g = ze.g;
-  const k = e.code;
+  const game = ze.g;
+  const code = event.code;
 
   const take = () => {
-    e.preventDefault();
-    e.stopPropagation();
+    event.preventDefault();
+    event.stopPropagation();
   };
 
-  if (g.phase === 'call') {
-    if (k === 'Enter' || k === 'Space') {
+  if (game.phase === 'call') {
+    if (code === 'Enter' || code === 'Space') {
       take();
-      if (!e.repeat) zeCallEnd(k === 'Enter');
+      if (!event.repeat) zeCallEnd(code === 'Enter');
     }
 
     return;
   } // a chat asking: ⏎ to it, space plays on (esc too)
 
-  const two = !!g.galo && g.phase === 'play';
-  const bird = two && ['KeyA', 'KeyD', 'KeyW'].includes(k); // A D W: the galo's, when it plays
+  const two = !!game.galo && game.phase === 'play';
+  const bird = two && ['KeyA', 'KeyD', 'KeyW'].includes(code); // A D W: the galo's, when it plays
 
   if (bird) {
     take();
-    if (k === 'KeyW') {
-      if (!e.repeat) zeFlap(g.galo);
-    } else ze.keys2[k === 'KeyA' ? 'l' : 'r'] = 1;
+    if (code === 'KeyW') {
+      if (!event.repeat) zeFlap(game.galo);
+    } else ze.keys2[code === 'KeyA' ? 'l' : 'r'] = 1;
     return;
   }
 
   if (
-    g.phase === 'title' &&
-    /^Key[A-Z]$/.test(k) &&
-    !e.repeat &&
-    (ze.typed = (ze.typed + k.slice(3)).slice(-6)) === 'MOSSAD'
+    game.phase === 'title' &&
+    /^Key[A-Z]$/.test(code) &&
+    !event.repeat &&
+    (ze.typed = (ze.typed + code.slice(3)).slice(-6)) === 'MOSSAD'
   ) {
     ze.typed = '';
     zeMossad();
   } // typed on the title, for those who know — its D still moves the way to play back
 
-  if (g.phase === 'title' && k === 'KeyG') {
+  if (game.phase === 'title' && code === 'KeyG') {
     take();
 
-    if (!e.repeat) {
+    if (!event.repeat) {
       prefs.zeTwo = { null: 'coop', coop: 'versus' }[prefs.zeTwo] || null;
       savePrefs();
     }
@@ -1371,20 +1377,20 @@ $('#zeGame').addEventListener('keydown', e => {
     return;
   }
 
-  const left = k === 'ArrowLeft' || k === 'KeyA';
-  const right = k === 'ArrowRight' || k === 'KeyD';
+  const left = code === 'ArrowLeft' || code === 'KeyA';
+  const right = code === 'ArrowRight' || code === 'KeyD';
 
-  if (g.phase === 'title' && (left || right || /^Digit[1-4]$/.test(k))) {
+  if (game.phase === 'title' && (left || right || /^Digit[1-4]$/.test(code))) {
     take();
-    if (!e.repeat) zeSetDiff(left ? prefs.zeDiff - 1 : right ? prefs.zeDiff + 1 : +k.slice(5) - 1);
+    if (!event.repeat) zeSetDiff(left ? prefs.zeDiff - 1 : right ? prefs.zeDiff + 1 : +code.slice(5) - 1);
     return;
   }
 
-  if (g.phase === 'over' && (left || right)) {
+  if (game.phase === 'over' && (left || right)) {
     take();
-    const n = zeOverButtons().length;
+    const count = zeOverButtons().length;
 
-    if (!e.repeat && g.overT > 0.8) g.sel = (g.sel + (right ? 1 : n - 1)) % n;
+    if (!event.repeat && game.overT > 0.8) game.sel = (game.sel + (right ? 1 : count - 1)) % count;
     return;
   }
 
@@ -1393,103 +1399,103 @@ $('#zeGame').addEventListener('keydown', e => {
     ze.keys[left ? 'l' : 'r'] = 1;
     ze.aim = null;
 
-    if (!e.repeat) {
-      const f = left ? -1 : 1;
+    if (!event.repeat) {
+      const facing = left ? -1 : 1;
       const now = performance.now();
 
-      if (ze.tap?.f === f && now - ze.tap.at < ZE_TAP * 1000) {
-        zeDash(g, f);
+      if (ze.tap?.f === facing && now - ze.tap.at < ZE_TAP * 1000) {
+        zeDash(game, facing);
         ze.tap = null;
-      } else ze.tap = { f, at: now };
+      } else ze.tap = { f: facing, at: now };
     } // twice: a dash
 
     return;
   }
 
-  if (!['Space', 'Enter', 'ArrowUp', 'KeyW', 'ArrowDown', 'KeyS', 'KeyP', 'KeyM', 'KeyT'].includes(k)) return;
+  if (!['Space', 'Enter', 'ArrowUp', 'KeyW', 'ArrowDown', 'KeyS', 'KeyP', 'KeyM', 'KeyT'].includes(code)) return;
   take();
-  if (e.repeat) return; // a key held down is one kick
-  if (g.phase === 'play' && ze.music?.ac.state === 'suspended') ze.music.ac.resume().catch(() => {}); // a press may start it
-  if (k === 'Space' || k === 'Enter') {
-    if (g.phase === 'play') {
-      zeKick(g);
-      g.holdAt = g.t;
-    } else if (g.phase === 'pause') zePause(false);
-    else if (g.phase === 'title') zeStart();
-    else if (g.overT > 0.8) zeOverAct(zeOverButtons()[g.sel]?.id); // not at once: a kick held at the K.O. is no new round
-  } else if (k === 'ArrowUp' || k === 'KeyW') zeJump(g);
-  else if (k === 'ArrowDown' || k === 'KeyS') zeFallThrough(g);
-  else if (k === 'KeyP') {
-    if (g.phase === 'play' || g.phase === 'pause') zePause(g.phase === 'play');
-  } else if (k === 'KeyT') zeTune();
+  if (event.repeat) return; // a key held down is one kick
+  if (game.phase === 'play' && ze.music?.ac.state === 'suspended') ze.music.ac.resume().catch(() => {}); // a press may start it
+  if (code === 'Space' || code === 'Enter') {
+    if (game.phase === 'play') {
+      zeKick(game);
+      game.holdAt = game.t;
+    } else if (game.phase === 'pause') zePause(false);
+    else if (game.phase === 'title') zeStart();
+    else if (game.overT > 0.8) zeOverAct(zeOverButtons()[game.sel]?.id); // not at once: a kick held at the K.O. is no new round
+  } else if (code === 'ArrowUp' || code === 'KeyW') zeJump(game);
+  else if (code === 'ArrowDown' || code === 'KeyS') zeFallThrough(game);
+  else if (code === 'KeyP') {
+    if (game.phase === 'play' || game.phase === 'pause') zePause(game.phase === 'play');
+  } else if (code === 'KeyT') zeTune();
   else zeMute();
 });
 
-$('#zeGame').addEventListener('keyup', e => {
+$('#zeGame').addEventListener('keyup', event => {
   const two = !!ze.g.galo;
 
-  if (two && (e.code === 'KeyA' || e.code === 'KeyD')) {
-    ze.keys2[e.code === 'KeyA' ? 'l' : 'r'] = 0;
+  if (two && (event.code === 'KeyA' || event.code === 'KeyD')) {
+    ze.keys2[event.code === 'KeyA' ? 'l' : 'r'] = 0;
     return;
   }
 
-  if (e.code === 'ArrowLeft' || e.code === 'KeyA') ze.keys.l = 0;
-  if (e.code === 'ArrowRight' || e.code === 'KeyD') ze.keys.r = 0;
-  if (e.code === 'Space' || e.code === 'Enter') zeLetGo(ze.g);
+  if (event.code === 'ArrowLeft' || event.code === 'KeyA') ze.keys.l = 0;
+  if (event.code === 'ArrowRight' || event.code === 'KeyD') ze.keys.r = 0;
+  if (event.code === 'Space' || event.code === 'Enter') zeLetGo(ze.g);
 });
 
-$('#zeCanvas').addEventListener('pointermove', e => {
-  ze.aim = (e.offsetX / e.currentTarget.clientWidth) * ZE_W;
+$('#zeCanvas').addEventListener('pointermove', event => {
+  ze.aim = (event.offsetX / event.currentTarget.clientWidth) * ZE_W;
 });
 
 $('#zeCanvas').addEventListener('pointerleave', () => {
   ze.aim = null;
 });
 
-$('#zeCanvas').addEventListener('pointerdown', e => {
-  if (e.button !== 0) return;
+$('#zeCanvas').addEventListener('pointerdown', event => {
+  if (event.button !== 0) return;
 
-  const g = ze.g;
-  const x = (e.offsetX / e.currentTarget.clientWidth) * ZE_W;
-  const y = (e.offsetY / e.currentTarget.clientHeight) * ZE_H;
+  const game = ze.g;
+  const pointerX = (event.offsetX / event.currentTarget.clientWidth) * ZE_W;
+  const pointerY = (event.offsetY / event.currentTarget.clientHeight) * ZE_H;
 
-  if (g.phase === 'title') {
-    const b = zeDiffButtons().find(b => zeIn(b, x, y));
+  if (game.phase === 'title') {
+    const hit = zeDiffButtons().find(button => zeIn(button, pointerX, pointerY));
 
-    if (b) zeSetDiff(b.i);
-    else if (zeIn(ZE_PANEL, x, y)) {
-      g.card++;
-      g.cardT = 0;
+    if (hit) zeSetDiff(hit.i);
+    else if (zeIn(ZE_PANEL, pointerX, pointerY)) {
+      game.card++;
+      game.cardT = 0;
     } else zeStart();
-  } else if (g.phase === 'over') {
-    if (g.overT > 0.8) {
-      const b = zeOverButtons().find(b => zeIn(b, x, y));
+  } else if (game.phase === 'over') {
+    if (game.overT > 0.8) {
+      const hit = zeOverButtons().find(button => zeIn(button, pointerX, pointerY));
 
-      if (b) zeOverAct(b.id);
+      if (hit) zeOverAct(hit.id);
     }
-  } else if (g.phase === 'call') {
-    const b = zeCallButtons().find(b => zeIn(b, x, y));
+  } else if (game.phase === 'call') {
+    const hit = zeCallButtons().find(button => zeIn(button, pointerX, pointerY));
 
-    if (b) zeCallEnd(b.id === 'go');
-  } else if (g.phase === 'play') {
-    zeKick(g);
-    g.holdAt = g.t;
+    if (hit) zeCallEnd(hit.id === 'go');
+  } else if (game.phase === 'play') {
+    zeKick(game);
+    game.holdAt = game.t;
   } else zePause(false);
 });
 
-$('#zeCanvas').addEventListener('pointerup', e => {
-  if (e.button === 0) zeLetGo(ze.g);
+$('#zeCanvas').addEventListener('pointerup', event => {
+  if (event.button === 0) zeLetGo(ze.g);
 });
 
-$('#zeGame').addEventListener('click', e => {
+$('#zeGame').addEventListener('click', event => {
   // the backdrop — not the gap between the picture and its foot
-  const r = e.currentTarget.getBoundingClientRect();
+  const rect = event.currentTarget.getBoundingClientRect();
 
   if (
-    e.target === e.currentTarget &&
-    (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)
+    event.target === event.currentTarget &&
+    (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)
   ) {
-    e.currentTarget.close();
+    event.currentTarget.close();
   }
 });
 

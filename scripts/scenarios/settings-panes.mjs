@@ -23,9 +23,9 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-  const find = q =>
+  const find = query =>
     ctx.evaluate(
-      `(i => { i.value = ${JSON.stringify(q)}; i.dispatchEvent(new Event('input', { bubbles: true })); })(document.querySelector('#sq'))`,
+      `(i => { i.value = ${JSON.stringify(query)}; i.dispatchEvent(new Event('input', { bubbles: true })); })(document.querySelector('#sq'))`,
     );
 
   const esc = () =>
@@ -62,16 +62,16 @@ export default async function (ctx) {
   // each pane alone, named in the head; ↓ from a tab walks to the next
   out.panes = {};
 
-  for (const t of ['look', 'list', 'space', 'term', 'setup', 'jira', 'system']) {
-    await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="${t}"]').click()`);
-    const l = await look();
+  for (const tab of ['look', 'list', 'space', 'term', 'setup', 'jira', 'system']) {
+    await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="${tab}"]').click()`);
+    const view = await look();
 
-    out.panes[t] = { title: l.title, rows: l.rows.length };
-    ctx.assert.deepEqual(l.panes, [t], `${t} alone`);
+    out.panes[tab] = { title: view.title, rows: view.rows.length };
+    ctx.assert.deepEqual(view.panes, [tab], `${tab} alone`);
   }
 
   ctx.assert.deepEqual(
-    Object.values(out.panes).map(p => p.title),
+    Object.values(out.panes).map(pane => pane.title),
     ['Appearance', 'Chat list', 'Space', 'Terminal', 'Projects', 'Jira', 'Updates & access'],
   );
 

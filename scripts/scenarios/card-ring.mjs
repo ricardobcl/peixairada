@@ -25,15 +25,15 @@ export default async function (ctx) {
   });
 
   const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));
-  const live = i => ({ pid: sleeps[i].pid, startedAt: now - 3600_000 });
+  const live = index => ({ pid: sleeps[index].pid, startedAt: now - 3600_000 });
 
-  const busy = (i, title, ago) => ({
+  const busy = (index, title, ago) => ({
     cwd,
     title,
     prompt: `do ${title}`,
     reply: 'on it',
     at: new Date(now - ago),
-    live: live(i),
+    live: live(index),
     lines: id =>
       toolLines({
         id,
@@ -48,12 +48,12 @@ export default async function (ctx) {
     const { chats } = makeFixture(ctx.fixture.dir, [
       busy(0, 'Open and clauding', 60_000),
       busy(1, 'Clauding beside it', 90_000),
-      ...Array.from({ length: 8 }, (_, i) => ({
+      ...Array.from({ length: 8 }, (_, index) => ({
         cwd,
-        title: `Ready ${i + 1}`,
-        prompt: `question ${i + 1}, long enough to give the card a line or two of prompt`,
+        title: `Ready ${index + 1}`,
+        prompt: `question ${index + 1}, long enough to give the card a line or two of prompt`,
         reply: 'A reply long enough to take the card to three lines of its own, so the list runs past the window.',
-        at: new Date(now - (i + 3) * 600_000),
+        at: new Date(now - (index + 3) * 600_000),
       })),
     ]);
 
@@ -85,9 +85,9 @@ export default async function (ctx) {
       `(c => { const p = document.createElement('i'); p.style.color = 'var(--lit)'; c.append(p); const v = getComputedStyle(p).color; p.remove(); return v; })(document.querySelector('#slist > .card.working'))`,
     );
 
-    const L = +(/^oklch\(([\d.]+)/.exec(out.lit) || [])[1];
+    const lightness = +(/^oklch\(([\d.]+)/.exec(out.lit) || [])[1];
 
-    ctx.assert.ok(L > 0.9 && L < 1, `the ring's light is the blue lifted, not the blue: ${out.lit}`);
+    ctx.assert.ok(lightness > 0.9 && lightness < 1, `the ring's light is the blue lifted, not the blue: ${out.lit}`);
 
     // 2 · open it: the open card keeps its own ring (the light ran on past it, round the splitter and the header's
     // project box, until tiles were the only layout — 2026-10-14)
@@ -107,7 +107,7 @@ export default async function (ctx) {
     appendFileSync(
       open.file,
       `${replyLines({ id: open.id, cwd, text: 'Done.', at: new Date() })
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 
@@ -118,6 +118,6 @@ export default async function (ctx) {
 
     return out;
   } finally {
-    for (const p of sleeps) p.kill();
+    for (const child of sleeps) child.kill();
   }
 }

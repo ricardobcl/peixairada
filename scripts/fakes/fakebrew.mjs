@@ -13,13 +13,13 @@ const env = process.env;
 if (env.FAKE_BREW_LOG) appendFileSync(env.FAKE_BREW_LOG, `${args.join(' ')}\n`);
 if (args[0] !== 'install') process.exit(0);
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const gap = Number(env.FAKE_BREW_MS || 0);
 
 const dir = (env.APP_DIRS || '').split(':').filter(Boolean)[0];
 
-for (const l of ['==> Downloading https://zed.dev/fake/Zed-aarch64.dmg', '==> Installing Cask zed']) {
-  console.log(l);
+for (const line of ['==> Downloading https://zed.dev/fake/Zed-aarch64.dmg', '==> Installing Cask zed']) {
+  console.log(line);
   await sleep(gap);
 }
 

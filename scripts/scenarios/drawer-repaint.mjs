@@ -18,22 +18,28 @@ const vp = (ctx, width, height = 1000) =>
 
 /** The pointer's own drag, a move a frame: a bar held by the hand, which ctx.drag's eight moves at once are not. */
 async function holdBar(ctx, sel, dx, dy, steps = 20) {
-  const a = await ctx.evaluate(
+  const center = await ctx.evaluate(
     `(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect())`,
   );
 
-  const mouse = (type, x, y, buttons) =>
-    ctx.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons, clickCount: 1 });
+  const mouse = (type, pointerX, pointerY, buttons) =>
+    ctx.send('Input.dispatchMouseEvent', { type, x: pointerX, y: pointerY, button: 'left', buttons, clickCount: 1 });
 
-  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: a.x, y: a.y });
-  await mouse('mousePressed', a.x, a.y, 1);
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: center.x, y: center.y });
+  await mouse('mousePressed', center.x, center.y, 1);
 
-  for (let i = 1; i <= steps; i++) {
-    await mouse('mouseMoved', Math.round(a.x + (dx * i) / steps), Math.round(a.y + (dy * i) / steps), 1);
+  for (let step = 1; step <= steps; step++) {
+    await mouse(
+      'mouseMoved',
+      Math.round(center.x + (dx * step) / steps),
+      Math.round(center.y + (dy * step) / steps),
+      1,
+    );
+
     await ctx.sleep(16);
   }
 
-  await mouse('mouseReleased', a.x + dx, a.y + dy, 0);
+  await mouse('mouseReleased', center.x + dx, center.y + dy, 0);
 }
 
 export default async function (ctx) {
@@ -50,27 +56,30 @@ export default async function (ctx) {
   await ctx.key('KeyC');
   await ctx.waitPrompt();
 
-  for (let i = 0; i < 4; i++) {
-    await ctx.type(`line ${i} that runs on long enough to wrap in half the column ${'and on '.repeat(16)}`);
+  for (let index = 0; index < 4; index++) {
+    await ctx.type(`line ${index} that runs on long enough to wrap in half the column ${'and on '.repeat(16)}`);
     await ctx.sleep(300);
   }
 
   await ctx.sleep(800);
   await ctx.settle();
 
-  const quiet = g =>
-    ctx.waitFor(`(g => !g.hold && !g.refits)(window.peix.grid(${g}))`, { timeout: 3000, what: 'the drawer settled' });
+  const quiet = half =>
+    ctx.waitFor(`(g => !g.hold && !g.refits)(window.peix.grid(${half}))`, {
+      timeout: 3000,
+      what: 'the drawer settled',
+    });
 
   /** One change, watched in half `g`: nothing wrong in any frame, `pty` resizes at most, over within `ms`. */
   // `ms` is a ceiling a loaded Mac stays under, not a speed: a wait that ran to REPAINT_MAX_MS would still be inside it — the frames are the check
-  const change = async (label, act, { g = 0, pty = 1, ms = 500 } = {}) => {
-    await ctx.watchFrames(g);
+  const change = async (label, act, { g: half = 0, pty = 1, ms = 500 } = {}) => {
+    await ctx.watchFrames(half);
     await ctx.sleep(120);
     const at = await ctx.evaluate('window.__frames ? performance.now() : 0');
 
     await act();
     await ctx.sleep(200);
-    await quiet(g);
+    await quiet(half);
     await ctx.sleep(350);
     const end = await ctx.evaluate('performance.now()');
 
@@ -90,23 +99,28 @@ export default async function (ctx) {
       pty: sends.length,
       tookMs: Math.round(last.t + t0 - at),
       seq: said
-        .map(f => `${Math.round(f.t + t0 - at)}ms ${f.cols}x${f.rows} ${f.top} n${f.n}${f.hold ? ' hold' : ''}`)
+        .map(
+          frame =>
+            `${Math.round(frame.t + t0 - at)}ms ${frame.cols}x${frame.rows} ${frame.top} n${frame.n}${frame.hold ? ' hold' : ''}`,
+        )
         .join(' | '),
-      sends: sends.map(x => `${Math.round(x.t + t0 - at)}ms ${x.cols}x${x.rows}`).join(' '),
+      sends: sends.map(resize => `${Math.round(resize.t + t0 - at)}ms ${resize.cols}x${resize.rows}`).join(' '),
     };
 
     ctx.log(label, JSON.stringify(out[label]));
 
     if (process.env.REPAINT_DEBUG) {
-      for (let i = 1; i < said.length; i++) {
-        const p = said[i - 1].text || [];
-        const q = said[i].text || [];
+      for (let index = 1; index < said.length; index++) {
+        const before = said[index - 1].text || [];
+        const after = said[index].text || [];
 
         ctx.log(
           '  look',
-          i,
-          q
-            .map((r, y) => (r === p[y] ? null : `${y}: ${JSON.stringify(p[y])} → ${JSON.stringify(r)}`))
+          index,
+          after
+            .map((line, row) =>
+              line === before[row] ? null : `${row}: ${JSON.stringify(before[row])} → ${JSON.stringify(line)}`,
+            )
             .filter(Boolean)
             .slice(0, 4)
             .join(' ‖ '),
@@ -120,15 +134,15 @@ export default async function (ctx) {
     );
 
     check(sends.length <= pty, `${label}: at most ${pty} resize(s) of the PTY: ${JSON.stringify(sends)}`);
-    const d = await ctx.peix(`term(${g})`);
+    const term = await ctx.peix(`term(${half})`);
 
     check(
-      d.cols === d.propose.cols && d.rows === d.propose.rows,
-      `${label}: the grid (${d.cols}x${d.rows}) is what the body holds (${d.propose.cols}x${d.propose.rows})`,
+      term.cols === term.propose.cols && term.rows === term.propose.rows,
+      `${label}: the grid (${term.cols}x${term.rows}) is what the body holds (${term.propose.cols}x${term.propose.rows})`,
     );
 
     check(
-      (await ctx.screen(g)).some(r => r.includes(`<<${d.cols}x${d.rows}>>`)),
+      (await ctx.screen(half)).some(row => row.includes(`<<${term.cols}x${term.rows}>>`)),
       `${label}: the screen is drawn for that grid`,
     );
 
@@ -164,8 +178,8 @@ export default async function (ctx) {
   await change(
     'window dragged',
     async () => {
-      for (let i = 1; i <= 24; i++) {
-        await vp(ctx, 1500 + i * 8);
+      for (let step = 1; step <= 24; step++) {
+        await vp(ctx, 1500 + step * 8);
         await ctx.sleep(16);
       }
     },
@@ -189,13 +203,17 @@ export default async function (ctx) {
   await holdBar(ctx, '#gsplit', 160, 0);
   await ctx.sleep(500);
 
-  const z = await ctx.frames();
-  const widths = new Set(z.frames.map(f => f.cols));
+  const recorded = await ctx.frames();
+  const widths = new Set(recorded.frames.map(frame => frame.cols));
 
-  out['zsh, dragged'] = { widths: widths.size, pty: z.sends.length };
+  out['zsh, dragged'] = { widths: widths.size, pty: recorded.sends.length };
   ctx.log('zsh, dragged', JSON.stringify(out['zsh, dragged']));
   check(widths.size >= 5, `the zsh reflowed under the drag: ${[...widths]}`);
-  check(z.sends.length <= 4, `a resize or two a half for the whole drag, not one a column: ${JSON.stringify(z.sends)}`);
+
+  check(
+    recorded.sends.length <= 4,
+    `a resize or two a half for the whole drag, not one a column: ${JSON.stringify(recorded.sends)}`,
+  );
 
   await change('the zsh closed ⌥⌘W', () => ctx.key('KeyW'), { ms: 700 }); // the server ends the zsh first
   assert.deepEqual(fails, [], `${fails.length} wrong`);

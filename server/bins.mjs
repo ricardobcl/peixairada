@@ -46,10 +46,10 @@ export const binCache = new Map();
  *  a minute later rather than never — a gh installed while the board runs is found (2026-10-03). */
 const BIN_RETRY_MS = 60_000;
 
-export const canRun = f => {
+export const canRun = file => {
   try {
-    accessSync(f, fsc.X_OK);
-    return statSync(f).isFile();
+    accessSync(file, fsc.X_OK);
+    return statSync(file).isFile();
   } catch {
     return false;
   }
@@ -67,7 +67,7 @@ export function findBin(name, missingNote) {
       ...(process.env.PATH || '')
         .split(':')
         .filter(Boolean)
-        .map(d => join(d, name)),
+        .map(dir => join(dir, name)),
       ...(BIN_FALLBACKS[name] || []),
     ].find(canRun) || null;
 

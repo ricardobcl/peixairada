@@ -55,29 +55,31 @@ const EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'imag
 
 /** A picture's address as the board fetches it — a Giphy page's is its GIF's —, or null for one it does not show.
  *  The page holds the same list (picOf in public/js/room.js). */
-export function picUrl(u) {
-  const s = String(u ?? '').trim();
-  const g = GIPHY.exec(s);
+export function picUrl(address) {
+  const text = String(address ?? '').trim();
+  const match = GIPHY.exec(text);
 
-  if (g) return `https://media.giphy.com/media/${g[1]}/giphy.gif`;
-  return ASSET.test(s) || DIRECT.test(s) ? s : null;
+  if (match) return `https://media.giphy.com/media/${match[1]}/giphy.gif`;
+  return ASSET.test(text) || DIRECT.test(text) ? text : null;
 }
 
 /** What the bytes are, by their first few: one of EXT's types, or null. */
-export function picType(b) {
-  if (!b || b.length < 12) return null;
-  if (b[0] === 0x89 && b.toString('latin1', 1, 4) === 'PNG') return 'image/png';
-  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
-  if (/^GIF8[79]a$/.test(b.toString('latin1', 0, 6))) return 'image/gif';
-  if (b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') return 'image/webp';
+export function picType(bytes) {
+  if (!bytes || bytes.length < 12) return null;
+  if (bytes[0] === 0x89 && bytes.toString('latin1', 1, 4) === 'PNG') return 'image/png';
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  if (/^GIF8[79]a$/.test(bytes.toString('latin1', 0, 6))) return 'image/gif';
+  if (bytes.toString('latin1', 0, 4) === 'RIFF' && bytes.toString('latin1', 8, 12) === 'WEBP') return 'image/webp';
   return null;
 }
 
-const hopOk = u => {
+const hopOk = address => {
   try {
-    const x = new URL(u);
+    const parsed = new URL(address);
 
-    return (x.protocol === 'https:' && HOPS.test(x.hostname)) || (!!API_ORIGIN && x.origin === API_ORIGIN);
+    return (
+      (parsed.protocol === 'https:' && HOPS.test(parsed.hostname)) || (!!API_ORIGIN && parsed.origin === API_ORIGIN)
+    );
   } catch {
     return false;
   }
@@ -88,50 +90,50 @@ const keepFile = url => join(privateDir(PIC_DIR), createHash('sha256').update(ur
 
 function kept(url) {
   try {
-    const f = keepFile(url);
-    const b = readFileSync(f);
+    const file = keepFile(url);
+    const bytes = readFileSync(file);
 
-    if (!picType(b)) return null;
+    if (!picType(bytes)) return null;
     const now = new Date();
 
-    utimesSync(f, now, now);
-    return b;
+    utimesSync(file, now, now);
+    return bytes;
   } catch {
     return null;
   }
 }
 
-function keep(url, b) {
+function keep(url, bytes) {
   try {
-    const f = keepFile(url);
-    const tmp = `${f}.${process.pid}`;
+    const file = keepFile(url);
+    const tmp = `${file}.${process.pid}`;
 
-    writeFileSync(tmp, b, { mode: 0o600 });
-    renameSync(tmp, f);
+    writeFileSync(tmp, bytes, { mode: 0o600 });
+    renameSync(tmp, file);
 
     const all = readdirSync(PIC_DIR)
-      .filter(n => /^[0-9a-f]{40}$/.test(n))
-      .map(n => {
-        const p = join(PIC_DIR, n);
-        const st = statSync(p);
+      .filter(name => /^[0-9a-f]{40}$/.test(name))
+      .map(name => {
+        const path = join(PIC_DIR, name);
+        const st = statSync(path);
 
-        return { p, size: st.size, at: st.mtimeMs };
+        return { p: path, size: st.size, at: st.mtimeMs };
       });
 
-    let total = all.reduce((a, x) => a + x.size, 0);
+    let total = all.reduce((sum, entry) => sum + entry.size, 0);
 
     if (total > PIC_KEEP_MAX) {
-      for (const x of all.sort((a, b) => a.at - b.at)) {
+      for (const entry of all.sort((left, right) => left.at - right.at)) {
         if (total <= PIC_KEEP_MAX * 0.75) break;
 
         try {
-          unlinkSync(x.p);
-          total -= x.size;
+          unlinkSync(entry.p);
+          total -= entry.size;
         } catch {}
       }
     }
-  } catch (e) {
-    console.error('[peixairada] chat: a picture not kept:', e.message);
+  } catch (error) {
+    console.error('[peixairada] chat: a picture not kept:', error.message);
   }
 }
 
@@ -141,37 +143,40 @@ async function fetchPic(url) {
   for (let hop = 0; hop < 5; hop++) {
     if (!hopOk(url)) throw chatErr(403, 'a picture somewhere the chat does not fetch from');
 
-    const r = await fetch(url, {
+    const response = await fetch(url, {
       redirect: 'manual',
       signal: AbortSignal.timeout(30_000),
       headers: { 'user-agent': 'peixAIrada', accept: 'image/*' },
     });
 
-    const to = r.status >= 300 && r.status < 400 && r.headers.get('location');
+    const to = response.status >= 300 && response.status < 400 && response.headers.get('location');
 
     if (to) {
-      await r.body?.cancel().catch(() => {});
+      await response.body?.cancel().catch(() => {});
       url = new URL(to, url).href;
       continue;
     }
 
-    if (!r.ok) {
-      await r.body?.cancel().catch(() => {});
-      throw chatErr(r.status === 404 || r.status === 403 ? 404 : 502, `its host answered ${r.status}`);
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => {});
+      throw chatErr(
+        response.status === 404 || response.status === 403 ? 404 : 502,
+        `its host answered ${response.status}`,
+      );
     }
 
-    if (Number(r.headers.get('content-length')) > PIC_MAX) {
-      await r.body?.cancel().catch(() => {});
+    if (Number(response.headers.get('content-length')) > PIC_MAX) {
+      await response.body?.cancel().catch(() => {});
       throw chatErr(413, 'larger than 10 MB');
     }
 
     const parts = [];
-    let n = 0;
+    let received = 0;
 
-    for await (const c of r.body) {
-      n += c.length;
-      if (n > PIC_MAX) throw chatErr(413, 'larger than 10 MB');
-      parts.push(c);
+    for await (const chunk of response.body) {
+      received += chunk.length;
+      if (received > PIC_MAX) throw chatErr(413, 'larger than 10 MB');
+      parts.push(chunk);
     }
 
     return Buffer.concat(parts);
@@ -205,26 +210,26 @@ async function assetSrcs() {
         await ghRest(
           'POST',
           '/markdown',
-          { text: batch.map(a => `![](${a.url})`).join('\n\n'), mode: 'gfm', context: chat.repo },
+          { text: batch.map(ask => `![](${ask.url})`).join('\n\n'), mode: 'gfm', context: chat.repo },
           undefined,
           { text: true },
         )
       ).data || '';
 
-    const srcs = [...html.matchAll(/<img\b[^>]*?\ssrc="([^"]+)"/g)].map(m => m[1].replace(/&amp;/g, '&'));
+    const srcs = [...html.matchAll(/<img\b[^>]*?\ssrc="([^"]+)"/g)].map(match => match[1].replace(/&amp;/g, '&'));
 
-    batch.forEach((a, i) => {
-      const id = a.url.split('/').pop();
+    batch.forEach((ask, index) => {
+      const id = ask.url.split('/').pop();
 
       const src =
-        srcs.find(x => x.includes(id) && x !== a.url) ||
-        (srcs.length === batch.length && srcs[i] !== a.url ? srcs[i] : null);
+        srcs.find(candidate => candidate.includes(id) && candidate !== ask.url) ||
+        (srcs.length === batch.length && srcs[index] !== ask.url ? srcs[index] : null);
 
-      if (src) a.ok(src);
-      else a.no(chatErr(404, 'GitHub shows you no picture there — not one shared with you'));
+      if (src) ask.ok(src);
+      else ask.no(chatErr(404, 'GitHub shows you no picture there — not one shared with you'));
     });
-  } catch (e) {
-    for (const a of batch) a.no(e);
+  } catch (error) {
+    for (const ask of batch) ask.no(error);
   }
 }
 
@@ -243,28 +248,28 @@ export async function chatPic(raw) {
     asking.set(
       url,
       (async () => {
-        const b = await fetchPic(ASSET.test(url) ? await assetSrc(url) : url);
+        const fetched = await fetchPic(ASSET.test(url) ? await assetSrc(url) : url);
 
-        if (!picType(b)) throw chatErr(415, 'not a picture — a PNG, JPEG, GIF or WebP');
-        keep(url, b);
-        return b;
+        if (!picType(fetched)) throw chatErr(415, 'not a picture — a PNG, JPEG, GIF or WebP');
+        keep(url, fetched);
+        return fetched;
       })().finally(() => asking.delete(url)),
     );
   }
 
-  const b = await asking.get(url);
+  const bytes = await asking.get(url);
 
-  return { bytes: b, type: picType(b) };
+  return { bytes, type: picType(bytes) };
 }
 
 // ---- uploading ------------------------------------------------------------------------------------------------------
 /** Your picture up to GitHub, against the repo chat.pics names: {url, type, name}. */
-export async function chatUpload(b, name) {
+export async function chatUpload(bytes, name) {
   if (!setup.chat || !chat.ready) throw chatErr(409, chat.error || 'the chat is still being read');
-  const type = picType(b);
+  const type = picType(bytes);
 
   if (!type) throw chatErr(415, 'not a picture — a PNG, JPEG, GIF or WebP');
-  if (b.length > PIC_MAX) throw chatErr(413, 'larger than 10 MB');
+  if (bytes.length > PIC_MAX) throw chatErr(413, 'larger than 10 MB');
   await chatPicsAgain();
   const to = chat.pics;
 
@@ -279,16 +284,16 @@ export async function chatUpload(b, name) {
 
   const file = `${stem}.${EXT[type]}`;
 
-  const u = `${GITHUB_UPLOADS}/user-attachments/assets?${new URLSearchParams({ name: file, content_type: type, repository_id: String(to.id) })}`;
+  const endpoint = `${GITHUB_UPLOADS}/user-attachments/assets?${new URLSearchParams({ name: file, content_type: type, repository_id: String(to.id) })}`;
 
   for (let again = 0; ; again++) {
     const token = await ghToken(again > 0);
 
     if (!token) throw chatErr(401, 'gh is not signed in here — gh auth login');
 
-    const r = await fetch(u, {
+    const response = await fetch(endpoint, {
       method: 'POST',
-      body: b,
+      body: bytes,
       signal: AbortSignal.timeout(120_000),
       headers: {
         authorization: `Bearer ${token}`,
@@ -298,30 +303,32 @@ export async function chatUpload(b, name) {
       },
     });
 
-    if (r.status === 401 && !again) continue;
-    const d = await r.json().catch(() => null);
+    if (response.status === 401 && !again) continue;
+    const answer = await response.json().catch(() => null);
 
     // 404 is the endpoint's word for "you cannot write there" (gh's own reading of it)
-    if (r.status === 404) throw chatErr(403, `GitHub takes pictures only from someone who can write to ${to.repo}`);
+    if (response.status === 404) {
+      throw chatErr(403, `GitHub takes pictures only from someone who can write to ${to.repo}`);
+    }
 
-    if (!r.ok || typeof d?.url !== 'string') {
+    if (!response.ok || typeof answer?.url !== 'string') {
       throw chatErr(
-        r.status === 422 || r.status === 413 ? 400 : 502,
-        `GitHub: ${d?.errors?.[0]?.message || d?.message || `HTTP ${r.status}`}`,
+        response.status === 422 || response.status === 413 ? 400 : 502,
+        `GitHub: ${answer?.errors?.[0]?.message || answer?.message || `HTTP ${response.status}`}`,
       );
     }
 
-    if (!picUrl(d.url)) throw chatErr(502, `GitHub gave back an address the chat does not show: ${d.url}`);
-    keep(d.url, b);
-    return { url: d.url, type, name: stem };
+    if (!picUrl(answer.url)) throw chatErr(502, `GitHub gave back an address the chat does not show: ${answer.url}`);
+    keep(answer.url, bytes);
+    return { url: answer.url, type, name: stem };
   }
 }
 
 /** GET /api/chat/pic?u=<address>: the picture's bytes, under a policy that runs nothing. POST /api/chat/upload?name= with
  *  the picture as the body (a browser's paste or drop), or ?path= a picture on this Mac (the app's drop: a path). */
-export async function chatPicRoute(req, res, url, p) {
+export async function chatPicRoute(req, res, url, pathname) {
   try {
-    if (req.method === 'GET' && p === '/api/chat/pic') {
+    if (req.method === 'GET' && pathname === '/api/chat/pic') {
       const { bytes, type } = await chatPic(url.searchParams.get('u'));
 
       res.writeHead(200, {
@@ -335,10 +342,10 @@ export async function chatPicRoute(req, res, url, p) {
       return res.end(bytes);
     }
 
-    if (req.method === 'POST' && p === '/api/chat/upload') {
+    if (req.method === 'POST' && pathname === '/api/chat/upload') {
       const path = url.searchParams.get('path');
 
-      let b;
+      let bytes;
       let name = url.searchParams.get('name');
 
       if (path) {
@@ -350,22 +357,24 @@ export async function chatPicRoute(req, res, url, p) {
 
         if (!st?.isFile()) throw chatErr(404, `no file at ${path}`);
         if (st.size > PIC_MAX) throw chatErr(413, 'larger than 10 MB');
-        b = readFileSync(path);
+        bytes = readFileSync(path);
         name ||= basename(path);
       } else {
         try {
-          b = await readRaw(req, PIC_MAX);
-        } catch (e) {
+          bytes = await readRaw(req, PIC_MAX);
+        } catch (error) {
           res.setHeader('connection', 'close');
-          throw chatErr(413, e.message === 'too large' ? 'larger than 10 MB' : String(e.message || e));
+          throw chatErr(413, error.message === 'too large' ? 'larger than 10 MB' : String(error.message || error));
         }
       }
 
-      return json(res, 200, await chatUpload(b, name));
+      return json(res, 200, await chatUpload(bytes, name));
     }
-  } catch (e) {
-    return json(res, [400, 401, 403, 404, 409, 413, 415].includes(e.status) ? e.status : 502, { error: e.message });
+  } catch (error) {
+    return json(res, [400, 401, 403, 404, 409, 413, 415].includes(error.status) ? error.status : 502, {
+      error: error.message,
+    });
   }
 
-  return json(res, 405, { error: `${req.method} ${p}: GET /api/chat/pic or POST /api/chat/upload` });
+  return json(res, 405, { error: `${req.method} ${pathname}: GET /api/chat/pic or POST /api/chat/upload` });
 }

@@ -30,46 +30,53 @@ export function jsonOnce(file, shape) {
   const hit = jsonSeen.get(file);
 
   if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.v;
-  let v = null;
+  let value = null;
 
   try {
-    v = shape(JSON.parse(readFileSync(file, 'utf8')));
+    value = shape(JSON.parse(readFileSync(file, 'utf8')));
   } catch {}
 
   if (jsonSeen.size > 4000) jsonSeen.clear();
-  jsonSeen.set(file, { mtimeMs: st.mtimeMs, size: st.size, v });
-  return v;
+  jsonSeen.set(file, { mtimeMs: st.mtimeMs, size: st.size, v: value });
+  return value;
 }
 
 /** A teammate's category (2026-11-18, v6): the `subagent_type` the lead spawned it with — its metadata names none, its
  *  roster entry its own name. By name, the newest spawn winning; `general-purpose`, the Agent tool's own default, when none. */
 export const SPAWN_TOOLS = new Set(['Agent', 'Task']); // the spawning tool by either of its names (Task, before Agent; 2026-11-18, v8)
 
-export function noteMateType(s, input) {
-  const t = (s.mateTypes ||= new Map());
+export function noteMateType(session, input) {
+  const types = (session.mateTypes ||= new Map());
 
-  t.delete(input.name);
-  t.set(input.name, pstr(input.subagent_type) || pstr(input.agent_type) || pstr(input.agentType) || 'general-purpose');
-  while (t.size > 64) t.delete(t.keys().next().value);
+  types.delete(input.name);
+
+  types.set(
+    input.name,
+    pstr(input.subagent_type) || pstr(input.agent_type) || pstr(input.agentType) || 'general-purpose',
+  );
+
+  while (types.size > 64) types.delete(types.keys().next().value);
 }
 
 // first what its own metadata says it was spawned as (`spawnedAgentType`, `customAgentType`; its `agentType` is its name — 2026-11-18, v9)
-const typeSaid = (k, name) => (k && k !== name && k !== 'team-lead' ? k : null);
+const typeSaid = (type, name) => (type && type !== name && type !== 'team-lead' ? type : null);
 
-export const mateType = (s, name, spawned, kind) =>
-  typeSaid(spawned, name) || s.mateTypes?.get(name) || typeSaid(kind, name) || 'general-purpose';
+export const mateType = (session, name, spawned, kind) =>
+  typeSaid(spawned, name) || session.mateTypes?.get(name) || typeSaid(kind, name) || 'general-purpose';
 
-const isLead = m =>
-  m.agentType === 'team-lead' || m.name === 'team-lead' || String(m.agentId || '').startsWith('team-lead@');
+const isLead = member =>
+  member.agentType === 'team-lead' ||
+  member.name === 'team-lead' ||
+  String(member.agentId || '').startsWith('team-lead@');
 
 /** The roster beyond its lead, as Claude Code keeps it while the chat runs: what a teammate with no file yet is known by. */
-export const rosterOf = s =>
-  jsonOnce(join(TEAMS_DIR, `session-${s.id.slice(0, 8)}`, 'config.json'), c =>
-    (c?.leadSessionId && c.leadSessionId !== s.id) || !Array.isArray(c?.members)
+export const rosterOf = session =>
+  jsonOnce(join(TEAMS_DIR, `session-${session.id.slice(0, 8)}`, 'config.json'), config =>
+    (config?.leadSessionId && config.leadSessionId !== session.id) || !Array.isArray(config?.members)
       ? []
-      : c.members
-          .filter(m => m && typeof m === 'object' && pstr(m.name) && !isLead(m))
-          .map(m => ({ name: m.name, kind: pstr(m.agentType) })),
+      : config.members
+          .filter(member => member && typeof member === 'object' && pstr(member.name) && !isLead(member))
+          .map(member => ({ name: member.name, kind: pstr(member.agentType) })),
   ) || [];
 const TM_SUMMARY = /^\s*<teammate-message\b[^>]*\bsummary="([^"]*)"/;
 
@@ -104,45 +111,49 @@ export function mateLast(file, st) {
   let last = null;
 
   for (const raw of buf.toString('utf8').split('\n').reverse()) {
-    let l;
+    let line;
 
     try {
-      l = JSON.parse(raw);
+      line = JSON.parse(raw);
     } catch {
       continue;
     }
 
-    const c = l?.message?.content;
+    const content = line?.message?.content;
 
-    if (l?.type === 'assistant') {
-      const b = (Array.isArray(c) ? c : []).findLast(
-        x => (x?.type === 'text' && x.text?.trim()) || x?.type === 'tool_use',
+    if (line?.type === 'assistant') {
+      const block = (Array.isArray(content) ? content : []).findLast(
+        part => (part?.type === 'text' && part.text?.trim()) || part?.type === 'tool_use',
       );
 
-      if (!b) continue;
+      if (!block) continue;
 
       last =
-        b.type === 'text'
-          ? { kind: 'text', text: plainSnippet(b.text, 140) }
-          : b.name === 'SubagentHandback'
+        block.type === 'text'
+          ? { kind: 'text', text: plainSnippet(block.text, 140) }
+          : block.name === 'SubagentHandback'
             ? {
                 kind: 'report',
                 text: plainSnippet(
-                  String(b.input?.message || '')
+                  String(block.input?.message || '')
                     .trim()
                     .split('\n')[0],
                   140,
                 ),
               } // its report's first line: what it found
-            : { kind: 'tool', name: pstr(b.name) || 'tool', text: snippet(summarizeToolInput(b.name, b.input), 120) };
+            : {
+                kind: 'tool',
+                name: pstr(block.name) || 'tool',
+                text: snippet(summarizeToolInput(block.name, block.input), 120),
+              };
 
       break;
     }
 
-    const m = l?.type === 'user' && TM_SUMMARY.exec(textOf(c));
+    const match = line?.type === 'user' && TM_SUMMARY.exec(textOf(content));
 
-    if (m) {
-      last = { kind: 'asked', text: snippet(unXml(m[1]), 140) };
+    if (match) {
+      last = { kind: 'asked', text: snippet(unXml(match[1]), 140) };
       break;
     }
   }

@@ -15,11 +15,11 @@ function markQsel(step = 0) {
   const cards = [...document.querySelectorAll('#slist > .card')];
 
   const on = document.activeElement === inp && !!inp.value.trim();
-  const at = qsel.id ? cards.findIndex(c => c.dataset.id === qsel.id) : -1;
+  const at = qsel.id ? cards.findIndex(card => card.dataset.id === qsel.id) : -1;
 
   qsel.i = Math.max(0, Math.min((at >= 0 ? at : qsel.i) + step, cards.length - 1));
   if (step) qsel.id = cards[qsel.i]?.dataset.id || null;
-  cards.forEach((c, i) => c.classList.toggle('qsel', on && i === qsel.i));
+  cards.forEach((card, index) => card.classList.toggle('qsel', on && index === qsel.i));
   return on ? cards[qsel.i] || null : null;
 }
 
@@ -43,23 +43,23 @@ const qShow = on => {
 
   btn.onclick = () => qShow(inp.hidden);
 
-  inp.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
+  inp.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
       inp.value = '';
       btn.classList.remove('on');
       qShow(false);
       renderBoard();
-    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      markQsel(e.key === 'ArrowDown' ? 1 : -1)?.scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'Enter') {
-      const c = markQsel();
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      markQsel(event.key === 'ArrowDown' ? 1 : -1)?.scrollIntoView({ block: 'nearest' });
+    } else if (event.key === 'Enter') {
+      const card = markQsel();
 
-      if (!c) return;
-      e.preventDefault();
+      if (!card) return;
+      event.preventDefault();
       inp.blur();
-      openSession(c.dataset.id).then(focusTerm);
+      openSession(card.dataset.id).then(focusTerm);
     }
   });
 

@@ -38,24 +38,24 @@ test('the parsers: numstat, name-status, a patch split by file, an untracked fil
     'old.txt': 'D',
   });
 
-  const p =
+  const patch =
     'diff --git a/x.js b/x.js\nindex 1..2\n--- a/x.js\n+++ b/x.js\n@@ -1 +1 @@\n-a\n+b\ndiff --git a/y z.md b/y z.md\n--- a/y z.md\n+++ b/y z.md\n@@ -1 +1 @@\n-c\n+d\n';
 
   assert.deepEqual(
-    splitPatch(p).map(c => c.path),
+    splitPatch(patch).map(file => file.path),
     ['x.js', 'y z.md'],
   );
 
   // (2026-10-14) heads git quoted — a `"`, UTF-8 in octal —, and a name with " b/" in it
-  const q =
+  const quotedPatch =
     'diff --git "a/say \\"hi\\".txt" "b/say \\"hi\\".txt"\n@@ -1 +1 @@\n-a\n+b\ndiff --git "a/a\\303\\247a\\303\\255.md" "b/a\\303\\247a\\303\\255.md"\n@@ -1 +1 @@\n-a\n+b\ndiff --git a/x b/y b/x b/y\n@@ -1 +1 @@\n-a\n+b\n';
 
   assert.deepEqual(
-    splitPatch(q).map(c => c.path),
+    splitPatch(quotedPatch).map(file => file.path),
     ['say "hi".txt', 'açaí.md', 'x b/y'],
   );
 
-  assert.ok(splitPatch(p)[0].text.endsWith('+b\n'));
+  assert.ok(splitPatch(patch)[0].text.endsWith('+b\n'));
 
   assert.equal(
     addedPatch('n.txt', 'one\ntwo\n'),
@@ -68,8 +68,8 @@ test('the parsers: numstat, name-status, a patch split by file, an untracked fil
 test("a chat's changes in its three scopes, from a real repo", async () => {
   const repo = tmpDir('peix-chg-');
 
-  const g = (...a) =>
-    execFileSync('git', ['-C', repo, ...a], {
+  const git = (...args) =>
+    execFileSync('git', ['-C', repo, ...args], {
       stdio: 'pipe',
       env: {
         ...process.env,
@@ -80,27 +80,32 @@ test("a chat's changes in its three scopes, from a real repo", async () => {
       },
     }).toString();
 
-  g('init', '-q', '-b', 'main');
+  git('init', '-q', '-b', 'main');
   mkdirSync(join(repo, 'src'));
   writeFileSync(join(repo, 'src', 'a.js'), 'one\ntwo\nthree\n');
   writeFileSync(join(repo, 'b.md'), '# b\n');
-  g('add', '.');
-  g('commit', '-q', '-m', 'base');
-  g('checkout', '-q', '-b', 'feature');
+  git('add', '.');
+  git('commit', '-q', '-m', 'base');
+  git('checkout', '-q', '-b', 'feature');
   writeFileSync(join(repo, 'b.md'), '# b\nmore\n');
-  g('commit', '-qam', 'on the branch');
+  git('commit', '-qam', 'on the branch');
   writeFileSync(join(repo, 'src', 'a.js'), 'one\n2\nthree\nfour\n'); // edited, not committed
   writeFileSync(join(repo, 'new.txt'), 'fresh\nlines\n'); // untracked
 
   // a chat in src/ whose last turn edited a.js
-  const s = newSession(randomUUID(), null);
+  const session = newSession(randomUUID(), null);
 
-  s.loaded = false;
-  const at = n => new Date(Date.now() - n * 1000).toISOString();
+  session.loaded = false;
+  const at = seconds => new Date(Date.now() - seconds * 1000).toISOString();
 
-  fold(s, { type: 'user', cwd: join(repo, 'src'), timestamp: at(30), message: { role: 'user', content: 'change a' } });
+  fold(session, {
+    type: 'user',
+    cwd: join(repo, 'src'),
+    timestamp: at(30),
+    message: { role: 'user', content: 'change a' },
+  });
 
-  fold(s, {
+  fold(session, {
     type: 'assistant',
     cwd: join(repo, 'src'),
     timestamp: at(20),
@@ -111,14 +116,14 @@ test("a chat's changes in its three scopes, from a real repo", async () => {
     },
   });
 
-  assert.deepEqual([...s.turnFiles], [join(repo, 'src', 'a.js')]);
+  assert.deepEqual([...session.turnFiles], [join(repo, 'src', 'a.js')]);
 
-  const un = await changesOf(s, 'uncommitted');
+  const un = await changesOf(session, 'uncommitted');
 
   assert.equal(un.branch, 'feature');
 
   assert.deepEqual(
-    un.files.map(f => [f.path, f.status, f.add, f.del]),
+    un.files.map(file => [file.path, file.status, file.add, file.del]),
     [
       ['new.txt', 'A', 2, 0],
       ['src/a.js', 'M', 2, 1],
@@ -131,38 +136,44 @@ test("a chat's changes in its three scopes, from a real repo", async () => {
   assert.match(un.patch, /\+\+\+ b\/new\.txt[\s\S]*\+fresh/);
   assert.equal(un.upstream, null, 'no upstream');
 
-  const br = await changesOf(s, 'branch');
+  const br = await changesOf(session, 'branch');
 
   assert.equal(br.base, 'main');
 
   assert.deepEqual(
-    br.files.map(f => f.path),
+    br.files.map(file => file.path),
     ['b.md', 'new.txt', 'src/a.js'],
     'the branch’s commit and the working tree',
   );
 
-  const turn = await changesOf(s, 'turn');
+  const turn = await changesOf(session, 'turn');
 
   assert.deepEqual(
-    turn.files.map(f => f.path),
+    turn.files.map(file => file.path),
     ['src/a.js'],
     'only the file the turn edited',
   );
 
-  const stat = await changesOf(s, 'uncommitted', true);
+  const stat = await changesOf(session, 'uncommitted', true);
 
   assert.deepEqual(stat, { root: un.root, branch: 'feature', add: 4, del: 1, files: 2 });
 
   // a new prompt is a new turn: nothing edited in it yet
-  fold(s, {
+  fold(session, {
     type: 'assistant',
     cwd: repo,
     timestamp: at(10),
     message: { role: 'assistant', content: [{ type: 'text', text: 'done' }], stop_reason: 'end_turn' },
   });
 
-  fold(s, { type: 'user', cwd: repo, timestamp: at(5), message: { role: 'user', content: 'now something else' } });
-  const next = await changesOf(s, 'turn');
+  fold(session, {
+    type: 'user',
+    cwd: repo,
+    timestamp: at(5),
+    message: { role: 'user', content: 'now something else' },
+  });
+
+  const next = await changesOf(session, 'turn');
 
   assert.deepEqual(next.files, []);
   assert.match(next.note, /nothing edited/);
@@ -180,8 +191,8 @@ test("a chat's changes in its three scopes, from a real repo", async () => {
 test('names git quotes, and prefixes the config moves, read as the files they are (2026-10-14)', async () => {
   const repo = tmpDir('peix-chgq-');
 
-  const g = (...a) =>
-    execFileSync('git', ['-C', repo, ...a], {
+  const git = (...args) =>
+    execFileSync('git', ['-C', repo, ...args], {
       stdio: 'pipe',
       env: {
         ...process.env,
@@ -193,19 +204,19 @@ test('names git quotes, and prefixes the config moves, read as the files they ar
       },
     }).toString();
 
-  g('init', '-q', '-b', 'main');
+  git('init', '-q', '-b', 'main');
   writeFileSync(join(repo, 'configuração.json'), '{\n"a": 1\n}\n');
   writeFileSync(join(repo, 'say "hi".txt'), 'old\n');
   writeFileSync(join(repo, 'x b'), 'x\n');
-  g('add', '.');
-  g('commit', '-q', '-m', 'base');
+  git('add', '.');
+  git('commit', '-q', '-m', 'base');
   writeFileSync(join(repo, 'configuração.json'), '{\n"a": 2\n}\n');
   writeFileSync(join(repo, 'say "hi".txt'), 'new\n');
   writeFileSync(join(repo, 'x b'), 'y\n');
   writeFileSync(join(repo, 'notas-reunião.md'), 'linha um\nlinha dois\n'); // untracked
-  const s = newSession(randomUUID(), null);
+  const session = newSession(randomUUID(), null);
 
-  s.cwd = repo;
+  session.cwd = repo;
 
   const want = [
     ['configuração.json', 'M', 1, 1],
@@ -215,32 +226,32 @@ test('names git quotes, and prefixes the config moves, read as the files they ar
   ];
 
   for (const cfg of [[], ['diff.noprefix', 'true'], ['diff.mnemonicPrefix', 'true']]) {
-    if (cfg.length) g('config', ...cfg);
-    const un = await changesOf(s, 'uncommitted');
+    if (cfg.length) git('config', ...cfg);
+    const un = await changesOf(session, 'uncommitted');
 
     assert.deepEqual(
-      un.files.map(f => [f.path, f.status, f.add, f.del]),
+      un.files.map(file => [file.path, file.status, file.add, file.del]),
       want,
       cfg.join('=') || 'core.quotePath as git ships it',
     );
 
     assert.deepEqual(
       splitPatch(un.patch)
-        .map(c => c.path)
+        .map(file => file.path)
         .sort(),
-      want.map(w => w[0]),
+      want.map(row => row[0]),
       "every file's patch found by its name",
     );
 
-    if (cfg.length) g('config', '--unset', cfg[0]);
+    if (cfg.length) git('config', '--unset', cfg[0]);
   }
 });
 
 test("the turn's files are names, never patterns: src/[id].tsx is not src/i.tsx (2026-10-14)", async () => {
   const repo = tmpDir('peix-chglit-');
 
-  const g = (...a) =>
-    execFileSync('git', ['-C', repo, ...a], {
+  const git = (...args) =>
+    execFileSync('git', ['-C', repo, ...args], {
       stdio: 'pipe',
       env: {
         ...process.env,
@@ -251,26 +262,26 @@ test("the turn's files are names, never patterns: src/[id].tsx is not src/i.tsx 
       },
     }).toString();
 
-  g('init', '-q', '-b', 'main');
+  git('init', '-q', '-b', 'main');
   mkdirSync(join(repo, 'src'));
-  for (const f of ['[id].tsx', 'i.tsx', 'd.tsx']) writeFileSync(join(repo, 'src', f), 'a\n');
-  g('add', '.');
-  g('commit', '-q', '-m', 'base');
-  for (const f of ['[id].tsx', 'i.tsx']) writeFileSync(join(repo, 'src', f), 'b\n');
+  for (const name of ['[id].tsx', 'i.tsx', 'd.tsx']) writeFileSync(join(repo, 'src', name), 'a\n');
+  git('add', '.');
+  git('commit', '-q', '-m', 'base');
+  for (const name of ['[id].tsx', 'i.tsx']) writeFileSync(join(repo, 'src', name), 'b\n');
   writeFileSync(join(repo, 'src', '*.md'), 'n\n');
   writeFileSync(join(repo, 'src', 'notes.md'), 'n\n'); // untracked: *.md, and one it would match as a glob
-  const s = newSession(randomUUID(), null);
+  const session = newSession(randomUUID(), null);
 
-  s.loaded = false;
+  session.loaded = false;
 
-  fold(s, {
+  fold(session, {
     type: 'user',
     cwd: repo,
     timestamp: new Date(Date.now() - 20_000).toISOString(),
     message: { role: 'user', content: 'the page' },
   });
 
-  fold(s, {
+  fold(session, {
     type: 'assistant',
     cwd: repo,
     timestamp: new Date(Date.now() - 10_000).toISOString(),
@@ -284,10 +295,10 @@ test("the turn's files are names, never patterns: src/[id].tsx is not src/i.tsx 
     },
   });
 
-  const turn = await changesOf(s, 'turn');
+  const turn = await changesOf(session, 'turn');
 
   assert.deepEqual(
-    turn.files.map(f => f.path).sort(),
+    turn.files.map(file => file.path).sort(),
     ['src/*.md', 'src/[id].tsx'],
     'the two files it edited, and nothing their names would match as patterns',
   );
@@ -299,8 +310,8 @@ test(
   async () => {
     const repo = tmpDir('peix-chgbig-');
 
-    const g = (...a) =>
-      execFileSync('git', ['-C', repo, ...a], {
+    const git = (...args) =>
+      execFileSync('git', ['-C', repo, ...args], {
         stdio: 'pipe',
         env: {
           ...process.env,
@@ -311,22 +322,22 @@ test(
         },
       }).toString();
 
-    g('init', '-q', '-b', 'main');
+    git('init', '-q', '-b', 'main');
     writeFileSync(join(repo, 'small.js'), 'a\n');
-    g('add', '.');
-    g('commit', '-q', '-m', 'base');
+    git('add', '.');
+    git('commit', '-q', '-m', 'base');
     const row = `{"id":0,"v":"${'x'.repeat(80)}"}\n`;
 
     writeFileSync(join(repo, 'big.jsonl'), row.repeat(400_000));
-    g('add', 'big.jsonl'); // 36 MB, added: its patch a + per line, first by name
+    git('add', 'big.jsonl'); // 36 MB, added: its patch a + per line, first by name
     writeFileSync(join(repo, 'small.js'), 'b\n');
-    const s = newSession(randomUUID(), null);
+    const session = newSession(randomUUID(), null);
 
-    s.cwd = repo;
-    const un = await changesOf(s, 'uncommitted');
+    session.cwd = repo;
+    const un = await changesOf(session, 'uncommitted');
 
     assert.deepEqual(
-      un.files.map(f => [f.path, f.status, f.add]),
+      un.files.map(file => [file.path, file.status, file.add]),
       [
         ['big.jsonl', 'A', 400_000],
         ['small.js', 'M', 1],
@@ -336,7 +347,7 @@ test(
     assert.deepEqual([un.truncated, un.left], [true, ['big.jsonl']]);
 
     assert.deepEqual(
-      splitPatch(un.patch).map(c => c.path),
+      splitPatch(un.patch).map(file => file.path),
       ['small.js'],
       'the file after it shown whole',
     );
@@ -350,8 +361,8 @@ test("reading a chat's changes leaves its index alone — files touched but not 
   const repo = tmpDir('peix-chgix-');
   const tree = join(tmpDir('peix-chgixw-'), 'w');
 
-  const g = (cwd, ...a) =>
-    execFileSync('git', ['-C', cwd, ...a], {
+  const git = (cwd, ...args) =>
+    execFileSync('git', ['-C', cwd, ...args], {
       stdio: 'pipe',
       env: {
         ...process.env,
@@ -364,18 +375,18 @@ test("reading a chat's changes leaves its index alone — files touched but not 
       .toString()
       .trim();
 
-  g(repo, 'init', '-q', '-b', 'main');
-  for (const f of ['a.js', 'b.js', 'c.js']) writeFileSync(join(repo, f), `${f}\n`);
-  g(repo, 'add', '.');
-  g(repo, 'commit', '-q', '-m', 'base');
-  g(repo, 'worktree', 'add', '-q', '-b', 'w', tree);
+  git(repo, 'init', '-q', '-b', 'main');
+  for (const name of ['a.js', 'b.js', 'c.js']) writeFileSync(join(repo, name), `${name}\n`);
+  git(repo, 'add', '.');
+  git(repo, 'commit', '-q', '-m', 'base');
+  git(repo, 'worktree', 'add', '-q', '-b', 'w', tree);
 
   for (const dir of [repo, tree]) {
     const later = new Date(Date.now() + 5000);
 
-    for (const f of ['a.js', 'b.js']) utimesSync(join(dir, f), later, later); // touched, the same bytes: stat-dirty
+    for (const name of ['a.js', 'b.js']) utimesSync(join(dir, name), later, later); // touched, the same bytes: stat-dirty
     writeFileSync(join(dir, 'c.js'), 'c.js\nchanged\n');
-    const index = resolve(dir, g(dir, 'rev-parse', '--git-path', 'index'));
+    const index = resolve(dir, git(dir, 'rev-parse', '--git-path', 'index'));
 
     const look = () => {
       const st = statSync(index);
@@ -384,18 +395,18 @@ test("reading a chat's changes leaves its index alone — files touched but not 
     };
 
     const before = look();
-    const s = newSession(randomUUID(), null);
+    const session = newSession(randomUUID(), null);
 
-    s.cwd = dir;
-    const un = await changesOf(s, 'uncommitted');
+    session.cwd = dir;
+    const un = await changesOf(session, 'uncommitted');
 
     assert.deepEqual(
-      un.files.map(f => [f.path, f.add, f.del]),
+      un.files.map(file => [file.path, file.add, file.del]),
       [['c.js', 1, 0]],
       'only the file changed',
     );
 
-    assert.deepEqual((await changesOf(s, 'uncommitted', true)).files, 1);
+    assert.deepEqual((await changesOf(session, 'uncommitted', true)).files, 1);
     assert.deepEqual(look(), before, `${dir === repo ? 'the checkout' : 'a worktree'}'s index not written`);
     assert.equal(existsSync(`${index}.lock`), false);
   }
@@ -415,8 +426,8 @@ test("a PR's changes from origin's refs, the checkout and its refs untouched (20
     GIT_COMMITTER_EMAIL: 't@t',
   };
 
-  const git = (cwd, ...a) =>
-    execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env })
+  const git = (cwd, ...args) =>
+    execFileSync('git', ['-C', cwd, ...args], { stdio: 'pipe', env })
       .toString()
       .trim();
 
@@ -464,16 +475,16 @@ test("a PR's changes from origin's refs, the checkout and its refs untouched (20
     refs: git(repo, 'for-each-ref'),
   };
 
-  const s = newSession(randomUUID(), null);
+  const session = newSession(randomUUID(), null);
 
-  s.cwd = repo;
+  session.cwd = repo;
 
-  const pr = await changesOf(s, 'pr', false, { pr: 'https://github.com/acme/widgets/pull/7' });
+  const pr = await changesOf(session, 'pr', false, { pr: 'https://github.com/acme/widgets/pull/7' });
 
   assert.equal(pr.error, undefined);
 
   assert.deepEqual(
-    pr.files.map(f => [f.path, f.status, f.add, f.del]),
+    pr.files.map(file => [file.path, file.status, file.add, file.del]),
     [
       ['cart.js', 'M', 1, 1],
       ['tax.js', 'A', 1, 0],
@@ -501,16 +512,16 @@ test("a PR's changes from origin's refs, the checkout and its refs untouched (20
 
   assert.equal(existsSync(join(repo, '.git', 'FETCH_HEAD')), false, 'no FETCH_HEAD written');
 
-  const again = await changesOf(s, 'pr', false, { pr: '#7' });
+  const again = await changesOf(session, 'pr', false, { pr: '#7' });
 
   assert.equal(again.pr.fetched, false, 'what is here already is not fetched again');
 
   assert.deepEqual(
-    again.files.map(f => f.path),
+    again.files.map(file => file.path),
     ['cart.js', 'tax.js'],
   );
 
-  assert.match((await changesOf(s, 'pr', false, {})).error, /which PR/);
+  assert.match((await changesOf(session, 'pr', false, {})).error, /which PR/);
 
   // what git cannot read comes from GitHub: a PR of another repo, one origin has not got — gh pr diff (the fake)
   const prs = join(dir, 'prs.json');
@@ -528,17 +539,17 @@ test("a PR's changes from origin's refs, the checkout and its refs untouched (20
 
   process.env.GH_BIN = fileURLToPath(new URL('../scripts/fakes/fakegh.mjs', import.meta.url));
   process.env.FAKEGH_PRS = prs;
-  const other = await changesOf(s, 'pr', false, { pr: 'https://github.com/acme/gadgets/pull/7' });
+  const other = await changesOf(session, 'pr', false, { pr: 'https://github.com/acme/gadgets/pull/7' });
 
   assert.deepEqual(
-    [other.pr.source, other.pr.why, other.files.map(f => [f.path, f.status, f.add, f.del])],
+    [other.pr.source, other.pr.why, other.files.map(file => [file.path, file.status, file.add, file.del])],
     ['gh', "it is not in this checkout's repo", [['g.js', 'A', 2, 0]]],
   );
 
   assert.equal(other.branch, null, 'nothing of the checkout read');
 
   assert.match(
-    (await changesOf(s, 'pr', false, { pr: '8' })).error,
+    (await changesOf(session, 'pr', false, { pr: '8' })).error,
     /^origin has no PR #8 — and gh pr diff: could not find pull request diff/,
   );
 
@@ -565,7 +576,7 @@ test("a PR's changes from origin's refs, the checkout and its refs untouched (20
   const url9 = 'https://github.com/acme/widgets/pull/9';
 
   assert.deepEqual(
-    (await changesOf(s, 'pr', false, { pr: url9 })).files.map(f => f.path),
+    (await changesOf(session, 'pr', false, { pr: url9 })).files.map(file => file.path),
     ['cart.js', 'tax.js'],
     'against main: the tax PR’s commit too',
   );
@@ -583,10 +594,10 @@ test("a PR's changes from origin's refs, the checkout and its refs untouched (20
     prRefs({ headRefName: 'rounding', baseRefName: 'tax', headRefOid: 'x' }),
   );
 
-  const stacked = await changesOf(s, 'pr', false, { pr: url9 });
+  const stacked = await changesOf(session, 'pr', false, { pr: url9 });
 
   assert.deepEqual(
-    [stacked.base, stacked.pr.headName, stacked.files.map(f => [f.path, f.add, f.del])],
+    [stacked.base, stacked.pr.headName, stacked.files.map(file => [file.path, file.add, file.del])],
     ['tax', 'rounding', [['tax.js', 1, 0]]],
     'against its base: its own commit alone',
   );
@@ -627,8 +638,8 @@ test("a checkout's working trees and the branch each holds (2026-10-13)", async 
 
   const repo = tmpDir('peix-wtl-');
 
-  const git = (...a) =>
-    execFileSync('git', ['-C', repo, ...a], {
+  const git = (...args) =>
+    execFileSync('git', ['-C', repo, ...args], {
       stdio: 'pipe',
       env: {
         ...process.env,
@@ -647,10 +658,10 @@ test("a checkout's working trees and the branch each holds (2026-10-13)", async 
   git('commit', '-qm', 'a');
   git('worktree', 'add', '-q', '-b', 'feat', join(repo, '.claude', 'worktrees', 'feat'));
   const real = git('rev-parse', '--show-toplevel');
-  const w = await worktreesFor(join(repo, '.claude', 'worktrees', 'feat'));
+  const trees = await worktreesFor(join(repo, '.claude', 'worktrees', 'feat'));
 
   assert.deepEqual(
-    [w.here, w.main, w.repo, w.worktrees.map(x => [x.path, x.branch])],
+    [trees.here, trees.main, trees.repo, trees.worktrees.map(tree => [tree.path, tree.branch])],
     [
       join(real, '.claude', 'worktrees', 'feat'),
       real,

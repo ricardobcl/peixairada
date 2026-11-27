@@ -9,46 +9,46 @@ import { tmpDir } from '../lib/testserver.mjs';
 import { agentRunning } from '../server.mjs';
 
 test('a sub-agent file is running until its last line is an end_turn, never once it went quiet', () => {
-  const f = join(tmpDir('peix-agents-'), 'agent-1.jsonl');
-  const line = o => `${JSON.stringify({ isSidechain: true, agentId: '1', ...o })}\n`;
+  const file = join(tmpDir('peix-agents-'), 'agent-1.jsonl');
+  const line = fields => `${JSON.stringify({ isSidechain: true, agentId: '1', ...fields })}\n`;
   const user = line({ type: 'user', message: { role: 'user', content: 'go' } });
 
-  writeFileSync(f, user);
-  assert.equal(agentRunning(f), true, 'a prompt with no reply yet');
+  writeFileSync(file, user);
+  assert.equal(agentRunning(file), true, 'a prompt with no reply yet');
 
   writeFileSync(
-    f,
+    file,
     user + line({ type: 'assistant', message: { role: 'assistant', stop_reason: 'tool_use', content: [] } }),
   );
 
-  assert.equal(agentRunning(f), true, 'mid tool call');
+  assert.equal(agentRunning(file), true, 'mid tool call');
 
   writeFileSync(
-    f,
+    file,
     user + line({ type: 'assistant', message: { role: 'assistant', stop_reason: 'end_turn', content: [] } }),
   );
 
-  assert.equal(agentRunning(f), false, 'done');
-  writeFileSync(f, `${user}{"type":"assistant","mess`);
-  assert.equal(agentRunning(f), true, 'a line still being written');
+  assert.equal(agentRunning(file), false, 'done');
+  writeFileSync(file, `${user}{"type":"assistant","mess`);
+  assert.equal(agentRunning(file), true, 'a line still being written');
 
   writeFileSync(
-    f,
+    file,
     user + line({ type: 'assistant', message: { role: 'assistant', stop_reason: 'tool_use', content: [] } }),
   );
 
   const old = new Date(Date.now() - 3600e3);
 
-  utimesSync(f, old, old);
-  assert.equal(agentRunning(f), false, 'quiet for an hour: not counted');
-  writeFileSync(f, '');
-  assert.equal(agentRunning(f), false, 'empty');
-  assert.equal(agentRunning(`${f}.missing`), false, 'gone');
+  utimesSync(file, old, old);
+  assert.equal(agentRunning(file), false, 'quiet for an hour: not counted');
+  writeFileSync(file, '');
+  assert.equal(agentRunning(file), false, 'empty');
+  assert.equal(agentRunning(`${file}.missing`), false, 'gone');
 });
 
 test('an agent that handed its report back is done — no end_turn ever follows the handback — and so is one interrupted', () => {
-  const f = join(tmpDir('peix-agents-'), 'agent-2.jsonl');
-  const line = o => `${JSON.stringify({ isSidechain: true, agentId: '2', ...o })}\n`;
+  const file = join(tmpDir('peix-agents-'), 'agent-2.jsonl');
+  const line = fields => `${JSON.stringify({ isSidechain: true, agentId: '2', ...fields })}\n`;
   const user = line({ type: 'user', message: { role: 'user', content: 'review it' } });
 
   const handback = line({
@@ -72,17 +72,17 @@ test('an agent that handed its report back is done — no end_turn ever follows 
     message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_9', content: 'file contents' }] },
   });
 
-  writeFileSync(f, user + handback);
-  assert.equal(agentRunning(f), true, 'the handback asked for, not yet answered');
-  writeFileSync(f, user + handback + delivered);
-  assert.equal(agentRunning(f), false, 'its result in: done');
-  writeFileSync(f, user + handback + other);
-  assert.equal(agentRunning(f), true, 'a tool result for another call is an agent at work');
-  writeFileSync(f, user + line({ type: 'attachment', attachment: { type: 'total_tokens_reminder' } }));
-  assert.equal(agentRunning(f), true, 'a token reminder is an agent mid-way');
+  writeFileSync(file, user + handback);
+  assert.equal(agentRunning(file), true, 'the handback asked for, not yet answered');
+  writeFileSync(file, user + handback + delivered);
+  assert.equal(agentRunning(file), false, 'its result in: done');
+  writeFileSync(file, user + handback + other);
+  assert.equal(agentRunning(file), true, 'a tool result for another call is an agent at work');
+  writeFileSync(file, user + line({ type: 'attachment', attachment: { type: 'total_tokens_reminder' } }));
+  assert.equal(agentRunning(file), true, 'a token reminder is an agent mid-way');
 
   writeFileSync(
-    f,
+    file,
     user +
       line({
         type: 'user',
@@ -90,33 +90,33 @@ test('an agent that handed its report back is done — no end_turn ever follows 
       }),
   );
 
-  assert.equal(agentRunning(f), false, 'interrupted');
+  assert.equal(agentRunning(file), false, 'interrupted');
 });
 
 test("an agent last written before the chat's claude started died with the one before; its turn ends as a chat's does (2026-10-14)", () => {
-  const f = join(tmpDir('peix-agents-'), 'agent-3.jsonl');
-  const line = o => `${JSON.stringify({ isSidechain: true, agentId: '3', ...o })}\n`;
+  const file = join(tmpDir('peix-agents-'), 'agent-3.jsonl');
+  const line = fields => `${JSON.stringify({ isSidechain: true, agentId: '3', ...fields })}\n`;
   const user = line({ type: 'user', message: { role: 'user', content: 'go' } });
 
   const said = (stop_reason, content = [{ type: 'text', text: 'partial' }]) =>
     user + line({ type: 'assistant', message: { role: 'assistant', stop_reason, content } });
 
-  writeFileSync(f, said('tool_use'));
+  writeFileSync(file, said('tool_use'));
   const written = Date.now() - 60_000;
 
-  utimesSync(f, new Date(written), new Date(written));
-  assert.equal(agentRunning(f, Date.now(), written - 1000), true, 'the claude that started it runs on');
+  utimesSync(file, new Date(written), new Date(written));
+  assert.equal(agentRunning(file, Date.now(), written - 1000), true, 'the claude that started it runs on');
 
   assert.equal(
-    agentRunning(f, Date.now(), written + 1000),
+    agentRunning(file, Date.now(), written + 1000),
     false,
     'a claude started since — a take-over, a resume: not its agent',
   );
 
-  writeFileSync(f, said('max_tokens'));
-  assert.equal(agentRunning(f), false, 'out of tokens: done');
-  writeFileSync(f, said('refusal'));
-  assert.equal(agentRunning(f), false, 'refused: done');
-  writeFileSync(f, said('max_tokens', [{ type: 'tool_use', id: 'x', name: 'Write', input: {} }]));
-  assert.equal(agentRunning(f), true, 'a tool call cut short goes on');
+  writeFileSync(file, said('max_tokens'));
+  assert.equal(agentRunning(file), false, 'out of tokens: done');
+  writeFileSync(file, said('refusal'));
+  assert.equal(agentRunning(file), false, 'refused: done');
+  writeFileSync(file, said('max_tokens', [{ type: 'tool_use', id: 'x', name: 'Write', input: {} }]));
+  assert.equal(agentRunning(file), true, 'a tool call cut short goes on');
 });

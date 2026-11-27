@@ -14,7 +14,7 @@ export default async function (ctx) {
   const out = {};
 
   const sleeper = spawn('sleep', ['300'], { stdio: 'ignore' });
-  const ago = m => new Date(now - m * 60_000);
+  const ago = minutes => new Date(now - minutes * 60_000);
 
   try {
     const { chats } = makeFixture(ctx.fixture.dir, [
@@ -36,7 +36,7 @@ export default async function (ctx) {
                 { question: 'Which queue?', header: 'Queue', options: [{ label: 'SQS' }, { label: 'Redis' }] },
               ],
             },
-          }).map((l, i) => (i ? { ...l, timestamp: ago(40).toISOString() } : l)),
+          }).map((line, index) => (index ? { ...line, timestamp: ago(40).toISOString() } : line)),
           ...replyLines({ id, cwd, text: 'SQS it is — done.', at: ago(35) }),
         ],
       },
@@ -113,11 +113,11 @@ export default async function (ctx) {
       `(r => ({ x: r.left + 20, y: (r.top + r.bottom) / 2 }))(document.querySelectorAll('#home .hrow')[${await ctx.evaluate(row(asked.id))}].getBoundingClientRect())`,
     );
 
-    const mouse = (type, x, y) =>
+    const mouse = (type, pointerX, pointerY) =>
       ctx.send('Input.dispatchMouseEvent', {
         type,
-        x,
-        y,
+        x: pointerX,
+        y: pointerY,
         button: 'left',
         buttons: type === 'mousePressed' ? 1 : 0,
         clickCount: 1,

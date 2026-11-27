@@ -32,15 +32,15 @@ export default async function (ctx) {
   const look = () => ctx.evaluate(LOOK).then(JSON.parse);
 
   const click = async sel => {
-    const p = await ctx.evaluate(
+    const center = await ctx.evaluate(
       `(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect())`,
     );
 
     for (const type of ['mousePressed', 'mouseReleased']) {
       await ctx.send('Input.dispatchMouseEvent', {
         type,
-        x: p.x,
-        y: p.y,
+        x: center.x,
+        y: center.y,
         button: 'left',
         buttons: type === 'mousePressed' ? 1 : 0,
         clickCount: 1,
@@ -69,12 +69,12 @@ export default async function (ctx) {
             at: at(30_000),
           }),
       },
-      ...Array.from({ length: 24 }, (_, i) => ({
+      ...Array.from({ length: 24 }, (_, index) => ({
         cwd,
-        title: `Older chat ${i + 1}`,
+        title: `Older chat ${index + 1}`,
         prompt: 'a question',
         reply: 'an answer',
-        at: at(600_000 + i * 60_000),
+        at: at(600_000 + index * 60_000),
       })),
     ]);
 
@@ -103,7 +103,7 @@ export default async function (ctx) {
     );
 
     ctx.assert.ok(
-      (await ctx.evaluate(RINGS)).some(a => a.name === 'ring' && a.state === 'running'),
+      (await ctx.evaluate(RINGS)).some(animation => animation.name === 'ring' && animation.state === 'running'),
       'the clauding card’s ring runs',
     );
 
@@ -225,7 +225,7 @@ export default async function (ctx) {
     await ctx.settle();
 
     ctx.assert.deepEqual(
-      await look().then(l => [l.hidden, l.list, l.pressed]),
+      await look().then(seen => [seen.hidden, seen.list, seen.pressed]),
       [true, 'none', 'false'],
       'hidden after a reload',
     );
@@ -241,21 +241,21 @@ export default async function (ctx) {
 
       await ctx.reload();
 
-      const p = await ctx
+      const found = await ctx
         .evaluate(
           `JSON.stringify({ hidden: document.querySelector('#main').classList.contains('lhide'), compact: 'sessionsCompact' in window.peix.prefs() })`,
         )
         .then(JSON.parse);
 
-      ctx.assert.deepEqual(p, { hidden, compact: false }, `folded ${compact} → hidden ${hidden}, the old key gone`);
+      ctx.assert.deepEqual(found, { hidden, compact: false }, `folded ${compact} → hidden ${hidden}, the old key gone`);
     }
 
     // at the notch: hidden, the chat's tile rounds the screen's top left corner too
     await ctx.key('KeyB');
     await ctx.waitFor(`window.peix.prefs().listHidden`, { what: 'hidden for the notch' });
-    const N = await ctx.evaluate(`(w => ({ top: 32, left: w / 2 - 92.5, right: w / 2 + 92.5 }))(innerWidth)`);
+    const notch = await ctx.evaluate(`(w => ({ top: 32, left: w / 2 - 92.5, right: w / 2 + 92.5 }))(innerWidth)`);
 
-    await ctx.evaluate(`window.peixFill(true, ${JSON.stringify(N)})`);
+    await ctx.evaluate(`window.peixFill(true, ${JSON.stringify(notch)})`);
     await ctx.waitFor(`document.querySelector('#main').classList.contains('notch')`, { what: 'the fill at the notch' });
 
     out.corners = await ctx.evaluate(

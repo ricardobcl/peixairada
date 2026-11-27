@@ -1,4 +1,4 @@
-// Numbers that roll (2026-10-11, NumberFlow's): a count written as rn(key, n) is plain text in the markup — so
+// Numbers that roll (2026-10-11, NumberFlow's): a count written as rn(key, count) is plain text in the markup — so
 // setHtml and the reconciles compare what they always did — and, once the box holding it is drawn (rollSoon, from
 // the board's, the bar's, the usage's and the header's draws), slides digit by digit from what that key showed last
 // (rolled) to this, on the spring. The strips' digits are CSS's (a ::before), and the number itself stays as text
@@ -7,7 +7,7 @@
 const rolled = new Map();
 const ROLL_MS = 550;
 
-const rn = (key, v) => `<span class="rn" data-rk="${esc(key)}">${v}</span>`;
+const rn = (key, count) => `<span class="rn" data-rk="${esc(key)}">${count}</span>`;
 
 // Fade, not … (2026-10-11, Arc's tabs): a name too long for its box fades out at its edge — the header's title and a
 // page's address on one line, a card's title on its last line — rather than end in an ellipsis. `.over` where it
@@ -35,53 +35,59 @@ function fadeOver(all = false) {
 
   const mxs = [...document.querySelectorAll(`#shead > .tmx .mxg, #slist > .card .tmx .mxg${all ? '' : ':not(.ovr)'}`)]; // the header's is one, and fitHeadPrs moves its box
 
-  const over = els.map(e =>
-    e.classList.contains('title') ? e.scrollHeight > e.clientHeight + 1 : e.scrollWidth > e.clientWidth + 1,
+  const over = els.map(element =>
+    element.classList.contains('title')
+      ? element.scrollHeight > element.clientHeight + 1
+      : element.scrollWidth > element.clientWidth + 1,
   );
 
-  const mx = mxs.map(g => {
-    const r = !g.classList.contains('ovr') && g.querySelector('.mxs.lead');
+  const mx = mxs.map(box => {
+    const lead = !box.classList.contains('ovr') && box.querySelector('.mxs.lead');
 
     return {
-      x: g.scrollLeft,
-      w: g.clientWidth,
-      sw: g.scrollWidth,
-      l: r ? r.offsetLeft : -1,
-      rw: r ? r.offsetWidth : 0,
+      x: box.scrollLeft,
+      w: box.clientWidth,
+      sw: box.scrollWidth,
+      l: lead ? lead.offsetLeft : -1,
+      rw: lead ? lead.offsetWidth : 0,
     };
   });
 
-  els.forEach((e, i) => {
-    e.classList.toggle('over', over[i]);
-    e.classList.add('ovr');
+  els.forEach((element, index) => {
+    element.classList.toggle('over', over[index]);
+    element.classList.add('ovr');
   });
 
-  mxs.forEach((g, i) => {
-    const m = mx[i];
-    let x = m.x;
+  mxs.forEach((box, index) => {
+    const metrics = mx[index];
+    let scroll = metrics.x;
 
-    if (!m.w) return; // not laid out (the PRs left off the cards, the list hidden): read once it is
+    if (!metrics.w) return; // not laid out (the PRs left off the cards, the list hidden): read once it is
 
-    if (m.l >= 0 && m.sw > m.w) {
-      const lo = m.l - MX_LIFT - MX_FADE;
-      const hi = m.l + m.rw + MX_LIFT + MX_FADE;
+    if (metrics.l >= 0 && metrics.sw > metrics.w) {
+      const lo = metrics.l - MX_LIFT - MX_FADE;
+      const hi = metrics.l + metrics.rw + MX_LIFT + MX_FADE;
 
-      x = Math.max(0, Math.min(m.sw - m.w, lo < x ? lo : hi > x + m.w ? hi - m.w : x));
-      if (x !== m.x) g.scrollLeft = x;
+      scroll = Math.max(
+        0,
+        Math.min(metrics.sw - metrics.w, lo < scroll ? lo : hi > scroll + metrics.w ? hi - metrics.w : scroll),
+      );
+
+      if (scroll !== metrics.x) box.scrollLeft = scroll;
     }
 
-    g.classList.add('ovr');
-    mxEdges(g, x, m.w, m.sw);
+    box.classList.add('ovr');
+    mxEdges(box, scroll, metrics.w, metrics.sw);
   });
 }
 
-function mxEdges(g, x = g.scrollLeft, w = g.clientWidth, sw = g.scrollWidth) {
-  const l = x > 1;
-  const r = x + w < sw - 1;
+function mxEdges(box, scroll = box.scrollLeft, width = box.clientWidth, sw = box.scrollWidth) {
+  const moreLeft = scroll > 1;
+  const moreRight = scroll + width < sw - 1;
 
-  g.classList.toggle('over', l || r);
-  g.classList.toggle('ofl', l);
-  g.classList.toggle('ofr', r);
+  box.classList.toggle('over', moreLeft || moreRight);
+  box.classList.toggle('ofl', moreLeft);
+  box.classList.toggle('ofr', moreRight);
 }
 
 function rollSoon() {
@@ -209,8 +215,8 @@ function rollIn() {
 
     el.innerHTML = `<span class="rv">${now}</span>${[...now]
       .map(
-        (d, i) =>
-          `<span class="rcol" aria-hidden="true"><span style="transform: translateY(${from[i] === ' ' ? 10 : -from[i] * 10}%)" data-to="${d}"></span></span>`,
+        (digit, index) =>
+          `<span class="rcol" aria-hidden="true"><span style="transform: translateY(${from[index] === ' ' ? 10 : -from[index] * 10}%)" data-to="${digit}"></span></span>`,
       )
       .join('')}`;
 

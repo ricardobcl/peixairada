@@ -16,7 +16,7 @@ const sid = JSON.stringify;
 
 export default async function (ctx) {
   const out = {};
-  const [a, b] = ctx.fixture.chats;
+  const [chatA, chatB] = ctx.fixture.chats;
   const cwd = realpathSync(tmpdir());
 
   const sleeps = Array.from({ length: 2 }, () => spawn('sleep', ['180'], { stdio: 'ignore' }));
@@ -31,40 +31,40 @@ export default async function (ctx) {
 
     const title = id => at(`${card(id)}.querySelector('.title')`);
 
-    const move = (p, held = true) =>
+    const move = (spot, held = true) =>
       ctx.send('Input.dispatchMouseEvent', {
         type: 'mouseMoved',
-        x: p.x,
-        y: p.y,
+        x: spot.x,
+        y: spot.y,
         button: held ? 'left' : 'none',
         buttons: held ? 1 : 0,
       });
 
-    const press = p =>
+    const press = spot =>
       ctx.send('Input.dispatchMouseEvent', {
         type: 'mousePressed',
-        x: p.x,
-        y: p.y,
+        x: spot.x,
+        y: spot.y,
         button: 'left',
         buttons: 1,
         clickCount: 1,
       });
 
-    const release = p =>
+    const release = spot =>
       ctx.send('Input.dispatchMouseEvent', {
         type: 'mouseReleased',
-        x: p.x,
-        y: p.y,
+        x: spot.x,
+        y: spot.y,
         button: 'left',
         buttons: 0,
         clickCount: 1,
       });
 
     /** Pressed on one spot and carried off it far enough to come up. */
-    const lift = async p => {
-      await move(p, false);
-      await press(p);
-      await move({ x: p.x + 12, y: p.y + 4 });
+    const lift = async spot => {
+      await move(spot, false);
+      await press(spot);
+      await move({ x: spot.x + 12, y: spot.y + 4 });
     };
 
     const ghost = () =>
@@ -82,26 +82,26 @@ export default async function (ctx) {
       );
 
     const unchanged = async what => {
-      const s = await ctx.peix(`session(${sid(a.id)})`);
-      const t = await ctx.peix(`session(${sid(b.id)})`);
+      const sessionA = await ctx.peix(`session(${sid(chatA.id)})`);
+      const sessionB = await ctx.peix(`session(${sid(chatB.id)})`);
 
-      ctx.assert.equal(!!s.done, false, `${what}: the first chat is not done`);
-      ctx.assert.equal(t.terminal ?? null, null, `${what}: no drawer on the second`);
-      ctx.assert.deepEqual([s.links || [], t.links || []], [[], []], `${what}: nothing tied`);
+      ctx.assert.equal(!!sessionA.done, false, `${what}: the first chat is not done`);
+      ctx.assert.equal(sessionB.terminal ?? null, null, `${what}: no drawer on the second`);
+      ctx.assert.deepEqual([sessionA.links || [], sessionB.links || []], [[], []], `${what}: nothing tied`);
     };
 
-    await ctx.waitFor(`!!${card(a.id)} && !!${card(b.id)}`, { what: 'both cards' });
+    await ctx.waitFor(`!!${card(chatA.id)} && !!${card(chatB.id)}`, { what: 'both cards' });
     await ctx.settle();
 
     // ---- a press that barely moves is a click: no ghost ----
-    let p = await title(b.id);
+    let point = await title(chatB.id);
 
-    await move(p, false);
-    await press(p);
-    await move({ x: p.x + 3, y: p.y + 1 });
+    await move(point, false);
+    await press(point);
+    await move({ x: point.x + 3, y: point.y + 1 });
     ctx.assert.equal(await ghost(), null, 'three pixels lift nothing');
-    await release({ x: p.x + 3, y: p.y + 1 });
-    await ctx.waitFor(`window.peix.state().current === ${sid(b.id)}`, { what: 'the click opened the chat' });
+    await release({ x: point.x + 3, y: point.y + 1 });
+    await ctx.waitFor(`window.peix.state().current === ${sid(chatB.id)}`, { what: 'the click opened the chat' });
     await ctx.key('Digit0'); // home again: no chat open
 
     await ctx.waitFor(`!window.peix.state().current && !document.querySelector('#slist > .card.active')`, {
@@ -111,10 +111,10 @@ export default async function (ctx) {
     await ctx.settle();
 
     // ---- a press on a control lifts nothing ----
-    p = await at(`${card(a.id)}.querySelector('.act')`);
-    await move(p, false);
-    await press(p);
-    await move({ x: p.x - 40, y: p.y + 30 });
+    point = await at(`${card(chatA.id)}.querySelector('.act')`);
+    await move(point, false);
+    await press(point);
+    await move({ x: point.x - 40, y: point.y + 30 });
     ctx.assert.equal(await ghost(), null, 'the ✓ is no handle');
     const far = await at(`document.querySelector('#sbar')`);
 
@@ -124,14 +124,14 @@ export default async function (ctx) {
     // ---- up: the ghost by the pointer, the card it came from faded ----
     const was = await ctx.peix('state().current');
 
-    p = await title(a.id);
+    point = await title(chatA.id);
     const hapticsWere = await ctx.evaluate(`window.peix.motion().filter(m => /^haptic/.test(m.kind)).length`);
 
-    await lift(p);
+    await lift(point);
     await ctx.settle();
     out.up = await ghost();
     ctx.assert.match(out.up?.say || '', /^Drop it on another chat/, 'it says what to do');
-    ctx.assert.deepEqual(await marks(a.id), ['cdfrom'], 'the card it came from');
+    ctx.assert.deepEqual(await marks(chatA.id), ['cdfrom'], 'the card it came from');
 
     ctx.assert.equal(
       await ctx.evaluate(`document.querySelector('#cdghost .ht').textContent`),
@@ -142,12 +142,12 @@ export default async function (ctx) {
     await ctx.shot('1-up');
 
     // ---- over another chat: lit, and the ghost says it ----
-    let q = await title(b.id);
+    let dropPoint = await title(chatB.id);
 
-    await move(q);
+    await move(dropPoint);
     out.over = await ghost();
     ctx.assert.deepEqual(out.over, { say: 'Fold into “Plain chat”', go: true });
-    ctx.assert.deepEqual(await marks(b.id), ['cdover'], 'the chat under the pointer lights');
+    ctx.assert.deepEqual(await marks(chatB.id), ['cdover'], 'the chat under the pointer lights');
 
     ctx.assert.ok(
       (await ctx.evaluate(`window.peix.motion().filter(m => /^haptic/.test(m.kind)).length`)) >= hapticsWere + 2,
@@ -173,9 +173,9 @@ export default async function (ctx) {
     });
 
     await nothingUp();
-    await move({ x: q.x + 2, y: q.y });
+    await move({ x: dropPoint.x + 2, y: dropPoint.y });
     ctx.assert.equal(await ghost(), null, 'held on, nothing comes back up');
-    await release({ x: q.x + 2, y: q.y });
+    await release({ x: dropPoint.x + 2, y: dropPoint.y });
     await ctx.sleep(120);
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#handoff').open`), false, 'no box after Esc');
     ctx.assert.equal(await ctx.peix('state().current'), was, 'no chat opened by the release');
@@ -183,14 +183,14 @@ export default async function (ctx) {
     await unchanged('after Esc');
 
     // ---- its own card, and nothing at all: back, no box ----
-    p = await title(a.id);
-    await lift(p);
-    await move(p);
+    point = await title(chatA.id);
+    await lift(point);
+    await move(point);
     ctx.assert.match((await ghost()).say, /^Drop it on another chat/, 'its own card is no target');
-    ctx.assert.deepEqual(await marks(a.id), ['cdfrom'], 'and does not light');
-    await release(p);
+    ctx.assert.deepEqual(await marks(chatA.id), ['cdfrom'], 'and does not light');
+    await release(point);
     await nothingUp();
-    await lift(p);
+    await lift(point);
     await move(far);
     await release(far);
     await nothingUp();
@@ -198,30 +198,30 @@ export default async function (ctx) {
     await unchanged('let go on nothing');
 
     // ---- the list stands still under the hand, and draws what came on the way out ----
-    p = await title(a.id);
-    q = await title(b.id);
-    await lift(p);
-    await move(q);
+    point = await title(chatA.id);
+    dropPoint = await title(chatB.id);
+    await lift(point);
+    await move(dropPoint);
 
     const order = () =>
       ctx.evaluate(`[...document.querySelectorAll('#slist > .card')].map(c => c.dataset.id + ':' + c.dataset.rank)`);
 
     const before = await order();
 
-    await ctx.server.post(`/api/sessions/${b.id}/done`, { done: true });
-    await ctx.waitFor(`window.peix.session(${sid(b.id)})?.done === true`, { what: 'the event in' });
+    await ctx.server.post(`/api/sessions/${chatB.id}/done`, { done: true });
+    await ctx.waitFor(`window.peix.session(${sid(chatB.id)})?.done === true`, { what: 'the event in' });
     await ctx.sleep(250);
     ctx.assert.deepEqual(await order(), before, 'nothing moved under the pointer');
     await move({ x: far.x, y: far.y });
     await release(far);
     await nothingUp();
-    await ctx.waitFor(`${card(b.id)}?.dataset.rank === 'done'`, { what: 'the held draw, on the way out' });
-    await ctx.server.post(`/api/sessions/${b.id}/done`, { done: false });
-    await ctx.waitFor(`${card(b.id)}?.dataset.rank !== 'done'`, { what: 'the chat back' });
+    await ctx.waitFor(`${card(chatB.id)}?.dataset.rank === 'done'`, { what: 'the held draw, on the way out' });
+    await ctx.server.post(`/api/sessions/${chatB.id}/done`, { done: false });
+    await ctx.waitFor(`${card(chatB.id)}?.dataset.rank !== 'done'`, { what: 'the chat back' });
     await ctx.settle();
 
     // ---- a chat asking cannot take it, and says why; one at work does not come up ----
-    const ago = m => Date.now() - m * 60_000;
+    const ago = minutes => Date.now() - minutes * 60_000;
 
     const [asker, worker] = makeFixture(ctx.fixture.dir, [
       {
@@ -255,10 +255,10 @@ export default async function (ctx) {
     );
 
     await ctx.settle();
-    p = await title(a.id);
-    q = await title(asker.id);
-    await lift(p);
-    await move(q);
+    point = await title(chatA.id);
+    dropPoint = await title(asker.id);
+    await lift(point);
+    await move(dropPoint);
     out.notHere = await ghost();
     ctx.assert.match(out.notHere.say, /^Not here — it is asking you something/, 'it says why');
     ctx.assert.equal(out.notHere.go, false);
@@ -266,11 +266,11 @@ export default async function (ctx) {
     ctx.assert.equal(await ctx.evaluate(`document.body.classList.contains('cdno')`), true, 'the pointer says no');
     await ctx.settle();
     await ctx.shot('3-not-here');
-    await release(q);
+    await release(dropPoint);
     await nothingUp();
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#handoff').open`), false, 'no box');
-    p = await title(worker.id);
-    await lift(p);
+    point = await title(worker.id);
+    await lift(point);
     ctx.assert.equal(await ghost(), null, 'a chat at work does not come up');
 
     ctx.assert.match(
@@ -279,19 +279,19 @@ export default async function (ctx) {
       'a note says why',
     );
 
-    await release({ x: p.x + 12, y: p.y + 4 });
+    await release({ x: point.x + 12, y: point.y + 4 });
     await ctx.sleep(120);
     ctx.assert.notEqual(await ctx.peix('state().current'), worker.id, 'and the release opens nothing');
 
     // ---- the list's foot scrolls it; a shut lane's head held on opens ----
     const many = makeFixture(
       ctx.fixture.dir,
-      Array.from({ length: 26 }, (_, i) => ({
+      Array.from({ length: 26 }, (_, index) => ({
         cwd,
-        title: `Another chat ${i}`,
+        title: `Another chat ${index}`,
         prompt: 'a question',
         reply: 'an answer',
-        at: new Date(ago(60 + i)),
+        at: new Date(ago(60 + index)),
       })),
     ).chats;
 
@@ -311,8 +311,8 @@ export default async function (ctx) {
     await ctx.settle();
     await ctx.evaluate(`document.querySelector('#slist').scrollTop = 0`);
     await ctx.sleep(60);
-    p = await title(many[2].id); // one in the window: the fixture's two are at the list's foot now
-    await lift(p);
+    point = await title(many[2].id); // one in the window: the fixture's two are at the list's foot now
+    await lift(point);
 
     const foot = await ctx.evaluate(
       `(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.bottom - 8) }))(document.querySelector('#slist').getBoundingClientRect())`,
@@ -348,15 +348,15 @@ export default async function (ctx) {
     await nothingUp();
     await release(head);
     await ctx.sleep(80);
-    await ctx.evaluate(`${card(a.id)}.scrollIntoView({ block: 'center' })`);
+    await ctx.evaluate(`${card(chatA.id)}.scrollIntoView({ block: 'center' })`);
     await ctx.settle();
 
     // ---- let go on a chat: it asks. Fold stays grey until the handoff is in, Cancel changes nothing ----
-    p = await title(a.id);
-    q = await title(b.id);
-    await lift(p);
-    await move(q);
-    await release(q);
+    point = await title(chatA.id);
+    dropPoint = await title(chatB.id);
+    await lift(point);
+    await move(dropPoint);
+    await release(dropPoint);
     await nothingUp();
     await ctx.waitFor(`document.querySelector('#handoff').open`, { what: 'the box', timeout: 3000 });
 
@@ -382,17 +382,17 @@ export default async function (ctx) {
 
     // ---- reduced motion: nothing comes up or flies ----
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
-    p = await title(a.id);
-    q = await title(b.id);
-    await lift(p);
-    await move(q);
+    point = await title(chatA.id);
+    dropPoint = await title(chatB.id);
+    await lift(point);
+    await move(dropPoint);
 
     out.calm = await ctx.evaluate(
-      `({ lift: document.querySelector('#cdghost').getAnimations().length, scale: getComputedStyle(${card(b.id)}).scale })`,
+      `({ lift: document.querySelector('#cdghost').getAnimations().length, scale: getComputedStyle(${card(chatB.id)}).scale })`,
     );
 
     ctx.assert.deepEqual(out.calm, { lift: 0, scale: 'none' }, 'no pop, no scale');
-    await release(q);
+    await release(dropPoint);
 
     ctx.assert.equal(
       await ctx.evaluate(`document.querySelector('#handoff').open && !document.querySelector('#cdghost')`),
@@ -406,11 +406,11 @@ export default async function (ctx) {
     await ctx.settle();
 
     // ---- Fold: what the menu's does — the other chat opened, the handoff in its prompt unsent, the first done, both tied ----
-    p = await title(a.id);
-    q = await title(b.id);
-    await lift(p);
-    await move(q);
-    await release(q);
+    point = await title(chatA.id);
+    dropPoint = await title(chatB.id);
+    await lift(point);
+    await move(dropPoint);
+    await release(dropPoint);
 
     await ctx.waitFor(`document.querySelector('#handoff').open && !document.querySelector('#hoGo').disabled`, {
       timeout: 10_000,
@@ -418,9 +418,9 @@ export default async function (ctx) {
     });
 
     await ctx.evaluate(`document.querySelector('#hoGo').click()`);
-    await ctx.waitFor(`window.peix.state().current === ${sid(b.id)}`, { what: 'the chat it went into, opened' });
+    await ctx.waitFor(`window.peix.state().current === ${sid(chatB.id)}`, { what: 'the chat it went into, opened' });
 
-    await ctx.waitFor(`(s => s?.alive && s.terminal?.exited === null)(window.peix.session(${sid(b.id)}))`, {
+    await ctx.waitFor(`(s => s?.alive && s.terminal?.exited === null)(window.peix.session(${sid(chatB.id)}))`, {
       timeout: 20_000,
       what: 'its drawer resumed',
     });
@@ -433,21 +433,21 @@ export default async function (ctx) {
     await ctx.sleep(800);
 
     ctx.assert.equal(
-      await ctx.evaluate(`window.peix.session(${sid(b.id)}).lastPrompt`),
+      await ctx.evaluate(`window.peix.session(${sid(chatB.id)}).lastPrompt`),
       'what day is it?',
       'typed, not sent',
     );
 
     await ctx.waitFor(
-      `(s => s?.done && s.links?.some(l => l.k === 'fold' && l.dir === 'out' && l.id === ${sid(b.id)}))(window.peix.session(${sid(a.id)}))`,
+      `(s => s?.done && s.links?.some(l => l.k === 'fold' && l.dir === 'out' && l.id === ${sid(chatB.id)}))(window.peix.session(${sid(chatA.id)}))`,
       { timeout: 10_000, what: 'the first chat done, tied to it' },
     );
 
-    const t = (await ctx.peix(`session(${sid(b.id)})`)).terminal;
+    const term = (await ctx.peix(`session(${sid(chatB.id)})`)).terminal;
 
-    if (t) await ctx.server.api(`/api/terminals/${t.id}`, { method: 'DELETE' });
+    if (term) await ctx.server.api(`/api/terminals/${term.id}`, { method: 'DELETE' });
     return out;
   } finally {
-    for (const s of sleeps) s.kill();
+    for (const child of sleeps) child.kill();
   }
 }

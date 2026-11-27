@@ -23,12 +23,12 @@ const user = login => ({
   )}`,
 });
 
-const T = { opened: ago(300), pushed: ago(299), ana: ago(50), priya: ago(40), answer: ago(20), rui: ago(2) }; // once: a time moved on a rewrite is a new event
+const TIMES = { opened: ago(300), pushed: ago(299), ana: ago(50), priya: ago(40), answer: ago(20), rui: ago(2) }; // once: a time moved on a rewrite is a new event
 
-const mine = (title, o) => ({
+const mine = (title, overrides) => ({
   state: 'OPEN',
   title,
-  createdAt: T.opened,
+  createdAt: TIMES.opened,
   headRefOid: 'A',
   author: user('me'),
   viewerLatestReview: null,
@@ -37,11 +37,11 @@ const mine = (title, o) => ({
   comments: { nodes: [] },
   pushes: {
     nodes: [
-      { __typename: 'PullRequestCommit', commit: { committedDate: T.pushed, author: { user: { login: 'me' } } } },
+      { __typename: 'PullRequestCommit', commit: { committedDate: TIMES.pushed, author: { user: { login: 'me' } } } },
     ],
   },
   asks: { nodes: [] },
-  ...o,
+  ...overrides,
 });
 
 function write(comments12) {
@@ -50,15 +50,15 @@ function write(comments12) {
     JSON.stringify({
       'acme/repo-a#12': mine('Retry declined card payments', { comments: { nodes: comments12 } }),
       'acme/repo-a#13': mine('Email a receipt', {
-        reviews: { nodes: [{ author: user('priya'), state: 'APPROVED', submittedAt: T.priya }] },
+        reviews: { nodes: [{ author: user('priya'), state: 'APPROVED', submittedAt: TIMES.priya }] },
       }),
     }),
   );
 }
 
-const ana = { author: user('ana'), createdAt: T.ana };
-const answer = { author: user('me'), createdAt: T.answer };
-const rui = { author: user('rui'), createdAt: T.rui };
+const ana = { author: user('ana'), createdAt: TIMES.ana };
+const answer = { author: user('me'), createdAt: TIMES.answer };
+const rui = { author: user('rui'), createdAt: TIMES.rui };
 
 write([ana]);
 
@@ -77,12 +77,12 @@ export const meta = {
 export default async function (ctx) {
   const [two] = ctx.fixture.chats;
   const card = `document.querySelector('#slist > .card[data-id="${two.id}"]')`;
-  const row = n => `document.querySelector('#prlist .prround[data-url$="/pull/${n}"]')`;
+  const row = number => `document.querySelector('#prlist .prround[data-url$="/pull/${number}"]')`;
 
-  const rowSays = n =>
+  const rowSays = number =>
     ctx
       .evaluate(
-        `(r => r && JSON.stringify({ k: r.dataset.k, say: r.querySelector('.say').textContent, acts: [...r.querySelectorAll('.pract')].map(b => b.textContent), why: getComputedStyle(r.previousElementSibling.querySelector('.why') || document.body).display }))(${row(n)})`,
+        `(r => r && JSON.stringify({ k: r.dataset.k, say: r.querySelector('.say').textContent, acts: [...r.querySelectorAll('.pract')].map(b => b.textContent), why: getComputedStyle(r.previousElementSibling.querySelector('.why') || document.body).display }))(${row(number)})`,
       )
       .then(JSON.parse);
 
@@ -178,7 +178,7 @@ export default async function (ctx) {
 
   ctx.assert.ok(
     out.pop.latest.includes('#12 you commented✓ answers 1 comment from ana') &&
-      out.pop.latest.some(l => l.includes('let this round go')),
+      out.pop.latest.some(line => line.includes('let this round go')),
     `your word, and the round it answered: ${JSON.stringify(out.pop.latest)}`,
   );
 

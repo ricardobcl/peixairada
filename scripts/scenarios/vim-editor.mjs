@@ -12,7 +12,7 @@ export default async function (ctx) {
   const out = {};
 
   await ctx.openChat(chat.id);
-  const vims = async () => (await ctx.server.terminals()).filter(t => t.editor === 'vim' && t.exited === null);
+  const vims = async () => (await ctx.server.terminals()).filter(term => term.editor === 'vim' && term.exited === null);
 
   const st = () =>
     ctx
@@ -78,11 +78,11 @@ export default async function (ctx) {
   );
 
   out.zshTab = (await st()).tab;
-  out.zsh = (await ctx.server.terminals()).find(t => `shell:${t.id}` === out.zshTab);
+  out.zsh = (await ctx.server.terminals()).find(term => `shell:${term.id}` === out.zshTab);
   ctx.assert.deepEqual([out.zsh?.shell, out.zsh?.editor], [true, null], 'a zsh');
 
   ctx.assert.ok(
-    (await st()).tabs.some(t => /^vim$/.test(t)),
+    (await st()).tabs.some(tab => /^vim$/.test(tab)),
     `the vim tab named vim: ${JSON.stringify((await st()).tabs)}`,
   );
 
@@ -97,7 +97,7 @@ export default async function (ctx) {
     { what: 'its tab gone' },
   );
 
-  out.quit = (await ctx.server.terminals()).find(t => t.id === out.vim.server[0].id)?.exited ?? null;
+  out.quit = (await ctx.server.terminals()).find(term => term.id === out.vim.server[0].id)?.exited ?? null;
   ctx.assert.equal(out.quit, 0, 'vim quit of its own, on :qa — not killed');
 
   // VS Code Web again: ··· says so

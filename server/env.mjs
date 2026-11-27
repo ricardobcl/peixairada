@@ -16,10 +16,10 @@ export const isMain =
 // time could not be placed — UTC, as the app's log writes it, to the millisecond. Run as the program only: a test that
 // imports the module keeps its own console.
 if (isMain) {
-  for (const k of ['log', 'info', 'warn', 'error']) {
-    const say = console[k].bind(console);
+  for (const method of ['log', 'info', 'warn', 'error']) {
+    const say = console[method].bind(console);
 
-    console[k] = (...a) => say(`${new Date().toISOString()} ${format(...a)}`);
+    console[method] = (...args) => say(`${new Date().toISOString()} ${format(...args)}`);
   }
 }
 
@@ -64,11 +64,11 @@ export const LEGACY_STATE_FILE = join(homedir(), '.peixairada', 'state.json');
 export const SCRATCH_DIR =
   process.env.SCRATCH_DIR ||
   join(
-    (d => {
+    (dir => {
       try {
-        return realpathSync(d);
+        return realpathSync(dir);
       } catch {
-        return d;
+        return dir;
       }
     })(dirname(STATE_FILE)),
     'no folder',
@@ -92,7 +92,7 @@ export const CONFIG_FILE =
 /** Whether a path is CLAUDE_DIR or in it, as the disk has it (2026-10-14): the board writes nothing there, and a chat
  *  run in ~/.claude, a folder linked into it or another spelling of it (the disk ignores case) is no way round that.
  *  Judged by the nearest folder of it there is, real, against CLAUDE_DIR's device and inode. */
-export function inClaudeDir(p) {
+export function inClaudeDir(path) {
   let top;
 
   try {
@@ -101,25 +101,25 @@ export function inClaudeDir(p) {
     return false;
   }
 
-  let q = resolve(p);
+  let dir = resolve(path);
 
   for (;;) {
     try {
-      q = realpathSync(q);
+      dir = realpathSync(dir);
       break;
     } catch {
-      if (dirname(q) === q) break;
-      q = dirname(q);
+      if (dirname(dir) === dir) break;
+      dir = dirname(dir);
     }
   }
 
-  for (; ; q = dirname(q)) {
+  for (; ; dir = dirname(dir)) {
     try {
-      const st = statSync(q);
+      const st = statSync(dir);
 
       if (st.dev === top.dev && st.ino === top.ino) return true;
     } catch {}
 
-    if (dirname(q) === q) return false;
+    if (dirname(dir) === dir) return false;
   }
 }

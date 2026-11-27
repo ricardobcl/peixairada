@@ -30,27 +30,27 @@ function wtSay(name) {
     ];
   }
 
-  const n = `＋ new chat on <b>${esc(name)}</b>`;
-  const b = pick.br?.name === name ? pick.br.v : null;
+  const rowHtml = `＋ new chat on <b>${esc(name)}</b>`;
+  const where = pick.br?.name === name ? pick.br.v : null;
 
-  if (!BRANCH_OK.test(name) || b?.ok === false) return [n, 'not a name git takes for a branch', 'bad'];
-  if (!b) return [n, '', '']; // asked: the answer redraws the row
-  if (b.error) return [n, b.error, 'bad'];
-  const live = b.live ? ` — ${b.live} chat${b.live === 1 ? '' : 's'} at work there` : '';
+  if (!BRANCH_OK.test(name) || where?.ok === false) return [rowHtml, 'not a name git takes for a branch', 'bad'];
+  if (!where) return [rowHtml, '', '']; // asked: the answer redraws the row
+  if (where.error) return [rowHtml, where.error, 'bad'];
+  const live = where.live ? ` — ${where.live} chat${where.live === 1 ? '' : 's'} at work there` : '';
 
-  if (b.tree) {
+  if (where.tree) {
     return [
-      n,
-      b.main
-        ? `already ${folderName(b.tree)}'s own branch: ⏎ shares that folder${live}`
-        : `already out in ${treeName(pick.git, b.tree)}: ⏎ shares that worktree${live}`,
+      rowHtml,
+      where.main
+        ? `already ${folderName(where.tree)}'s own branch: ⏎ shares that folder${live}`
+        : `already out in ${treeName(pick.git, where.tree)}: ⏎ shares that worktree${live}`,
       'warn',
     ];
   }
 
-  if (b.local) return [n, 'a branch here, checked out in a worktree of its own', ''];
-  if (b.origin) return [n, `origin's branch, in a worktree of its own tracking it`, ''];
-  return [n, `a new branch in a worktree of its own — ⏎ asks what it starts from, ${from} first`, ''];
+  if (where.local) return [rowHtml, 'a branch here, checked out in a worktree of its own', ''];
+  if (where.origin) return [rowHtml, `origin's branch, in a worktree of its own tracking it`, ''];
+  return [rowHtml, `a new branch in a worktree of its own — ⏎ asks what it starts from, ${from} first`, ''];
 }
 
 let brTimer = 0;
@@ -66,13 +66,13 @@ function brAsk() {
   if (pick.mode !== 'chats' || !pick.wt || !pick.git || !BRANCH_OK.test(name) || pick.br?.name === name) return;
 
   brTimer = setTimeout(async () => {
-    const v = await api(
+    const where = await api(
       'GET',
       `/api/worktrees/branch?cwd=${encodeURIComponent(cwd)}&name=${encodeURIComponent(name)}`,
-    ).catch(e => ({ error: e.message }));
+    ).catch(error => ({ error: error.message }));
 
     if (gen !== pick.gen || !$('#pick').open || boxText() !== name) return;
-    pick.br = { name, v };
+    pick.br = { name, v: where };
     pickRender(true);
   }, 120);
 }
@@ -85,28 +85,32 @@ async function wtEnter(cwd, name) {
 
   if (!name) return note(box, 'Type the branch’s name first', true);
   if (!BRANCH_OK.test(name)) return note(box, `${name} is not a name git takes for a branch`, true);
-  let b = pick.br?.name === name ? pick.br.v : null;
+  let where = pick.br?.name === name ? pick.br.v : null;
 
-  if (!b) {
+  if (!where) {
     if (pick.asking) return; // ⏎ again while the first is asked: one answer
     clearTimeout(brTimer);
     pick.asking = true;
 
-    b = await api('GET', `/api/worktrees/branch?cwd=${encodeURIComponent(cwd)}&name=${encodeURIComponent(name)}`)
-      .catch(e => ({ error: e.message }))
+    where = await api('GET', `/api/worktrees/branch?cwd=${encodeURIComponent(cwd)}&name=${encodeURIComponent(name)}`)
+      .catch(error => ({ error: error.message }))
       .finally(() => {
         pick.asking = false;
       });
 
     if (gen !== pick.gen || !$('#pick').open || boxText() !== name) return;
-    pick.br = { name, v: b };
+    pick.br = { name, v: where };
     pickRender(true);
   }
 
-  if (b.ok === false) return note(box, `${name} is not a name git takes for a branch`, true);
-  if (b.error) return note(box, b.error, true);
-  if (b.local || b.origin || b.tree) return newChatOnBranch(cwd, name, { share: !!b.tree, agent: agentGo() });
-  baseStep(cwd, name, pick.ctx, b, agentGo());
+  if (where.ok === false) return note(box, `${name} is not a name git takes for a branch`, true);
+  if (where.error) return note(box, where.error, true);
+
+  if (where.local || where.origin || where.tree) {
+    return newChatOnBranch(cwd, name, { share: !!where.tree, agent: agentGo() });
+  }
+
+  baseStep(cwd, name, pick.ctx, where, agentGo());
 }
 
 /** The base step: the checkout's branches and origin's (GET /api/worktrees/bases), the one ⏎ takes first — origin's
@@ -126,20 +130,23 @@ async function baseStep(cwd, name, chats, br, agent) {
   pickOpen('base', { cwd, branch: name, bases: null, dflt: br.dflt, back, agent });
 
   const gen = pick.gen;
-  const v = await api('GET', `/api/worktrees/bases?cwd=${encodeURIComponent(cwd)}`).catch(e => ({ error: e.message }));
+
+  const listing = await api('GET', `/api/worktrees/bases?cwd=${encodeURIComponent(cwd)}`).catch(error => ({
+    error: error.message,
+  }));
 
   if (gen !== pick.gen || !$('#pick').open) return;
 
-  if (v.error) {
-    pick.ctx.err = v.error;
+  if (listing.error) {
+    pick.ctx.err = listing.error;
     return pickRender();
   }
 
-  Object.assign(pick.ctx, { bases: v.branches || [], dflt: v.dflt || br.dflt });
+  Object.assign(pick.ctx, { bases: listing.branches || [], dflt: listing.dflt || br.dflt });
 
   pick.sel = Math.max(
     0,
-    pick.ctx.bases.findIndex(b => b.ref === v.prefer),
+    pick.ctx.bases.findIndex(base => base.ref === listing.prefer),
   );
 
   pickRender();
@@ -173,13 +180,13 @@ async function newChatOnBranch(cwd, name, { base = null, share = false, agent } 
     : `making a worktree for ${name}${short ? ` from ${short}` : ''}…`;
 
   try {
-    let t;
+    let tree;
 
     try {
-      t = await api('POST', '/api/worktrees', { cwd, branch: name, fresh: true, share, ...(base && { base }) });
-    } catch (e) {
+      tree = await api('POST', '/api/worktrees', { cwd, branch: name, fresh: true, share, ...(base && { base }) });
+    } catch (error) {
       if (run !== pick.gen || !$('#pick').open) {
-        return note($('#shead'), `Could not make a worktree for ${name}: ${e.message}`, true);
+        return note($('#shead'), `Could not make a worktree for ${name}: ${error.message}`, true);
       } // the picker left meanwhile: its box is another step's now
 
       pick.cloning = false;
@@ -187,24 +194,24 @@ async function newChatOnBranch(cwd, name, { base = null, share = false, agent } 
       box.value = was;
       pickHint();
 
-      if (e.body?.out && pick.mode === 'chats') {
+      if (error.body?.out && pick.mode === 'chats') {
         pick.br = null;
         brAsk();
       } // out in a tree since the row last looked: it says so now, and ⏎ again shares it
 
       pickRender();
       box.focus();
-      return note(box, e.message, true);
+      return note(box, error.message, true);
     }
 
     wtData.delete(cwd);
     if (run === pick.gen) $('#pick').close();
-    await newChat(t.path, null, withAgent(agent));
+    await newChat(tree.path, null, withAgent(agent));
 
-    if (t.unasked) {
+    if (tree.unasked) {
       note(
         $('#shead'),
-        `Origin did not answer: ${name} starts from ${t.from.replace(/^refs\/(heads|remotes)\//, '')}, unchecked against its branches`,
+        `Origin did not answer: ${name} starts from ${tree.from.replace(/^refs\/(heads|remotes)\//, '')}, unchecked against its branches`,
         true,
       );
     }

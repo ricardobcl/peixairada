@@ -22,7 +22,7 @@ function world() {
   const web = join(repo, 'web');
   const kit = join(top, 'kit');
 
-  for (const d of [
+  for (const dir of [
     join(top, 'code', '.claude', 'agents'),
     join(repo, '.git'),
     join(repo, '.claude', 'agents'),
@@ -32,7 +32,7 @@ function world() {
     join(claude, 'plugins'),
     join(claude, 'sessions'),
   ]) {
-    mkdirSync(d, { recursive: true });
+    mkdirSync(dir, { recursive: true });
   }
 
   writeFileSync(
@@ -112,14 +112,14 @@ test(
   "GET /api/agents: the folder's and up to its git root, yours, an enabled plugin's, Claude Code's own — and the folder's setting",
   { timeout: 30_000 },
   async () => {
-    const w = world();
-    const srv = await startTestServer({ claudeDir: w.claude });
+    const dirs = world();
+    const srv = await startTestServer({ claudeDir: dirs.claude });
 
     try {
-      let r = await srv.api(`api/agents?cwd=${encodeURIComponent(w.web)}`);
+      let response = await srv.api(`api/agents?cwd=${encodeURIComponent(dirs.web)}`);
 
-      assert.equal(r.status, 200);
-      const names = r.body.agents.map(a => a.name);
+      assert.equal(response.status, 200);
+      const names = response.body.agents.map(agent => agent.name);
 
       assert.deepEqual(
         names,
@@ -136,9 +136,12 @@ test(
         "nearest first; nothing above the git root, from a plugin switched off, nor Claude Code's `claude`",
       );
 
-      const by = Object.fromEntries(r.body.agents.map(a => [a.name, a]));
+      const by = Object.fromEntries(response.body.agents.map(agent => [agent.name, agent]));
 
-      assert.deepEqual([by['a11y-auditor'].source, by['a11y-auditor'].at, by.reviewer.at], ['folder', w.web, w.repo]);
+      assert.deepEqual(
+        [by['a11y-auditor'].source, by['a11y-auditor'].at, by.reviewer.at],
+        ['folder', dirs.web, dirs.repo],
+      );
 
       assert.deepEqual(
         [by.reviewer.model, by.reviewer.color, by.reviewer.description],
@@ -153,14 +156,14 @@ test(
 
       assert.deepEqual([by['kit:code-reviewer'].source, by['kit:code-reviewer'].plugin], ['plugin', 'kit']);
       assert.equal(by.Plan.source, 'builtin');
-      assert.deepEqual([r.body.setting, r.body.launchers], [null, 0]);
-      writeFileSync(join(w.repo, '.claude', 'settings.json'), JSON.stringify({ agent: 'reviewer' }));
-      r = await srv.api(`api/agents?cwd=${encodeURIComponent(w.repo)}`);
-      assert.deepEqual(r.body.setting, { name: 'reviewer', from: 'folder' });
-      writeFileSync(join(w.repo, '.claude', 'settings.local.json'), JSON.stringify({ agent: 'scout' }));
+      assert.deepEqual([response.body.setting, response.body.launchers], [null, 0]);
+      writeFileSync(join(dirs.repo, '.claude', 'settings.json'), JSON.stringify({ agent: 'reviewer' }));
+      response = await srv.api(`api/agents?cwd=${encodeURIComponent(dirs.repo)}`);
+      assert.deepEqual(response.body.setting, { name: 'reviewer', from: 'folder' });
+      writeFileSync(join(dirs.repo, '.claude', 'settings.local.json'), JSON.stringify({ agent: 'scout' }));
 
       assert.deepEqual(
-        (await srv.api(`api/agents?cwd=${encodeURIComponent(w.repo)}`)).body.setting,
+        (await srv.api(`api/agents?cwd=${encodeURIComponent(dirs.repo)}`)).body.setting,
         { name: 'scout', from: 'local' },
         "the local settings over the folder's",
       );
@@ -176,31 +179,33 @@ test(
   "a new chat as an agent: --agent on its command line, the registry's and then the transcript's word on its card; a name no folder has is refused; a resume passes none",
   { timeout: 60_000 },
   async () => {
-    const w = world();
-    const srv = await startTestServer({ claudeDir: w.claude, fake: true });
+    const dirs = world();
+    const srv = await startTestServer({ claudeDir: dirs.claude, fake: true });
 
     try {
       const argsOf = async () =>
         (
-          await waitFor(() => srv.holders().find(h => !h.shell && h.args?.includes('--agent')) || null, {
+          await waitFor(() => srv.holders().find(holder => !holder.shell && holder.args?.includes('--agent')) || null, {
             what: 'a holder started with --agent',
           })
         ).args;
 
-      let r = await srv.post('api/terminals', { cwd: w.repo, agent: 'nosuch' });
+      let response = await srv.post('api/terminals', { cwd: dirs.repo, agent: 'nosuch' });
 
-      assert.equal(r.status, 400);
-      assert.match(r.body.error, /no agent named nosuch/);
-      r = await srv.post('api/terminals', { cwd: w.repo, agent: '../x' });
-      assert.equal(r.status, 400, 'not a name');
-      r = await srv.post('api/terminals', { cwd: w.repo, agent: 'reviewer', task: 'dev' });
-      assert.equal(r.status, 400, 'a launcher takes none');
-      r = await srv.post('api/terminals', { cwd: w.repo, agent: 'reviewer', cols: 100, rows: 30 });
-      assert.equal(r.status, 201, JSON.stringify(r.body));
+      assert.equal(response.status, 400);
+      assert.match(response.body.error, /no agent named nosuch/);
+      response = await srv.post('api/terminals', { cwd: dirs.repo, agent: '../x' });
+      assert.equal(response.status, 400, 'not a name');
+      response = await srv.post('api/terminals', { cwd: dirs.repo, agent: 'reviewer', task: 'dev' });
+      assert.equal(response.status, 400, 'a launcher takes none');
+      response = await srv.post('api/terminals', { cwd: dirs.repo, agent: 'reviewer', cols: 100, rows: 30 });
+      assert.equal(response.status, 201, JSON.stringify(response.body));
       assert.deepEqual(await argsOf(), ['--agent', 'reviewer']);
 
       const live = await waitFor(
-        async () => (await srv.api('api/sessions')).body.sessions.find(s => s.alive && s.cwd === w.repo) || null,
+        async () =>
+          (await srv.api('api/sessions')).body.sessions.find(session => session.alive && session.cwd === dirs.repo) ||
+          null,
         { what: 'the new chat, registered' },
       );
 
@@ -214,36 +219,41 @@ test(
 
       // its first word written (a prompt, the merge's way in): the transcript's first line says the agent; resumed, the
       // command line has none and the card still says it
-      r = await srv.post('api/terminals', {
-        cwd: w.web,
+      response = await srv.post('api/terminals', {
+        cwd: dirs.web,
         agent: 'kit:code-reviewer',
         prompt: 'look at it',
         cols: 100,
         rows: 30,
       });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      const id = r.body.sessionId;
+      assert.equal(response.status, 201, JSON.stringify(response.body));
+      const id = response.body.sessionId;
 
       await waitFor(
-        async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id && s.lastReply) || null,
+        async () =>
+          (await srv.api('api/sessions')).body.sessions.find(session => session.id === id && session.lastReply) || null,
         { what: 'its reply' },
       );
 
       await srv.killTerminals();
 
       const gone = await waitFor(
-        async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id && !s.alive) || null,
+        async () =>
+          (await srv.api('api/sessions')).body.sessions.find(session => session.id === id && !session.alive) || null,
         { what: 'its claude gone' },
       );
 
       assert.equal(gone.agent, 'kit:code-reviewer', 'from the transcript');
-      r = await srv.post(`api/sessions/${id}/terminal`, { cols: 100, rows: 30 });
-      assert.ok(r.status === 200 || r.status === 201, JSON.stringify(r.body));
+      response = await srv.post(`api/sessions/${id}/terminal`, { cols: 100, rows: 30 });
+      assert.ok(response.status === 200 || response.status === 201, JSON.stringify(response.body));
 
-      const resumed = await waitFor(() => srv.holders().find(h => !h.shell && h.args?.[0] === '--resume') || null, {
-        what: 'the resume',
-      });
+      const resumed = await waitFor(
+        () => srv.holders().find(holder => !holder.shell && holder.args?.[0] === '--resume') || null,
+        {
+          what: 'the resume',
+        },
+      );
 
       assert.deepEqual(resumed.args, ['--resume', id], 'no --agent beside --resume');
     } finally {
@@ -256,8 +266,8 @@ test(
   "a chat in no folder as an agent: yours, a plugin's, Claude Code's — checked before the board's folder for it is made",
   { timeout: 30_000 },
   async () => {
-    const w = world();
-    const srv = await startTestServer({ claudeDir: w.claude, fake: true });
+    const dirs = world();
+    const srv = await startTestServer({ claudeDir: dirs.claude, fake: true });
     const scratch = join(realpathSync(srv.dir), 'no folder');
 
     try {
@@ -268,27 +278,30 @@ test(
         ['../x', 'not a name'],
         ['nosuch', "no one's"],
       ]) {
-        const r = await srv.post('api/terminals', { cwd: scratch, agent, cols: 90, rows: 24 });
+        const refused = await srv.post('api/terminals', { cwd: scratch, agent, cols: 90, rows: 24 });
 
-        assert.equal(r.status, 400, `${agent}: ${why}`);
+        assert.equal(refused.status, 400, `${agent}: ${why}`);
       }
 
       assert.equal(existsSync(scratch), false, 'a refusal makes nothing');
 
       assert.deepEqual(
-        (await srv.api(`api/agents?cwd=${encodeURIComponent(scratch)}`)).body.agents.map(a => a.name),
+        (await srv.api(`api/agents?cwd=${encodeURIComponent(scratch)}`)).body.agents.map(agent => agent.name),
         ['scout', 'kit:code-reviewer', 'Plan', 'Explore', 'general-purpose', 'statusline-setup'],
       );
 
-      const r = await srv.post('api/terminals', { cwd: scratch, agent: 'scout', cols: 90, rows: 24 });
+      const response = await srv.post('api/terminals', { cwd: scratch, agent: 'scout', cols: 90, rows: 24 });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
+      assert.equal(response.status, 201, JSON.stringify(response.body));
 
-      const h = await waitFor(() => srv.holders().find(x => !x.shell && x.cwd === scratch) || null, {
-        what: 'its holder',
-      });
+      const holder = await waitFor(
+        () => srv.holders().find(drawer => !drawer.shell && drawer.cwd === scratch) || null,
+        {
+          what: 'its holder',
+        },
+      );
 
-      assert.deepEqual(h.args, ['--agent', 'scout']);
+      assert.deepEqual(holder.args, ['--agent', 'scout']);
     } finally {
       await srv.stop();
     }
@@ -299,39 +312,51 @@ test(
   "Claude over a folder's own agent: --agent '' — the chat runs as none, where with no flag it is the folder's",
   { timeout: 60_000 },
   async () => {
-    const w = world();
+    const dirs = world();
 
-    writeFileSync(join(w.repo, '.claude', 'settings.json'), JSON.stringify({ agent: 'reviewer' }));
-    const srv = await startTestServer({ claudeDir: w.claude, fake: true });
+    writeFileSync(join(dirs.repo, '.claude', 'settings.json'), JSON.stringify({ agent: 'reviewer' }));
+    const srv = await startTestServer({ claudeDir: dirs.claude, fake: true });
 
     try {
-      let r = await srv.post('api/terminals', { cwd: w.repo, agent: '', prompt: 'plain, please', cols: 100, rows: 30 });
+      let response = await srv.post('api/terminals', {
+        cwd: dirs.repo,
+        agent: '',
+        prompt: 'plain, please',
+        cols: 100,
+        rows: 30,
+      });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      const plain = r.body.sessionId;
+      assert.equal(response.status, 201, JSON.stringify(response.body));
+      const plain = response.body.sessionId;
 
-      r = await srv.post('api/terminals', { cwd: w.repo, prompt: 'as the folder has it', cols: 100, rows: 30 });
-      const dflt = r.body.sessionId;
+      response = await srv.post('api/terminals', {
+        cwd: dirs.repo,
+        prompt: 'as the folder has it',
+        cols: 100,
+        rows: 30,
+      });
+
+      const dflt = response.body.sessionId;
 
       const both = await waitFor(
         async () => {
-          const l = (await srv.api('api/sessions')).body.sessions;
+          const chats = (await srv.api('api/sessions')).body.sessions;
 
-          const a = l.find(s => s.id === plain && s.lastReply);
-          const b = l.find(s => s.id === dflt && s.lastReply);
+          const plainChat = chats.find(session => session.id === plain && session.lastReply);
+          const defaultChat = chats.find(session => session.id === dflt && session.lastReply);
 
-          return a && b ? [a, b] : null;
+          return plainChat && defaultChat ? [plainChat, defaultChat] : null;
         },
         { what: 'both replies' },
       );
 
       assert.deepEqual(
-        both.map(s => s.agent ?? null),
+        both.map(session => session.agent ?? null),
         [null, 'reviewer'],
       );
 
       assert.ok(
-        srv.holders().some(h => h.sessionId === plain && h.args.join(' ').includes('--agent ')),
+        srv.holders().some(holder => holder.sessionId === plain && holder.args.join(' ').includes('--agent ')),
         'the empty name passed as its own argument',
       );
     } finally {
@@ -348,11 +373,11 @@ test(
     const cwd = realpathSync(tmpDir('peix-cwd-'));
     const at = yesterday();
 
-    const long = Array.from({ length: 60 }, (_, i) => ({
+    const long = Array.from({ length: 60 }, (_, index) => ({
       type: 'user',
-      message: { role: 'user', content: `filler ${i} ${'x'.repeat(400)}` },
+      message: { role: 'user', content: `filler ${index} ${'x'.repeat(400)}` },
       uuid: randomUUID(),
-      timestamp: new Date(at.getTime() + i * 1000).toISOString(),
+      timestamp: new Date(at.getTime() + index * 1000).toISOString(),
       cwd,
       sessionId: 'x',
       userType: 'external',
@@ -378,9 +403,9 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir, env: { TAIL_BYTES: '4000' } });
 
     try {
-      const s = (await srv.api('api/sessions')).body.sessions.find(x => x.id === fx.chats[0].id);
+      const session = (await srv.api('api/sessions')).body.sessions.find(chat => chat.id === fx.chats[0].id);
 
-      assert.equal(s.agent, 'reviewer');
+      assert.equal(session.agent, 'reviewer');
     } finally {
       await srv.stop();
     }

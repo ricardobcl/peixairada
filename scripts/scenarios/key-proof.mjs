@@ -17,7 +17,7 @@ export default async ctx => {
   const proc = ctx.server.proc;
 
   proc.kill('SIGTERM');
-  for (let i = 0; i < 50 && proc.exitCode === null; i++) await ctx.sleep(100);
+  for (let attempt = 0; attempt < 50 && proc.exitCode === null; attempt++) await ctx.sleep(100);
   const note = req => seen.push({ url: req.url, key: req.headers['x-peix-key'] || '' });
 
   const squat = createServer((req, res) => {
@@ -50,14 +50,14 @@ export default async ctx => {
     squat.closeAllConnections?.();
   }
 
-  out.asked = [...new Set(seen.map(r => r.url.replace(/\?.*/, '')))].sort();
+  out.asked = [...new Set(seen.map(request => request.url.replace(/\?.*/, '')))].sort();
 
   ctx.assert.ok(
-    seen.some(r => r.url.startsWith('/api/alive')),
+    seen.some(request => request.url.startsWith('/api/alive')),
     'the page asked what answers to prove itself',
   );
 
-  const leaked = seen.filter(r => r.key || r.url.includes(key));
+  const leaked = seen.filter(request => request.key || request.url.includes(key));
 
   ctx.assert.deepEqual(leaked, [], 'nothing it was sent carried the key');
   await ctx.server.restart(); // the board back on its port

@@ -29,18 +29,18 @@ const shellWords = cmd =>
     ...String(cmd || '').matchAll(
       /"((?:[^"\\]|\\[\s\S])*)"|'([^']*)'|(&&|\|\||[;|\n])|([^\s"';|&]+(?:&(?!&)[^\s"';|&]*)*)/g,
     ),
-  ].map(m => (m[3] ? { op: m[3] } : { w: m[1] ?? m[2] ?? m[4] }));
+  ].map(match => (match[3] ? { op: match[3] } : { w: match[1] ?? match[2] ?? match[4] }));
 
 /** The words of each command in a line, split where the shell would split it. */
 function shellCommands(cmd) {
   const out = [[]];
 
-  for (const t of shellWords(cmd)) {
-    if (t.op) out.push([]);
-    else out.at(-1).push(t.w);
+  for (const token of shellWords(cmd)) {
+    if (token.op) out.push([]);
+    else out.at(-1).push(token.w);
   }
 
-  return out.filter(c => c.length);
+  return out.filter(words => words.length);
 }
 
 // the flags of `gh pr <sub>` that take a value; any other flag stands alone
@@ -121,37 +121,39 @@ const GH_API_PR =
 export function prActs(cmd) {
   const acts = [];
 
-  for (let w of shellCommands(cmd)) {
-    while (w.length && (/^\w+=/.test(w[0]) || ['env', 'command', 'time', 'noglob'].includes(w[0]))) w = w.slice(1);
+  for (let words of shellCommands(cmd)) {
+    while (words.length && (/^\w+=/.test(words[0]) || ['env', 'command', 'time', 'noglob'].includes(words[0]))) {
+      words = words.slice(1);
+    }
 
-    if (w[0] === 'git') {
-      let i = 1;
+    if (words[0] === 'git') {
+      let index = 1;
 
-      while (i < w.length && w[i].startsWith('-')) {
-        i += ['-C', '-c', '--git-dir', '--work-tree', '--namespace'].includes(w[i]) ? 2 : 1;
+      while (index < words.length && words[index].startsWith('-')) {
+        index += ['-C', '-c', '--git-dir', '--work-tree', '--namespace'].includes(words[index]) ? 2 : 1;
       }
 
-      if (w[i] !== 'push') continue;
+      if (words[index] !== 'push') continue;
 
       const pos = [];
-      const args = w.slice(i + 1);
+      const args = words.slice(index + 1);
 
       let skip = false;
 
-      for (let j = 0; j < args.length; j++) {
-        const a = args[j];
+      for (let argIndex = 0; argIndex < args.length; argIndex++) {
+        const arg = args[argIndex];
 
-        if (['-d', '--delete', '--tags', '--all', '--mirror', '--prune'].includes(a)) {
+        if (['-d', '--delete', '--tags', '--all', '--mirror', '--prune'].includes(arg)) {
           skip = true;
           break;
         }
 
-        if (['-o', '--push-option', '--repo', '--receive-pack', '--exec'].includes(a)) {
-          j++;
+        if (['-o', '--push-option', '--repo', '--receive-pack', '--exec'].includes(arg)) {
+          argIndex++;
           continue;
         }
 
-        if (!a.startsWith('-')) pos.push(a);
+        if (!arg.startsWith('-')) pos.push(arg);
       }
 
       if (skip) continue;
@@ -159,42 +161,44 @@ export function prActs(cmd) {
 
       if (!refs.length) acts.push({ x: 'push', branch: '' });
 
-      for (const r of refs) {
-        const b = r
+      for (const refspec of refs) {
+        const branch = refspec
           .replace(/^\+/, '')
           .split(':')
           .pop()
           .replace(/^refs\/heads\//, '');
 
-        acts.push({ x: 'push', branch: b === 'HEAD' ? '' : b });
+        acts.push({ x: 'push', branch: branch === 'HEAD' ? '' : branch });
       }
-    } else if (w[0] === 'gh' && w[1] === 'pr' && GH_PR_VALUES[w[2]]) {
-      const values = GH_PR_VALUES[w[2]];
+    } else if (words[0] === 'gh' && words[1] === 'pr' && GH_PR_VALUES[words[2]]) {
+      const values = GH_PR_VALUES[words[2]];
       const pos = [];
 
       let repo = null;
 
-      for (let j = 3; j < w.length; j++) {
-        const a = w[j];
+      for (let index = 3; index < words.length; index++) {
+        const arg = words[index];
 
         const [flag, inline] =
-          a.startsWith('--') && a.includes('=') ? [a.slice(0, a.indexOf('=')), a.slice(a.indexOf('=') + 1)] : [a, null];
+          arg.startsWith('--') && arg.includes('=')
+            ? [arg.slice(0, arg.indexOf('=')), arg.slice(arg.indexOf('=') + 1)]
+            : [arg, null];
 
         if (values.includes(flag)) {
-          const v = inline ?? w[++j];
+          const value = inline ?? words[++index];
 
-          if (flag === '-R' || flag === '--repo') repo = v;
+          if (flag === '-R' || flag === '--repo') repo = value;
           continue;
         }
 
-        if (!a.startsWith('-')) pos.push(a);
+        if (!arg.startsWith('-')) pos.push(arg);
       }
 
-      const x = w[2] === 'create' ? 'opened' : w[2];
+      const act = words[2] === 'create' ? 'opened' : words[2];
       const ref = pos[0];
 
-      if (x === 'opened') {
-        acts.push({ x });
+      if (act === 'opened') {
+        acts.push({ x: act });
         continue;
       }
 
@@ -202,49 +206,49 @@ export function prActs(cmd) {
 
       acts.push(
         one
-          ? { x, url: ref }
+          ? { x: act, url: ref }
           : ref && /^#?\d{1,10}$/.test(ref)
-            ? { x, num: Number(ref.replace('#', '')), repo }
-            : { x, branch: ref || '', repo },
+            ? { x: act, num: Number(ref.replace('#', '')), repo }
+            : { x: act, branch: ref || '', repo },
       );
-    } else if (w[0] === 'gh' && w[1] === 'api') {
+    } else if (words[0] === 'gh' && words[1] === 'api') {
       let path = null;
       let writes = false;
 
-      for (let j = 2; j < w.length; j++) {
-        const a = w[j];
+      for (let index = 2; index < words.length; index++) {
+        const arg = words[index];
 
-        if (a === '-X' || a === '--method') {
-          writes ||= /^(POST|PATCH|PUT)$/i.test(w[j + 1] || '');
-          j++;
+        if (arg === '-X' || arg === '--method') {
+          writes ||= /^(POST|PATCH|PUT)$/i.test(words[index + 1] || '');
+          index++;
           continue;
         }
 
-        if (/^--method=/.test(a)) {
-          writes ||= /=(POST|PATCH|PUT)$/i.test(a);
+        if (/^--method=/.test(arg)) {
+          writes ||= /=(POST|PATCH|PUT)$/i.test(arg);
           continue;
         }
 
-        if (['-f', '--raw-field', '-F', '--field', '--input'].includes(a) || /^--(raw-)?field=|^--input=/.test(a)) {
+        if (['-f', '--raw-field', '-F', '--field', '--input'].includes(arg) || /^--(raw-)?field=|^--input=/.test(arg)) {
           writes = true;
         }
 
-        if (GH_API_VALUES.has(a)) {
-          j++;
+        if (GH_API_VALUES.has(arg)) {
+          index++;
           continue;
         }
 
-        if (!a.startsWith('-') && !path) path = a;
+        if (!arg.startsWith('-') && !path) path = arg;
       }
 
-      const m = writes && path && GH_API_PR.exec(path);
+      const match = writes && path && GH_API_PR.exec(path);
 
-      if (!m) continue;
-      const repo = m[1] === '{owner}' || m[2] === '{repo}' ? null : `${m[1]}/${m[2]}`;
+      if (!match) continue;
+      const repo = match[1] === '{owner}' || match[2] === '{repo}' ? null : `${match[1]}/${match[2]}`;
 
       acts.push({
-        x: m[5] === 'reviews' ? 'review' : m[3] === 'issues' ? 'comment' : 'reply',
-        num: Number(m[4]),
+        x: match[5] === 'reviews' ? 'review' : match[3] === 'issues' ? 'comment' : 'reply',
+        num: Number(match[4]),
         repo,
       });
     }
@@ -254,84 +258,92 @@ export function prActs(cmd) {
 }
 
 /** A Bash call of the chat's: what it would do to a PR, waiting on its result. */
-export function noteActsCalled(s, b, ts, branch) {
-  const acts = b.id && ts ? prActs(b.input?.command) : [];
+export function noteActsCalled(session, block, ts, branch) {
+  const acts = block.id && ts ? prActs(block.input?.command) : [];
 
   if (!acts.length) return;
-  s.actsWait.set(b.id, { acts, at: ts, branch: branch || s.gitBranch || null });
-  if (s.actsWait.size > ACTS_MAX) s.actsWait.delete(s.actsWait.keys().next().value);
+  session.actsWait.set(block.id, { acts, at: ts, branch: branch || session.gitBranch || null });
+  if (session.actsWait.size > ACTS_MAX) session.actsWait.delete(session.actsWait.keys().next().value);
 }
 
 /** Its result: done without an error, the acts are the chat's — `gh pr create` names its PR in what it printed. */
-export function noteActsDone(s, b) {
-  const w = s.actsWait.get(b.tool_use_id);
+export function noteActsDone(session, block) {
+  const waiting = session.actsWait.get(block.tool_use_id);
 
-  if (!w) return;
-  s.actsWait.delete(b.tool_use_id);
-  if (b.is_error) return;
-  const out = w.acts.some(a => a.x === 'opened') ? resultText(b) : '';
+  if (!waiting) return;
+  session.actsWait.delete(block.tool_use_id);
+  if (block.is_error) return;
+  const out = waiting.acts.some(act => act.x === 'opened') ? resultText(block) : '';
 
-  w.acts.forEach((a, i) => {
-    const url = a.x === 'opened' ? out.match(PR_RE)?.[0] : a.url;
+  waiting.acts.forEach((act, index) => {
+    const url = act.x === 'opened' ? out.match(PR_RE)?.[0] : act.url;
 
-    if (a.x === 'opened' && !url) return;
-    s.prActs.push({ ...a, url: null, ref: url || null, id: `${b.tool_use_id}:${i}`, at: w.at, cur: w.branch });
+    if (act.x === 'opened' && !url) return;
+
+    session.prActs.push({
+      ...act,
+      url: null,
+      ref: url || null,
+      id: `${block.tool_use_id}:${index}`,
+      at: waiting.at,
+      cur: waiting.branch,
+    });
   });
 
-  if (s.prActs.length > ACTS_MAX) s.prActs.splice(0, s.prActs.length - ACTS_MAX);
-  takeActs(s);
+  if (session.prActs.length > ACTS_MAX) session.prActs.splice(0, session.prActs.length - ACTS_MAX);
+  takeActs(session);
 }
 
 /** Which of the chat's PRs an act is on, if it can be told yet: a push's branch needs GitHub to have named the PR's. */
-function actUrl(s, a) {
-  if (a.ref) {
-    const m = prMatch(a.ref);
+function actUrl(session, act) {
+  if (act.ref) {
+    const match = prMatch(act.ref);
 
-    return m ? prKey(m[1], m[2], m[3]) : null;
+    return match ? prKey(match[1], match[2], match[3]) : null;
   }
 
-  const own = ghRepoOf(s.live?.cwd || s.cwd);
-  const repo = a.repo ? a.repo.split('/') : own ? [own.owner, own.name] : null;
+  const own = ghRepoOf(session.live?.cwd || session.cwd);
+  const repo = act.repo ? act.repo.split('/') : own ? [own.owner, own.name] : null;
 
-  if (a.num) return repo?.length === 2 ? prKey(repo[0], repo[1], a.num) : null;
-  const branch = a.branch || a.cur;
+  if (act.num) return repo?.length === 2 ? prKey(repo[0], repo[1], act.num) : null;
+  const branch = act.branch || act.cur;
 
   if (!branch || branch === 'HEAD' || !repo) return null;
   const base = `https://github.com/${repo[0]}/${repo[1]}/pull/`.toLowerCase();
 
-  return s.prs.find(p => p.url.startsWith(base) && p.refs?.head === branch && !p.refs.fork)?.url || null;
+  return session.prs.find(pr => pr.url.startsWith(base) && pr.refs?.head === branch && !pr.refs.fork)?.url || null;
 }
 
 /** The chat's acts that can be tied to a PR now, into its ledger — and a fresh answer, the PR asked about again soon. */
-export function takeActs(s) {
-  for (const a of s.prActs) {
-    if (a.url) continue;
-    const url = actUrl(s, a);
+export function takeActs(session) {
+  for (const act of session.prActs) {
+    if (act.url) continue;
+    const url = actUrl(session, act);
 
-    if (!url || (!prTurns[url] && !s.prs.some(p => p.url === url))) continue; // a PR of the chat's, or one with a turn: not an issue's number
-    a.url = url;
+    if (!url || (!prTurns[url] && !session.prs.some(pr => pr.url === url))) continue; // a PR of the chat's, or one with a turn: not an issue's number
+    act.url = url;
 
     const ev = {
-      id: `chat:${s.id}:${a.id}`,
+      id: `chat:${session.id}:${act.id}`,
       k: 'chat',
       w: '',
-      x: a.x,
-      a: isoS(Date.parse(a.at) || Date.now()),
-      c: s.id,
+      x: act.x,
+      a: isoS(Date.parse(act.at) || Date.now()),
+      c: session.id,
     };
 
     if (!logEvents(url, [ev])) continue;
-    const r = prLogs[url].r.at(-1); // a round closed before the chat's line was read: said now
+    const round = prLogs[url].r.at(-1); // a round closed before the chat's line was read: said now
 
-    if (r?.how === 'answered' && !r.by && ANSWERS.has(a.x) && ev.a >= r.from) {
-      Object.assign(r, byChat(url, r, isoS(Date.now())));
+    if (round?.how === 'answered' && !round.by && ANSWERS.has(act.x) && ev.a >= round.from) {
+      Object.assign(round, byChat(url, round, isoS(Date.now())));
       bumpLog(url);
     }
 
     pushRounds(url);
-    const age = Date.now() - Date.parse(a.at);
+    const age = Date.now() - Date.parse(act.at);
 
-    if (!indexing && !s.silent && ANSWERS.has(a.x) && prTurns[url] && age >= 0 && age < 5 * 60_000) {
+    if (!indexing && !session.silent && ANSWERS.has(act.x) && prTurns[url] && age >= 0 && age < 5 * 60_000) {
       setTimeout(() => queuePr(url, 0), PR_CONFIRM_MS);
     }
   }
@@ -340,7 +352,7 @@ export function takeActs(s) {
 /** The chat whose answer closed a round: its newest answering act on the PR since the round began. */
 export function byChat(url, round, until) {
   const ev = (prLogs[url]?.ev || [])
-    .filter(e => e.k === 'chat' && ANSWERS.has(e.x) && e.a >= round.from && e.a <= until)
+    .filter(event => event.k === 'chat' && ANSWERS.has(event.x) && event.a >= round.from && event.a <= until)
     .at(-1);
 
   return ev ? { by: { c: ev.c, x: ev.x, a: ev.a } } : {};
@@ -352,13 +364,13 @@ function pushRounds(url) {
   const rs = JSON.stringify(rounds);
   const logged = loggedOf(url);
 
-  for (const s of sessions.values()) {
-    const pr = s.prs.find(p => p.url === url);
+  for (const session of sessions.values()) {
+    const pr = session.prs.find(candidate => candidate.url === url);
 
     if (pr && (pr.logged !== logged || JSON.stringify(pr.rounds ?? null) !== rs)) {
       pr.rounds = rounds;
       pr.logged = logged;
-      schedulePush(s);
+      schedulePush(session);
     }
   }
 }
@@ -366,30 +378,33 @@ function pushRounds(url) {
 /** Who says a PR's alert: the chat touched last of those that mention it, a muted one only when all are (2026-11-02) —
  *  nor a snoozed one (2026-11-24, round XXX): it calls you on nothing. */
 export function prAlertChat(chats) {
-  const loud = chats.filter(s => !mutedChats[s.id] && !snoozed[s.id]);
+  const loud = chats.filter(session => !mutedChats[session.id] && !snoozed[session.id]);
 
-  return (loud.length ? loud : chats).reduce((a, b) => (!a || touchedAt(b) > touchedAt(a) ? b : a), null);
+  return (loud.length ? loud : chats).reduce(
+    (latest, chat) => (!latest || touchedAt(chat) > touchedAt(latest) ? chat : latest),
+    null,
+  );
 }
 
 /** A PR come round to you: one alert, on the chat `prAlertChat` picks. */
 export function notifyPr(url, turn, chats) {
-  const s = prAlertChat(chats);
+  const session = prAlertChat(chats);
 
-  if (!s || indexing) return;
+  if (!session || indexing) return;
 
-  const sum = summary(s);
-  const heading = `Your move · ${s.prs.find(p => p.url === url)?.label || url}`;
+  const sum = summary(session);
+  const heading = `Your move · ${session.prs.find(pr => pr.url === url)?.label || url}`;
 
   const evt = {
     kind: 'pr',
-    sessionId: s.id,
+    sessionId: session.id,
     project: sum.project,
     title: sum.title,
     heading,
     snippet: turn.why,
     url,
     ts: new Date().toISOString(),
-    ...hushOf(s),
+    ...hushOf(session),
   };
 
   broadcast('alert', evt);

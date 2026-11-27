@@ -15,7 +15,7 @@ export default async function (ctx) {
   const t0 = Date.now();
 
   while (!/pane: gh:.*solid\/0000ff/.test(ctx.appLog()) && Date.now() - t0 < 10_000) {
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
   ctx.assert.match(ctx.appLog(), /pane: gh:.*solid\/0000ff\?folder=\/x&tkn=…/, 'the page is logged, its token not');

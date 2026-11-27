@@ -33,8 +33,8 @@ const commit = (at, login) => ({
   commit: { committedDate: at, author: { user: { login } } },
 });
 
-/** acme/repo-a#12 by ana, reviewed by me an hour ago on commit A; `o` moves it. #13 nobody here has touched. */
-function write(o = {}) {
+/** acme/repo-a#12 by ana, reviewed by me an hour ago on commit A; `overrides` move it. #13 nobody here has touched. */
+function write(overrides = {}) {
   const base = {
     state: 'OPEN',
     title: 'Base of the follow-up',
@@ -52,7 +52,7 @@ function write(o = {}) {
   writeFileSync(
     file,
     JSON.stringify({
-      'acme/repo-a#12': { ...base, ...o },
+      'acme/repo-a#12': { ...base, ...overrides },
       'acme/repo-a#13': { state: 'OPEN', title: 'The follow-up', author: user('ana') },
     }),
   );
@@ -78,7 +78,7 @@ export default async function (ctx) {
   try {
     const [two] = ctx.fixture.chats;
     const card = `document.querySelector('#slist > .card[data-id="${two.id}"]')`;
-    const chip = n => `${card}?.querySelector('.mxs[data-url$="/pull/${n}"]')`;
+    const chip = number => `${card}?.querySelector('.mxs[data-url$="/pull/${number}"]')`;
 
     const look = () =>
       ctx
@@ -273,7 +273,7 @@ export default async function (ctx) {
       .then(JSON.parse);
 
     ctx.assert.ok(
-      !out.funnel.some(t => /move/i.test(t)) &&
+      !out.funnel.some(label => /move/i.test(label)) &&
         !/move/i.test(await ctx.evaluate(`document.querySelector('#fBtn').title`)),
       `no Your move in the funnel: ${JSON.stringify(out.funnel)}`,
     );

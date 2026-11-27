@@ -16,11 +16,11 @@ function listChanged(scrolled = false) {
 
     listChanged.queued = false;
     listChanged.other = false;
-    const g = listGeom(); // every read of the frame first, then the writes: a read after a write is a layout each (2026-09-27)
+    const geom = listGeom(); // every read of the frame first, then the writes: a read after a write is a layout each (2026-09-27)
 
-    drawEdges(g);
-    if (timeline) drawTimeline(g);
-    watchOpen(g.open?.el);
+    drawEdges(geom);
+    if (timeline) drawTimeline(geom);
+    watchOpen(geom.open?.el);
     if (sliding.size) listChanged(); // a card is still on its way: the next frame too
   });
 }
@@ -46,14 +46,14 @@ function listGeom() {
   const rail = $('#tline');
   const cards = [];
 
-  for (const c of list.children) {
-    if (c.classList.contains('card')) cards.push({ el: c, top: c.offsetTop, h: c.offsetHeight });
+  for (const child of list.children) {
+    if (child.classList.contains('card')) cards.push({ el: child, top: child.offsetTop, h: child.offsetHeight });
   }
 
-  const H = Math.max(1, (rail ? rail.clientHeight : 0) - 2 * TL_PAD);
+  const railHeight = Math.max(1, (rail ? rail.clientHeight : 0) - 2 * TL_PAD);
   const full = Math.max(list.scrollHeight, list.clientHeight, 1);
 
-  const open = cards.find(c => c.el.classList.contains('active'));
+  const open = cards.find(card => card.el.classList.contains('active'));
 
   // the lanes' heads, sticky (2026-10-31): where each stands — which are stuck at the list's top, under its padding (the
   // notch's strip) — and how far down the stuck one reaches
@@ -61,9 +61,9 @@ function listGeom() {
   const pad = parseFloat(getComputedStyle(list).paddingTop) || 0;
 
   const heads = [...list.querySelectorAll(':scope > .gsep.lane[data-lane]')];
-  const rects = heads.map(h => h.getBoundingClientRect());
+  const rects = heads.map(head => head.getBoundingClientRect());
 
-  const stuck = rects.map(r => list.scrollTop > 0 && r.top <= box.top + pad + 0.5);
+  const stuck = rects.map(rect => list.scrollTop > 0 && rect.top <= box.top + pad + 0.5);
 
   return {
     list,
@@ -73,72 +73,72 @@ function listGeom() {
     top: list.scrollTop,
     ch: list.clientHeight,
     sh: list.scrollHeight,
-    H,
+    H: railHeight,
     full,
-    y: v => TL_PAD + (v / full) * H,
+    y: listY => TL_PAD + (listY / full) * railHeight,
     pad,
     stick: pad + (heads[0]?.offsetHeight || 0),
     heads,
     rects,
     stuck,
-    tops: tl.runs.map(r => cards[r.i]?.top || 0),
+    tops: tl.runs.map(run => cards[run.i]?.top || 0),
     railOn: !!rail && rail.offsetParent !== null,
     box,
   };
 }
 
-function drawEdges(g) {
+function drawEdges(geom) {
   // the sticky head covers the list's top, under its padding: a card under it is out of sight, and the ends' fog and
   // the scroll's padding start below it (--stick; the padding alone with no heads — under the notch's strip)
-  if (drawEdges.stick !== g.stick) {
-    drawEdges.stick = g.stick;
-    $('#sessions').style.setProperty('--stick', `${g.stick}px`);
-    $('#sessions').style.setProperty('--lpad', `${g.pad}px`);
+  if (drawEdges.stick !== geom.stick) {
+    drawEdges.stick = geom.stick;
+    $('#sessions').style.setProperty('--stick', `${geom.stick}px`);
+    $('#sessions').style.setProperty('--lpad', `${geom.pad}px`);
   }
 
   // the head stuck on top (.stuck), the ones stuck under it (.covered), and it while the next pushes in (.pushed)
-  const last = g.stuck.lastIndexOf(true);
-  const pushed = last >= 0 && g.rects[last + 1] && g.rects[last + 1].top < g.rects[last].bottom;
+  const last = geom.stuck.lastIndexOf(true);
+  const pushed = last >= 0 && geom.rects[last + 1] && geom.rects[last + 1].top < geom.rects[last].bottom;
 
-  g.heads.forEach((h, i) => {
-    h.classList.toggle('covered', g.stuck[i] && i < last);
-    h.classList.toggle('stuck', i === last && !pushed);
-    h.classList.toggle('pushed', i === last && !!pushed);
+  geom.heads.forEach((head, index) => {
+    head.classList.toggle('covered', geom.stuck[index] && index < last);
+    head.classList.toggle('stuck', index === last && !pushed);
+    head.classList.toggle('pushed', index === last && !!pushed);
   });
 
-  const bottom = g.top + g.ch;
-  const under = g.top > 0 ? g.stick : 0;
+  const bottom = geom.top + geom.ch;
+  const under = geom.top > 0 ? geom.stick : 0;
 
   const out = [
     { n: 0, ask: 0, work: 0 },
     { n: 0, ask: 0, work: 0 },
   ];
 
-  for (const { el: c, top, h } of g.cards) {
-    const mid = top + h / 2;
-    const o = mid < g.top + under ? out[0] : mid > bottom ? out[1] : null;
+  for (const { el: card, top, h: height } of geom.cards) {
+    const mid = top + height / 2;
+    const tally = mid < geom.top + under ? out[0] : mid > bottom ? out[1] : null;
 
-    if (!o) continue;
-    o.n++;
-    if (c.classList.contains('asking')) o.ask++;
-    else if (c.classList.contains('working') && !c.classList.contains('done')) o.work++;
+    if (!tally) continue;
+    tally.n++;
+    if (card.classList.contains('asking')) tally.ask++;
+    else if (card.classList.contains('working') && !card.classList.contains('done')) tally.work++;
   }
 
-  out.forEach((o, i) => {
-    const el = $(i ? '#sdown' : '#sup');
-    const b = el.firstElementChild;
-    const key = `${o.n}/${o.ask}/${o.work}`;
+  out.forEach((tally, down) => {
+    const el = $(down ? '#sdown' : '#sup');
+    const button = el.firstElementChild;
+    const key = `${tally.n}/${tally.ask}/${tally.work}`;
 
-    el.classList.toggle('on', o.n > 0);
-    if (b.dataset.key === key) return;
-    b.dataset.key = key;
-    if (!o.n) return;
+    el.classList.toggle('on', tally.n > 0);
+    if (button.dataset.key === key) return;
+    button.dataset.key = key;
+    if (!tally.n) return;
 
-    const way = i ? 'below' : 'above';
-    const dot = o.ask ? 'ask' : o.work ? 'work' : '';
+    const way = down ? 'below' : 'above';
+    const dot = tally.ask ? 'ask' : tally.work ? 'work' : '';
 
-    b.innerHTML = `${i ? '↓' : '↑'} <b>${o.n}</b><span class="w"> more</span>${dot ? `<i class="${dot}"></i>` : ''}`;
-    b.title = `${o.n} chat${o.n === 1 ? '' : 's'} ${way}${o.ask ? ` — ${o.ask} asking you` : ''}${o.work ? `${o.ask ? ',' : ' —'} ${o.work} clauding` : ''} · click for a screenful ${i ? 'down' : 'up'}`;
+    button.innerHTML = `${down ? '↓' : '↑'} <b>${tally.n}</b><span class="w"> more</span>${dot ? `<i class="${dot}"></i>` : ''}`;
+    button.title = `${tally.n} chat${tally.n === 1 ? '' : 's'} ${way}${tally.ask ? ` — ${tally.ask} asking you` : ''}${tally.work ? `${tally.ask ? ',' : ' —'} ${tally.work} clauding` : ''} · click for a screenful ${down ? 'down' : 'up'}`;
   });
 }
 
@@ -150,12 +150,12 @@ new ResizeObserver(() => {
 }).observe($('#slist'));
 
 for (const el of document.querySelectorAll('.sedge')) {
-  el.addEventListener('click', e => {
-    const b = e.target.closest('button');
+  el.addEventListener('click', event => {
+    const button = event.target.closest('button');
 
-    if (!b) return;
+    if (!button) return;
     const list = $('#slist');
 
-    list.scrollBy({ top: +b.dataset.dir * Math.max(80, list.clientHeight - 90), behavior: 'smooth' });
+    list.scrollBy({ top: +button.dataset.dir * Math.max(80, list.clientHeight - 90), behavior: 'smooth' });
   });
 }

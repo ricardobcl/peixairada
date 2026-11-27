@@ -27,7 +27,7 @@ export default async ctx => {
   await ctx.shot('locked');
   await ctx.evaluate(`document.querySelector('#lockGo').click()`);
   await ctx.waitFor(`/opening in this Mac's browser/.test(document.querySelector('#lockSay').textContent)`, 5000);
-  for (let i = 0; i < 50 && !existsSync(opened); i++) await ctx.sleep(100);
+  for (let attempt = 0; attempt < 50 && !existsSync(opened); attempt++) await ctx.sleep(100);
   const url = readFileSync(opened, 'utf8').trim();
 
   ctx.assert.match(url, /#ticket=[\w-]+$/, 'the server opened a tab at the board with a ticket');

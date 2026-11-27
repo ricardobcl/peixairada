@@ -3,16 +3,19 @@
 // a set of folders (multi-repo work, an investigation). A chat lives in its folder and in every
 // custom project that claims that folder. "ALL" is the flat list, newest first.
 const ALL = 'all';
-const inFolder = (cwd, f) => !!cwd && (cwd === f || cwd.startsWith(`${f.replace(/\/$/, '')}/`));
+const inFolder = (cwd, folder) => !!cwd && (cwd === folder || cwd.startsWith(`${folder.replace(/\/$/, '')}/`));
 // A chat in a worktree inside a repo, `<repo>/.claude/worktrees/<name>`, is the repo's (2026-10-13): a folder project
 // is keyed by the repo, so its pins, its hiding, its name and its chats are the repo's — a named project took it by
 // its prefix already (inFolder), and its colour by the repo's name (colorKey). Its branch is a chip on its card.
 const projDir = cwd => (cwd ? cwd.replace(/\/\.claude\/worktrees\/[^/]+(?:\/.*)?$/, '') : cwd);
 
-const inProject = (s, p) =>
-  p.key === ALL || (p.custom ? p.cwds.some(f => inFolder(s.cwd, f)) : (projDir(s.cwd) || '?') === p.key);
+const inProject = (session, project) =>
+  project.key === ALL ||
+  (project.custom
+    ? project.cwds.some(folder => inFolder(session.cwd, folder))
+    : (projDir(session.cwd) || '?') === project.key);
 
-const scopedOn = s => !!s.cwd && prefs.project !== ALL && inProject(s, projectStub(prefs.project)); // the list narrowed to what holds this chat, a folder or a named set
+const scopedOn = session => !!session.cwd && prefs.project !== ALL && inProject(session, projectStub(prefs.project)); // the list narrowed to what holds this chat, a folder or a named set
 
 const REPO_FUN =
   '<svg class="fun" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z" /></svg>';
@@ -21,7 +24,7 @@ const projectStub = key =>
   key === ALL
     ? { key }
     : key.startsWith('c:')
-      ? { key, custom: true, cwds: state.projects.find(p => `c:${p.id}` === key)?.cwds || [] }
+      ? { key, custom: true, cwds: state.projects.find(project => `c:${project.id}` === key)?.cwds || [] }
       : { key };
 
 // The same rules as the lane board had: empty live panels and stale chats older than 30 days hide unless asked.
@@ -37,10 +40,10 @@ const isHidden = key => state.hidden.includes(key);
 // anything. The card's time and place are the chat's start (`startedAt`, the server's), until a first word lands.
 // Ticked done, an empty chat is gone at once (2026-09-27): Done ends its claude, and there is nothing in it to read
 // or resume.
-function visible(s) {
-  if (s.removed) return false; // deleted from the board (2026-11-04): only ⌥⌘K, typed, finds it
-  if (!s.lastActivity) return s.alive && !s.done && !inVsCode(s);
-  if (!s.alive && !s.done && Date.now() - new Date(s.lastActivity) > STALE_MAX_AGE_MS) return false;
+function visible(session) {
+  if (session.removed) return false; // deleted from the board (2026-11-04): only ⌥⌘K, typed, finds it
+  if (!session.lastActivity) return session.alive && !session.done && !inVsCode(session);
+  if (!session.alive && !session.done && Date.now() - new Date(session.lastActivity) > STALE_MAX_AGE_MS) return false;
   return true;
 }
 
@@ -53,52 +56,57 @@ function visible(s) {
 // when the board learnt of the move (the server's turn.movedAt) — the server's copy agrees.
 // Not on a chat done for good (2026-10-11): its PRs are forgotten.
 // A snooze ended by itself is one too (2026-11-24, round XXX's H1: the server's `wokeAt`): back at the top of its lane.
-const movedAt = s =>
-  s.forGood ? '' : (s.prs || []).reduce((m, p) => (p.turn?.you && p.turn.movedAt > m ? p.turn.movedAt : m), '');
+const movedAt = session =>
+  session.forGood
+    ? ''
+    : (session.prs || []).reduce(
+        (latest, pr) => (pr.turn?.you && pr.turn.movedAt > latest ? pr.turn.movedAt : latest),
+        '',
+      );
 
 // Kept per summary (a new object with every update): the sort asked it twice a comparison, a thousand times a render.
 const words = new WeakMap();
 
-const wordAt = s => {
-  let w = words.get(s);
+const wordAt = session => {
+  let at = words.get(session);
 
-  if (w === undefined) {
-    const u = String(s.lastUserAt || '');
-    const r = String(s.lastReplyAt || '');
-    const m = movedAt(s);
+  if (at === undefined) {
+    const user = String(session.lastUserAt || '');
+    const reply = String(session.lastReplyAt || '');
+    const moved = movedAt(session);
 
-    w = (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || '');
-    if (m > w) w = m;
-    if (String(s.wokeAt || '') > w) w = String(s.wokeAt);
-    words.set(s, w);
+    at = (user > reply ? user : reply) || String(session.lastActivity || '') || String(session.startedAt || '');
+    if (moved > at) at = moved;
+    if (String(session.wokeAt || '') > at) at = String(session.wokeAt);
+    words.set(session, at);
   }
 
-  return w;
+  return at;
 }; // an empty chat: its start
 
-const byWord = (a, b) => {
-  const x = wordAt(a);
-  const y = wordAt(b);
+const byWord = (left, right) => {
+  const leftAt = wordAt(left);
+  const rightAt = wordAt(right);
 
-  return x < y ? 1 : x > y ? -1 : 0;
+  return leftAt < rightAt ? 1 : leftAt > rightAt ? -1 : 0;
 }; // ISO strings: no collation needed
 
-const timeTip = s =>
-  !s.lastActivity
-    ? s.startedAt
-      ? `started ${rel(s.startedAt)} ago · no messages yet`
+const timeTip = session =>
+  !session.lastActivity
+    ? session.startedAt
+      ? `started ${rel(session.startedAt)} ago · no messages yet`
       : ''
-    : `last activity ${rel(s.lastActivity)} ago${s.lastUserAt ? ` · you last wrote ${rel(s.lastUserAt)} ago` : ''}${s.lastReplyAt ? ` · Claude last replied ${rel(s.lastReplyAt)} ago` : ''}${movedAt(s) ? ` · a PR came round to you ${rel(movedAt(s))} ago` : ''}`;
+    : `last activity ${rel(session.lastActivity)} ago${session.lastUserAt ? ` · you last wrote ${rel(session.lastUserAt)} ago` : ''}${session.lastReplyAt ? ` · Claude last replied ${rel(session.lastReplyAt)} ago` : ''}${movedAt(session) ? ` · a PR came round to you ${rel(movedAt(session))} ago` : ''}`;
 
 // Three states since 2026-09-20, and done is *only* the tick (asked later that day; the first cut folded
 // stale into done): a chat with no live process is ready — resume it and it carries on. The dot still says
 // stale in grey and the card is dimmed a touch, so you know a resume is coming before you click. Clauding
 // is working; ready is everything else, a pending question included (the card still says *asking you*).
 // The server keeps the finer statuses for notifications and the app's badge.
-const bucket = s => (s.done ? 'done' : s.status === 'working' ? 'working' : 'ready');
+const bucket = session => (session.done ? 'done' : session.status === 'working' ? 'working' : 'ready');
 // The two states that live *inside* a bucket and the card draws its edge from: a question waiting on your answer
 // (still a ready chat — the filters see 'ready'), and a monitor or background command of its own still running.
-const asking = s => s.alive && !s.done && s.status === 'needs-input';
+const asking = session => session.alive && !session.done && session.status === 'needs-input';
 // A muted chat keeps its card's truth, the red edge too, and calls you on nothing else (2026-11-02): not the Dock, the
 // title, the menu bar, the bar's red, the lines of news or Zé's game.
-const askingLoud = s => asking(s) && !s.muted;
+const askingLoud = session => asking(session) && !session.muted;

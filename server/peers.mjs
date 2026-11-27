@@ -20,29 +20,34 @@ import { cut, plainSnippet, textOf } from './transcript/text.mjs';
 const ENVELOPE_RE = /<cross-session-message\b([^>]*)>([\s\S]*?)<\/cross-session-message>/;
 const XML_ENT = { quot: '"', apos: "'", lt: '<', gt: '>', amp: '&' };
 
-export const unXml = t =>
-  String(t).replace(/&(quot|apos|lt|gt|amp|#\d{1,7}|#x[0-9a-f]{1,6});/gi, (m, n) =>
-    n[0] !== '#'
-      ? XML_ENT[n.toLowerCase()]
-      : (c => (c <= 0x10ffff ? String.fromCodePoint(c) : m))(
-          n[1] === 'x' || n[1] === 'X' ? parseInt(n.slice(2), 16) : Number(n.slice(1)),
+export const unXml = text =>
+  String(text).replace(/&(quot|apos|lt|gt|amp|#\d{1,7}|#x[0-9a-f]{1,6});/gi, (entity, ref) =>
+    ref[0] !== '#'
+      ? XML_ENT[ref.toLowerCase()]
+      : (codePoint => (codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : entity))(
+          ref[1] === 'x' || ref[1] === 'X' ? parseInt(ref.slice(2), 16) : Number(ref.slice(1)),
         ),
   );
-export const pstr = v => (typeof v === 'string' && v ? v : null);
+export const pstr = value => (typeof value === 'string' && value ? value : null);
 
 /** The envelope a peer message travels in: who sent it — its address, its name, its permission mode — and the words. */
 function envelopeOf(text) {
-  const m = ENVELOPE_RE.exec(String(text || ''));
+  const match = ENVELOPE_RE.exec(String(text || ''));
 
-  if (!m) return null;
+  if (!match) return null;
 
-  const attr = k => {
-    const a = new RegExp(`\\s${k}="([^"]*)"`).exec(m[1]);
+  const attr = name => {
+    const found = new RegExp(`\\s${name}="([^"]*)"`).exec(match[1]);
 
-    return a ? unXml(a[1]) || null : null;
+    return found ? unXml(found[1]) || null : null;
   };
 
-  return { from: attr('from'), name: attr('from-name'), mode: attr('from-mode'), body: m[2].replace(/^\n+|\n+$/g, '') };
+  return {
+    from: attr('from'),
+    name: attr('from-name'),
+    mode: attr('from-mode'),
+    body: match[2].replace(/^\n+|\n+$/g, ''),
+  };
 }
 
 /** The sender's pid in its socket's address, `uds:/tmp/cc-socks/<pid>.sock` — what the envelope alone says. */
@@ -57,22 +62,22 @@ export function peerOf(line) {
         ? line.attachment
         : null;
 
-  const o = at?.origin;
+  const origin = at?.origin;
 
-  if (!o || typeof o !== 'object' || o.kind !== 'peer' || 'senderTaskId' in o) return null;
+  if (!origin || typeof origin !== 'object' || origin.kind !== 'peer' || 'senderTaskId' in origin) return null;
   const env = envelopeOf(typeof at.prompt === 'string' ? at.prompt : textOf(line.message?.content));
 
-  if (!env && !('verifiedPeerPid' in o) && !pstr(o.fromMode)) return null; // a peer of some other kind: not a chat's message
-  const pid = Number.isInteger(o.verifiedPeerPid) && o.verifiedPeerPid > 0 ? o.verifiedPeerPid : null;
+  if (!env && !('verifiedPeerPid' in origin) && !pstr(origin.fromMode)) return null; // a peer of some other kind: not a chat's message
+  const pid = Number.isInteger(origin.verifiedPeerPid) && origin.verifiedPeerPid > 0 ? origin.verifiedPeerPid : null;
 
   return {
-    name: pstr(o.name) || env?.name || null,
-    from: pstr(o.from) || env?.from || null,
-    mode: pstr(o.fromMode) || env?.mode || null,
-    msgId: pstr(o.msg_id),
+    name: pstr(origin.name) || env?.name || null,
+    from: pstr(origin.from) || env?.from || null,
+    mode: pstr(origin.fromMode) || env?.mode || null,
+    msgId: pstr(origin.msg_id),
     pid,
     verified: !!pid,
-    body: pstr(o.body) ?? env?.body ?? '',
+    body: pstr(origin.body) ?? env?.body ?? '',
   };
 }
 
@@ -85,151 +90,170 @@ const peerRecv = new Map(); // msg_id → the chat that got it
 
 export const peerNames = new Map(); // a name the registry gave a live chat → its id (loadRegistry): what `to` and `from-name` say
 
-const peerKeep = (m, k, v) => {
-  m.delete(k);
-  m.set(k, v);
-  if (m.size > PEER_INDEX) m.delete(m.keys().next().value);
+const peerKeep = (map, key, value) => {
+  map.delete(key);
+  map.set(key, value);
+  if (map.size > PEER_INDEX) map.delete(map.keys().next().value);
 };
 
-export function notePeer(s, p, ts) {
-  if (p.msgId) {
-    if ((s.peerSeen ||= new Set()).has(p.msgId)) return false;
-    s.peerSeen.add(p.msgId);
-    peerKeep(peerRecv, p.msgId, s.id);
+export function notePeer(session, peer, ts) {
+  if (peer.msgId) {
+    if ((session.peerSeen ||= new Set()).has(peer.msgId)) return false;
+    session.peerSeen.add(peer.msgId);
+    peerKeep(peerRecv, peer.msgId, session.id);
   } // the attachment and the line, one message
 
-  const q = s.peerQueue || [];
-  const same = x => x.from === p.from;
+  const queue = session.peerQueue || [];
+  const same = queued => queued.from === peer.from;
 
-  let i = q.findIndex(x => same(x) && x.body.trim() === p.body.trim());
+  let index = queue.findIndex(queued => same(queued) && queued.body.trim() === peer.body.trim());
 
-  if (i < 0) i = q.findIndex(same);
-  if (i >= 0) q.splice(i, 1); // the one that waited for it
-  s.peerIn = { name: p.name, from: p.from, pid: p.pid, mode: p.mode, msgId: p.msgId, verified: p.verified, at: ts };
+  if (index < 0) index = queue.findIndex(same);
+  if (index >= 0) queue.splice(index, 1); // the one that waited for it
 
-  pushEntry(s, {
+  session.peerIn = {
+    name: peer.name,
+    from: peer.from,
+    pid: peer.pid,
+    mode: peer.mode,
+    msgId: peer.msgId,
+    verified: peer.verified,
+    at: ts,
+  };
+
+  pushEntry(session, {
     role: 'peer',
     kind: 'peer',
-    text: cut(p.body, PEER_BODY),
+    text: cut(peer.body, PEER_BODY),
     ts,
-    name: p.name,
-    from: p.from,
-    pid: p.pid,
-    mode: p.mode,
-    msgId: p.msgId,
-    verified: p.verified,
+    name: peer.name,
+    from: peer.from,
+    pid: peer.pid,
+    mode: peer.mode,
+    msgId: peer.msgId,
+    verified: peer.verified,
   });
 
   return true;
 }
 
 /** A message waiting for the chat to finish its turn, and taken off the queue (`remove`) before it was delivered. */
-export function notePeerQueue(s, line, ts) {
-  const c = typeof line.content === 'string' ? line.content : '';
+export function notePeerQueue(session, line, ts) {
+  const content = typeof line.content === 'string' ? line.content : '';
 
-  if (!c.includes('<cross-session-message')) return false;
+  if (!content.includes('<cross-session-message')) return false;
 
-  const key = createHash('sha1').update(c).digest('hex');
-  const q = (s.peerQueue ||= []);
+  const key = createHash('sha1').update(content).digest('hex');
+  const queue = (session.peerQueue ||= []);
 
   if (line.operation === 'enqueue') {
-    const env = envelopeOf(c);
+    const env = envelopeOf(content);
 
     if (!env) return false;
-    q.push({ ...env, key, at: ts });
-    if (q.length > PEER_QUEUE) q.shift();
+    queue.push({ ...env, key, at: ts });
+    if (queue.length > PEER_QUEUE) queue.shift();
     return true;
   }
 
-  const i = line.operation === 'remove' ? q.findIndex(x => x.key === key) : -1;
+  const index = line.operation === 'remove' ? queue.findIndex(queued => queued.key === key) : -1;
 
-  if (i >= 0) q.splice(i, 1);
-  return i >= 0;
+  if (index >= 0) queue.splice(index, 1);
+  return index >= 0;
 }
 
 /** A SendMessage call, and its result: one that names a `msg_id` and no teammate's routing reached another chat. */
-export function noteSend(s, e, b) {
-  e.to = pstr(b.input?.to) || pstr(b.input?.recipient);
-  (s.sends ||= new Map()).set(b.id, e);
-  if (s.sends.size > 50) s.sends.delete(s.sends.keys().next().value);
+export function noteSend(session, entry, block) {
+  entry.to = pstr(block.input?.to) || pstr(block.input?.recipient);
+  (session.sends ||= new Map()).set(block.id, entry);
+  if (session.sends.size > 50) session.sends.delete(session.sends.keys().next().value);
 }
 
-export function noteSent(s, b, r, ts) {
-  const e = s.sends?.get(b.tool_use_id);
+export function noteSent(session, block, result, ts) {
+  const entry = session.sends?.get(block.tool_use_id);
 
-  if (!e) return;
-  s.sends.delete(b.tool_use_id);
-  if (b.is_error || !r || typeof r !== 'object' || r.success === false) return;
+  if (!entry) return;
+  session.sends.delete(block.tool_use_id);
+  if (block.is_error || !result || typeof result !== 'object' || result.success === false) return;
 
-  if (r.routing) {
-    e.team = true;
+  if (result.routing) {
+    entry.team = true;
     return;
   }
 
-  if (pstr(r.msg_id)) {
-    e.msgId = r.msg_id;
-    peerKeep(peerSent, r.msg_id, { id: s.id, to: e.to, at: ts });
+  if (pstr(result.msg_id)) {
+    entry.msgId = result.msg_id;
+    peerKeep(peerSent, result.msg_id, { id: session.id, to: entry.to, at: ts });
   }
 }
 
 /** Which chat sent a message: by its msg_id, the one that says it sent it; by the pid Claude Code verified, the chat that
  *  process runs — only if it ran then; by its name, the chat the registry last gave that name. Kept once found. */
-function peerSender(s, p) {
-  if (p.fromId) return p.fromId;
+function peerSender(session, message) {
+  if (message.fromId) return message.fromId;
 
-  const at = Date.parse(p.at || p.ts) || Date.now();
-  const pid = p.pid || (!p.verified && pidOfSock(p.from));
+  const at = Date.parse(message.at || message.ts) || Date.now();
+  const pid = message.pid || (!message.verified && pidOfSock(message.from));
 
-  let id = p.msgId && peerSent.get(p.msgId)?.id;
+  let id = message.msgId && peerSent.get(message.msgId)?.id;
 
   if (!id && pid) {
-    for (const x of sessions.values()) {
-      if (x.alive && [x.live, ...x.rivals].some(l => l?.pid === pid && !(Number(l.startedAt) > at))) {
-        id = x.id;
+    for (const chat of sessions.values()) {
+      if (chat.alive && [chat.live, ...chat.rivals].some(live => live?.pid === pid && !(Number(live.startedAt) > at))) {
+        id = chat.id;
         break;
       }
     }
   }
 
-  if (!id && p.name) id = peerNames.get(p.name);
-  if (!id || id === s.id || !sessions.has(id)) return null;
-  return (p.fromId = id);
+  if (!id && message.name) id = peerNames.get(message.name);
+  if (!id || id === session.id || !sessions.has(id)) return null;
+  return (message.fromId = id);
 }
 
 /** Which chat a SendMessage reached: the one its msg_id arrived in, else the live chat of that name. */
-function peerTarget(s, e) {
-  const id = (e.msgId && peerRecv.get(e.msgId)) || peerNames.get(String(e.to || '').replace(/^@/, ''));
+function peerTarget(session, entry) {
+  const id = (entry.msgId && peerRecv.get(entry.msgId)) || peerNames.get(String(entry.to || '').replace(/^@/, ''));
 
-  return id && id !== s.id && sessions.has(id) ? id : null;
+  return id && id !== session.id && sessions.has(id) ? id : null;
 }
 
 /** The entries a page is handed name the chats at either end, as far as the board can tell by then. */
-export function resolvePeers(s, list) {
-  for (const e of list) {
-    if (e.kind === 'peer') {
-      if (!e.fromId) peerSender(s, e);
-    } else if (e.kind === 'tool_use' && e.name === 'SendMessage' && !e.toId && !e.team && e.to) {
-      const id = peerTarget(s, e);
+export function resolvePeers(session, list) {
+  for (const entry of list) {
+    if (entry.kind === 'peer') {
+      if (!entry.fromId) peerSender(session, entry);
+    } else if (entry.kind === 'tool_use' && entry.name === 'SendMessage' && !entry.toId && !entry.team && entry.to) {
+      const id = peerTarget(session, entry);
 
-      if (id) e.toId = id;
+      if (id) entry.toId = id;
     }
   }
 }
 
 /** The card's mark: the newest message in — one still waiting, while the chat runs — and who sent it. */
-export function peerInOf(s) {
-  const q = s.alive && s.peerQueue?.at(-1);
-  const d = s.peerIn;
+export function peerInOf(session) {
+  const queued = session.alive && session.peerQueue?.at(-1);
+  const delivered = session.peerIn;
 
-  const p = q && (!d || String(q.at) >= String(d.at)) ? q : d;
+  const latest = queued && (!delivered || String(queued.at) >= String(delivered.at)) ? queued : delivered;
 
-  if (!p) return null;
-  return { name: p.name, id: peerSender(s, p), at: p.at, mode: p.mode, queued: p === q };
+  if (!latest) return null;
+  return {
+    name: latest.name,
+    id: peerSender(session, latest),
+    at: latest.at,
+    mode: latest.mode,
+    queued: latest === queued,
+  };
 }
 
-export const peerQueueOf = s =>
-  s.alive && s.peerQueue?.length
-    ? s.peerQueue
-        .slice(-5)
-        .map(q => ({ name: q.name, id: peerSender(s, q), at: q.at, mode: q.mode, text: plainSnippet(q.body, 300) }))
+export const peerQueueOf = session =>
+  session.alive && session.peerQueue?.length
+    ? session.peerQueue.slice(-5).map(queued => ({
+        name: queued.name,
+        id: peerSender(session, queued),
+        at: queued.at,
+        mode: queued.mode,
+        text: plainSnippet(queued.body, 300),
+      }))
     : null;

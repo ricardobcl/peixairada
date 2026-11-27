@@ -50,18 +50,18 @@ const audioUp = () => {
 
 for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, audioUp, { capture: true, passive: true });
 
-function tone(f, t0, dur, type, vol) {
-  const o = audio.createOscillator();
-  const g = audio.createGain();
+function tone(frequency, t0, dur, type, vol) {
+  const oscillator = audio.createOscillator();
+  const envelope = audio.createGain();
 
-  o.type = type;
-  o.frequency.value = f;
-  g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.006);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  o.connect(g).connect(audio.destination);
-  o.start(t0);
-  o.stop(t0 + dur + 0.02);
+  oscillator.type = type;
+  oscillator.frequency.value = frequency;
+  envelope.gain.setValueAtTime(0.0001, t0);
+  envelope.gain.exponentialRampToValueAtTime(vol, t0 + 0.006);
+  envelope.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  oscillator.connect(envelope).connect(audio.destination);
+  oscillator.start(t0);
+  oscillator.stop(t0 + dur + 0.02);
 }
 
 const CHIME_GAP_MS = 1200;
@@ -78,14 +78,14 @@ function chime(kind) {
 
   const play = () => {
     noteMotion(null, `sound:${kind}`);
-    const t = audio.currentTime + 0.02;
+    const startAt = audio.currentTime + 0.02;
 
     if (kind === 'needs-input' || kind === 'drift' || kind === 'agent-failed') {
-      tone(784, t, 0.15, 'triangle', 0.09);
-      tone(1174.7, t + 0.14, 0.22, 'triangle', 0.09);
+      tone(784, startAt, 0.15, 'triangle', 0.09);
+      tone(1174.7, startAt + 0.14, 0.22, 'triangle', 0.09);
     } else {
-      tone(1318.5, t, 0.18, 'sine', 0.08);
-      tone(659.3, t, 0.26, 'sine', 0.05);
+      tone(1318.5, startAt, 0.18, 'sine', 0.08);
+      tone(659.3, startAt, 0.26, 'sine', 0.05);
     }
 
     audioRest();
@@ -97,54 +97,59 @@ function chime(kind) {
 
 $('#soundsOn').checked = !!prefs.sounds;
 
-$('#soundsOn').addEventListener('change', e => {
-  prefs.sounds = e.target.checked;
+$('#soundsOn').addEventListener('change', event => {
+  prefs.sounds = event.target.checked;
   savePrefs();
   if (audioUp()) setTimeout(() => chime('reply'), 30);
 });
 
-function onAlert(a) {
-  if (a.kind === 'chat') return chatAlert(a); // the chat's (2026-10-17): its own rules
-  if (a.kind === 'lunch') return lunchAlert(a); // lunch's (2026-10-18)
+function onAlert(alert) {
+  if (alert.kind === 'chat') return chatAlert(alert); // the chat's (2026-10-17): its own rules
+  if (alert.kind === 'lunch') return lunchAlert(alert); // lunch's (2026-10-18)
 
   const viewing =
-    a.sessionId && a.sessionId === state.current && document.visibilityState === 'visible' && document.hasFocus();
+    alert.sessionId &&
+    alert.sessionId === state.current &&
+    document.visibilityState === 'visible' &&
+    document.hasFocus();
 
-  const as = a.sessionId ? state.sessions.get(a.sessionId) : null;
+  const as = alert.sessionId ? state.sessions.get(alert.sessionId) : null;
 
-  if (fishing.until && (a.kind === 'reply' || a.kind === 'pr' || a.kind === 'back')) {
-    a = { ...a, quiet: true, held: true };
+  if (fishing.until && (alert.kind === 'reply' || alert.kind === 'pr' || alert.kind === 'back')) {
+    alert = { ...alert, quiet: true, held: true };
   } // gone fishing (M4): it counts, and says nothing yet
-  else if (prioFocus() && as && !inPrio(as) && a.kind !== 'needs-input') a = { ...a, quiet: true, held: true }; // in focus, the rest says nothing yet but its questions (2026-11-24, round XXX's F3)
+  else if (prioFocus() && as && !inPrio(as) && alert.kind !== 'needs-input') {
+    alert = { ...alert, quiet: true, held: true };
+  } // in focus, the rest says nothing yet but its questions (2026-11-24, round XXX's F3)
 
   if (
     !viewing &&
-    !a.held &&
-    !a.muted &&
-    !a.snoozed &&
+    !alert.held &&
+    !alert.muted &&
+    !alert.snoozed &&
     !(as && asleep(as)) &&
     document.visibilityState === 'visible' &&
     document.hasFocus()
   ) {
-    chime(a.kind);
+    chime(alert.kind);
   } // in front: heard rather than shown; not the chat you are looking at (2026-11-01, round XIX's S6)
 
-  if (a.sessionId && !viewing && !(as && asleep(as))) {
-    state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
+  if (alert.sessionId && !viewing && !(as && asleep(as))) {
+    state.unread.set(alert.sessionId, (state.unread.get(alert.sessionId) || 0) + 1);
   } // a snoozed chat counted nowhere (W4)
 
-  if (viewing && a.kind === 'reply') markSeen(a.sessionId);
+  if (viewing && alert.kind === 'reply') markSeen(alert.sessionId);
   renderBoard();
 
   // the badge that just came, or grew, pops in — a one-shot on the node the render made
   const badge =
-    a.sessionId &&
+    alert.sessionId &&
     !viewing &&
     !REDUCED.matches &&
-    document.querySelector(`#slist > .card[data-id="${a.sessionId}"] .badge`);
+    document.querySelector(`#slist > .card[data-id="${alert.sessionId}"] .badge`);
 
   if (badge) {
-    noteMotion(a.sessionId, 'pop');
+    noteMotion(alert.sessionId, 'pop');
 
     badge.animate(
       [
@@ -158,33 +163,37 @@ function onAlert(a) {
   if (inApp) {
     post({
       type: 'alert',
-      kind: a.kind,
-      heading: a.heading || '',
-      project: a.project || '',
-      title: a.title || '',
-      snippet: a.snippet || '',
-      sessionId: a.sessionId || '',
-      hash: a.kind === 'pr' && a.url && a.sessionId ? tvSoloHash(a.sessionId, a.url) : '',
+      kind: alert.kind,
+      heading: alert.heading || '',
+      project: alert.project || '',
+      title: alert.title || '',
+      snippet: alert.snippet || '',
+      sessionId: alert.sessionId || '',
+      hash: alert.kind === 'pr' && alert.url && alert.sessionId ? tvSoloHash(alert.sessionId, alert.url) : '',
       serverNotify: !!state.serverNotify,
-      quiet: !!a.quiet,
-      at: a.ts || '', // a reply from its banner is for this turn alone (peixReply)
-      drawer: !!(a.sessionId && state.sessions.get(a.sessionId) && drawerOf(state.sessions.get(a.sessionId))),
+      quiet: !!alert.quiet,
+      at: alert.ts || '', // a reply from its banner is for this turn alone (peixReply)
+      drawer: !!(
+        alert.sessionId &&
+        state.sessions.get(alert.sessionId) &&
+        drawerOf(state.sessions.get(alert.sessionId))
+      ),
     });
   } // drawer: the banner can take a reply (2026-10-12)   // the app posts the banner and counts the Dock's badge
 
-  if (a.quiet) return; // notifications off (the cog): the unread count above, nothing else
+  if (alert.quiet) return; // notifications off (the cog): the unread count above, nothing else
 
   if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
-    const n = new Notification(
-      a.heading || `${a.kind === 'reply' ? 'Claude replied' : 'Claude is asking you'} · ${a.project}`,
-      { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' },
+    const notification = new Notification(
+      alert.heading || `${alert.kind === 'reply' ? 'Claude replied' : 'Claude is asking you'} · ${alert.project}`,
+      { body: `${alert.title}\n${alert.snippet || ''}`, tag: alert.sessionId || 'test' },
     );
 
-    n.onclick = () => {
+    notification.onclick = () => {
       window.focus();
-      if (a.kind === 'pr' && a.url && a.sessionId) location.hash = tvSoloHash(a.sessionId, a.url);
-      else if (a.sessionId) openSession(a.sessionId, { locate: true });
-      n.close();
+      if (alert.kind === 'pr' && alert.url && alert.sessionId) location.hash = tvSoloHash(alert.sessionId, alert.url);
+      else if (alert.sessionId) openSession(alert.sessionId, { locate: true });
+      notification.close();
     }; // a PR's: its timeline, at the move
   }
 }

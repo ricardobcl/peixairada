@@ -141,13 +141,16 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#settings').showModal(); window.peix.prefs().settingsPane = 'general'`);
   await ctx.settle();
 
-  const g = await ctx
+  const box = await ctx
     .evaluate(
       `JSON.stringify((r => ({ x: r.left, y: r.top, w: r.width, h: r.height }))(document.querySelector('#linksRow').getBoundingClientRect()))`,
     )
     .then(JSON.parse);
 
-  if (g.w) await ctx.shot('links-row', { x: g.x - 10, y: g.y - 10, width: g.w + 20, height: g.h + 20, scale: 2 });
+  if (box.w) {
+    await ctx.shot('links-row', { x: box.x - 10, y: box.y - 10, width: box.w + 20, height: box.h + 20, scale: 2 });
+  }
+
   await ctx.evaluate(`document.querySelector('#settings').close()`);
 
   // back in the board: nothing goes out

@@ -18,10 +18,10 @@ export const slugOf = cwd => cwd.replace(/[/.]/g, '-');
 
 /** This time yesterday, by the calendar (2026-10-14): a day of 86 400 000 ms is an hour off across a DST change. */
 export const yesterday = () => {
-  const d = new Date();
+  const date = new Date();
 
-  d.setDate(d.getDate() - 1);
-  return d;
+  date.setDate(date.getDate() - 1);
+  return date;
 };
 
 /** The JSONL lines of one chat: prompt, reply (end_turn), optionally an ai-title. `at` is the reply's time. */
@@ -38,8 +38,8 @@ export function chatLines({
 }) {
   const ts = ms => new Date(at.getTime() + ms).toISOString();
 
-  const u = randomUUID();
-  const a = randomUUID();
+  const userUuid = randomUUID();
+  const assistantUuid = randomUUID();
 
   const base = {
     isSidechain: false,
@@ -57,22 +57,22 @@ export function chatLines({
       parentUuid: null,
       type: 'user',
       message: { role: 'user', content: [{ type: 'text', text: prompt }] },
-      uuid: u,
+      uuid: userUuid,
       timestamp: ts(-60_000),
     },
     {
       ...base,
-      parentUuid: u,
+      parentUuid: userUuid,
       type: 'assistant',
       message: {
         model,
-        id: `msg_${a.slice(0, 8)}`,
+        id: `msg_${assistantUuid.slice(0, 8)}`,
         type: 'message',
         role: 'assistant',
         content: [{ type: 'text', text: reply }],
         stop_reason: 'end_turn',
       },
-      uuid: a,
+      uuid: assistantUuid,
       timestamp: ts(0),
     },
   ];
@@ -192,14 +192,14 @@ export function taskNoteLine({ id, cwd, taskId, summary = '', event = '', status
 
 /** The `pr-link` line Claude Code writes once the chat has opened or pushed to a PR — what makes it the chat's own. */
 export function prLinkLine({ id, url, at = new Date() }) {
-  const m = /github\.com\/([^/]+\/[^/]+)\/pull\/(\d+)/.exec(url);
+  const match = /github\.com\/([^/]+\/[^/]+)\/pull\/(\d+)/.exec(url);
 
   return {
     type: 'pr-link',
     sessionId: id,
-    prNumber: Number(m?.[2]),
+    prNumber: Number(match?.[2]),
     prUrl: url,
-    prRepository: m?.[1],
+    prRepository: match?.[1],
     timestamp: at.toISOString(),
   };
 }
@@ -243,7 +243,7 @@ export function peerLines({
   const ts = ms => new Date(at.getTime() + ms).toISOString();
   const sock = `uds:/tmp/cc-socks/${pid}.sock`;
 
-  const xml = t => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const xml = text => text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   const envelope = `<cross-session-message from="${sock}" from-name="${xml(fromName)}" from-mode="${mode}">\n${body}\n</cross-session-message>`;
 
   const origin = {
@@ -391,47 +391,50 @@ export function agentFiles({ dir, lead, agents = [], at = new Date() }) {
 
   const files = {};
 
-  for (const a of agents) {
-    const from = at.getTime() - (a.ago || 0);
-    const step = i => new Date(from + 1000 * (i + 1)).toISOString();
-    const agentId = a.id;
+  for (const agent of agents) {
+    const from = at.getTime() - (agent.ago || 0);
+    const step = index => new Date(from + 1000 * (index + 1)).toISOString();
+    const agentId = agent.id;
     const ls = [];
 
-    const line = o => ls.push({ ...base, agentId, uuid: randomUUID(), parentUuid: null, ...o });
+    const line = fields => ls.push({ ...base, agentId, uuid: randomUUID(), parentUuid: null, ...fields });
 
     line({
       type: 'user',
       timestamp: new Date(from).toISOString(),
-      message: { role: 'user', content: a.prompt || a.asked || 'go' },
+      message: { role: 'user', content: agent.prompt || agent.asked || 'go' },
     });
 
-    (a.steps || []).forEach((d, i) => {
+    (agent.steps || []).forEach((description, index) => {
       const id = `toolu_${randomUUID().replace(/-/g, '').slice(0, 20)}`;
 
       line({
         type: 'assistant',
-        timestamp: step(i),
-        message: msg([{ type: 'tool_use', id, name: 'Bash', input: { command: 'true', description: d } }], 'tool_use'),
+        timestamp: step(index),
+        message: msg([{ type: 'tool_use', id, name: 'Bash', input: { command: 'true', description } }], 'tool_use'),
       });
 
-      if (i < a.steps.length - 1 || a.report || a.said) {
+      if (index < agent.steps.length - 1 || agent.report || agent.said) {
         line({
           type: 'user',
-          timestamp: step(i),
+          timestamp: step(index),
           message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'ok' }] },
         });
       }
     });
 
-    const tail = (a.steps || []).length;
+    const tail = (agent.steps || []).length;
 
-    if (a.report) {
+    if (agent.report) {
       const id = `toolu_${randomUUID().replace(/-/g, '').slice(0, 20)}`;
 
       line({
         type: 'assistant',
         timestamp: step(tail),
-        message: msg([{ type: 'tool_use', id, name: 'SubagentHandback', input: { message: a.report } }], 'tool_use'),
+        message: msg(
+          [{ type: 'tool_use', id, name: 'SubagentHandback', input: { message: agent.report } }],
+          'tool_use',
+        ),
       });
 
       line({
@@ -439,40 +442,44 @@ export function agentFiles({ dir, lead, agents = [], at = new Date() }) {
         timestamp: step(tail),
         message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'Handed back.' }] },
       });
-    } else if (a.said) {
-      line({ type: 'assistant', timestamp: step(tail), message: msg([{ type: 'text', text: a.said }], 'end_turn') });
+    } else if (agent.said) {
+      line({
+        type: 'assistant',
+        timestamp: step(tail),
+        message: msg([{ type: 'text', text: agent.said }], 'end_turn'),
+      });
     }
 
-    const f = join(sub, `agent-${agentId}.jsonl`);
+    const file = join(sub, `agent-${agentId}.jsonl`);
 
-    writeFileSync(f, `${ls.map(l => JSON.stringify(l)).join('\n')}\n`);
+    writeFileSync(file, `${ls.map(entry => JSON.stringify(entry)).join('\n')}\n`);
 
     writeFileSync(
       join(sub, `agent-${agentId}.meta.json`),
       JSON.stringify({
-        agentType: a.kind || 'general-purpose',
+        agentType: agent.kind || 'general-purpose',
         isBuiltIn: true,
-        description: a.asked,
+        description: agent.asked,
         spawnDepth: 1,
         requestShape: 'background',
         requestNonInteractive: false,
-        ...(a.tool ? { toolUseId: a.tool } : {}),
-        ...(a.name ? { name: a.name } : {}),
-        ...(a.finished ? { finished: true } : {}),
-        ...(a.stopped ? { stoppedByUser: true } : {}),
-        ...(a.branch ? { worktreeBranch: a.branch } : {}),
-        ...(a.tree ? { worktreePath: a.tree, spawnedWithWorktree: true } : {}),
+        ...(agent.tool ? { toolUseId: agent.tool } : {}),
+        ...(agent.name ? { name: agent.name } : {}),
+        ...(agent.finished ? { finished: true } : {}),
+        ...(agent.stopped ? { stoppedByUser: true } : {}),
+        ...(agent.branch ? { worktreeBranch: agent.branch } : {}),
+        ...(agent.tree ? { worktreePath: agent.tree, spawnedWithWorktree: true } : {}),
       }),
     );
 
-    if (a.quiet != null) {
-      const t = new Date(at.getTime() - a.quiet);
+    if (agent.quiet != null) {
+      const time = new Date(at.getTime() - agent.quiet);
 
-      utimesSync(f, t, t);
-      utimesSync(join(sub, `agent-${agentId}.meta.json`), t, t);
+      utimesSync(file, time, time);
+      utimesSync(join(sub, `agent-${agentId}.meta.json`), time, time);
     }
 
-    files[agentId] = f;
+    files[agentId] = file;
   }
 
   return { sub, files };
@@ -542,13 +549,13 @@ export function teamFiles({
 
     writeFileSync(
       join(sub, `agent-${agentId}.jsonl`),
-      `${ls.map(l => JSON.stringify({ ...base, agentId, uuid: randomUUID(), parentUuid: null, ...l })).join('\n')}\n`,
+      `${ls.map(entry => JSON.stringify({ ...base, agentId, uuid: randomUUID(), parentUuid: null, ...entry })).join('\n')}\n`,
     );
   };
 
-  const said = (text, i) => ({
+  const said = (text, ms) => ({
     type: 'assistant',
-    timestamp: ts(i),
+    timestamp: ts(ms),
     message: {
       model: 'fixture-1',
       id: `msg_${randomUUID().slice(0, 8)}`,
@@ -559,16 +566,16 @@ export function teamFiles({
     },
   });
 
-  for (const m of mates) {
+  for (const mate of mates) {
     agent(
-      m.name,
+      mate.name,
       {
-        agentType: m.name,
-        ...(m.spawnedType && { spawnedAgentType: m.spawnedType, customAgentType: m.spawnedType }),
-        color: m.color || 'blue',
-        description: m.summary,
+        agentType: mate.name,
+        ...(mate.spawnedType && { spawnedAgentType: mate.spawnedType, customAgentType: mate.spawnedType }),
+        color: mate.color || 'blue',
+        description: mate.summary,
         model: 'fixture-1',
-        name: m.name,
+        name: mate.name,
         permissionMode: 'auto',
         planModeRequired: false,
         requestNonInteractive: false,
@@ -584,10 +591,10 @@ export function teamFiles({
           promptId: randomUUID(),
           message: {
             role: 'user',
-            content: `<teammate-message teammate_id="team-lead" summary="${m.summary}">\n${m.ask || m.summary}\n</teammate-message>`,
+            content: `<teammate-message teammate_id="team-lead" summary="${mate.summary}">\n${mate.ask || mate.summary}\n</teammate-message>`,
           },
         },
-        m.work
+        mate.work
           ? {
               type: 'assistant',
               timestamp: ts(1000),
@@ -601,13 +608,13 @@ export function teamFiles({
                     type: 'tool_use',
                     id: `toolu_${randomUUID().replace(/-/g, '').slice(0, 20)}`,
                     name: 'Bash',
-                    input: { command: 'npm test', description: m.work },
+                    input: { command: 'npm test', description: mate.work },
                   },
                 ],
                 stop_reason: 'tool_use',
               },
             }
-          : said(m.said || 'Done.', 1000),
+          : said(mate.said || 'Done.', 1000),
       ],
     );
   }
@@ -695,7 +702,7 @@ export function teamFiles({
       leadProcess: { pid: lead.pid || 0, pidSpace: 'fixture-host', claimedAt: at.getTime() },
       members: [
         member('team-lead', { agentType: 'team-lead', tmuxPaneId: 'leader' }),
-        ...(roster ? mates.map(m => member(m.name, { color: m.color || 'blue' })) : []),
+        ...(roster ? mates.map(mate => member(mate.name, { color: mate.color || 'blue' })) : []),
         ...also.map(name => member(name, { color: 'cyan' })),
       ],
     }),
@@ -725,44 +732,50 @@ export function makeFixture(dir, chats) {
   mkdirSync(sessDir, { recursive: true });
   const made = [];
 
-  for (const c of chats) {
-    const id = c.id || randomUUID();
-    const projDir = join(dir, 'projects', slugOf(c.cwd));
+  for (const chat of chats) {
+    const id = chat.id || randomUUID();
+    const projDir = join(dir, 'projects', slugOf(chat.cwd));
 
     mkdirSync(projDir, { recursive: true });
     const file = join(projDir, `${id}.jsonl`);
-    const lines = [...chatLines({ ...c, id }), ...(typeof c.lines === 'function' ? c.lines(id) : c.lines || [])];
 
-    writeFileSync(file, `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
+    const lines = [
+      ...chatLines({ ...chat, id }),
+      ...(typeof chat.lines === 'function' ? chat.lines(id) : chat.lines || []),
+    ];
+
+    writeFileSync(file, `${lines.map(line => JSON.stringify(line)).join('\n')}\n`);
+
     // The registry, for a chat that has to look alive: one file per pid, as Claude Code writes it.
-    const procStart = c.live && (c.live.procStart !== undefined ? c.live.procStart : procStartOf(c.live.pid));
+    const procStart =
+      chat.live && (chat.live.procStart !== undefined ? chat.live.procStart : procStartOf(chat.live.pid));
 
-    if (c.live) {
+    if (chat.live) {
       writeFileSync(
-        join(sessDir, `${c.live.pid}.json`),
+        join(sessDir, `${chat.live.pid}.json`),
         JSON.stringify({
-          pid: c.live.pid,
+          pid: chat.live.pid,
           ...(procStart && { procStart }),
           sessionId: id,
-          cwd: c.cwd,
-          startedAt: c.live.startedAt ?? Date.now() - 3600_000,
+          cwd: chat.cwd,
+          startedAt: chat.live.startedAt ?? Date.now() - 3600_000,
           version: 'fixture',
           kind: 'interactive',
-          entrypoint: c.live.entrypoint || 'cli',
+          entrypoint: chat.live.entrypoint || 'cli',
           pidDomain: process.platform,
-          ...(c.live.status && { status: c.live.status, statusUpdatedAt: c.live.statusAt ?? Date.now() }),
-          ...(c.live.waitingFor && { waitingFor: c.live.waitingFor }),
-          ...(c.live.name && {
-            name: c.live.name,
+          ...(chat.live.status && { status: chat.live.status, statusUpdatedAt: chat.live.statusAt ?? Date.now() }),
+          ...(chat.live.waitingFor && { waitingFor: chat.live.waitingFor }),
+          ...(chat.live.name && {
+            name: chat.live.name,
             nameSource: 'derived',
-            messagingSocketPath: `/tmp/cc-socks/${c.live.pid}.sock`,
+            messagingSocketPath: `/tmp/cc-socks/${chat.live.pid}.sock`,
           }), // the name another chat's SendMessage reaches it by (2026-10-31)
-          ...(c.live.agent && { agent: c.live.agent }), // `claude --agent <name>` (2026-11-18)
+          ...(chat.live.agent && { agent: chat.live.agent }), // `claude --agent <name>` (2026-11-18)
         }),
       );
     }
 
-    made.push({ id, cwd: c.cwd, file, title: c.title || null, pid: c.live?.pid || null });
+    made.push({ id, cwd: chat.cwd, file, title: chat.title || null, pid: chat.live?.pid || null });
   }
 
   return { dir, chats: made };

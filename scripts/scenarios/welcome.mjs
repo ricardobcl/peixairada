@@ -30,8 +30,8 @@ export const meta = { server: true, fixture: join(HOME, '.claude'), env: { HOME,
 
 export default async function (ctx) {
   const out = {};
-  const cfg = () => ctx.server.api('api/config').then(r => r.body);
-  const file = () => cfg().then(c => c.file);
+  const cfg = () => ctx.server.api('api/config').then(response => response.body);
+  const file = () => cfg().then(config => config.file);
   const shown = () => ctx.evaluate(`document.querySelector('#welcome').open`);
 
   const dialog = () =>
@@ -80,7 +80,7 @@ export default async function (ctx) {
 
   out.missing = await dialog();
   ctx.assert.equal(out.missing.ok, 'Make it and use it');
-  ctx.assert.ok(!out.missing.rows.some(r => r.on), 'no guess lit for a folder typed by hand');
+  ctx.assert.ok(!out.missing.rows.some(row => row.on), 'no guess lit for a folder typed by hand');
   await ctx.evaluate(`document.querySelector('#wok').click()`);
   await ctx.waitFor(`!document.querySelector('#welcome').open`, { what: 'the dialog gone once answered' });
   out.made = await cfg();

@@ -18,25 +18,29 @@ const lunchUi = {
   hooked: false,
 };
 
-const lunchMain = p => p.dishes.find(d => !/^(sopa|creme|caldo|entrada|p[aã]o\b)/i.test(d)) || p.dishes[0];
-const lunchTime = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const lunchMain = place =>
+  place.dishes.find(dish => !/^(sopa|creme|caldo|entrada|p[aã]o\b)/i.test(dish)) || place.dishes[0];
+
+const lunchTime = time =>
+  new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+
 const LUNCH_HUES = ['--accent', '--watch', '--working', '--idle', '--you', '--pr-merged', '--tk-doing', '--spend'];
-const lunchColor = (p, i) => p.color || `var(${LUNCH_HUES[i % LUNCH_HUES.length]})`;
+const lunchColor = (place, index) => place.color || `var(${LUNCH_HUES[index % LUNCH_HUES.length]})`;
 
 /** Out to lunch: Going said and no back yet, today — or the screen locked at lunch time. Not while it swims back. */
 const lunchOut = () => {
-  const l = state.lunch;
+  const lunch = state.lunch;
 
-  return !!l?.on && !lunchUi.returning && ((!!l.went && !l.back) || (lunchUi.away && lunchUi.awayIn));
+  return !!lunch?.on && !lunchUi.returning && ((!!lunch.went && !lunch.back) || (lunchUi.away && lunchUi.awayIn));
 };
 
 function lunchSignWord() {
-  const l = state.lunch;
+  const lunch = state.lunch;
 
-  if (!l?.on) return null;
+  if (!lunch?.on) return null;
   if (lunchUi.fed) return lunchUi.fed;
   if (lunchOut()) return lunchUi.away ? 'BACK SOON' : 'ENJOY';
-  return l.phase === 'lunch' ? 'LUNCH' : null;
+  return lunch.phase === 'lunch' ? 'LUNCH' : null;
 }
 
 /** The lane as the day has it: the fish in or out, the sign's word, the dishes — each changed only when it changes. */
@@ -51,9 +55,9 @@ function lunchBar() {
 
     lane.addEventListener(
       'click',
-      e => {
-        if (e.target.closest('.lsign, .ltick')) {
-          e.stopPropagation();
+      event => {
+        if (event.target.closest('.lsign, .ltick')) {
+          event.stopPropagation();
           lunchOpen();
         }
       },
@@ -61,7 +65,7 @@ function lunchBar() {
     );
   }
 
-  const l = state.lunch;
+  const lunch = state.lunch;
   const out = lunchOut();
 
   if (out && !swim.out) swimOff(!document.hidden && !lunchUi.away);
@@ -73,8 +77,12 @@ function lunchBar() {
     lunchUi.sign = word;
   }
 
-  const have = l?.on && l.phase === 'lunch' && !out ? (l.places || []).filter(p => p.dishes.length) : [];
-  const key = have.map(p => `${p.name}|${lunchMain(p)}|${p.price || ''}|${p.color || ''}`).join('¦');
+  const have =
+    lunch?.on && lunch.phase === 'lunch' && !out ? (lunch.places || []).filter(place => place.dishes.length) : [];
+
+  const key = have
+    .map(place => `${place.name}|${lunchMain(place)}|${place.price || ''}|${place.color || ''}`)
+    .join('¦');
 
   if (key !== lunchUi.tick) {
     lunchUi.tick = key;
@@ -128,17 +136,17 @@ function lunchSign(lane, word) {
     return;
   }
 
-  const b = el.querySelector('b');
+  const label = el.querySelector('b');
 
   if (REDUCED.matches) {
-    b.textContent = word;
+    label.textContent = word;
     return;
   }
 
-  b.animate([{ transform: 'none' }, { transform: 'scaleX(0)' }], { duration: 140, easing: 'ease-in' }).onfinish =
+  label.animate([{ transform: 'none' }, { transform: 'scaleX(0)' }], { duration: 140, easing: 'ease-in' }).onfinish =
     () => {
-      b.textContent = word;
-      b.animate([{ transform: 'scaleX(0)' }, { transform: 'none' }], { duration: 220, easing: EASE_OUT });
+      label.textContent = word;
+      label.animate([{ transform: 'scaleX(0)' }, { transform: 'none' }], { duration: 220, easing: EASE_OUT });
     };
 }
 
@@ -148,8 +156,8 @@ function lunchTicker(lane, have) {
 
   const items = have
     .map(
-      (p, i) =>
-        `<span><i style="--c:${lunchColor(p, (state.lunch.places || []).indexOf(p) >= 0 ? state.lunch.places.indexOf(p) : i)}"></i><b>${esc(p.name)}</b>${esc(lunchMain(p))}${p.price ? ` · ${esc(p.price)}` : ''}</span>`,
+      (place, index) =>
+        `<span><i style="--c:${lunchColor(place, (state.lunch.places || []).indexOf(place) >= 0 ? state.lunch.places.indexOf(place) : index)}"></i><b>${esc(place.name)}</b>${esc(lunchMain(place))}${place.price ? ` · ${esc(place.price)}` : ''}</span>`,
     )
     .join('');
 
@@ -169,8 +177,8 @@ function lunchFed(from) {
   lunchUi.returning = true;
 
   api('POST', '/api/lunch', { act: 'back' }).then(
-    d => {
-      state.lunch = d;
+    lunch => {
+      state.lunch = lunch;
     },
     () => {},
   );
@@ -188,13 +196,13 @@ function lunchFed(from) {
 /** The screen locked, or back: at lunch time, a lock is lunch — the fish goes; back after LUNCH_AWAY_MS, it comes back fed. */
 function lunchAway(away) {
   if (away === lunchUi.away) return;
-  const l = state.lunch;
+  const lunch = state.lunch;
 
   if (away) {
     Object.assign(lunchUi, {
       away: true,
       awayAt: Date.now(),
-      awayIn: !!l?.on && ['lunch', 'snoozed', 'went'].includes(l.phase),
+      awayIn: !!lunch?.on && ['lunch', 'snoozed', 'went'].includes(lunch.phase),
     });
 
     lunchBar();
@@ -206,10 +214,11 @@ function lunchAway(away) {
 
   Object.assign(lunchUi, { away: false, awayAt: 0, awayIn: false });
   if (
-    l?.on &&
-    ((l.went && !l.back && Date.now() - l.went >= LUNCH_AWAY_MS) || (at && Date.now() - since >= LUNCH_AWAY_MS))
+    lunch?.on &&
+    ((lunch.went && !lunch.back && Date.now() - lunch.went >= LUNCH_AWAY_MS) ||
+      (at && Date.now() - since >= LUNCH_AWAY_MS))
   ) {
-    lunchFed(Math.min(l.went || Infinity, since || Infinity));
+    lunchFed(Math.min(lunch.went || Infinity, since || Infinity));
   } else lunchBar();
 }
 
@@ -228,10 +237,17 @@ document.addEventListener('visibilitychange', () => {
 
 // Going, and you never locked it: the first move of yours LUNCH_AWAY_MS on is you back
 const lunchStir = () => {
-  const l = state.lunch;
+  const lunch = state.lunch;
 
-  if (l?.on && l.went && !l.back && !lunchUi.away && !lunchUi.returning && Date.now() - l.went >= LUNCH_AWAY_MS) {
-    lunchFed(l.went);
+  if (
+    lunch?.on &&
+    lunch.went &&
+    !lunch.back &&
+    !lunchUi.away &&
+    !lunchUi.returning &&
+    Date.now() - lunch.went >= LUNCH_AWAY_MS
+  ) {
+    lunchFed(lunch.went);
   }
 };
 
@@ -263,88 +279,94 @@ function lunchToggle() {
 } // a declaration: HOTKEYS names it before this line runs
 
 $('#lunchd').addEventListener('close', () => repostPane());
-const fmtDay = k => new Date(`${k}T12:00`).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+
+const fmtDay = dayKey =>
+  new Date(`${dayKey}T12:00`).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
 
 /** How a place's menu reached the board, or why there is none — a line under it. */
-function lunchWhy(p, l) {
-  if (p.dishes.length) {
-    const when = p.at
-      ? dayKeyOf(p.at) === l.day
-        ? lunchTime(p.at)
-        : new Date(p.at).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })
+function lunchWhy(place, lunch) {
+  if (place.dishes.length) {
+    const when = place.at
+      ? dayKeyOf(place.at) === lunch.day
+        ? lunchTime(place.at)
+        : new Date(place.at).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })
       : '';
 
-    return `${p.month ? "this month's dishes · " : ''}from ${p.src === 'story' ? 'its story' : p.src === 'slack' ? l.slack || 'Slack' : 'its post'}${when ? ` · ${when}` : ''}`;
+    return `${place.month ? "this month's dishes · " : ''}from ${place.src === 'story' ? 'its story' : place.src === 'slack' ? lunch.slack || 'Slack' : 'its post'}${when ? ` · ${when}` : ''}`;
   }
 
-  if (p.state === 'closed') return `closed${p.closed?.to ? ` until ${fmtDay(p.closed.to)}` : ' today'}`;
-  if (p.state === 'story') return `its story went up at ${lunchTime(p.storyAt)} — not read here: its name opens it`;
-  if (p.state === 'none') return 'nothing online — ask at the table';
-  return p.error ? `not read — ${p.error}` : 'not up yet';
+  if (place.state === 'closed') return `closed${place.closed?.to ? ` until ${fmtDay(place.closed.to)}` : ' today'}`;
+
+  if (place.state === 'story') {
+    return `its story went up at ${lunchTime(place.storyAt)} — not read here: its name opens it`;
+  }
+
+  if (place.state === 'none') return 'nothing online — ask at the table';
+  return place.error ? `not read — ${place.error}` : 'not up yet';
 }
 
-const dayKeyOf = t => {
-  const d = new Date(t);
+const dayKeyOf = time => {
+  const date = new Date(time);
 
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
-function chalkHtml(l, home = false) {
-  if (!l?.set) {
+function chalkHtml(lunch, home = false) {
+  if (!lunch?.set) {
     return `<div class="chd"><h3 id="lunchTitle">Lunch</h3><p class="chsub">Not set up yet</p></div><div class="chnone">The places you go and when you go, in Settings › Lunch: their menus are read here each morning.<br><button type="button" class="btn" data-lunch="settings">Set it up</button></div>`;
   }
 
-  const sub = !l.on
+  const sub = !lunch.on
     ? 'switched off'
-    : l.phase === 'off'
+    : lunch.phase === 'off'
       ? 'no lunch reminder today'
-      : l.phase === 'before'
-        ? `lunch at ${l.at}`
-        : l.phase === 'lunch'
-          ? `lunch time · ${l.at}`
-          : l.phase === 'snoozed'
-            ? `again at ${lunchTime(l.snooze)}`
-            : l.phase === 'went'
+      : lunch.phase === 'before'
+        ? `lunch at ${lunch.at}`
+        : lunch.phase === 'lunch'
+          ? `lunch time · ${lunch.at}`
+          : lunch.phase === 'snoozed'
+            ? `again at ${lunchTime(lunch.snooze)}`
+            : lunch.phase === 'went'
               ? 'enjoy'
-              : l.phase === 'back'
+              : lunch.phase === 'back'
                 ? 'fed'
                 : 'lunch is over';
 
-  const place = (p, i) =>
-    `<section class="lp ${p.state}" style="--c:${lunchColor(p, i)}"><h4><i></i><button type="button" class="lgo" data-url="${esc(p.url || '')}"${p.url ? ` title="${esc(p.state === 'story' || p.src === 'story' ? 'Its stories' : 'Its Instagram')} — in your browser"` : ' disabled'}>${esc(p.name)}</button></h4>${
-      p.dishes.length
-        ? `${p.dishes
+  const place = (venue, index) =>
+    `<section class="lp ${venue.state}" style="--c:${lunchColor(venue, index)}"><h4><i></i><button type="button" class="lgo" data-url="${esc(venue.url || '')}"${venue.url ? ` title="${esc(venue.state === 'story' || venue.src === 'story' ? 'Its stories' : 'Its Instagram')} — in your browser"` : ' disabled'}>${esc(venue.name)}</button></h4>${
+      venue.dishes.length
+        ? `${venue.dishes
             .map(
-              (d, j) =>
-                `<p class="cdish"><span>${esc(d)}</span><i></i><span class="cprice">${j === 0 && p.price ? esc(p.price) : ''}</span></p>`,
+              (dish, dishIndex) =>
+                `<p class="cdish"><span>${esc(dish)}</span><i></i><span class="cprice">${dishIndex === 0 && venue.price ? esc(venue.price) : ''}</span></p>`,
             )
-            .join('')}<p class="cfrom">${esc(lunchWhy(p, l))}</p>`
-        : `<p class="cwhy">${esc(lunchWhy(p, l))}</p>`
+            .join('')}<p class="cfrom">${esc(lunchWhy(venue, lunch))}</p>`
+        : `<p class="cwhy">${esc(lunchWhy(venue, lunch))}</p>`
     }</section>`;
 
   return (
-    `<div class="chd"><h3${home ? '' : ' id="lunchTitle"'}>Lunch today</h3><p class="chsub">${esc(fmtDay(l.day))} · ${esc(sub)}</p></div>` +
-    `<div class="ccols">${l.places.map(place).join('') || '<p class="chnone">No places yet — Settings › Lunch.</p>'}</div>${home ? '' : REST_FISH.replace('class="restfish"', 'class="cfish"')}`
+    `<div class="chd"><h3${home ? '' : ' id="lunchTitle"'}>Lunch today</h3><p class="chsub">${esc(fmtDay(lunch.day))} · ${esc(sub)}</p></div>` +
+    `<div class="ccols">${lunch.places.map(place).join('') || '<p class="chnone">No places yet — Settings › Lunch.</p>'}</div>${home ? '' : REST_FISH.replace('class="restfish"', 'class="cfish"')}`
   );
 }
 
-function lunchFootHtml(l) {
-  if (!l?.set) return '';
-  const from = ['Instagram', l.slack].filter(Boolean).join(', ');
+function lunchFootHtml(lunch) {
+  if (!lunch?.set) return '';
+  const from = ['Instagram', lunch.slack].filter(Boolean).join(', ');
 
-  const st = l.busy
-    ? `Reading the menus — ${l.busy}…`
-    : l.readAt
-      ? `Read at ${lunchTime(l.readAt)}, from ${from}`
+  const st = lunch.busy
+    ? `Reading the menus — ${lunch.busy}…`
+    : lunch.readAt
+      ? `Read at ${lunchTime(lunch.readAt)}, from ${from}`
       : `Not read yet today — from ${from}`;
 
-  const now = ['before', 'lunch', 'snoozed'].includes(l.phase) && l.on;
+  const now = ['before', 'lunch', 'snoozed'].includes(lunch.phase) && lunch.on;
 
   return (
-    `<span class="lstat">${esc(st)}${l.error ? ` · <span class="serr">${esc(l.error)}</span>` : ''}</span>` +
-    `<button type="button" class="btn" data-lunch="read"${l.busy ? ' disabled' : ''}>Read again</button>${
+    `<span class="lstat">${esc(st)}${lunch.error ? ` · <span class="serr">${esc(lunch.error)}</span>` : ''}</span>` +
+    `<button type="button" class="btn" data-lunch="read"${lunch.busy ? ' disabled' : ''}>Read again</button>${
       now
-        ? `<button type="button" class="btn" data-lunch="snooze"${l.phase === 'before' ? ' disabled title="At lunch time"' : ''}>In 15 min</button><button type="button" class="btn go" data-lunch="going">Going</button>`
+        ? `<button type="button" class="btn" data-lunch="snooze"${lunch.phase === 'before' ? ' disabled title="At lunch time"' : ''}>In 15 min</button><button type="button" class="btn go" data-lunch="going">Going</button>`
         : ''
     }${
       state.chat.ready && state.chat.room != null
@@ -375,8 +397,8 @@ async function lunchAct(act, anchor) {
   try {
     state.lunch = await api('POST', '/api/lunch', { act });
     lunchChanged();
-  } catch (e) {
-    if (anchor) note(anchor, `Not done: ${e.message}`, true);
+  } catch (error) {
+    if (anchor) note(anchor, `Not done: ${error.message}`, true);
   }
 }
 
@@ -397,57 +419,65 @@ Object.assign(window.peix, {
 });
 
 for (const box of [$('#lunchd'), $('#log')]) {
-  box.addEventListener('click', e => {
+  box.addEventListener('click', event => {
     // the board's own chalk only — the dialog's and the home's (2026-11-06): a transcript in #log is nobody's lunch
-    const go = e.target.closest('#lunchd .chalk .lgo, #home .chalk .lgo');
+    const go = event.target.closest('#lunchd .chalk .lgo, #home .chalk .lgo');
 
     if (go) return lunchUrl(go.dataset.url);
-    const b = e.target.closest('#lunchd [data-lunch], #home .hlunch [data-lunch]');
+    const button = event.target.closest('#lunchd [data-lunch], #home .hlunch [data-lunch]');
 
-    if (b) return lunchAct(b.dataset.lunch, b);
-    if (e.target === $('#lunchd')) $('#lunchd').close(); // the backdrop
+    if (button) return lunchAct(button.dataset.lunch, button);
+    if (event.target === $('#lunchd')) $('#lunchd').close(); // the backdrop
   });
 }
 
 /** A lunch alert: in front, a chime; the app's banner carries Menus · Going · In 15 minutes; a browser's opens the board. */
-function lunchAlert(a) {
+function lunchAlert(alert) {
   if (document.visibilityState === 'visible' && document.hasFocus()) chime('reply');
 
   if (inApp) {
     post({
       type: 'alert',
       kind: 'lunch',
-      heading: a.heading || 'Lunch',
+      heading: alert.heading || 'Lunch',
       project: '',
-      title: a.title || '',
-      snippet: a.snippet || '',
+      title: alert.title || '',
+      snippet: alert.snippet || '',
       sessionId: '',
       hash: '',
       serverNotify: !!state.serverNotify,
-      quiet: !!a.quiet,
+      quiet: !!alert.quiet,
       drawer: false,
     });
   }
 
-  if (a.quiet || !('Notification' in window) || Notification.permission !== 'granted') return;
-  const n = new Notification(a.heading || 'Lunch', { body: `${a.title}\n${a.snippet || ''}`, tag: 'lunch' });
+  if (alert.quiet || !('Notification' in window) || Notification.permission !== 'granted') return;
 
-  n.onclick = () => {
+  const notification = new Notification(alert.heading || 'Lunch', {
+    body: `${alert.title}\n${alert.snippet || ''}`,
+    tag: 'lunch',
+  });
+
+  notification.onclick = () => {
     window.focus();
     lunchOpen();
-    n.close();
+    notification.close();
   };
 }
 
 /** Home's chalkboard: the morning's menus, from the first one in until lunch is over. */
 function lunchHomeHtml() {
-  const l = state.lunch;
+  const lunch = state.lunch;
 
-  if (!l?.on || !['before', 'lunch', 'snoozed'].includes(l.phase) || !l.places.some(p => p.state !== 'waiting')) {
+  if (
+    !lunch?.on ||
+    !['before', 'lunch', 'snoozed'].includes(lunch.phase) ||
+    !lunch.places.some(place => place.state !== 'waiting')
+  ) {
     return '';
   }
 
-  return `<div class="chalk">${chalkHtml(l, true)}</div>`;
+  return `<div class="chalk">${chalkHtml(lunch, true)}</div>`;
 }
 
 /** What the server said changed: the lane, the chalkboard, home, Settings › Lunch. */
@@ -461,16 +491,16 @@ function lunchChanged() {
 // Settings › Lunch: on, the time and the days; the places; where the menus come from — their posts, a Slack channel —,
 // which model reads them, and how the last round went
 function lunchSetHtml() {
-  const l = state.lunch || {};
-  const c = state.config.lunch;
+  const lunch = state.lunch || {};
+  const config = state.config.lunch;
   const text = 'type="text" spellcheck="false" autocomplete="off"';
 
   const group = (title, kw, rows, foot) =>
     `<section class="sgrp" data-kw="${kw}">${title ? `<h6 class="sgh">${title}</h6>` : ''}<div class="slist">${rows}</div>${foot ? `<p class="sgf">${foot}</p>` : ''}</section>`;
 
-  const on = `<div class="srow set" id="lunchOnRow" data-kw="lunch reminder menu food restaurant"><label class="sl" for="lunchOn"><b>Lunch</b><small>A sign in the status bar and a notification at lunch time, and the menus of the places you go — ⌥⌘M</small></label><input type="checkbox" class="sw" role="switch" id="lunchOn"${c?.on ? ' checked' : ''}></div>`;
+  const on = `<div class="srow set" id="lunchOnRow" data-kw="lunch reminder menu food restaurant"><label class="sl" for="lunchOn"><b>Lunch</b><small>A sign in the status bar and a notification at lunch time, and the menus of the places you go — ⌥⌘M</small></label><input type="checkbox" class="sw" role="switch" id="lunchOn"${config?.on ? ' checked' : ''}></div>`;
 
-  if (!c) return group('', 'lunch', on);
+  if (!config) return group('', 'lunch', on);
 
   const days = [
     [1, 'Mon'],
@@ -481,23 +511,26 @@ function lunchSetHtml() {
     [6, 'Sat'],
     [0, 'Sun'],
   ]
-    .map(([d, n]) => `<button type="button" data-day="${d}" aria-pressed="${c.days.includes(d)}">${n}</button>`)
-    .join('');
-
-  const place = (p, i) =>
-    `<div class="srow lplace" data-i="${i}"><i class="lsq" style="--c:${lunchColor(p, i)}"></i><input ${text} class="lname" value="${esc(p.name)}" aria-label="The place's name"><label class="ligw" title="Its Instagram account — where its menus are read">@<input ${text} class="lig" value="${esc(p.instagram || '')}" placeholder="its Instagram" aria-label="${esc(p.name)}'s Instagram account"></label><button type="button" class="sdel" title="Forget ${esc(p.name)}" aria-label="Forget ${esc(p.name)}">×</button></div>`;
-
-  const models = [...new Set(['haiku', 'sonnet', c.model || 'haiku'])]
     .map(
-      m =>
-        `<option value="${esc(m)}"${(c.model || 'haiku') === m ? ' selected' : ''}>${esc(m[0].toUpperCase() + m.slice(1))}</option>`,
+      ([day, label]) =>
+        `<button type="button" data-day="${day}" aria-pressed="${config.days.includes(day)}">${label}</button>`,
     )
     .join('');
 
-  const stat = l.busy
-    ? `Reading — ${esc(l.busy)}…`
-    : l.readAt
-      ? `Read at ${lunchTime(l.readAt)} · ${l.places?.filter(p => p.dishes.length).length || 0} of ${l.places?.length || 0} menus in`
+  const place = (venue, index) =>
+    `<div class="srow lplace" data-i="${index}"><i class="lsq" style="--c:${lunchColor(venue, index)}"></i><input ${text} class="lname" value="${esc(venue.name)}" aria-label="The place's name"><label class="ligw" title="Its Instagram account — where its menus are read">@<input ${text} class="lig" value="${esc(venue.instagram || '')}" placeholder="its Instagram" aria-label="${esc(venue.name)}'s Instagram account"></label><button type="button" class="sdel" title="Forget ${esc(venue.name)}" aria-label="Forget ${esc(venue.name)}">×</button></div>`;
+
+  const models = [...new Set(['haiku', 'sonnet', config.model || 'haiku'])]
+    .map(
+      model =>
+        `<option value="${esc(model)}"${(config.model || 'haiku') === model ? ' selected' : ''}>${esc(model[0].toUpperCase() + model.slice(1))}</option>`,
+    )
+    .join('');
+
+  const stat = lunch.busy
+    ? `Reading — ${esc(lunch.busy)}…`
+    : lunch.readAt
+      ? `Read at ${lunchTime(lunch.readAt)} · ${lunch.places?.filter(venue => venue.dishes.length).length || 0} of ${lunch.places?.length || 0} menus in`
       : 'Not read yet today';
 
   return (
@@ -506,13 +539,13 @@ function lunchSetHtml() {
       'lunch',
       `${
         on
-      }<div class="srow set sub" data-kw="lunch time hour reminder"><label class="sl" for="lunchAt"><b>Lunch time</b><small>The sign and the notification then; the menus are read in the hour and a quarter before</small></label><input type="time" id="lunchAt" value="${esc(c.at)}"></div>` +
+      }<div class="srow set sub" data-kw="lunch time hour reminder"><label class="sl" for="lunchAt"><b>Lunch time</b><small>The sign and the notification then; the menus are read in the hour and a quarter before</small></label><input type="time" id="lunchAt" value="${esc(config.at)}"></div>` +
         `<div class="srow set sub" data-kw="days weekdays week"><span class="sl" id="slLunchDays"><b>Days</b><small>No reminder, nothing read, on the others</small></span><span class="sseg ldays" role="group" aria-labelledby="slLunchDays">${days}</span></div>`,
     ) +
     group(
       'Places',
       'lunch places restaurants instagram account',
-      `${c.places
+      `${config.places
         .map(place)
         .join(
           '',
@@ -522,9 +555,9 @@ function lunchSetHtml() {
     group(
       'Where the menus come from',
       'lunch stories slack channel model claude read',
-      `<div class="srow set" data-kw="slack channel colleagues screenshots"><label class="sl" for="lunchSlack"><b>Slack channel</b><small>Where colleagues post the menus — read by Claude's Slack connector, nothing written</small></label><input ${text} class="lslack" id="lunchSlack" value="${esc(c.slack || '')}" placeholder="#lunch"></div>` +
+      `<div class="srow set" data-kw="slack channel colleagues screenshots"><label class="sl" for="lunchSlack"><b>Slack channel</b><small>Where colleagues post the menus — read by Claude's Slack connector, nothing written</small></label><input ${text} class="lslack" id="lunchSlack" value="${esc(config.slack || '')}" placeholder="#lunch"></div>` +
         `<div class="srow set" data-kw="model claude reader haiku sonnet"><label class="sl" for="lunchModel"><b>Read by</b><small>The Claude model that reads each picture once, on your plan</small></label><span class="ssel"><select id="lunchModel">${models}</select></span></div>` +
-        `<div class="srow set stat" data-kw="read now menus status" id="lunchStatRow"><span class="sl"><b>${stat}</b><small>${l.error ? `<span class="serr">${esc(l.error)}</span>` : 'Read again any time; on its own each lunch day'}</small></span><button type="button" class="btn" data-lunch="read"${l.busy ? ' disabled' : ''}>Read now</button></div>`,
+        `<div class="srow set stat" data-kw="read now menus status" id="lunchStatRow"><span class="sl"><b>${stat}</b><small>${lunch.error ? `<span class="serr">${esc(lunch.error)}</span>` : 'Read again any time; on its own each lunch day'}</small></span><button type="button" class="btn" data-lunch="read"${lunch.busy ? ' disabled' : ''}>Read now</button></div>`,
     )
   );
 }
@@ -535,8 +568,8 @@ function renderLunchSet(force = false) {
 
 function loadLunchSet() {
   api('GET', '/api/lunch').then(
-    d => {
-      state.lunch = d;
+    lunch => {
+      state.lunch = lunch;
       lunchChanged();
     },
     () => {},
@@ -557,56 +590,60 @@ const lunchPut = (patch, anchor) =>
 
 const lunchPlacesInBox = () =>
   [...$('#lunchSet').querySelectorAll('.srow.lplace')]
-    .map(r => ({
-      name: r.querySelector('.lname').value.trim(),
-      instagram: r.querySelector('.lig').value.trim(),
-      color: state.config.lunch?.places?.[Number(r.dataset.i)]?.color,
+    .map(row => ({
+      name: row.querySelector('.lname').value.trim(),
+      instagram: row.querySelector('.lig').value.trim(),
+      color: state.config.lunch?.places?.[Number(row.dataset.i)]?.color,
     }))
-    .filter(p => p.name)
-    .map(p => ({ name: p.name, ...(p.instagram && { instagram: p.instagram }), ...(p.color && { color: p.color }) }));
+    .filter(place => place.name)
+    .map(place => ({
+      name: place.name,
+      ...(place.instagram && { instagram: place.instagram }),
+      ...(place.color && { color: place.color }),
+    }));
 
-$('#lunchSet').addEventListener('focusout', e => {
-  if ($('#lunchSet')._stale && !$('#lunchSet').contains(e.relatedTarget)) renderLunchSet();
+$('#lunchSet').addEventListener('focusout', event => {
+  if ($('#lunchSet')._stale && !$('#lunchSet').contains(event.relatedTarget)) renderLunchSet();
 });
 
-$('#lunchSet').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && e.target.matches('input[type=text]')) e.target.blur();
+$('#lunchSet').addEventListener('keydown', event => {
+  if (event.key === 'Enter' && event.target.matches('input[type=text]')) event.target.blur();
 });
 
-$('#lunchSet').addEventListener('change', e => {
-  const t = e.target;
+$('#lunchSet').addEventListener('change', event => {
+  const field = event.target;
 
-  if (t.id === 'lunchOn') return lunchPut({ on: t.checked }, t);
-  if (t.id === 'lunchAt') return t.value && lunchPut({ at: t.value }, t);
-  if (t.id === 'lunchSlack') return lunchPut({ slack: t.value.trim() || null }, t);
-  if (t.id === 'lunchModel') return lunchPut({ model: t.value }, t);
+  if (field.id === 'lunchOn') return lunchPut({ on: field.checked }, field);
+  if (field.id === 'lunchAt') return field.value && lunchPut({ at: field.value }, field);
+  if (field.id === 'lunchSlack') return lunchPut({ slack: field.value.trim() || null }, field);
+  if (field.id === 'lunchModel') return lunchPut({ model: field.value }, field);
 
-  if (t.closest('.srow.lplace')) {
-    if (t.closest('.add') && !t.closest('.add').querySelector('.lname').value.trim()) return;
-    return lunchPut({ places: lunchPlacesInBox() }, t);
+  if (field.closest('.srow.lplace')) {
+    if (field.closest('.add') && !field.closest('.add').querySelector('.lname').value.trim()) return;
+    return lunchPut({ places: lunchPlacesInBox() }, field);
   }
 });
 
-$('#lunchSet').addEventListener('click', e => {
-  const d = e.target.closest('[data-day]');
+$('#lunchSet').addEventListener('click', event => {
+  const dayButton = event.target.closest('[data-day]');
 
-  if (d) {
+  if (dayButton) {
     const days = new Set(state.config.lunch?.days || []);
-    const n = Number(d.dataset.day);
+    const day = Number(dayButton.dataset.day);
 
-    if (days.has(n)) days.delete(n);
-    else days.add(n);
-    return lunchPut({ days: [...days] }, d);
+    if (days.has(day)) days.delete(day);
+    else days.add(day);
+    return lunchPut({ days: [...days] }, dayButton);
   }
 
-  const x = e.target.closest('.srow.lplace .sdel');
+  const forget = event.target.closest('.srow.lplace .sdel');
 
-  if (x) {
-    x.closest('.srow').remove();
-    return lunchPut({ places: lunchPlacesInBox() }, x);
+  if (forget) {
+    forget.closest('.srow').remove();
+    return lunchPut({ places: lunchPlacesInBox() }, forget);
   }
 
-  const b = e.target.closest('[data-lunch]');
+  const button = event.target.closest('[data-lunch]');
 
-  if (b) lunchAct(b.dataset.lunch, b);
+  if (button) lunchAct(button.dataset.lunch, button);
 });

@@ -1,13 +1,13 @@
 // ---- transcript rendering ----------------------------------------------------------
 // Fallback renderer (fenced code, inline code, bold) if the vendored libs failed to load.
-function mdFallback(t) {
-  const parts = String(t).split(/```/);
+function mdFallback(text) {
+  const parts = String(text).split(/```/);
 
   return parts
-    .map((p, i) =>
-      i % 2
-        ? `<pre><code>${esc(p.replace(/^\w*\n/, ''))}</code></pre>`
-        : esc(p)
+    .map((part, index) =>
+      index % 2
+        ? `<pre><code>${esc(part.replace(/^\w*\n/, ''))}</code></pre>`
+        : esc(part)
             .replace(/`([^`\n]+)`/g, '<code>$1</code>')
             .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>'),
     )
@@ -36,16 +36,16 @@ function highlight(root) {
     const lang = (code.className.match(/language-([\w+#.-]+)/) || [])[1];
 
     try {
-      const r =
+      const result =
         lang && hljs.getLanguage(lang)
           ? hljs.highlight(src, { language: lang, ignoreIllegals: true })
           : !lang && src.length < AUTO_MAX
             ? hljs.highlightAuto(src, AUTO_LANGS)
             : null;
 
-      if (!r) continue;
-      code.innerHTML = r.value;
-      if (!lang && r.language) code.classList.add(`language-${r.language}`);
+      if (!result) continue;
+      code.innerHTML = result.value;
+      if (!lang && result.language) code.classList.add(`language-${result.language}`);
     } catch {}
   }
 }
@@ -108,17 +108,17 @@ const MD_PURIFY = {
 
 // Full GFM via marked, sanitised by DOMPurify (replies may contain raw HTML). Relative links —
 // Claude writes [file.ts:42](src/file.ts#L42) — are resolved against the session cwd and opened in the editor.
-function md(t, cwd) {
-  if (!hasMd) return { html: mdFallback(t), cls: '' };
+function md(text, cwd) {
+  if (!hasMd) return { html: mdFallback(text), cls: '' };
   let html;
 
   // No styles and no forms in a transcript (2026-10-03): a <style> after a word, or a style= on a block, restyled or
   // covered the whole board while the chat was open. Task lists keep their (disabled) checkboxes. Nor anything else
   // that fetches on sight (2026-10-14): DOMPurify keeps media, a srcset, a poster, a background, an SVG <image>.
   try {
-    html = DOMPurify.sanitize(marked.parse(String(t ?? '')), MD_PURIFY);
+    html = DOMPurify.sanitize(marked.parse(String(text ?? '')), MD_PURIFY);
   } catch {
-    return { html: mdFallback(t), cls: '' };
+    return { html: mdFallback(text), cls: '' };
   }
 
   const tpl = document.createElement('template');
@@ -127,7 +127,8 @@ function md(t, cwd) {
 
   // A class is the board's own word (2026-11-06): the code's language alone is kept, every other goes — see MD_PURIFY.
   for (const el of tpl.content.querySelectorAll('[class]')) {
-    const keep = el.localName === 'code' ? [...el.classList].filter(c => /^language-[\w+#.-]+$/.test(c)) : [];
+    const keep =
+      el.localName === 'code' ? [...el.classList].filter(className => /^language-[\w+#.-]+$/.test(className)) : [];
 
     if (keep.length) el.className = keep.join(' ');
     else el.removeAttribute('class');
@@ -138,7 +139,9 @@ function md(t, cwd) {
   for (const el of tpl.content.querySelectorAll('input:not([type="checkbox"])')) el.remove();
 
   for (const el of tpl.content.querySelectorAll('svg, svg *')) {
-    for (const a of [...el.attributes]) if (/url\(\s*['"]?\s*[^\s'"#]|\\/i.test(a.value)) el.removeAttribute(a.name);
+    for (const attribute of [...el.attributes]) {
+      if (/url\(\s*['"]?\s*[^\s'"#]|\\/i.test(attribute.value)) el.removeAttribute(attribute.name);
+    }
   }
 
   // An image is fetched only if it is in the message itself (data:); one elsewhere is a link to it — a reply led to
@@ -147,32 +150,32 @@ function md(t, cwd) {
     const src = img.getAttribute('src') || '';
 
     if (/^data:image\//i.test(src)) continue;
-    const a = document.createElement('a');
+    const link = document.createElement('a');
 
-    a.href = src;
-    a.textContent = `🖼 ${img.getAttribute('alt') || src}`;
-    a.title = `An image, not loaded: ${src}`;
-    img.replaceWith(a);
+    link.href = src;
+    link.textContent = `🖼 ${img.getAttribute('alt') || src}`;
+    link.title = `An image, not loaded: ${src}`;
+    img.replaceWith(link);
   }
 
   highlight(tpl.content);
 
-  for (const a of tpl.content.querySelectorAll('a[href]')) {
-    const href = a.getAttribute('href') || '';
+  for (const link of tpl.content.querySelectorAll('a[href]')) {
+    const href = link.getAttribute('href') || '';
 
     if (ABS_URL.test(href)) {
-      a.target = '_blank';
-      a.rel = 'noopener';
+      link.target = '_blank';
+      link.rel = 'noopener';
       continue;
     }
 
-    const m = href.match(/^([^#?]+)(?:#L(\d+))?/);
+    const match = href.match(/^([^#?]+)(?:#L(\d+))?/);
 
-    if (!m) continue;
-    const abs = normPath(unURI(m[1].startsWith('/') ? m[1] : `${cwd || ''}/${m[1]}`)); // marked's href comes encoded; `..` resolved (2026-11-06)
+    if (!match) continue;
+    const abs = normPath(unURI(match[1].startsWith('/') ? match[1] : `${cwd || ''}/${match[1]}`)); // marked's href comes encoded; `..` resolved (2026-11-06)
 
-    a.setAttribute('href', fileUrl(abs, m[2]));
-    a.title = `Open ${abs}${m[2] ? `:${m[2]}` : ''} in ${editor().name}`;
+    link.setAttribute('href', fileUrl(abs, match[2]));
+    link.title = `Open ${abs}${match[2] ? `:${match[2]}` : ''} in ${editor().name}`;
   }
 
   // Every block in a .codebox with its bar — the language, a copy button — and the long ones folded, always
@@ -191,14 +194,14 @@ function md(t, cwd) {
     pre.replaceWith(box);
     box.append(pre);
     if (!fold) continue;
-    const d = document.createElement('details');
+    const details = document.createElement('details');
 
-    d.className = 'codefold';
+    details.className = 'codefold';
     const sm = document.createElement('summary');
 
     sm.textContent = `${lang || 'code'} · ${lines} lines`;
-    box.replaceWith(d);
-    d.append(sm, box);
+    box.replaceWith(details);
+    details.append(sm, box);
   }
 
   return { html: tpl.innerHTML, cls: 'md' };
@@ -206,13 +209,13 @@ function md(t, cwd) {
 
 /** How long a turn worked, as the footer says it: 12s, 4m 12s, 1h 05m. */
 const workedFor = ms => {
-  const s = Math.round(ms / 1000);
+  const seconds = Math.round(ms / 1000);
 
-  return s < 60
-    ? `${s}s`
-    : s < 3600
-      ? `${Math.floor(s / 60)}m ${s % 60}s`
-      : `${Math.floor(s / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}m`;
+  return seconds < 60
+    ? `${seconds}s`
+    : seconds < 3600
+      ? `${Math.floor(seconds / 60)}m ${seconds % 60}s`
+      : `${Math.floor(seconds / 3600)}h ${String(Math.floor((seconds % 3600) / 60)).padStart(2, '0')}m`;
 };
 
 // Chats that talk (2026-10-31): a message from another chat is a third kind of row — neither yours nor Claude's —, its
@@ -221,57 +224,57 @@ const workedFor = ms => {
 const peerLink = (id, name, arrow = '') =>
   `<button type="button" class="peerlink" data-sid="${esc(id)}" title="${esc(`Open ${peerWho(id, name)}`)}">${arrow ? `<span aria-hidden="true">${arrow} </span>` : ''}${esc(peerWho(id, name))}</button>`;
 
-const peerFrom = (e, at) =>
-  `<div class="who"><span class="pfrom"><span aria-hidden="true">← </span>from ${e.fromId || e.id ? peerLink(e.fromId || e.id, e.name) : `<b>${esc(e.name || 'another chat')}</b>`}</span>${e.mode ? `<span class="pmode" title="the sender's permission mode">${esc(e.mode)}</span>` : ''}${e.verified === false ? '<span class="pmode" title="Claude Code could not tell which process sent it">unverified</span>' : ''}<span>${at}</span></div>`;
+const peerFrom = (entry, at) =>
+  `<div class="who"><span class="pfrom"><span aria-hidden="true">← </span>from ${entry.fromId || entry.id ? peerLink(entry.fromId || entry.id, entry.name) : `<b>${esc(entry.name || 'another chat')}</b>`}</span>${entry.mode ? `<span class="pmode" title="the sender's permission mode">${esc(entry.mode)}</span>` : ''}${entry.verified === false ? '<span class="pmode" title="Claude Code could not tell which process sent it">unverified</span>' : ''}<span>${at}</span></div>`;
 
-function peerHtml(e) {
-  const r = md(e.text, state.sessions.get(state.current)?.cwd);
-  const at = e.ts ? new Date(e.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+function peerHtml(entry) {
+  const rendered = md(entry.text, state.sessions.get(state.current)?.cwd);
+  const at = entry.ts ? new Date(entry.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
 
-  return `<div class="msg peer"${e.ts ? ` data-ts="${esc(e.ts)}"` : ''}><span class="vh">A message from another chat: </span>${peerFrom(e, at)}<div class="bubble"><div class="text ${r.cls}">${r.html}</div></div></div>`;
+  return `<div class="msg peer"${entry.ts ? ` data-ts="${esc(entry.ts)}"` : ''}><span class="vh">A message from another chat: </span>${peerFrom(entry, at)}<div class="bubble"><div class="text ${rendered.cls}">${rendered.html}</div></div></div>`;
 }
 
 /** `cont`: a word of Claude's after another in the same turn — no who-line again (2026-10-08). */
-function entryHtml(e, cont = false) {
-  if (e.kind === 'text') {
-    const r = md(e.text, state.sessions.get(state.current)?.cwd);
-    const at = e.ts ? new Date(e.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+function entryHtml(entry, cont = false) {
+  if (entry.kind === 'text') {
+    const rendered = md(entry.text, state.sessions.get(state.current)?.cwd);
+    const at = entry.ts ? new Date(entry.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
 
     const foot =
-      e.turnEnd && e.role === 'assistant'
-        ? `<div class="turnfoot"><button class="tcopy" type="button" data-ts="${esc(e.ts || '')}" title="Copy what Claude said this turn">${ICON.copy}<span>copy</span></button>${e.worked ? `<span class="worked" title="from your last word to this reply">worked for ${workedFor(e.worked)}</span>` : ''}</div>`
+      entry.turnEnd && entry.role === 'assistant'
+        ? `<div class="turnfoot"><button class="tcopy" type="button" data-ts="${esc(entry.ts || '')}" title="Copy what Claude said this turn">${ICON.copy}<span>copy</span></button>${entry.worked ? `<span class="worked" title="from your last word to this reply">worked for ${workedFor(entry.worked)}</span>` : ''}</div>`
         : '';
 
-    return `<div class="msg ${e.role}${cont ? ' cont' : ''}"${e.ts ? ` data-ts="${esc(e.ts)}"` : ''}${cont && at ? ` title="${at}"` : ''}><div class="who"><span>${e.role === 'user' ? 'You' : 'Claude'}</span><span>${at}</span></div><div class="bubble"><div class="text ${r.cls}">${r.html}</div></div>${foot}</div>`;
+    return `<div class="msg ${entry.role}${cont ? ' cont' : ''}"${entry.ts ? ` data-ts="${esc(entry.ts)}"` : ''}${cont && at ? ` title="${at}"` : ''}><div class="who"><span>${entry.role === 'user' ? 'You' : 'Claude'}</span><span>${at}</span></div><div class="bubble"><div class="text ${rendered.cls}">${rendered.html}</div></div>${foot}</div>`;
   }
 
-  if (e.kind === 'peer') return peerHtml(e);
+  if (entry.kind === 'peer') return peerHtml(entry);
 
-  if (e.kind === 'tool_use') {
-    return `<div class="tool"><i class="tst ${toolMark(e.toolUseId)}" data-tu="${esc(e.toolUseId || '')}" role="img" aria-label="${{ run: 'running', ok: 'done', err: 'failed' }[toolMark(e.toolUseId)]}"></i><b${toolName(e.name) !== e.name ? ` title="${esc(e.name)}"` : ''}>${esc(toolName(e.name))}</b>${e.toId ? peerLink(e.toId, e.to, '→') : ''}<span>${esc(e.text)}</span></div>`;
+  if (entry.kind === 'tool_use') {
+    return `<div class="tool"><i class="tst ${toolMark(entry.toolUseId)}" data-tu="${esc(entry.toolUseId || '')}" role="img" aria-label="${{ run: 'running', ok: 'done', err: 'failed' }[toolMark(entry.toolUseId)]}"></i><b${toolName(entry.name) !== entry.name ? ` title="${esc(entry.name)}"` : ''}>${esc(toolName(entry.name))}</b>${entry.toId ? peerLink(entry.toId, entry.to, '→') : ''}<span>${esc(entry.text)}</span></div>`;
   }
 
-  if (e.kind === 'tool_result') {
-    return `<div class="tool ${e.isError ? 'err' : ''}"><span>↳</span><span>${esc(e.text || '(no output)')}</span></div>`;
+  if (entry.kind === 'tool_result') {
+    return `<div class="tool ${entry.isError ? 'err' : ''}"><span>↳</span><span>${esc(entry.text || '(no output)')}</span></div>`;
   }
 
-  if (e.kind === 'interrupt' || e.kind === 'compact') return `<div class="sysline">${esc(e.text)}</div>`;
+  if (entry.kind === 'interrupt' || entry.kind === 'compact') return `<div class="sysline">${esc(entry.text)}</div>`;
   return '';
 }
 
 function toolSummaryHtml(run) {
-  const uses = run.filter(e => e.kind === 'tool_use');
-  const errs = run.filter(e => e.kind === 'tool_result' && e.isError).length;
+  const uses = run.filter(entry => entry.kind === 'tool_use');
+  const errs = run.filter(entry => entry.kind === 'tool_result' && entry.isError).length;
   const byName = {};
 
-  for (const u of uses) byName[toolName(u.name)] = (byName[toolName(u.name)] || 0) + 1;
+  for (const call of uses) byName[toolName(call.name)] = (byName[toolName(call.name)] || 0) + 1;
 
   const label = Object.entries(byName)
-    .sort((a, b) => b[1] - a[1])
-    .map(([n, c]) => (c > 1 ? `${n} ×${c}` : n))
+    .sort((left, right) => right[1] - left[1])
+    .map(([name, count]) => (count > 1 ? `${name} ×${count}` : name))
     .join(', ');
 
-  const pending = uses.some(u => toolMark(u.toolUseId) === 'run'); // a call still out: the folded run says so too
+  const pending = uses.some(call => toolMark(call.toolUseId) === 'run'); // a call still out: the folded run says so too
 
   return `${pending ? '<i class="tst run" aria-hidden="true"></i>' : ''}${uses.length} tool call${uses.length === 1 ? '' : 's'} · ${esc(label)}${errs ? ` · <span class="err">${errs} error${errs > 1 ? 's' : ''}</span>` : ''}`;
 }
@@ -282,23 +285,23 @@ const toolGroupHtml = run =>
 /** An agent's call (2026-11-02): a line of its own, out of the fold, the way back to its transcript long after its row has left the
  *  card. An Agent call has it from the start and the result ties it (agCallTie); a forked Skill's call stays in its run, and its
  *  result, the first to say an agent was started, is the line. `said`: what the call says it is for. */
-function agCallHtml(e, said) {
-  const a = e.agent;
-  const who = a?.name || e.who;
-  const words = a?.asked || said || '';
+function agCallHtml(entry, said) {
+  const agent = entry.agent;
+  const who = agent?.name || entry.who;
+  const words = agent?.asked || said || '';
 
-  return `<button type="button" class="tool agcall" title="Its transcript, read-only, beside the chat" data-asked="${esc(who || words || 'An agent')}"${a ? ` data-ag="${esc(a.id)}"` : ' disabled'}><i class="tst ${toolMark(e.toolUseId)}" data-tu="${esc(e.toolUseId || '')}" aria-hidden="true"></i><b>${esc(who || 'Agent')}</b><span>${esc(words)}</span><span class="go">its transcript ›</span></button>`;
+  return `<button type="button" class="tool agcall" title="Its transcript, read-only, beside the chat" data-asked="${esc(who || words || 'An agent')}"${agent ? ` data-ag="${esc(agent.id)}"` : ' disabled'}><i class="tst ${toolMark(entry.toolUseId)}" data-tu="${esc(entry.toolUseId || '')}" aria-hidden="true"></i><b>${esc(who || 'Agent')}</b><span>${esc(words)}</span><span class="go">its transcript ›</span></button>`;
 }
 
-function agCallTie(el, e) {
-  if (e.isError) el.title = e.text || '';
-  if (e.isError || !e.agent) return;
-  el.dataset.ag = e.agent.id;
+function agCallTie(el, entry) {
+  if (entry.isError) el.title = entry.text || '';
+  if (entry.isError || !entry.agent) return;
+  el.dataset.ag = entry.agent.id;
   el.disabled = false;
 
-  if (e.agent.name) {
-    el.querySelector('b').textContent = e.agent.name;
-    el.dataset.asked = e.agent.name;
+  if (entry.agent.name) {
+    el.querySelector('b').textContent = entry.agent.name;
+    el.dataset.asked = entry.agent.name;
   }
 }
 
@@ -316,13 +319,13 @@ function reveal(msg) {
 
   noteMotion(state.current, 'reveal', parts.length);
 
-  parts.forEach((p, i) =>
-    p.animate(
+  parts.forEach((part, index) =>
+    part.animate(
       [
         { opacity: 0, filter: 'blur(3px)', transform: 'translateY(4px)' },
         { opacity: 1, filter: 'blur(0)', transform: 'none' },
       ],
-      { duration: 260, delay: 40 + i * REVEAL_GAP, easing: EASE_OUT, fill: 'backwards', id: 'reveal' },
+      { duration: 260, delay: 40 + index * REVEAL_GAP, easing: EASE_OUT, fill: 'backwards', id: 'reveal' },
     ),
   );
 }
@@ -335,11 +338,11 @@ const toolRes = new Map();
 const toolMark = id => (!id || !toolRes.has(id) ? 'run' : toolRes.get(id) ? 'err' : 'ok');
 
 const htmlNodes = (html, cwd) => {
-  const t = document.createElement('template');
+  const template = document.createElement('template');
 
-  t.innerHTML = html;
-  linkify(t.content, cwd);
-  return t.content;
+  template.innerHTML = html;
+  linkify(template.content, cwd);
+  return template.content;
 };
 
 function renderLog() {
@@ -356,18 +359,21 @@ function renderLog() {
 
   if (resetting) {
     toolRes.clear();
-    for (const e of state.entries) if (e.kind === 'tool_result' && e.toolUseId) toolRes.set(e.toolUseId, !!e.isError);
-  } else {
-    for (const e of state.entries.slice(logView.n)) {
-      if (e.kind === 'tool_result' && e.toolUseId && !toolRes.has(e.toolUseId)) {
-        toolRes.set(e.toolUseId, !!e.isError);
-        const m = log.querySelector(`.tst[data-tu="${CSS.escape(e.toolUseId)}"]`);
 
-        if (m) {
-          m.className = `tst ${toolMark(e.toolUseId)}`;
+    for (const entry of state.entries) {
+      if (entry.kind === 'tool_result' && entry.toolUseId) toolRes.set(entry.toolUseId, !!entry.isError);
+    }
+  } else {
+    for (const entry of state.entries.slice(logView.n)) {
+      if (entry.kind === 'tool_result' && entry.toolUseId && !toolRes.has(entry.toolUseId)) {
+        toolRes.set(entry.toolUseId, !!entry.isError);
+        const mark = log.querySelector(`.tst[data-tu="${CSS.escape(entry.toolUseId)}"]`);
+
+        if (mark) {
+          mark.className = `tst ${toolMark(entry.toolUseId)}`;
 
           if (!REDUCED.matches) {
-            m.animate(
+            mark.animate(
               [
                 { scale: 0.2, opacity: 0 },
                 { scale: 1, opacity: 1 },
@@ -411,10 +417,10 @@ function renderLog() {
   const add = frag => {
     const kids = live ? [...frag.children] : [];
 
-    for (const c of kids) if (!(stick && c.matches('.msg.assistant'))) c.classList.add('in');
+    for (const child of kids) if (!(stick && child.matches('.msg.assistant'))) child.classList.add('in');
     if (tail) log.insertBefore(frag, tail);
     else log.append(frag);
-    if (stick) for (const c of kids) if (c.matches('.msg.assistant')) reveal(c);
+    if (stick) for (const child of kids) if (child.matches('.msg.assistant')) reveal(child);
   };
 
   const group = () => {
@@ -443,33 +449,33 @@ function renderLog() {
     logView.drawnRun = 0;
   };
 
-  for (const e of state.entries.slice(logView.n)) {
-    if (e.kind === 'tool_use' && e.name === 'Agent') {
+  for (const entry of state.entries.slice(logView.n)) {
+    if (entry.kind === 'tool_use' && entry.name === 'Agent') {
       runEnds();
-      const f = htmlNodes(agCallHtml(e, e.text), cwd);
+      const fragment = htmlNodes(agCallHtml(entry, entry.text), cwd);
 
-      logView.agCalls.set(e.toolUseId, f.firstElementChild);
-      add(f);
+      logView.agCalls.set(entry.toolUseId, fragment.firstElementChild);
+      add(fragment);
       continue;
     }
 
-    const call = e.kind === 'tool_result' && logView.agCalls.get(e.toolUseId);
+    const call = entry.kind === 'tool_result' && logView.agCalls.get(entry.toolUseId);
 
     if (call) {
-      agCallTie(call, e);
+      agCallTie(call, entry);
       continue;
     }
 
-    if (e.kind === 'tool_result' && e.agent) {
-      const said = logView.run.find(u => u.toolUseId === e.toolUseId)?.args;
+    if (entry.kind === 'tool_result' && entry.agent) {
+      const said = logView.run.find(earlier => earlier.toolUseId === entry.toolUseId)?.args;
 
       runEnds();
-      add(htmlNodes(agCallHtml(e, said), cwd));
+      add(htmlNodes(agCallHtml(entry, said), cwd));
       continue;
     }
 
-    if (e.kind === 'tool_use' || e.kind === 'tool_result') {
-      logView.run.push(e);
+    if (entry.kind === 'tool_use' || entry.kind === 'tool_result') {
+      logView.run.push(entry);
       continue;
     }
 
@@ -478,21 +484,21 @@ function renderLog() {
     // a line where the day changes, as the list has (2026-09-27, night): none for today's messages at the top, a
     // date where the transcript goes to another day, "today" where it comes back — by the date itself (2026-10-03: by
     // its label, and a chat open across midnight had no line between yesterday's words and today's)
-    if ((e.kind === 'text' || e.kind === 'peer') && e.ts) {
-      const k = new Date(e.ts).toDateString();
+    if ((entry.kind === 'text' || entry.kind === 'peer') && entry.ts) {
+      const dayKey = new Date(entry.ts).toDateString();
 
-      if (k !== 'Invalid Date' && k !== logView.dayKey) {
-        logView.dayKey = k;
-        add(htmlNodes(`<div class="sysline day"><b>${dayOf(e.ts)}</b></div>`, cwd));
+      if (dayKey !== 'Invalid Date' && dayKey !== logView.dayKey) {
+        logView.dayKey = dayKey;
+        add(htmlNodes(`<div class="sysline day"><b>${dayOf(entry.ts)}</b></div>`, cwd));
       }
     }
 
-    const cont = e.kind === 'text' && e.role === 'assistant' && logView.lastWho === 'assistant';
+    const cont = entry.kind === 'text' && entry.role === 'assistant' && logView.lastWho === 'assistant';
 
-    add(htmlNodes(entryHtml(e, cont), cwd));
-    if (e.kind === 'text') logView.lastWho = e.turnEnd ? null : e.role;
-    else if (e.kind === 'interrupt' || e.kind === 'compact' || e.kind === 'peer') logView.lastWho = null; // a turn's end: the next word is a new turn's
-    if (e.kind === 'text' && e.role === 'assistant') replies++;
+    add(htmlNodes(entryHtml(entry, cont), cwd));
+    if (entry.kind === 'text') logView.lastWho = entry.turnEnd ? null : entry.role;
+    else if (entry.kind === 'interrupt' || entry.kind === 'compact' || entry.kind === 'peer') logView.lastWho = null; // a turn's end: the next word is a new turn's
+    if (entry.kind === 'text' && entry.role === 'assistant') replies++;
   }
 
   group();
@@ -627,11 +633,11 @@ setInterval(() => {
 }, VERB_MS);
 
 /** Another chat's messages waiting for this one's turn to end (2026-10-31): before the presence line, gone once taken. */
-function renderPeerQueue(log, s) {
-  const html = (s?.peerQueue || [])
+function renderPeerQueue(log, session) {
+  const html = (session?.peerQueue || [])
     .map(
-      q =>
-        `<div class="msg peer queued"><span class="vh">A message from another chat, waiting for this one's turn to end: </span>${peerFrom(q, '<b class="pq">queued</b>')}<div class="bubble"><div class="text">${esc(q.text)}</div></div></div>`,
+      message =>
+        `<div class="msg peer queued"><span class="vh">A message from another chat, waiting for this one's turn to end: </span>${peerFrom(message, '<b class="pq">queued</b>')}<div class="bubble"><div class="text">${esc(message.text)}</div></div></div>`,
     )
     .join('');
 
@@ -656,17 +662,17 @@ function renderPeerQueue(log, s) {
 
 function renderPresence() {
   const log = $('#log');
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  renderPeerQueue(log, s);
-  log.classList.toggle('working', s?.status === 'working'); // a tool call without its result turns only while the chat works
+  renderPeerQueue(log, session);
+  log.classList.toggle('working', session?.status === 'working'); // a tool call without its result turns only while the chat works
 
-  const html = !s
+  const html = !session
     ? ''
-    : s.status === 'working'
-      ? `<div class="presence" title="Claude is working on a reply">${PIX}<span class="w"><span class="verb"><span class="vw">${shim('clauding…')}</span></span>${s.agents ? ` <em>· ${s.agents} agent${s.agents === 1 ? '' : 's'} at work</em>` : ''}</span></div>`
-      : asking(s)
-        ? `<div class="presence ask">${askHtml(s)}</div>`
+    : session.status === 'working'
+      ? `<div class="presence" title="Claude is working on a reply">${PIX}<span class="w"><span class="verb"><span class="vw">${shim('clauding…')}</span></span>${session.agents ? ` <em>· ${session.agents} agent${session.agents === 1 ? '' : 's'} at work</em>` : ''}</span></div>`
+      : asking(session)
+        ? `<div class="presence ask">${askHtml(session)}</div>`
         : '';
 
   let el = log.querySelector(':scope > .presence');
@@ -679,29 +685,29 @@ function renderPresence() {
   const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
   const pill = log.querySelector(':scope > .lognew');
 
-  const place = n => (pill ? log.insertBefore(n, pill) : log.append(n)); // last, but for the new-reply pill
+  const place = node => (pill ? log.insertBefore(node, pill) : log.append(node)); // last, but for the new-reply pill
 
   if (!el || el.dataset.html !== html) {
-    const n = html2el(html);
+    const node = html2el(html);
 
-    n.dataset.html = html;
-    if (el) el.replaceWith(n);
-    else place(n);
-    el = n;
+    node.dataset.html = html;
+    if (el) el.replaceWith(node);
+    else place(node);
+    el = node;
     phaseAnims();
   }
 
   if (el.nextElementSibling && el.nextElementSibling !== pill) place(el);
 
   // the same rows as its card's (2026-11-02), for the chat you are reading, whatever its card has folded
-  const on = s.status === 'working' && agOn(s);
+  const on = session.status === 'working' && agOn(session);
   const had = el.querySelector(':scope > .agl');
 
   if (on) {
-    agNote(s);
+    agNote(session);
 
     const box = had || el.appendChild(html2el('<div class="agl"></div>'));
-    const items = agItems({ ...agPlan(s, false), folded: false }, s);
+    const items = agItems({ ...agPlan(session, false), folded: false }, session);
 
     if (agDraw(box, items, true)) phaseAnims();
     box.hidden = !items.length;
@@ -712,31 +718,31 @@ function renderPresence() {
 // Located (2026-10-11): a chat opened from somewhere other than its card — ⌥⌘K, the launcher, a notification, the
 // overview, a tile, the home — flashes its card once, a light sweeping across it, so the eye finds where it lives.
 function locateCard(id) {
-  const c = document.querySelector(`#slist > .card[data-id="${CSS.escape(id)}"]`);
+  const card = document.querySelector(`#slist > .card[data-id="${CSS.escape(id)}"]`);
 
-  if (!c || REDUCED.matches || prefs.listHidden) return;
-  c.querySelector(':scope > .loc')?.remove();
-  const l = html2el('<span class="loc" aria-hidden="true"><i></i></span>');
+  if (!card || REDUCED.matches || prefs.listHidden) return;
+  card.querySelector(':scope > .loc')?.remove();
+  const sweep = html2el('<span class="loc" aria-hidden="true"><i></i></span>');
 
-  c.append(l);
+  card.append(sweep);
   noteMotion(id, 'locate');
 
-  l.firstChild.animate([{ transform: 'translateX(-100%)' }, { transform: 'translateX(250%)' }], {
+  sweep.firstChild.animate([{ transform: 'translateX(-100%)' }, { transform: 'translateX(250%)' }], {
     duration: 650,
     easing: 'cubic-bezier(.4, 0, .2, 1)',
     id: 'locate',
-  }).onfinish = () => l.remove();
+  }).onfinish = () => sweep.remove();
 }
 
 // The board showed the chat (2026-10-12): the server keeps when, and a reply after it is a new one (the New replies
 // filter, the Dock's badge). On opening it, and on a reply landing while it is the chat in front; the
 // summary is told at once, so its card does not wait for the server's push to stop being new.
 function markSeen(id) {
-  const s = state.sessions.get(id);
+  const session = state.sessions.get(id);
   const at = new Date().toISOString();
 
-  if (!s) return;
-  if (s.seenAt) s.seenAt = at;
+  if (!session) return;
+  if (session.seenAt) session.seenAt = at;
   api('POST', `/api/sessions/${encodeURIComponent(id)}/seen`).catch(() => {});
 }
 

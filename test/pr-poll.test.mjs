@@ -23,18 +23,20 @@ const MIN = 60_000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 
-const url = n => `https://github.com/acme/r/pull/${n}`;
+const url = number => `https://github.com/acme/r/pull/${number}`;
 
 function chat(id, touched, ...prs) {
-  const s = newSession(id, `/x/${id}.jsonl`);
+  const session = newSession(id, `/x/${id}.jsonl`);
 
-  s.lastActivity = new Date(NOW - touched).toISOString();
-  for (const n of prs) notePr(s, url(n), s.lastActivity, 'user');
-  return s;
+  session.lastActivity = new Date(NOW - touched).toISOString();
+  for (const number of prs) notePr(session, url(number), session.lastActivity, 'user');
+  return session;
 }
 
-const checked = (n, ago, state = 'open') => prStatus.set(url(n), { state, title: `PR ${n}`, checkedAt: NOW - ago });
-const due = list => duePrs(list, NOW).map(u => Number(u.split('/').pop()));
+const checked = (number, ago, state = 'open') =>
+  prStatus.set(url(number), { state, title: `PR ${number}`, checkedAt: NOW - ago });
+
+const due = list => duePrs(list, NOW).map(prUrl => Number(prUrl.split('/').pop()));
 
 test("never asked about is due whatever the chat's age, the most recently touched chat's first", () => {
   prStatus.clear();
@@ -45,24 +47,24 @@ test('the older the chat, the less often: a minute, five minutes, half an hour, 
   prStatus.clear();
   const list = [chat('h', 10 * MIN, 1), chat('d', 5 * HOUR, 2), chat('w', 2 * DAY, 3), chat('o', 4 * DAY, 4)];
 
-  for (const n of [1, 2, 3, 4]) checked(n, 90_000);
+  for (const number of [1, 2, 3, 4]) checked(number, 90_000);
   assert.deepEqual(due(list), [1]);
-  for (const n of [1, 2, 3, 4]) checked(n, 6 * MIN);
+  for (const number of [1, 2, 3, 4]) checked(number, 6 * MIN);
   assert.deepEqual(due(list), [1, 2]);
-  for (const n of [1, 2, 3, 4]) checked(n, 31 * MIN);
+  for (const number of [1, 2, 3, 4]) checked(number, 31 * MIN);
   assert.deepEqual(due(list), [1, 2, 3]);
-  for (const n of [1, 2, 3, 4]) checked(n, 30 * DAY);
+  for (const number of [1, 2, 3, 4]) checked(number, 30 * DAY);
   assert.deepEqual(due(list), [1, 2, 3]); // four days old: asked once at boot, then left alone
 });
 
 test('opening a chat makes its PRs recent again', () => {
   prStatus.clear();
-  const s = chat('o', 5 * DAY, 1);
+  const session = chat('o', 5 * DAY, 1);
 
   checked(1, 2 * MIN);
-  assert.deepEqual(due([s]), []);
-  s.openedAt = NOW - 30 * MIN;
-  assert.deepEqual(due([s]), [1]);
+  assert.deepEqual(due([session]), []);
+  session.openedAt = NOW - 30 * MIN;
+  assert.deepEqual(due([session]), [1]);
 });
 
 test('a PR in two chats goes by the more recent one', () => {
@@ -74,24 +76,24 @@ test('a PR in two chats goes by the more recent one', () => {
 
 test('merged and closed are never asked twice; one we cannot see backs off an hour', () => {
   prStatus.clear();
-  const s = chat('h', MIN, 1, 2, 3);
+  const session = chat('h', MIN, 1, 2, 3);
 
   checked(1, DAY, 'merged');
   checked(2, DAY, 'closed');
   checked(3, 30 * MIN, null);
-  assert.deepEqual(due([s]), []);
+  assert.deepEqual(due([session]), []);
   checked(3, 61 * MIN, null);
-  assert.deepEqual(due([s]), [3]);
+  assert.deepEqual(due([session]), [3]);
 });
 
 test('a PR you wrote or reviewed is watched by its own last event, whatever its chat', () => {
   prStatus.clear();
-  const s = chat('o', 20 * DAY, 1, 2, 3, 4);
+  const session = chat('o', 20 * DAY, 1, 2, 3, 4);
 
-  const watched = (n, last, ago) =>
-    prStatus.set(url(n), {
+  const watched = (number, last, ago) =>
+    prStatus.set(url(number), {
       state: 'open',
-      title: `PR ${n}`,
+      title: `PR ${number}`,
       turn: { you: false, last: new Date(NOW - last).toISOString() },
       checkedAt: NOW - ago,
     });
@@ -100,21 +102,21 @@ test('a PR you wrote or reviewed is watched by its own last event, whatever its 
   watched(2, 5 * DAY, 3 * MIN);
   watched(3, 5 * DAY, 11 * MIN);
   watched(4, 20 * DAY, 11 * MIN);
-  assert.deepEqual(due([s]).sort(), [1, 3]); // two minutes within two days of its last event, ten within two weeks, then the chat's pace
+  assert.deepEqual(due([session]).sort(), [1, 3]); // two minutes within two days of its last event, ten within two weeks, then the chat's pace
 });
 
 test("a PR's number is one GraphQL takes: none with a leading zero, none past 2^31−1 (2026-10-14)", () => {
-  const s = newSession('nums', '/x/nums.jsonl');
+  const session = newSession('nums', '/x/nums.jsonl');
 
   notePrs(
-    s,
+    session,
     'https://github.com/acme/widgets/pull/012 and https://github.com/acme/widgets/pull/12, https://github.com/acme/widgets/pull/99999999999, https://github.com/acme/widgets/pull/2147483647 and https://github.com/acme/widgets/pull/2147483648',
     NOW,
     'user',
   );
 
   assert.deepEqual(
-    s.prs.map(p => p.label),
+    session.prs.map(pr => pr.label),
     ['widgets#2147483647', 'widgets#12'],
     '012 is no second #12, and the rest no PR at all',
   );
@@ -151,7 +153,7 @@ await import(${JSON.stringify(fileURLToPath(new URL('../scripts/fakes/fakegh.mjs
       { mode: 0o755 },
     );
 
-    const pull = (repo, n) => `https://github.com/acme/${repo}/pull/${n}`;
+    const pull = (repo, number) => `https://github.com/acme/${repo}/pull/${number}`;
 
     const fx = makeFixture(tmpDir('peix-fx-'), [
       {
@@ -165,7 +167,7 @@ await import(${JSON.stringify(fileURLToPath(new URL('../scripts/fakes/fakegh.mjs
 
     try {
       const states = async () =>
-        Object.fromEntries((await srv.api('api/sessions')).body.sessions[0].prs.map(p => [p.label, p.state]));
+        Object.fromEntries((await srv.api('api/sessions')).body.sessions[0].prs.map(pr => [pr.label, pr.state]));
 
       await waitFor(async () => (await states())['widgets#1'] === 'open', {
         timeout: 45_000,
@@ -224,9 +226,9 @@ test(
     const failed = () => (srv.logText().match(/\] pr status: gh: HTTP 502/g) || []).length;
 
     const seen = async () => {
-      const p = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id).prs[0];
+      const chatPr = (await srv.api('api/sessions')).body.sessions.find(session => session.id === id).prs[0];
 
-      return { state: p.state, title: p.title, updated: p.updated };
+      return { state: chatPr.state, title: chatPr.title, updated: chatPr.updated };
     };
 
     const open = () => srv.api(`api/sessions/${id}/messages`);

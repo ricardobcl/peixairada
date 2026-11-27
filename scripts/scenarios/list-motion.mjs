@@ -30,12 +30,12 @@ export default async function (ctx) {
 
   const { chats } = makeFixture(
     ctx.fixture.dir,
-    Array.from({ length: 5 }, (_, i) => ({
+    Array.from({ length: 5 }, (_, index) => ({
       cwd,
-      title: `Chat ${i + 1}`,
-      prompt: `prompt ${i + 1}`,
-      reply: `reply ${i + 1}`,
-      at: new Date(now - (i + 1) * 3600_000),
+      title: `Chat ${index + 1}`,
+      prompt: `prompt ${index + 1}`,
+      reply: `reply ${index + 1}`,
+      at: new Date(now - (index + 1) * 3600_000),
     })),
   );
 
@@ -55,7 +55,7 @@ export default async function (ctx) {
   out.first = await motion(ctx);
 
   ctx.assert.deepEqual(
-    out.first.filter(m => ['flip', 'enter', 'leave'].includes(m.kind)),
+    out.first.filter(move => ['flip', 'enter', 'leave'].includes(move.kind)),
     [],
     'nothing moves on the first draw',
   ); // the badges the replayed alerts bring do pop
@@ -76,12 +76,12 @@ export default async function (ctx) {
   out.rest = await cards(ctx);
 
   ctx.assert.deepEqual(
-    out.rest.map(c => c.title),
+    out.rest.map(card => card.title),
     ['Chat 1', 'Chat 2', 'Chat 3', 'Chat 4', 'Chat 5'],
     'newest first',
   );
 
-  const since = async n => (await motion(ctx)).slice(n);
+  const since = async start => (await motion(ctx)).slice(start);
   let n0 = (await motion(ctx)).length;
 
   // Chat 2 ticked done: it slides to the bottom, and the three under it slide up into its place
@@ -97,7 +97,7 @@ export default async function (ctx) {
 
   await ctx.shot('flip');
   out.flip = { motion: await since(n0), cards: await cards(ctx) };
-  const slid = out.flip.motion.filter(m => m.kind === 'flip').map(m => m.id);
+  const slid = out.flip.motion.filter(move => move.kind === 'flip').map(move => move.id);
 
   ctx.assert.ok(
     [chats[2].id, chats[3].id, chats[4].id].every(id => slid.includes(id)),
@@ -107,7 +107,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.flip.cards.at(-1).id, id2, 'the done card is last');
 
   ctx.assert.equal(
-    out.flip.motion.filter(m => m.kind !== 'flip' && m.kind !== 'roll').length,
+    out.flip.motion.filter(move => move.kind !== 'flip' && move.kind !== 'roll').length,
     0,
     'a slide, nothing else (the counts roll since 2026-10-11)',
   );
@@ -155,7 +155,7 @@ export default async function (ctx) {
     { what: 'and gone', every: 40, timeout: 3000 },
   );
 
-  out.after = (await cards(ctx)).map(c => c.title);
+  out.after = (await cards(ctx)).map(card => card.title);
   ctx.assert.deepEqual(out.after, ['Chat 6', 'Chat 1', 'Chat 3', 'Chat 4', 'Chat 5'], 'the list without it');
 
   // The reply lands: a live chat mid tool call is clauding; its end_turn written in makes it ready — the card flares
@@ -192,7 +192,7 @@ export default async function (ctx) {
     appendFileSync(
       landing.file,
       `${replyLines({ id: landing.id, cwd, text: 'Built.', at: new Date() })
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 

@@ -26,14 +26,14 @@ const env = {
   GIT_COMMITTER_EMAIL: 't@t',
 };
 
-const git = (cwd, ...a) =>
-  execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env })
+const git = (cwd, ...args) =>
+  execFileSync('git', ['-C', cwd, ...args], { stdio: 'pipe', env })
     .toString()
     .trim();
 
-const put = (dir, f, text) => {
-  mkdirSync(join(dir, f, '..'), { recursive: true });
-  writeFileSync(join(dir, f), text);
+const put = (dir, file, text) => {
+  mkdirSync(join(dir, file, '..'), { recursive: true });
+  writeFileSync(join(dir, file), text);
 };
 
 execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin]);
@@ -44,12 +44,12 @@ git(seed, 'add', '.');
 git(seed, 'commit', '-q', '-m', 'base');
 git(seed, 'push', '-q', origin, 'main');
 
-const pr = (n, branch, files) => {
+const pr = (prNumber, branch, files) => {
   git(seed, 'checkout', '-q', '-b', branch, 'main');
-  for (const [f, t] of Object.entries(files)) put(seed, f, t);
+  for (const [file, text] of Object.entries(files)) put(seed, file, text);
   git(seed, 'add', '.');
   git(seed, 'commit', '-q', '-m', branch);
-  git(seed, 'push', '-q', origin, `${branch}:refs/pull/${n}/head`, `${branch}:refs/heads/${branch}`);
+  git(seed, 'push', '-q', origin, `${branch}:refs/pull/${prNumber}/head`, `${branch}:refs/heads/${branch}`);
 };
 
 pr(14, 'feat/tax-rounding', {
@@ -153,7 +153,7 @@ export default async function (ctx) {
   });
 
   await ctx.openChat(chat.id);
-  const u = n => `https://github.com/acme/${n === 16 ? 'gadgets' : 'widgets'}/pull/${n}`;
+  const prUrl = prNumber => `https://github.com/acme/${prNumber === 16 ? 'gadgets' : 'widgets'}/pull/${prNumber}`;
 
   const where = () =>
     ctx
@@ -186,7 +186,7 @@ export default async function (ctx) {
   );
 
   // Diff on #14: the tab, on the PR scope, the PR's two files — read from origin, the folder left as it was
-  await ctx.evaluate(`document.querySelector('#prlist .pract[data-pract="diff"][data-url="${u(14)}"]').click()`);
+  await ctx.evaluate(`document.querySelector('#prlist .pract[data-pract="diff"][data-url="${prUrl(14)}"]').click()`);
   const files = () => ctx.evaluate(`[...document.querySelectorAll('#chg .cf')].map(b => b.dataset.path).join()`);
 
   await ctx.waitFor(

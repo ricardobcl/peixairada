@@ -9,16 +9,16 @@
 export const meta = { server: true, fixture: 'auto', fake: true };
 
 export default async function (ctx) {
-  const [a, b] = ctx.fixture.chats;
+  const [chatA, chatB] = ctx.fixture.chats;
   const out = { switches: [] };
 
-  for (const id of [a.id, b.id]) {
+  for (const id of [chatA.id, chatB.id]) {
     await ctx.openChat(id);
     await ctx.key('KeyC');
     await ctx.waitPrompt(15000);
 
-    for (let i = 0; i < 12; i++) {
-      await ctx.type(`line ${i} of ${id.slice(0, 4)}\r`);
+    for (let index = 0; index < 12; index++) {
+      await ctx.type(`line ${index} of ${id.slice(0, 4)}\r`);
       await ctx.sleep(250);
     }
   }
@@ -32,9 +32,9 @@ export default async function (ctx) {
     return { top: Math.round(v.scrollTop), max: v.scrollHeight - v.clientHeight, prompt: rows.some(r => /^❯/.test(r)), lines: window.peix.buffer().length }; })()`);
 
   for (const [label, to] of [
-    ['a', a],
-    ['b', b],
-    ['a again', a],
+    ['a', chatA],
+    ['b', chatB],
+    ['a again', chatA],
   ]) {
     const term = await ctx.evaluate(`window.peix.session(${JSON.stringify(to.id)}).terminal.id`);
 
@@ -54,12 +54,17 @@ export default async function (ctx) {
 
     ctx.assert.ok(at !== null, `${label}: the snapshot came in`);
     await ctx.sleep(1500);
-    const v = await view();
+    const viewed = await view();
 
-    out.switches.push({ label, staleAt: at, ...v });
-    ctx.assert.ok(v.max > 0, `${label}: the drawer has scrollback to be at the top of (${v.max})`);
-    ctx.assert.ok(v.max - v.top <= 2, `${label}: the drawer is at its end, not scrolled up (${v.top} of ${v.max})`);
-    ctx.assert.ok(v.prompt, `${label}: the prompt is on screen`);
+    out.switches.push({ label, staleAt: at, ...viewed });
+    ctx.assert.ok(viewed.max > 0, `${label}: the drawer has scrollback to be at the top of (${viewed.max})`);
+
+    ctx.assert.ok(
+      viewed.max - viewed.top <= 2,
+      `${label}: the drawer is at its end, not scrolled up (${viewed.top} of ${viewed.max})`,
+    );
+
+    ctx.assert.ok(viewed.prompt, `${label}: the prompt is on screen`);
   }
 
   // still following: a new turn's lines land at the end and the view goes with them

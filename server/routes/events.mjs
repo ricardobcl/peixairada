@@ -36,8 +36,8 @@ export const aboutInfo = () => ({
 });
 
 /** A test notification, and the stream every page listens to. */
-export async function eventRoutes(req, res, url, p) {
-  if (req.method === 'POST' && p === '/api/test-notify') {
+export async function eventRoutes(req, res, url, path) {
+  if (req.method === 'POST' && path === '/api/test-notify') {
     if (notificationsOn) nativeNotify('peixAIrada', 'test', 'Native notifications are working.');
 
     broadcast('alert', {
@@ -53,7 +53,7 @@ export async function eventRoutes(req, res, url, p) {
     return json(res, 200, { ok: true });
   }
 
-  if (req.method === 'GET' && p === '/events') {
+  if (req.method === 'GET' && path === '/events') {
     const snap = JSON.stringify({
       sessions: sortedSummaries(),
       projects: projectList(),

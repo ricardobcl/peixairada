@@ -5,26 +5,26 @@
 // bytes, so the page uploads them (PUT /api/attach) and gets a path back. Images pasted with ⌘V: in the app
 // the drawer's claude reads the Mac clipboard itself on ⌃V (verified: `[Image #1]` on the prompt line), so
 // that key is sent for it; in a browser elsewhere the clipboard is that machine's, so the image is uploaded.
-const atMention = p => `@${p.replace(/ /g, '\\ ')}`;
-const shellWord = p => `'${p.replace(/'/g, `'\\''`)}'`;
+const atMention = path => `@${path.replace(/ /g, '\\ ')}`;
+const shellWord = path => `'${path.replace(/'/g, `'\\''`)}'`;
 /** A word as a shell reads it: as it is when nothing in it is the shell's, else quoted (2026-11-06: a branch's name). */
-const shArg = p => (/^[\w./@%+=:,-]+$/.test(p) ? p : shellWord(p));
+const shArg = path => (/^[\w./@%+=:,-]+$/.test(path) ? path : shellWord(path));
 
 function attachPaths(paths) {
   if (!paths.length) return false;
 
   // a name with a control character in it would be keys, not a name (2026-11-06): refused whole, said where the drop went
-  if (paths.some(p => hasCtl(String(p)))) {
+  if (paths.some(path => hasCtl(String(path)))) {
     note($('#shead'), 'Not typed: a dropped file\u2019s name has a control character or a bidi mark in it', true);
     return false;
   }
 
   const text = `${paths.map(atMention).join(' ')} `;
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
   // the drawer in the half with the keys, else the claude one: a zsh holder carries the chat's id too, and a drop
   // on the zsh tab typed an @-mention into the shell (2026-10-03) — a shell gets the path quoted as a shell word
-  const live = terms.filter(t => t.id && t.xt && t.exited === null && t.sessionId === state.current);
-  const tm = live.find(t => t.g === focusG) || live.find(t => t.kind === 'claude') || live[0];
+  const live = terms.filter(term => term.id && term.xt && term.exited === null && term.sessionId === state.current);
+  const tm = live.find(term => term.g === focusG) || live.find(term => term.kind === 'claude') || live[0];
 
   if (tm) {
     focusGroup(tm.g);
@@ -35,11 +35,11 @@ function attachPaths(paths) {
 
   note(
     $('#shead'),
-    !s
+    !session
       ? 'Pick a chat first, then drop the file'
-      : s.alive
+      : session.alive
         ? 'Nowhere to put it: open the terminal on this chat (>_) first, then drop again'
-        : resumable(s)
+        : resumable(session)
           ? 'Nowhere to put it: resume the chat first, then drop again'
           : 'Nowhere to put it on this chat',
     true,
@@ -53,51 +53,51 @@ async function uploadFiles(files) {
 
   await keySafe();
 
-  for (const f of files) {
-    const r = await fetch(
-      `/api/attach?session=${encodeURIComponent(state.current || 'new')}&name=${encodeURIComponent(f.name || 'pasted.png')}`,
-      { method: 'PUT', body: f, headers: keyHeaders() },
+  for (const file of files) {
+    const response = await fetch(
+      `/api/attach?session=${encodeURIComponent(state.current || 'new')}&name=${encodeURIComponent(file.name || 'pasted.png')}`,
+      { method: 'PUT', body: file, headers: keyHeaders() },
     );
 
-    const d = await r.json().catch(() => ({}));
+    const data = await response.json().catch(() => ({}));
 
-    if (!r.ok) {
+    if (!response.ok) {
       note(
         $('#shead'),
-        r.status === 404
-          ? `Could not save ${f.name || 'the file'}: the running server predates this page and has no route for it — scripts/launchd.sh restart`
-          : `Could not save ${f.name || 'the file'}: ${d.error || `HTTP ${r.status}`}`,
+        response.status === 404
+          ? `Could not save ${file.name || 'the file'}: the running server predates this page and has no route for it — scripts/launchd.sh restart`
+          : `Could not save ${file.name || 'the file'}: ${data.error || `HTTP ${response.status}`}`,
         true,
       );
 
       continue;
     }
 
-    paths.push(d.path);
+    paths.push(data.path);
   }
 
   return paths;
 }
 
 const setDropping = on => $('#chat').classList.toggle('dropping', on);
-const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+const hasFiles = event => [...(event.dataTransfer?.types || [])].includes('Files');
 
-document.addEventListener('dragover', e => {
-  if (!hasFiles(e)) return;
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'copy';
+document.addEventListener('dragover', event => {
+  if (!hasFiles(event)) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'copy';
   setDropping(true);
 });
 
-document.addEventListener('dragleave', e => {
-  if (hasFiles(e) && !e.relatedTarget) setDropping(false);
+document.addEventListener('dragleave', event => {
+  if (hasFiles(event) && !event.relatedTarget) setDropping(false);
 });
 
-document.addEventListener('drop', async e => {
-  if (!hasFiles(e)) return;
-  e.preventDefault();
+document.addEventListener('drop', async event => {
+  if (!hasFiles(event)) return;
+  event.preventDefault();
   setDropping(false);
-  attachPaths(await uploadFiles([...e.dataTransfer.files]));
+  attachPaths(await uploadFiles([...event.dataTransfer.files]));
 });
 
 window.peixDrop = paths => {
@@ -111,30 +111,30 @@ window.peixDrop = paths => {
 // chat is open, else one opened for the reply and closed after it, which sends no size, so the drawer is not resized.
 // A chat muted, or back (2026-11-02): the server's word, for every page and poster, shown at once and taken back if refused.
 function setMuted(id, on) {
-  const show = v => {
-    const s = state.sessions.get(id);
+  const show = muted => {
+    const session = state.sessions.get(id);
 
-    if (!s) return;
-    s.muted = v;
+    if (!session) return;
+    session.muted = muted;
     renderBoard();
-    if (id === state.current) renderHead(s);
+    if (id === state.current) renderHead(session);
   };
 
   show(on);
 
-  api('POST', `/api/sessions/${id}/mute`, { on }).catch(e => {
+  api('POST', `/api/sessions/${id}/mute`, { on }).catch(error => {
     show(!on);
-    note($('#shead'), `Could not ${on ? 'mute' : 'unmute'} it: ${e.message}`, true);
+    note($('#shead'), `Could not ${on ? 'mute' : 'unmute'} it: ${error.message}`, true);
   });
 }
 
 window.peixMute = id => setMuted(id, true); // the banner's *Mute this chat*
 
 window.peixDone = id => {
-  const s = state.sessions.get(id);
+  const session = state.sessions.get(id);
 
-  if (!s || s.done || !canTick(s)) return;
-  if (watchEnds(s) && !armedOn(id)) openSession(id, { locate: true });
+  if (!session || session.done || !canTick(session)) return;
+  if (watchEnds(session) && !armedOn(id)) openSession(id, { locate: true });
   tickDone(id, true, $('#shead'));
 }; // a watching chat's: shown, and asked once more
 
@@ -142,27 +142,27 @@ window.peixDone = id => {
 // chat that has moved on since — a word of yours, another reply — or that is asking takes none. Refused, it says so:
 // a banner of its own with the app behind (`unsent`), a note on the board.
 window.peixReply = async (id, text, at) => {
-  const s = state.sessions.get(id);
-  const since = w => w && at && String(w) > String(at);
+  const session = state.sessions.get(id);
+  const since = time => time && at && String(time) > String(at);
 
-  const no = !s
+  const no = !session
     ? 'it is not on the board'
-    : asking(s)
+    : asking(session)
       ? ASKS_FIRST
-      : since(s.lastUserAt) || since(s.lastReplyAt)
+      : since(session.lastUserAt) || since(session.lastReplyAt)
         ? 'the chat has moved on since that banner — read it first'
-        : await drawerType(s, text, true);
+        : await drawerType(session, text, true);
 
   if (!no) return true;
-  note($('#shead'), `Reply not sent${s ? ` to “${s.title}”` : ''}: ${no}`, true);
+  note($('#shead'), `Reply not sent${session ? ` to “${session.title}”` : ''}: ${no}`, true);
 
-  if (inApp && s) {
+  if (inApp && session) {
     post({
       type: 'alert',
       kind: 'unsent',
-      heading: `Reply not sent · ${s.project || ''}`,
-      project: s.project || '',
-      title: s.title || '',
+      heading: `Reply not sent · ${session.project || ''}`,
+      project: session.project || '',
+      title: session.title || '',
       snippet: no,
       sessionId: id,
     });
@@ -175,18 +175,18 @@ window.peixReply = async (id, text, at) => {
  *  (ESC CR), then ⏎ when `send` (unsent: there for you to read and send): over the page's own socket to it when it is
  *  attached, else one opened for the words and closed after them, which sends no size, so the drawer is not resized.
  *  Never while it asks (typeIn): null once typed, else why not. */
-async function drawerType(s, text, send) {
-  const d = drawerOf(s);
+async function drawerType(session, text, send) {
+  const drawerTerm = drawerOf(session);
   const body = forClaude(text);
 
-  if (!d) return 'it has no drawer here';
+  if (!drawerTerm) return 'it has no drawer here';
   if (!body) return 'there are no words to type';
-  if (asking(s)) return ASKS_FIRST;
-  const tm = claudeTm(s);
+  if (asking(session)) return ASKS_FIRST;
+  const tm = claudeTm(session);
 
   if (tm) return typeIn(tm.ws, body, send);
   await keySafe();
-  const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${d.id}/ws`));
+  const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${drawerTerm.id}/ws`));
 
   return new Promise(res => {
     ws.onopen = async () => {

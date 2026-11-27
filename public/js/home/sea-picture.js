@@ -69,8 +69,8 @@ const SEA_PALETTE = [
 const SEA_GROUND = '#0b0817';
 
 const makeSea = (() => {
-  const W = 200;
-  const H = 100;
+  const WIDTH = 200;
+  const HEIGHT = 100;
 
   const HZ = 56; // the horizon
   const SUN = [134, HZ - 4.5];
@@ -86,7 +86,7 @@ const makeSea = (() => {
   ];
 
   const COVER = [0, 0.3, 0.6, 1];
-  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => v / 16 - 0.47);
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(value => value / 16 - 0.47);
 
   // pines on the headland: [x, height, half width at the foot]
   const PINES = [
@@ -100,23 +100,23 @@ const makeSea = (() => {
     [39.5, 5, 1.8],
   ];
 
-  function hash(x, y) {
-    let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
+  function hash(cellX, cellY) {
+    let bits = Math.imul(cellX | 0, 374761393) + Math.imul(cellY | 0, 668265263);
 
-    h = Math.imul(h ^ (h >>> 13), 1274126177);
-    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    bits = Math.imul(bits ^ (bits >>> 13), 1274126177);
+    return ((bits ^ (bits >>> 16)) >>> 0) / 4294967296;
   }
 
   // Value noise, wrapping every `period` lattice cells in x when period > 0.
-  function noise(x, y, period) {
-    const xi = Math.floor(x);
-    const yi = Math.floor(y);
+  function noise(posX, posY, period) {
+    const xi = Math.floor(posX);
+    const yi = Math.floor(posY);
 
-    const fx = x - xi;
-    const fy = y - yi;
+    const fx = posX - xi;
+    const fy = posY - yi;
 
-    const u = fx * fx * (3 - 2 * fx);
-    const v = fy * fy * (3 - 2 * fy);
+    const easeX = fx * fx * (3 - 2 * fx);
+    const easeY = fy * fy * (3 - 2 * fy);
 
     let x0 = xi;
     let x1 = xi + 1;
@@ -126,40 +126,45 @@ const makeSea = (() => {
       x1 = (x0 + 1) % period;
     }
 
-    const a = hash(x0, yi);
-    const b = hash(x1, yi);
-    const c = hash(x0, yi + 1);
-    const d = hash(x1, yi + 1);
+    const topLeft = hash(x0, yi);
+    const topRight = hash(x1, yi);
+    const bottomLeft = hash(x0, yi + 1);
+    const bottomRight = hash(x1, yi + 1);
 
-    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+    return (
+      topLeft +
+      (topRight - topLeft) * easeX +
+      (bottomLeft - topLeft) * easeY +
+      (topLeft - topRight - bottomLeft + bottomRight) * easeX * easeY
+    );
   }
 
-  function fbm(x, y, octaves, period) {
-    let s = 0;
-    let n = 0;
+  function fbm(posX, posY, octaves, period) {
+    let sum = 0;
+    let weight = 0;
     let amp = 0.5;
-    let f = 1;
+    let frequency = 1;
 
-    for (let i = 0; i < octaves; i++) {
-      s += amp * noise(x * f, y * f, period * f);
-      n += amp;
+    for (let octave = 0; octave < octaves; octave++) {
+      sum += amp * noise(posX * frequency, posY * frequency, period * frequency);
+      weight += amp;
       amp *= 0.5;
-      f *= 2;
+      frequency *= 2;
     }
 
-    return s / n;
+    return sum / weight;
   }
 
-  const clamp = v => (v < 0 ? 0 : v > 1 ? 1 : v);
+  const clamp = value => (value < 0 ? 0 : value > 1 ? 1 : value);
 
-  const smooth = (a, b, v) => {
-    const k = clamp((v - a) / (b - a));
+  const smooth = (from, to, value) => {
+    const progress = clamp((value - from) / (to - from));
 
-    return k * k * (3 - 2 * k);
+    return progress * progress * (3 - 2 * progress);
   };
 
-  const mix = (a, b, k) => a + (b - a) * k;
-  const hex = s => [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16) / 255);
+  const mix = (from, to, amount) => from + (to - from) * amount;
+  const hex = color => [1, 3, 5].map(offset => parseInt(color.slice(offset, offset + 2), 16) / 255);
 
   // The sky's gradient, top to horizon, as [stop, r, g, b].
   const STOPS = [
@@ -171,109 +176,119 @@ const makeSea = (() => {
     [1, 0.88, 0.4, 0.4],
   ];
 
-  function gradient(v, out) {
-    let i = 1;
+  function gradient(position, out) {
+    let stop = 1;
 
-    while (i < STOPS.length - 1 && v > STOPS[i][0]) i++;
+    while (stop < STOPS.length - 1 && position > STOPS[stop][0]) stop++;
 
-    const a = STOPS[i - 1];
-    const b = STOPS[i];
+    const before = STOPS[stop - 1];
+    const after = STOPS[stop];
 
-    const k = clamp((v - a[0]) / (b[0] - a[0]));
+    const amount = clamp((position - before[0]) / (after[0] - before[0]));
 
-    ((out[0] = mix(a[1], b[1], k)), (out[1] = mix(a[2], b[2], k)), (out[2] = mix(a[3], b[3], k)));
+    ((out[0] = mix(before[1], after[1], amount)),
+      (out[1] = mix(before[2], after[2], amount)),
+      (out[2] = mix(before[3], after[3], amount)));
   }
 
   // The headland: its skyline row at x, and the row where its foot meets the sea.
-  const ridge = x =>
-    HZ + 2.5 - 11 * smooth(54, 32, x) ** 0.7 - 2.4 * Math.exp(-(((x - 19) / 9) ** 2)) - 2 * fbm(x * 0.21, 3.3, 3, 0);
+  const ridge = posX =>
+    HZ +
+    2.5 -
+    11 * smooth(54, 32, posX) ** 0.7 -
+    2.4 * Math.exp(-(((posX - 19) / 9) ** 2)) -
+    2 * fbm(posX * 0.21, 3.3, 3, 0);
 
-  const shore = x => HZ + 1.5 + 5 * smooth(54, 4, x);
+  const shore = posX => HZ + 1.5 + 5 * smooth(54, 4, posX);
+
   // a sea stack off the point
-  const stack = x => (x > 52 && x < 58 ? HZ - 3.5 - 1.6 * fbm(x * 0.6, 8.1, 2, 0) + 2.5 * ((x - 55) / 3) ** 4 : 1e9);
+  const stack = posX =>
+    posX > 52 && posX < 58 ? HZ - 3.5 - 1.6 * fbm(posX * 0.6, 8.1, 2, 0) + 2.5 * ((posX - 55) / 3) ** 4 : 1e9;
 
   function makeSea() {
-    const P = SEA_PALETTE.map(hex);
-    const N = W * H;
+    const PALETTE = SEA_PALETTE.map(hex);
+    const CELLS = WIDTH * HEIGHT;
 
-    const lvl = new Uint8Array(N);
-    const col = new Uint8Array(N);
+    const lvl = new Uint8Array(CELLS);
+    const col = new Uint8Array(CELLS);
 
     const lut = new Uint8Array(32768).fill(255);
 
-    const nearest = (r, g, b) => {
-      const k =
-        (Math.min(31, (r * 31.99) | 0) << 10) | (Math.min(31, (g * 31.99) | 0) << 5) | Math.min(31, (b * 31.99) | 0);
+    const nearest = (red, green, blue) => {
+      const slot =
+        (Math.min(31, (red * 31.99) | 0) << 10) |
+        (Math.min(31, (green * 31.99) | 0) << 5) |
+        Math.min(31, (blue * 31.99) | 0);
 
-      if (lut[k] !== 255) return lut[k];
+      if (lut[slot] !== 255) return lut[slot];
 
       let best = 0;
       let bd = 1e9;
 
-      for (let i = 0; i < P.length; i++) {
-        const dr = P[i][0] - r;
-        const dg = P[i][1] - g;
-        const db = P[i][2] - b;
+      for (let index = 0; index < PALETTE.length; index++) {
+        const dr = PALETTE[index][0] - red;
+        const dg = PALETTE[index][1] - green;
+        const db = PALETTE[index][2] - blue;
 
-        const d = 0.3 * dr * dr + 0.5 * dg * dg + 0.2 * db * db;
+        const distance = 0.3 * dr * dr + 0.5 * dg * dg + 0.2 * db * db;
 
-        if (d < bd) ((bd = d), (best = i));
+        if (distance < bd) ((bd = distance), (best = index));
       }
 
-      return (lut[k] = best);
+      return (lut[slot] = best);
     };
 
     // dot and colour for one shaded cell
-    const halftone = (k, r, x, cr, cg, cb, floor, fade, color) => {
+    const halftone = (index, row, column, cr, cg, cb, floor, fade, color) => {
       const peak = Math.max(cr, cg, cb, 1e-4);
       const level = clamp(floor + (1 - floor) * peak ** 0.85 * 0.95) * fade;
-      const step = Math.max(0, Math.min(3, Math.round(level * 3 + BAYER[(r & 3) * 4 + (x & 3)])));
+      const step = Math.max(0, Math.min(3, Math.round(level * 3 + BAYER[(row & 3) * 4 + (column & 3)])));
 
-      lvl[k] = step;
+      lvl[index] = step;
 
       if (color) {
         // small dots are drawn brighter to make up their size, but the darkest
         // cells keep a dim colour, so the shadows stay deep instead of glittering
         const want = step ? Math.min(1, (level + 0.06) / COVER[step]) : 0;
-        const s = ((0.3 + 0.7 * want) * (0.4 + 0.6 * smooth(0.14, 0.5, level))) / peak;
+        const scale = ((0.3 + 0.7 * want) * (0.4 + 0.6 * smooth(0.14, 0.5, level))) / peak;
 
-        color[k] = nearest(clamp(cr * s), clamp(cg * s), clamp(cb * s));
+        color[index] = nearest(clamp(cr * scale), clamp(cg * scale), clamp(cb * scale));
       }
     };
 
     // --- the clear sky, built once ------------------------------------------
-    const sky = new Float32Array(HZ * W * 3);
-    const g = [0, 0, 0];
+    const sky = new Float32Array(HZ * WIDTH * 3);
+    const rgb = [0, 0, 0];
 
-    for (let r = 0; r < HZ; r++) {
-      for (let x = 0; x < W; x++) {
-        const y = r + 0.5;
+    for (let row = 0; row < HZ; row++) {
+      for (let column = 0; column < WIDTH; column++) {
+        const posY = row + 0.5;
 
-        const dx = x + 0.5 - SUN[0];
-        const dy = (y - SUN[1]) * 1.6;
+        const dx = column + 0.5 - SUN[0];
+        const dy = (posY - SUN[1]) * 1.6;
 
-        const d = Math.sqrt(dx * dx + dy * dy);
+        const distance = Math.sqrt(dx * dx + dy * dy);
         // rose and violet everywhere, burning gold only toward the sun
         const near = Math.exp(-Math.abs(dx) / 62);
-        const v = y / HZ;
+        const depth = posY / HZ;
 
-        gradient(v ** (1.0 + 0.12 * (1 - near)), g);
-        const warm = Math.exp(-Math.abs(dx) / 36) * smooth(0.45, 1, v) * 0.9;
+        gradient(depth ** (1.0 + 0.12 * (1 - near)), rgb);
+        const warm = Math.exp(-Math.abs(dx) / 36) * smooth(0.45, 1, depth) * 0.9;
 
-        ((g[0] = mix(g[0], 1.0 * mix(0.6, 1, v), warm)),
-          (g[1] = mix(g[1], 0.64 * mix(0.6, 1, v), warm)),
-          (g[2] = mix(g[2], 0.3, warm)));
+        ((rgb[0] = mix(rgb[0], 1.0 * mix(0.6, 1, depth), warm)),
+          (rgb[1] = mix(rgb[1], 0.64 * mix(0.6, 1, depth), warm)),
+          (rgb[2] = mix(rgb[2], 0.3, warm)));
 
-        const fall = mix(1, 0.86 + 0.14 * near, smooth(0.6, 1, v));
-        const glow = Math.exp(-d / 40) * 0.15 + Math.exp(-d / 9) * 0.1;
+        const fall = mix(1, 0.86 + 0.14 * near, smooth(0.6, 1, depth));
+        const glow = Math.exp(-distance / 40) * 0.15 + Math.exp(-distance / 9) * 0.1;
         // high haze in long thin bands, so no stretch of sky is one flat tone
-        const haze = 0.82 + 0.36 * fbm(x * 0.03, y * 0.12, 3, 0);
-        const k = (r * W + x) * 3;
-        const vig = (1 - 0.08 * (Math.abs(x + 0.5 - 100) / 100) ** 2) * haze * fall;
+        const haze = 0.82 + 0.36 * fbm(column * 0.03, posY * 0.12, 3, 0);
+        const index = (row * WIDTH + column) * 3;
+        const vig = (1 - 0.08 * (Math.abs(column + 0.5 - 100) / 100) ** 2) * haze * fall;
 
-        sky[k] = g[0] * (0.85 + 0.15 * near) * vig + glow;
-        sky[k + 1] = g[1] * (0.65 + 0.35 * near) * vig + glow * 0.7;
-        sky[k + 2] = g[2] * (1.1 - 0.2 * near) * vig + glow * 0.3;
+        sky[index] = rgb[0] * (0.85 + 0.15 * near) * vig + glow;
+        sky[index + 1] = rgb[1] * (0.65 + 0.35 * near) * vig + glow * 0.7;
+        sky[index + 2] = rgb[2] * (1.1 - 0.2 * near) * vig + glow * 0.3;
       }
     }
 
@@ -281,27 +296,29 @@ const makeSea = (() => {
     const LANDW = 60;
     const LANDH = HZ + 10;
 
-    const land = new Uint8Array(N); // 1 rock, 2 pine
+    const land = new Uint8Array(CELLS); // 1 rock, 2 pine
 
-    const LR = new Float32Array(N);
-    const LG = new Float32Array(N);
-    const LB = new Float32Array(N);
+    const LR = new Float32Array(CELLS);
+    const LG = new Float32Array(CELLS);
+    const LB = new Float32Array(CELLS);
 
     // the rock's seaward edge on each row, for the light on the cliff face
     const edge = new Float32Array(LANDH).fill(-1);
 
-    for (let r = 0; r < LANDH; r++) {
-      const y = r + 0.5;
+    for (let row = 0; row < LANDH; row++) {
+      const posY = row + 0.5;
 
-      for (let x = 0; x < LANDW; x++) if (y >= ridge(x + 0.5) && y < shore(x + 0.5)) edge[r] = x;
+      for (let column = 0; column < LANDW; column++) {
+        if (posY >= ridge(column + 0.5) && posY < shore(column + 0.5)) edge[row] = column;
+      }
     }
 
-    for (let r = 0; r < LANDH; r++) {
-      const y = r + 0.5;
+    for (let row = 0; row < LANDH; row++) {
+      const posY = row + 0.5;
 
-      for (let x = 0; x < LANDW; x++) {
-        const k = r * W + x;
-        const xc = x + 0.5;
+      for (let column = 0; column < LANDW; column++) {
+        const index = row * WIDTH + column;
+        const xc = column + 0.5;
 
         const t0 = ridge(xc);
         const st = stack(xc);
@@ -310,24 +327,24 @@ const makeSea = (() => {
         let cg;
         let cb;
 
-        if ((y >= t0 && y < shore(xc)) || (y >= st && y < HZ + 1.2)) {
-          land[k] = 1;
-          const isStack = !(y >= t0 && y < shore(xc));
+        if ((posY >= t0 && posY < shore(xc)) || (posY >= st && posY < HZ + 1.2)) {
+          land[index] = 1;
+          const isStack = !(posY >= t0 && posY < shore(xc));
           const top = isStack ? st : t0;
           // dark violet rock in rough strata
-          const s = 0.6 + 0.8 * fbm(x * 0.22, y * 0.7, 3, 0);
+          const shade = 0.6 + 0.8 * fbm(column * 0.22, posY * 0.7, 3, 0);
 
-          ((cr = 0.06 * s), (cg = 0.042 * s), (cb = 0.15 * s));
+          ((cr = 0.06 * shade), (cg = 0.042 * shade), (cb = 0.15 * shade));
           // the sun is low and to the right: slopes that drop toward it catch it
           const facing = clamp(0.4 + (isStack ? 0.5 : (ridge(xc + 1.2) - ridge(xc - 1.2)) * 0.45));
-          const rim = smooth(top + 2.4, top + 0.4, y) * facing;
+          const rim = smooth(top + 2.4, top + 0.4, posY) * facing;
           // the cliff face, warm where it turns to the sun, broken by crags
-          const crag = smooth(0.35, 0.75, fbm(x * 0.4 + 3, y * 0.5, 3, 0));
+          const crag = smooth(0.35, 0.75, fbm(column * 0.4 + 3, posY * 0.5, 3, 0));
 
           const face = isStack
             ? smooth(53.5, 57.5, xc) * 0.7
-            : edge[r] > 30
-              ? Math.exp(-(edge[r] - x) / 4) * smooth(HZ + 5, HZ - 4, y)
+            : edge[row] > 30
+              ? Math.exp(-(edge[row] - column) / 4) * smooth(HZ + 5, HZ - 4, posY)
               : 0;
 
           const lit = clamp(Math.max(rim * 0.9, face * (0.3 + 0.7 * crag) * 0.75));
@@ -337,80 +354,84 @@ const makeSea = (() => {
 
         for (const [tx, th, tw] of PINES) {
           const tb = ridge(tx);
-          const dy = y - (tb - th);
+          const dy = posY - (tb - th);
           // a conifer: a spire that widens in tiers of branches
           const tier = (dy + th * 0.3) / 2.4;
           const half = (dy / th) * tw * (0.5 + 0.75 * (tier - Math.floor(tier))) + 0.35;
           const ex = xc - tx;
 
-          if (dy >= 0 && y < tb + 1.5 && Math.abs(ex) <= half) {
-            land[k] = 2;
-            const s = 0.7 + 0.6 * hash(x * 13 + r, 5);
+          if (dy >= 0 && posY < tb + 1.5 && Math.abs(ex) <= half) {
+            land[index] = 2;
+            const shade = 0.7 + 0.6 * hash(column * 13 + row, 5);
 
-            ((cr = 0.045 * s), (cg = 0.03 * s), (cb = 0.1 * s));
+            ((cr = 0.045 * shade), (cg = 0.03 * shade), (cb = 0.1 * shade));
             // the right flank faces the sun
-            const e = ex > 0 && ex > half - 1.1 ? 0.3 + 0.3 * smooth(th, 0, dy) : 0;
+            const flank = ex > 0 && ex > half - 1.1 ? 0.3 + 0.3 * smooth(th, 0, dy) : 0;
 
-            ((cr = mix(cr, 0.85, e)), (cg = mix(cg, 0.3, e)), (cb = mix(cb, 0.3, e)));
+            ((cr = mix(cr, 0.85, flank)), (cg = mix(cg, 0.3, flank)), (cb = mix(cb, 0.3, flank)));
           }
         }
 
-        if (land[k]) ((LR[k] = cr), (LG[k] = cg), (LB[k] = cb));
+        if (land[index]) ((LR[index] = cr), (LG[index] = cg), (LB[index] = cb));
       }
     }
 
     // a small sloop out on the water, dark against the glow left of the sun
-    for (let r = HZ - 10; r < HZ + 4; r++) {
-      const y = r + 0.5;
+    for (let row = HZ - 10; row < HZ + 4; row++) {
+      const posY = row + 0.5;
 
-      for (let x = BOAT - 6; x <= BOAT + 6; x++) {
-        const k = r * W + x;
-        const ex = x + 0.5 - BOAT;
+      for (let column = BOAT - 6; column <= BOAT + 6; column++) {
+        const index = row * WIDTH + column;
+        const ex = column + 0.5 - BOAT;
 
-        const hull = y >= HZ + 1 && y < HZ + 3 && Math.abs(ex - 0.3) < 4.6 - (y - HZ - 1) * 1.3;
-        const mast = Math.abs(ex) < 0.5 && y >= HZ - 9 && y < HZ + 1;
-        const main = ex > 0 && y >= HZ - 8.5 && y < HZ + 0.5 && ex < 0.6 + (y - (HZ - 8.5)) * 0.42;
-        const jib = ex < 0 && y >= HZ - 7 && y < HZ + 0.5 && -ex < (y - (HZ - 7)) * 0.36;
+        const hull = posY >= HZ + 1 && posY < HZ + 3 && Math.abs(ex - 0.3) < 4.6 - (posY - HZ - 1) * 1.3;
+        const mast = Math.abs(ex) < 0.5 && posY >= HZ - 9 && posY < HZ + 1;
+        const main = ex > 0 && posY >= HZ - 8.5 && posY < HZ + 0.5 && ex < 0.6 + (posY - (HZ - 8.5)) * 0.42;
+        const jib = ex < 0 && posY >= HZ - 7 && posY < HZ + 0.5 && -ex < (posY - (HZ - 7)) * 0.36;
 
         if (hull || mast || main || jib) {
-          land[k] = 3;
+          land[index] = 3;
           // the sails are thin enough to glow a little with the sun behind them
           const glow = main ? 0.12 + 0.18 * smooth(0, 3.5, ex) : 0;
 
-          ((LR[k] = 0.05 + glow), (LG[k] = 0.03 + glow * 0.45), (LB[k] = 0.09 + glow * 0.35));
+          ((LR[index] = 0.05 + glow), (LG[index] = 0.03 + glow * 0.45), (LB[index] = 0.09 + glow * 0.35));
         }
       }
     }
 
     // --- the cloud deck: a sheet of heaped cloud seen from below, laid out on
     // its own plane so it shrinks and flattens toward the horizon -------------
-    const U = 640;
-    const V = 128;
+    const DECK_U = 640;
+    const DECK_V = 128;
 
-    const deck = new Float32Array(U * V);
-    const deckLit = new Float32Array(U * V);
+    const deck = new Float32Array(DECK_U * DECK_V);
+    const deckLit = new Float32Array(DECK_U * DECK_V);
 
-    const deckAt = (u, v) => {
-      const q = fbm(u * 0.0125, v * 0.06, 2, 8);
-      const patch = fbm(u * 0.00625, v * 0.03 + 7, 2, 4);
+    const deckAt = (posU, posV) => {
+      const warp = fbm(posU * 0.0125, posV * 0.06, 2, 8);
+      const patch = fbm(posU * 0.00625, posV * 0.03 + 7, 2, 4);
 
-      return fbm(u * 0.040625 + q * 1.6, v * 0.3, 5, 26) + 0.25 * (patch - 0.5);
+      return fbm(posU * 0.040625 + warp * 1.6, posV * 0.3, 5, 26) + 0.25 * (patch - 0.5);
     };
 
-    for (let v = 0; v < V; v++) {
-      for (let u = 0; u < U; u++) {
-        const d = deckAt(u, v);
+    for (let deckRow = 0; deckRow < DECK_V; deckRow++) {
+      for (let deckCol = 0; deckCol < DECK_U; deckCol++) {
+        const density = deckAt(deckCol, deckRow);
 
-        deck[v * U + u] = d;
+        deck[deckRow * DECK_U + deckCol] = density;
         // the side of each heap that faces the horizon, and the sun, is lit
-        deckLit[v * U + u] = clamp(0.5 + (d - deckAt(u, v + 2.5)) * 9);
+        deckLit[deckRow * DECK_U + deckCol] = clamp(0.5 + (density - deckAt(deckCol, deckRow + 2.5)) * 9);
       }
     }
 
     // thinning toward the zenith, ragged rather than a ruled line
-    const thinTop = new Float32Array(W * HZ);
+    const thinTop = new Float32Array(WIDTH * HZ);
 
-    for (let r = 0; r < HZ; r++) for (let x = 0; x < W; x++) thinTop[r * W + x] = fbm(x * 0.05 + 11, r * 0.15, 2, 0);
+    for (let row = 0; row < HZ; row++) {
+      for (let column = 0; column < WIDTH; column++) {
+        thinTop[row * WIDTH + column] = fbm(column * 0.05 + 11, row * 0.15, 2, 0);
+      }
+    }
 
     // --- low bars over the horizon: a wrapping field that drifts -------------
     const CW = 720;
@@ -418,58 +439,60 @@ const makeSea = (() => {
     const loCover = new Float32Array(CW * HZ);
     const loLit = new Float32Array(CW * HZ);
 
-    const lower = (x, y) => {
+    const lower = (posX, posY) => {
       // long thin bars low over the horizon
-      const b = fbm(x / 40, y * 0.3, 4, CW / 40);
-      const gaps = fbm(x / 120, 5, 2, CW / 120);
+      const bars = fbm(posX / 40, posY * 0.3, 4, CW / 40);
+      const gaps = fbm(posX / 120, 5, 2, CW / 120);
 
-      return b + 0.01 + 0.5 * (gaps - 0.5) - 0.35 * smooth(HZ - 14, HZ - 20, y) - 0.25 * smooth(HZ - 4, HZ - 1, y);
+      return (
+        bars + 0.01 + 0.5 * (gaps - 0.5) - 0.35 * smooth(HZ - 14, HZ - 20, posY) - 0.25 * smooth(HZ - 4, HZ - 1, posY)
+      );
     };
 
-    for (let r = 0; r < HZ; r++) {
-      for (let x = 0; x < CW; x++) {
-        const y = r + 0.5;
-        const k = r * CW + x;
-        const dl = lower(x, y);
+    for (let row = 0; row < HZ; row++) {
+      for (let column = 0; column < CW; column++) {
+        const posY = row + 0.5;
+        const index = row * CW + column;
+        const dl = lower(column, posY);
 
-        loCover[k] = smooth(0.58, 0.66, dl);
-        loLit[k] = clamp(0.5 + (dl - lower(x, y + 1.2)) * 6);
+        loCover[index] = smooth(0.58, 0.66, dl);
+        loLit[index] = clamp(0.5 + (dl - lower(column, posY + 1.2)) * 6);
       }
     }
 
     // this frame's sky, finished, for the sea to mirror
-    const SKR = new Float32Array(HZ * W);
-    const SKG = new Float32Array(HZ * W);
-    const SKB = new Float32Array(HZ * W);
+    const SKR = new Float32Array(HZ * WIDTH);
+    const SKG = new Float32Array(HZ * WIDTH);
+    const SKB = new Float32Array(HZ * WIDTH);
 
     const color = col;
 
-    const frame = t => {
-      const dUp = t * 0.9;
-      const dLo = t * 1.7;
+    const frame = seconds => {
+      const dUp = seconds * 0.9;
+      const dLo = seconds * 1.7;
 
-      for (let r = 0; r < HZ; r++) {
-        const y = r + 0.5;
+      for (let row = 0; row < HZ; row++) {
+        const posY = row + 0.5;
 
-        for (let x = 0; x < W; x++) {
-          const k = r * W + x;
-          const s = k * 3;
+        for (let column = 0; column < WIDTH; column++) {
+          const index = row * WIDTH + column;
+          const skyIndex = index * 3;
 
-          let cr = sky[s];
-          let cg = sky[s + 1];
-          let cb = sky[s + 2];
+          let cr = sky[skyIndex];
+          let cg = sky[skyIndex + 1];
+          let cb = sky[skyIndex + 2];
 
-          const dx = x + 0.5 - SUN[0];
-          const dy = y - SUN[1];
+          const dx = column + 0.5 - SUN[0];
+          const dy = posY - SUN[1];
           let disc = 0;
           const ds = Math.sqrt(dx * dx + (dy / 0.9) ** 2);
 
           if (ds < SR + 0.6) {
             // the disc, a little flattened, hot at the core and redder at the rim
-            const e = ds / SR;
+            const radial = ds / SR;
 
             disc = smooth(SR + 0.45, SR - 0.45, ds);
-            const e4 = e * e * e * e;
+            const e4 = radial * radial * radial * radial;
 
             cr = mix(cr, 1.0, disc);
             cg = mix(cg, 0.95 - 0.2 * e4, disc);
@@ -477,16 +500,16 @@ const makeSea = (() => {
           }
 
           const near = Math.exp(-Math.sqrt(dx * dx + dy * dy * 2.5) / 45);
-          const v = y / HZ;
+          const depth = posY / HZ;
           // the cloud deck, found on its plane: far rows are far away
-          const D = 58 / (HZ - y + 2.5);
+          const distance = 58 / (HZ - posY + 2.5);
           // a band of heaped cloud mid-sky: clear above and clear in the low glow
-          const far = smooth(4.8, 2.7, D) * smooth(1.08, 1.7, D);
+          const far = smooth(4.8, 2.7, distance) * smooth(1.08, 1.7, distance);
           let cloud = 0;
 
           if (far > 0) {
-            const su = dx * D + dUp + 64200;
-            const sv = (D - 0.9) * 10;
+            const su = dx * distance + dUp + 64200;
+            const sv = (distance - 0.9) * 10;
 
             let iu = Math.floor(su);
 
@@ -494,29 +517,31 @@ const makeSea = (() => {
             const iv = Math.floor(sv);
             const fv = sv - iv;
 
-            iu %= U;
+            iu %= DECK_U;
 
-            const iu1 = (iu + 1) % U;
-            const a0 = iv * U;
-            const a1 = a0 + U;
+            const iu1 = (iu + 1) % DECK_U;
+            const a0 = iv * DECK_U;
+            const a1 = a0 + DECK_U;
 
             const d0 = deck[a0 + iu] + (deck[a0 + iu1] - deck[a0 + iu]) * fu;
             const d1 = deck[a1 + iu] + (deck[a1 + iu1] - deck[a1 + iu]) * fu;
-            const dd = d0 + (d1 - d0) * fv - 0.22 * (1 - far) * thinTop[k];
-            const c = smooth(0.56, 0.68, dd) * Math.sqrt(far);
+            const dd = d0 + (d1 - d0) * fv - 0.22 * (1 - far) * thinTop[index];
+            const deckCover = smooth(0.56, 0.68, dd) * Math.sqrt(far);
 
-            if (c > 0.01) {
-              cloud = c;
+            if (deckCover > 0.01) {
+              cloud = deckCover;
               const l0 = deckLit[a0 + iu] + (deckLit[a0 + iu1] - deckLit[a0 + iu]) * fu;
               const l1 = deckLit[a1 + iu] + (deckLit[a1 + iu1] - deckLit[a1 + iu]) * fu;
-              const l = l0 + (l1 - l0) * fv;
+              const light = l0 + (l1 - l0) * fv;
               // undersides glow gold toward the sun and rose away from it, and
               // more the lower they sit; thick cores stay dusk violet
               const az = Math.exp(-Math.abs(dx) / 60);
-              const low = v * v;
+              const low = depth * depth;
               const thin = 1 - smooth(0.6, 0.76, dd);
 
-              const b = clamp(smooth(0.45, 0.85, l) ** 1.5 * (0.55 + 0.25 * low + 0.35 * az) + 0.3 * thin * az * low);
+              const bright = clamp(
+                smooth(0.45, 0.85, light) ** 1.5 * (0.55 + 0.25 * low + 0.35 * az) + 0.3 * thin * az * low,
+              );
 
               const warm = clamp(az * (0.1 + 1.2 * low));
 
@@ -524,45 +549,45 @@ const makeSea = (() => {
               const hg = mix(0.45, 0.72, warm);
               const hb = mix(0.52, 0.38, warm);
 
-              const sr = mix(0.1, 0.2, v);
-              const sg = mix(0.065, 0.07, v);
-              const sb = mix(0.23, 0.27, v);
+              const sr = mix(0.1, 0.2, depth);
+              const sg = mix(0.065, 0.07, depth);
+              const sb = mix(0.23, 0.27, depth);
 
-              cr = mix(cr, mix(sr, hr, b), c);
-              cg = mix(cg, mix(sg, hg, b), c);
-              cb = mix(cb, mix(sb, hb, b), c);
+              cr = mix(cr, mix(sr, hr, bright), deckCover);
+              cg = mix(cg, mix(sg, hg, bright), deckCover);
+              cb = mix(cb, mix(sb, hb, bright), deckCover);
             }
           }
 
           // the low bars, dark against the glow with burning edges
-          const sx = x + dLo;
+          const sx = column + dLo;
           const ix = Math.floor(sx);
           const fx = sx - ix;
 
-          const i0 = r * CW + (ix % CW);
-          const i1 = r * CW + ((ix + 1) % CW);
+          const i0 = row * CW + (ix % CW);
+          const i1 = row * CW + ((ix + 1) % CW);
 
           // thinned over the sun and kept off the sky behind the headland
-          const c =
+          const barCover =
             (loCover[i0] + (loCover[i1] - loCover[i0]) * fx) *
             (1 - 0.75 * Math.exp(-((dx / 13) ** 2))) *
-            (1 - 0.85 * smooth(76, 50, x));
+            (1 - 0.85 * smooth(76, 50, column));
 
-          if (c > 0.01) {
-            cloud = Math.max(cloud, c);
-            const l = loLit[i0] + (loLit[i1] - loLit[i0]) * fx;
-            const rim = l ** 2 * (0.35 + 0.9 * near);
-            const a = Math.min(1, c * 1.2) * 0.92;
+          if (barCover > 0.01) {
+            cloud = Math.max(cloud, barCover);
+            const light = loLit[i0] + (loLit[i1] - loLit[i0]) * fx;
+            const rim = light ** 2 * (0.35 + 0.9 * near);
+            const alpha = Math.min(1, barCover * 1.2) * 0.92;
 
-            cr = mix(cr, 0.3 + 0.7 * rim, a);
-            cg = mix(cg, 0.09 + 0.55 * rim, a);
-            cb = mix(cb, 0.24 + 0.18 * rim, a);
+            cr = mix(cr, 0.3 + 0.7 * rim, alpha);
+            cg = mix(cg, 0.09 + 0.55 * rim, alpha);
+            cb = mix(cb, 0.24 + 0.18 * rim, alpha);
           }
 
           // the first stars, high up where the sky has gone to indigo
-          if (r < 22 && cloud < 0.05 && hash(x, r * 5 + 3) > 0.993) {
-            const tw = 0.55 + 0.45 * Math.sin(t * (0.8 + hash(r, x) * 1.6) + hash(x, r) * 6.28);
-            const st = tw * smooth(22, 4, r) * 0.75;
+          if (row < 22 && cloud < 0.05 && hash(column, row * 5 + 3) > 0.993) {
+            const tw = 0.55 + 0.45 * Math.sin(seconds * (0.8 + hash(row, column) * 1.6) + hash(column, row) * 6.28);
+            const st = tw * smooth(22, 4, row) * 0.75;
 
             ((cr = Math.max(cr, st * 0.95)), (cg = Math.max(cg, st * 0.85)), (cb = Math.max(cb, st)));
           }
@@ -570,20 +595,20 @@ const makeSea = (() => {
           // the sea is too rough to mirror the disc whole: it gives back glitter
           const keep = 1 - 0.75 * disc;
 
-          ((SKR[k] = cr * keep), (SKG[k] = cg * keep), (SKB[k] = cb * keep));
-          if (land[k]) {
-            ((cr = LR[k]), (cg = LG[k]), (cb = LB[k]));
-            halftone(k, r, x, cr, cg, cb, 0.02, 1, color);
-          } else halftone(k, r, x, cr, cg, cb, 0.05, 1, color);
+          ((SKR[index] = cr * keep), (SKG[index] = cg * keep), (SKB[index] = cb * keep));
+          if (land[index]) {
+            ((cr = LR[index]), (cg = LG[index]), (cb = LB[index]));
+            halftone(index, row, column, cr, cg, cb, 0.02, 1, color);
+          } else halftone(index, row, column, cr, cg, cb, 0.05, 1, color);
         }
       }
 
-      for (let r = HZ; r < H; r++) {
-        const y = r + 0.5;
+      for (let row = HZ; row < HEIGHT; row++) {
+        const posY = row + 0.5;
         // the sea: each cell is a facet of water that mirrors whatever part
         // of the sky its tilt points it at
-        const dz = y - HZ;
-        const Z = 36 / dz; // distance out
+        const dz = posY - HZ;
+        const worldZ = 36 / dz; // distance out
         const rows = 36 / (dz * dz); // how much sea one row spans
         const swellAmt = smooth(8, 26, dz);
         const hot = Math.exp(-dz / 9);
@@ -593,132 +618,140 @@ const makeSea = (() => {
         const fy = 1.6 / (1 + dz * 0.05);
 
         const fres = 0.24 + 0.46 * Math.exp(-dz / 8);
-        const depth = smooth(HZ, H, y);
-        const fade = smooth(H + 6, H - 4, y);
+        const depth = smooth(HZ, HEIGHT, posY);
+        const fade = smooth(HEIGHT + 6, HEIGHT - 4, posY);
 
-        for (let x = 0; x < W; x++) {
-          const k = r * W + x;
+        for (let column = 0; column < WIDTH; column++) {
+          const index = row * WIDTH + column;
 
-          if (land[k]) {
-            halftone(k, r, x, LR[k], LG[k], LB[k], 0.02, 1, color);
+          if (land[index]) {
+            halftone(index, row, column, LR[index], LG[index], LB[index], 0.02, 1, color);
             continue;
           }
 
-          const dx = x + 0.5 - SUN[0];
-          const X = (x + 0.5 - 100) / dz;
-          // the long swell rolls toward us; shorter chop rides on it
-          const p = 13 * (Z + 0.05 * X) + 2.2 * fbm(X * 0.35 + 3, Z * 0.4, 2, 0) + t * 0.8;
+          const dx = column + 0.5 - SUN[0];
+          const worldX = (column + 0.5 - 100) / dz;
 
-          const wv = Math.sin(p);
-          const slope = Math.cos(p);
+          // the long swell rolls toward us; shorter chop rides on it
+          const phase =
+            13 * (worldZ + 0.05 * worldX) + 2.2 * fbm(worldX * 0.35 + 3, worldZ * 0.4, 2, 0) + seconds * 0.8;
+
+          const wv = Math.sin(phase);
+          const slope = Math.cos(phase);
 
           let sz = 0.11 * slope * clamp(1.4 / (13 * rows));
           let sxl = 0.015 * slope;
 
-          for (let i = 0; i < CHOP.length; i++) {
-            const [kx, kz, kk, a, w, f] = CHOP[i];
-            const ph = kk * (kx * X + kz * Z) - w * t + f;
-            const c = Math.cos(ph) * a * clamp(1.6 / (kk * rows));
+          for (let chop = 0; chop < CHOP.length; chop++) {
+            const [kx, kz, kk, steep, speed, offset] = CHOP[chop];
+            const ph = kk * (kx * worldX + kz * worldZ) - speed * seconds + offset;
+            const tilt = Math.cos(ph) * steep * clamp(1.6 / (kk * rows));
 
-            ((sz += c * kz), (sxl += c * kx));
+            ((sz += tilt * kz), (sxl += tilt * kx));
           }
 
           let ry = Math.round(HZ - 1 - dz * 0.85 - 70 * sz);
 
           ry = ry < 0 ? 0 : ry > HZ - 1 ? HZ - 1 : ry;
-          let rx = Math.round(x - 60 * sxl);
+          let rx = Math.round(column - 60 * sxl);
 
-          rx = rx < 0 ? 0 : rx > W - 1 ? W - 1 : rx;
-          const q = ry * W + rx;
+          rx = rx < 0 ? 0 : rx > WIDTH - 1 ? WIDTH - 1 : rx;
+          const mirrorIndex = ry * WIDTH + rx;
           // violet near the horizon, deepening to indigo toward us
           // broken into long horizontal ripples, each giving back a little more
           // or less of the sky
-          const rip = noise(x * fx * 1.4 + 13 - t * 0.15, y * fy * 1.1 + t * 0.25, 0);
+          const rip = noise(column * fx * 1.4 + 13 - seconds * 0.15, posY * fy * 1.1 + seconds * 0.25, 0);
           const rf = fres * (0.5 + 1.1 * rip * rip);
-          let cr = SKR[q] * rf * 0.8 + 0.03 - 0.01 * depth;
-          let cg = SKG[q] * rf * 0.75 + 0.022;
-          let cb = SKB[q] * rf + 0.095 + 0.03 * depth;
+          let cr = SKR[mirrorIndex] * rf * 0.8 + 0.03 - 0.01 * depth;
+          let cg = SKG[mirrorIndex] * rf * 0.75 + 0.022;
+          let cb = SKB[mirrorIndex] * rf + 0.095 + 0.03 * depth;
 
           // ripple facets that catch the sun: short dashes far out, longer
           // close in, each turning toward the sun and away again
-          const n =
-            0.55 * noise(x * fx + t * 0.3, y * fy * 1.3 - t * 0.4, 0) +
-            0.45 * noise(x * fx * 1.7 - t * 0.4, y * fy * 2 + t * 0.3 + 40, 0);
+          const facets =
+            0.55 * noise(column * fx + seconds * 0.3, posY * fy * 1.3 - seconds * 0.4, 0) +
+            0.45 * noise(column * fx * 1.7 - seconds * 0.4, posY * fy * 2 + seconds * 0.3 + 40, 0);
 
-          const wave = Math.floor(p / (2 * Math.PI));
-          const crest = (0.5 + 0.5 * wv) ** 7 * swellAmt * smooth(0.4, 0.65, noise(X * 2.5 + 7, wave * 3.7, 0));
+          const wave = Math.floor(phase / (2 * Math.PI));
+          const crest = (0.5 + 0.5 * wv) ** 7 * swellAmt * smooth(0.4, 0.65, noise(worldX * 2.5 + 7, wave * 3.7, 0));
           const path = Math.exp(-((dx / pw) ** 2));
           const soft = Math.exp(-((dx / (pw * 1.6)) ** 2));
 
           // the near face of a swell is in shadow
           if (slope > 0) {
-            const d = 1 - 0.7 * swellAmt * slope;
+            const shadow = 1 - 0.7 * swellAmt * slope;
 
-            ((cr *= d), (cg *= d), (cb *= d));
+            ((cr *= shadow), (cg *= shadow), (cb *= shadow));
           }
 
           const th = 0.84 - 0.3 * path * (0.45 + 0.55 * hot);
-          const glint = smooth(th, th + 0.08, n) * (0.25 + 0.75 * path) * soft;
-          const white = path * path * smooth(th + 0.04, th + 0.2, n);
+          const glint = smooth(th, th + 0.08, facets) * (0.25 + 0.75 * path) * soft;
+          const white = path * path * smooth(th + 0.04, th + 0.2, facets);
 
           cr += 0.2 * soft * (0.4 + hot) + glint * 1.1;
           cg += 0.1 * soft * (0.4 + hot) + glint * (0.55 + 0.3 * hot + 0.35 * white);
           cb += 0.04 * soft + glint * (0.2 + 0.25 * hot + 0.45 * white);
           // the crests catch it: gold in the path, rose out to the sides
-          const catchL = crest * (0.15 + 0.85 * soft) * (0.6 + 0.6 * n);
+          const catchL = crest * (0.15 + 0.85 * soft) * (0.6 + 0.6 * facets);
 
           ((cr += catchL * 0.95), (cg += catchL * mix(0.3, 0.7, soft)), (cb += catchL * mix(0.5, 0.3, soft)));
           // the sun's own column: a gap under the disc, then broken dashes
-          const dash = smooth(0.4, 0.7, noise(x * 0.18 + t * 0.25, y * 0.9 - t * 0.5, 0));
+          const dash = smooth(0.4, 0.7, noise(column * 0.18 + seconds * 0.25, posY * 0.9 - seconds * 0.5, 0));
 
           const col =
-            Math.exp(-((dx / (1.0 + dz * 0.22)) ** 2)) * Math.exp(-dz / 5) * (0.6 + 0.4 * n) * smooth(0, 3, dz) * dash;
+            Math.exp(-((dx / (1.0 + dz * 0.22)) ** 2)) *
+            Math.exp(-dz / 5) *
+            (0.6 + 0.4 * facets) *
+            smooth(0, 3, dz) *
+            dash;
 
           ((cr += col), (cg += col * 0.8), (cb += col * 0.45));
 
           // the headland upside down in the water, broken by ripples
-          if (x < LANDW + 4 && dz < 26) {
-            const xs = x + 0.5 + 1.3 * Math.sin(y * 1.1 + t * 1.2 + x * 0.05);
+          if (column < LANDW + 4 && dz < 26) {
+            const xs = column + 0.5 + 1.3 * Math.sin(posY * 1.1 + seconds * 1.2 + column * 0.05);
             const ix = Math.max(0, Math.min(LANDW - 1, xs | 0));
             const ft = shore(ix + 0.5);
 
-            if (y > ft) {
-              const my = Math.floor(2 * ft - y);
+            if (posY > ft) {
+              const my = Math.floor(2 * ft - posY);
 
               if (my >= 0 && my < LANDH) {
-                const m = my * W + ix;
+                const landIndex = my * WIDTH + ix;
 
-                if (land[m]) {
-                  const a = 0.8 * smooth(ft + 24, ft + 4, y);
+                if (land[landIndex]) {
+                  const alpha = 0.8 * smooth(ft + 24, ft + 4, posY);
 
-                  ((cr = mix(cr, LR[m] * 0.8 + 0.02, a)),
-                    (cg = mix(cg, LG[m] * 0.7 + 0.015, a)),
-                    (cb = mix(cb, LB[m] * 0.85 + 0.05, a)));
+                  ((cr = mix(cr, LR[landIndex] * 0.8 + 0.02, alpha)),
+                    (cg = mix(cg, LG[landIndex] * 0.7 + 0.015, alpha)),
+                    (cb = mix(cb, LB[landIndex] * 0.85 + 0.05, alpha)));
                 }
               }
 
               // a line of surf where rock meets water
-              const foam = smooth(ft + 1.6, ft + 0.3, y) * smooth(0.45, 0.8, noise(x * 0.5 - t * 0.4, t * 0.3, 0));
+              const foam =
+                smooth(ft + 1.6, ft + 0.3, posY) *
+                smooth(0.45, 0.8, noise(column * 0.5 - seconds * 0.4, seconds * 0.3, 0));
 
               ((cr += 0.5 * foam), (cg += 0.3 * foam), (cb += 0.35 * foam));
             }
           }
 
           // and the sloop's, shorter and more broken
-          if (dz > 2.5 && dz < 14 && x > BOAT - 8 && x < BOAT + 8) {
-            const ix = (x + 0.5 + 0.9 * Math.sin(y * 1.3 + t * 1.6)) | 0;
-            const m = Math.floor(2 * (HZ + 3) - y) * W + ix;
+          if (dz > 2.5 && dz < 14 && column > BOAT - 8 && column < BOAT + 8) {
+            const ix = (column + 0.5 + 0.9 * Math.sin(posY * 1.3 + seconds * 1.6)) | 0;
+            const landIndex = Math.floor(2 * (HZ + 3) - posY) * WIDTH + ix;
 
-            if (land[m] === 3) {
-              const a = 0.7 * smooth(HZ + 14, HZ + 4, y) * (0.6 + 0.4 * rip);
+            if (land[landIndex] === 3) {
+              const alpha = 0.7 * smooth(HZ + 14, HZ + 4, posY) * (0.6 + 0.4 * rip);
 
-              ((cr = mix(cr, 0.04, a)), (cg = mix(cg, 0.03, a)), (cb = mix(cb, 0.1, a)));
+              ((cr = mix(cr, 0.04, alpha)), (cg = mix(cg, 0.03, alpha)), (cb = mix(cb, 0.1, alpha)));
             }
           }
 
           // a crisp dark line at the horizon for the sun to sit on
           if (dz < 1.5) ((cr *= 0.55), (cg *= 0.55), (cb *= 0.55));
-          halftone(k, r, x, cr, cg, cb, 0.18, fade, color);
+          halftone(index, row, column, cr, cg, cb, 0.18, fade, color);
         }
       }
     };

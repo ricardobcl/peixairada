@@ -41,22 +41,25 @@ function cdPrioAt(el) {
   if (!prioOn() || !el || (listFilter() && !prioFocus()) || $('#q').value.trim()) return null;
 
   const list = $('#slist');
-  const cards = [...list.querySelectorAll(':scope > .card.inprio')].filter(c => c.dataset.id !== cd.from);
+
+  const cards = [...list.querySelectorAll(':scope > .card.inprio')].filter(
+    pinnedCard => pinnedCard.dataset.id !== cd.from,
+  );
 
   if (el.closest('#slist > .gsep.lane.prio')) return { k: 0, cards, head: true };
   if (el.closest('#slist > .gsep.pempty')) return { k: 0, cards, empty: el.closest('.gsep.pempty') };
   const card = el.closest('#slist > .card.inprio');
 
   if (card && card.dataset.id !== cd.from) {
-    const r = card.getBoundingClientRect();
-    const f = (cd.y - r.top) / r.height;
-    const i = cards.indexOf(card);
+    const rect = card.getBoundingClientRect();
+    const fraction = (cd.y - rect.top) / rect.height;
+    const index = cards.indexOf(card);
     const other = state.sessions.get(card.dataset.id);
 
     const folds = !cd.noFold && !sendWhy(other);
 
-    if (folds && f > 1 / 3 && f < 2 / 3) return null; // its middle: Fold into…, as anywhere
-    return { k: f < 0.5 ? i : i + 1, cards };
+    if (folds && fraction > 1 / 3 && fraction < 2 / 3) return null; // its middle: Fold into…, as anywhere
+    return { k: fraction < 0.5 ? index : index + 1, cards };
   }
 
   if (!cards.length || (el !== list && !el.closest('#slist > .card.cdfrom, #slist > .leaving'))) return null;
@@ -66,10 +69,10 @@ function cdPrioAt(el) {
 
   if (cd.y < top - 6 || cd.y > bottom + 6) return null;
   return {
-    k: cards.filter(c => {
-      const r = c.getBoundingClientRect();
+    k: cards.filter(pinnedCard => {
+      const rect = pinnedCard.getBoundingClientRect();
 
-      return r.top + r.height / 2 < cd.y;
+      return rect.top + rect.height / 2 < cd.y;
     }).length,
     cards,
   };
@@ -95,20 +98,21 @@ function cdPrioShow(pl) {
   }
 
   const lr = $('#slist').getBoundingClientRect();
-  const a = pl.cards[pl.k - 1]?.getBoundingClientRect();
-  const b = pl.cards[pl.k]?.getBoundingClientRect();
+  const above = pl.cards[pl.k - 1]?.getBoundingClientRect();
+  const below = pl.cards[pl.k]?.getBoundingClientRect();
 
-  const y = a && b ? (a.bottom + b.top) / 2 : a ? a.bottom + 3 : b ? b.top - 3 : lr.top + 4;
+  const top =
+    above && below ? (above.bottom + below.top) / 2 : above ? above.bottom + 3 : below ? below.top - 3 : lr.top + 4;
 
-  gap.style.translate = `${Math.round(lr.left + 10)}px ${Math.round(y - 1)}px`;
+  gap.style.translate = `${Math.round(lr.left + 10)}px ${Math.round(top - 1)}px`;
   gap.style.width = `${Math.round(lr.width - 20)}px`;
 }
 
 function cdPrioSay(pl) {
-  const ids = pl.cards.map(c => c.dataset.id);
+  const ids = pl.cards.map(card => card.dataset.id);
 
   const was = secList()
-    .map(s => s.id)
+    .map(session => session.id)
     .indexOf(cd.from);
 
   return was < 0
@@ -119,17 +123,17 @@ function cdPrioSay(pl) {
 }
 
 function cdPlace(measure) {
-  const g = cd.ghost;
+  const ghost = cd.ghost;
 
   if (measure) {
-    g._w = g.offsetWidth;
-    g._h = g.offsetHeight;
+    ghost._w = ghost.offsetWidth;
+    ghost._h = ghost.offsetHeight;
   }
 
-  const x = Math.max(8, Math.min(innerWidth - g._w - 8, cd.x + 14));
-  const y = cd.y + 16 + g._h > innerHeight - 8 ? cd.y - g._h - 10 : cd.y + 16;
+  const left = Math.max(8, Math.min(innerWidth - ghost._w - 8, cd.x + 14));
+  const top = cd.y + 16 + ghost._h > innerHeight - 8 ? cd.y - ghost._h - 10 : cd.y + 16;
 
-  g.style.translate = `${x}px ${y}px`;
+  ghost.style.translate = `${left}px ${top}px`;
 }
 
 /** What is under the pointer, as the list stands: the card lit, the ghost's words. */
@@ -167,20 +171,20 @@ function cdHit() {
             ? CD_HINT_PRIO
             : CD_HINT;
 
-  const g = cd.ghost;
+  const ghost = cd.ghost;
 
-  if (g._say === say) return;
-  g._say = say;
-  g.classList.toggle('go', !!over || !!pl);
+  if (ghost._say === say) return;
+  ghost._say = say;
+  ghost.classList.toggle('go', !!over || !!pl);
   document.body.classList.toggle('cdno', !!why && !pl);
-  g.querySelector('.cdsay').textContent = say;
+  ghost.querySelector('.cdsay').textContent = say;
   cdPlace(true);
 }
 
 /** The marks on the cards — from renderBoard too while it holds: a chat may have come to take it, or stopped. */
 function cdMark() {
-  for (const [id, c] of cardNodes) {
-    const cl = c.el.classList;
+  for (const [id, node] of cardNodes) {
+    const cl = node.el.classList;
 
     cl.toggle('cdfrom', id === cd.from);
     cl.toggle('cdoff', id !== cd.from && !cl.contains('inprio') && (!!cd.noFold || !!sendWhy(state.sessions.get(id))));
@@ -192,19 +196,19 @@ function cdMark() {
 
 /** A shut lane's head held on opens — its chats are chats to drop on. */
 function cdSpring(head) {
-  const g = head?.dataset.lane || null;
+  const lane = head?.dataset.lane || null;
 
-  if (g === cd.lane) return;
+  if (lane === cd.lane) return;
   document.querySelector('#slist > .gsep.cdhold')?.classList.remove('cdhold');
   clearTimeout(cd.springT);
-  cd.lane = g;
+  cd.lane = lane;
   if (!head) return;
   head.classList.add('cdhold');
 
   cd.springT = setTimeout(() => {
     if (!cd.on) return;
     renderBoard.held = false;
-    foldLane(g);
+    foldLane(lane);
     renderBoard.held = true;
     renderBoard.owed = false; // a draw of its own: what was held comes with it
     cd.lane = null;
@@ -218,38 +222,38 @@ function cdScroll() {
   if (!cd.on) return;
 
   const list = $('#slist');
-  const r = list.getBoundingClientRect();
+  const rect = list.getBoundingClientRect();
 
-  const v =
-    cd.x < r.left || cd.x > r.right
+  const depth =
+    cd.x < rect.left || cd.x > rect.right
       ? 0
-      : cd.y < r.top + CD_EDGE
-        ? cd.y - r.top - CD_EDGE
-        : cd.y > r.bottom - CD_EDGE
-          ? cd.y - r.bottom + CD_EDGE
+      : cd.y < rect.top + CD_EDGE
+        ? cd.y - rect.top - CD_EDGE
+        : cd.y > rect.bottom - CD_EDGE
+          ? cd.y - rect.bottom + CD_EDGE
           : 0;
 
-  if (!v) return;
+  if (!depth) return;
   const was = list.scrollTop;
 
-  list.scrollTop = was + Math.sign(v) * Math.min(CD_SPEED, Math.ceil(Math.abs(v) * 0.3));
+  list.scrollTop = was + Math.sign(depth) * Math.min(CD_SPEED, Math.ceil(Math.abs(depth) * 0.3));
   if (list.scrollTop === was) return;
   cdHit();
   cd.raf = requestAnimationFrame(cdScroll);
 }
 
-function cdLift(p, e) {
-  const a = state.sessions.get(p.id);
-  const no = foldFromWhy(a);
+function cdLift(press, event) {
+  const session = state.sessions.get(press.id);
+  const no = foldFromWhy(session);
 
-  if (no && !prioOn()) return note(p.card, `Not folded: ${no}`); // with the pinned on, it comes up to be placed (2026-11-24)
+  if (no && !prioOn()) return note(press.card, `Not folded: ${no}`); // with the pinned on, it comes up to be placed (2026-11-24)
 
   Object.assign(cd, {
     on: true,
-    from: p.id,
+    from: press.id,
     over: null,
-    x: e.clientX,
-    y: e.clientY,
+    x: event.clientX,
+    y: event.clientY,
     lane: null,
     noFold: no,
     place: null,
@@ -266,21 +270,21 @@ function cdLift(p, e) {
   getSelection()?.removeAllRanges();
 
   try {
-    $('#slist').setPointerCapture(p.pid);
+    $('#slist').setPointerCapture(press.pid);
   } catch {} // its release is heard off the window too, and no card under it lights or fans
 
   document.body.classList.add('carddrag');
 
-  const g = (cd.ghost = document.body.appendChild(
-    html2el(`<div id="cdghost" aria-hidden="true">${hoChat(a)}<div class="cdsay"></div></div>`),
+  const ghost = (cd.ghost = document.body.appendChild(
+    html2el(`<div id="cdghost" aria-hidden="true">${hoChat(session)}<div class="cdsay"></div></div>`),
   ));
 
   cdMark();
-  noteMotion(p.id, 'cardlift');
+  noteMotion(press.id, 'cardlift');
   haptic('generic');
 
   if (!REDUCED.matches) {
-    g.animate(
+    ghost.animate(
       [
         { opacity: 0, scale: 0.92 },
         { opacity: 1, scale: 1 },
@@ -299,23 +303,23 @@ function cdEnd(drop) {
   cd.place = null;
   if (pl) return cdPlaceEnd(pl);
 
-  const { from, over, ghost: g, was } = cd;
-  const a = state.sessions.get(from);
-  const b = drop && over ? state.sessions.get(over) : null;
+  const { from, over, ghost: ghost, was } = cd;
+  const source = state.sessions.get(from);
+  const target = drop && over ? state.sessions.get(over) : null;
 
-  const no = b ? foldFromWhy(a) || sendWhy(b) : null;
-  const into = b && !no; // it may have changed while the list stood still
+  const no = target ? foldFromWhy(source) || sendWhy(target) : null;
+  const into = target && !no; // it may have changed while the list stood still
 
   const el = cardNodes.get(into ? over : from)?.el;
-  const r = el?.getBoundingClientRect();
+  const rect = el?.getBoundingClientRect();
   const lr = $('#slist').getBoundingClientRect();
-  const gr = g.getBoundingClientRect();
+  const gr = ghost.getBoundingClientRect();
 
   cd.on = false;
   cancelAnimationFrame(cd.raf);
   cd.raf = 0;
   cdSpring(null);
-  for (const c of cardNodes.values()) c.el.classList.remove('cdfrom', 'cdoff', 'cdover');
+  for (const node of cardNodes.values()) node.el.classList.remove('cdfrom', 'cdoff', 'cdover');
   document.body.classList.remove('carddrag', 'cdno');
 
   if (renderSessionList.zone) {
@@ -338,26 +342,26 @@ function cdEnd(drop) {
   const then = () => {
     if (over2) return;
     over2 = true;
-    g.remove();
-    if (into) foldOpen(a, b);
+    ghost.remove();
+    if (into) foldOpen(source, target);
     else if (no) note(el || $('#shead'), `Not folded: ${no}`, true);
   };
 
   if (REDUCED.matches) return then();
 
-  const seen = r && r.bottom > lr.top && r.top < lr.bottom;
+  const seen = rect && rect.bottom > lr.top && rect.top < lr.bottom;
 
   const to = !seen
-    ? g.style.translate
+    ? ghost.style.translate
     : into
-      ? `${r.left + r.width / 2 - gr.width * 0.15}px ${r.top + r.height / 2 - gr.height * 0.15}px`
-      : `${r.left}px ${r.top}px`;
+      ? `${rect.left + rect.width / 2 - gr.width * 0.15}px ${rect.top + rect.height / 2 - gr.height * 0.15}px`
+      : `${rect.left}px ${rect.top}px`;
 
   const ms = into ? CD_IN_MS : CD_BACK_MS;
 
-  const fly = g.animate(
+  const fly = ghost.animate(
     [
-      { translate: g.style.translate, scale: 1, opacity: 1 },
+      { translate: ghost.style.translate, scale: 1, opacity: 1 },
       { translate: to, scale: into ? 0.3 : 0.96, opacity: 0 },
     ],
     { duration: ms, easing: into ? 'ease-in' : EASE_OUT, fill: 'forwards', id: into ? 'cardfold' : 'cardback' },
@@ -369,15 +373,15 @@ function cdEnd(drop) {
 
 /** Let go on a place among the pinned: the chat goes there, between the two cards the line was between. */
 function cdPlaceEnd(pl) {
-  const { from, ghost: g, was } = cd;
-  const s = state.sessions.get(from);
-  const vis = pl.cards.map(c => c.dataset.id);
+  const { from, ghost: ghost, was } = cd;
+  const session = state.sessions.get(from);
+  const vis = pl.cards.map(card => card.dataset.id);
 
   cd.on = false;
   cancelAnimationFrame(cd.raf);
   cd.raf = 0;
   cdSpring(null);
-  for (const c of cardNodes.values()) c.el.classList.remove('cdfrom', 'cdoff', 'cdover');
+  for (const node of cardNodes.values()) node.el.classList.remove('cdfrom', 'cdoff', 'cdover');
   document.body.classList.remove('carddrag', 'cdno');
   renderBoard.held = false;
   renderBoard.owed = false;
@@ -393,58 +397,68 @@ function cdPlaceEnd(pl) {
   const shown = [...vis];
 
   shown.splice(pl.k, 0, from);
-  if (s) setPriority(ids, `${s.title}, pinned, ${pl.k + 1} of ${shown.length}`);
+  if (session) setPriority(ids, `${session.title}, pinned, ${pl.k + 1} of ${shown.length}`);
   else renderBoard();
-  if (REDUCED.matches) return g.remove();
+  if (REDUCED.matches) return ghost.remove();
 
-  const fade = g.animate([{ opacity: 1 }, { opacity: 0 }], {
+  const fade = ghost.animate([{ opacity: 1 }, { opacity: 0 }], {
     duration: CD_BACK_MS,
     easing: EASE_OUT,
     fill: 'forwards',
     id: 'cardplace',
   });
 
-  fade.onfinish = fade.oncancel = () => g.remove();
-  setTimeout(() => g.remove(), CD_BACK_MS + 150);
+  fade.onfinish = fade.oncancel = () => ghost.remove();
+  setTimeout(() => ghost.remove(), CD_BACK_MS + 150);
 }
 
-$('#slist').addEventListener('pointerdown', e => {
-  if (e.button !== 0 || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.pointerType === 'touch') return;
-  const card = e.target.closest('#slist > .card');
+$('#slist').addEventListener('pointerdown', event => {
+  if (
+    event.button !== 0 ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey ||
+    event.shiftKey ||
+    event.pointerType === 'touch'
+  ) {
+    return;
+  }
 
-  if (!card || e.target.closest(CD_CONTROLS)) return;
-  cd.press = { id: card.dataset.id, card, x: e.clientX, y: e.clientY, pid: e.pointerId, moved: false };
+  const card = event.target.closest('#slist > .card');
+
+  if (!card || event.target.closest(CD_CONTROLS)) return;
+  cd.press = { id: card.dataset.id, card, x: event.clientX, y: event.clientY, pid: event.pointerId, moved: false };
   cd.was = document.activeElement;
 });
 
 // a press that may become a drag selects nothing, and no picture in a card goes off on the system's own drag
 for (const ev of ['selectstart', 'dragstart']) {
-  $('#slist').addEventListener(ev, e => {
-    if (cd.press) e.preventDefault();
+  $('#slist').addEventListener(ev, event => {
+    if (cd.press) event.preventDefault();
   });
 }
 
 addEventListener(
   'pointermove',
-  e => {
-    const p = cd.press;
+  event => {
+    const press = cd.press;
 
-    if (!p) return;
+    if (!press) return;
 
-    if (!e.buttons) {
+    if (!event.buttons) {
       cd.press = null;
       return cdEnd(false);
     } // its release went unheard
 
-    if (!p.moved) {
-      if (Math.hypot(e.clientX - p.x, e.clientY - p.y) < CD_PX) return;
-      p.moved = true;
-      cdLift(p, e);
+    if (!press.moved) {
+      if (Math.hypot(event.clientX - press.x, event.clientY - press.y) < CD_PX) return;
+      press.moved = true;
+      cdLift(press, event);
     }
 
     if (!cd.on) return;
-    cd.x = e.clientX;
-    cd.y = e.clientY;
+    cd.x = event.clientX;
+    cd.y = event.clientY;
     cdHit();
     cdPlace();
     cd.raf ||= requestAnimationFrame(cdScroll);
@@ -453,11 +467,11 @@ addEventListener(
 );
 
 addEventListener('pointerup', () => {
-  const p = cd.press;
+  const press = cd.press;
 
-  if (!p) return;
+  if (!press) return;
   cd.press = null;
-  if (!p.moved) return;
+  if (!press.moved) return;
 
   // the click this release makes, if it makes one — once, as a tab's drag does: a swallow left for the timeout alone ate the next real click
   const swallow = ev => {

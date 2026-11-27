@@ -11,7 +11,7 @@ import { createServer } from 'node:http';
 import { join } from 'node:path';
 
 const args = process.argv.slice(2);
-const at = k => (args.includes(k) ? args[args.indexOf(k) + 1] : undefined);
+const at = flag => (args.includes(flag) ? args[args.indexOf(flag) + 1] : undefined);
 
 if (args[0] !== 'serve-web') {
   console.error(`fakecode: only serve-web, not ${args[0]}`);
@@ -51,16 +51,16 @@ createServer((req, res) => {
   }
 
   log('');
-  const m = /^\/(\w+)-([0-9a-f]{40})\//.exec(req.url);
+  const match = /^\/(\w+)-([0-9a-f]{40})\//.exec(req.url);
 
-  if (!m) {
+  if (!match) {
     res.writeHead(200, { 'content-type': 'text/html' });
     return res.end('<!doctype html><title>workbench</title>');
   }
 
   setTimeout(() => {
-    mkdirSync(join(dir, m[2]), { recursive: true });
-    writeFileSync(join(dir, m[2], 'product.json'), JSON.stringify({ quality: m[1], commit: m[2] }));
+    mkdirSync(join(dir, match[2]), { recursive: true });
+    writeFileSync(join(dir, match[2], 'product.json'), JSON.stringify({ quality: match[1], commit: match[2] }));
   }, 200);
 
   res.writeHead(202, { 'content-type': 'text/html' });

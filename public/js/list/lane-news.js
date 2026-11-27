@@ -22,17 +22,17 @@ function laneNews(html) {
   el.title = 'A click puts it away';
   el.innerHTML = html;
 
-  el.addEventListener('click', e => {
-    e.stopPropagation();
+  el.addEventListener('click', event => {
+    event.stopPropagation();
     el.remove();
   });
 
-  let t = setTimeout(go, LANE_NEWS_MS);
+  let timer = setTimeout(go, LANE_NEWS_MS);
 
-  el.addEventListener('pointerenter', () => clearTimeout(t));
+  el.addEventListener('pointerenter', () => clearTimeout(timer));
 
   el.addEventListener('pointerleave', () => {
-    t = setTimeout(go, 2500);
+    timer = setTimeout(go, 2500);
   });
 
   lane.append(el);
@@ -116,8 +116,8 @@ function fishingBar() {
     el.className = 'fsign';
     el.innerHTML = '<span class="lswing"><b>GONE FISHING</b></span>';
 
-    el.addEventListener('click', e => {
-      e.stopPropagation();
+    el.addEventListener('click', event => {
+      event.stopPropagation();
       backFromFishing();
     });
 
@@ -160,9 +160,15 @@ function cameBack() {
 
 function outLine(since) {
   const iso = new Date(since).toISOString();
-  const all = [...state.sessions.values()].filter(s => visible(s) && !s.done && !s.muted && !asleep(s));
 
-  const landed = all.filter(s => !asking(s) && s.status !== 'working' && (s.lastReplyAt || '') > iso).length;
+  const all = [...state.sessions.values()].filter(
+    session => visible(session) && !session.done && !session.muted && !asleep(session),
+  );
+
+  const landed = all.filter(
+    session => !asking(session) && session.status !== 'working' && (session.lastReplyAt || '') > iso,
+  ).length;
+
   const asks = all.filter(asking).length;
 
   if (!landed && !asks) return '';

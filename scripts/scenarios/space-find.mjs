@@ -25,7 +25,7 @@ const face = login => ({
 
 const ci = state => ({ commits: { nodes: [{ commit: { statusCheckRollup: { state } } }] } });
 
-const pr = o => ({
+const pr = overrides => ({
   isDraft: false,
   isCrossRepository: false,
   author: face('me'),
@@ -34,7 +34,7 @@ const pr = o => ({
   comments: { nodes: [] },
   baseRefName: 'main',
   createdAt: ago(300),
-  ...o,
+  ...overrides,
 });
 
 writeFileSync(
@@ -85,7 +85,7 @@ export const meta = {
     FAKEGH_VIEWER: 'me',
   },
 };
-const pull = (repo, n) => `https://github.com/acme/${repo}/pull/${n}`;
+const pull = (repo, number) => `https://github.com/acme/${repo}/pull/${number}`;
 
 export default async function (ctx) {
   const out = {};
@@ -125,22 +125,28 @@ export default async function (ctx) {
     );
 
   const hover = async sel => {
-    const r = await at(sel);
+    const point = await at(sel);
 
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.x, y: r.y });
-    return r;
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y });
+    return point;
   };
 
   const press = async sel => {
     // the mouse at its middle, pressed and let go: hit-testing as a hand's click has it
-    const r = await hover(sel);
+    const point = await hover(sel);
 
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: r.x, y: r.y, button: 'left', clickCount: 1 });
+    await ctx.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      x: point.x,
+      y: point.y,
+      button: 'left',
+      clickCount: 1,
+    });
 
     await ctx.send('Input.dispatchMouseEvent', {
       type: 'mouseReleased',
-      x: r.x,
-      y: r.y,
+      x: point.x,
+      y: point.y,
       button: 'left',
       clickCount: 1,
     });

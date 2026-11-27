@@ -14,22 +14,22 @@ export default async function (ctx) {
   await ctx.sleep(500);
 
   const fits = async label => {
-    const d = await ctx.peix('term()');
+    const term = await ctx.peix('term()');
 
     ctx.assert.ok(
-      d.screen.w <= d.body.w + 0.5 && d.screen.h <= d.body.h + 0.5,
-      `${label}: the screen (${d.screen.w}×${d.screen.h}) fits the body (${d.body.w}×${d.body.h})`,
+      term.screen.w <= term.body.w + 0.5 && term.screen.h <= term.body.h + 0.5,
+      `${label}: the screen (${term.screen.w}×${term.screen.h}) fits the body (${term.body.w}×${term.body.h})`,
     );
 
     ctx.assert.deepEqual(
-      { cols: d.propose.cols, rows: d.propose.rows },
-      { cols: d.cols, rows: d.rows },
+      { cols: term.propose.cols, rows: term.propose.rows },
+      { cols: term.cols, rows: term.rows },
       `${label}: fit would change nothing`,
     );
 
     // …and the glyphs keep to the grid (2026-10-20): the last of a rule the width of the screen ends where its row does —
     // a glyph's width read to a whole px over 32 drifted every column, and the last one past its row was clipped
-    const e = await ctx.evaluate(`(() => {
+    const rule = await ctx.evaluate(`(() => {
       const row = [...document.querySelectorAll('#termBody .xterm-rows > div')].find(r => /^─{20,}$/.test(r.textContent));
       if (!row) return null;
       const w = document.createTreeWalker(row, NodeFilter.SHOW_TEXT); let t, n; while ((n = w.nextNode())) t = n;
@@ -37,36 +37,36 @@ export default async function (ctx) {
       return { cols: row.textContent.length, past: g.getBoundingClientRect().right - row.getBoundingClientRect().right };
     })()`);
 
-    ctx.assert.ok(e, `${label}: a rule across the screen`);
+    ctx.assert.ok(rule, `${label}: a rule across the screen`);
 
     ctx.assert.ok(
-      Math.abs(e.past) < 0.25,
-      `${label}: the last of ${e.cols} columns ends at its row's edge (${e.past.toFixed(3)} px past it)`,
+      Math.abs(rule.past) < 0.25,
+      `${label}: the last of ${rule.cols} columns ends at its row's edge (${rule.past.toFixed(3)} px past it)`,
     );
 
-    return { ...d, past: e.past };
+    return { ...term, past: rule.past };
   };
 
   // The body must fill its half, strip or no strip: a hidden strip is display:none, and a half whose rows are not
   // placed by hand slides the body into the `auto` row, where it sizes itself to the terminal instead of the pane
   // — the drawer then keeps whatever height it was first drawn at, with black under it (2026-09-22).
   const fills = async label => {
-    const g = await ctx
+    const heights = await ctx
       .evaluate(
         `JSON.stringify(['#grp', '#gbody', '#ptabs'].map(s => { const e = document.querySelector(s); return e.hidden ? 0 : Math.round(e.getBoundingClientRect().height); }))`,
       )
       .then(JSON.parse);
 
     ctx.assert.ok(
-      Math.abs(g[0] - g[1] - g[2]) <= 1,
-      `${label}: the body (${g[1]}) and the strip (${g[2]}) fill the half (${g[0]})`,
+      Math.abs(heights[0] - heights[1] - heights[2]) <= 1,
+      `${label}: the body (${heights[1]}) and the strip (${heights[2]}) fill the half (${heights[0]})`,
     );
 
-    ctx.assert.ok(g[1] > 400, `${label}: the body is the pane's height, not the terminal's (${g[1]})`);
+    ctx.assert.ok(heights[1] > 400, `${label}: the body is the pane's height, not the terminal's (${heights[1]})`);
   };
 
   await fills('no strip');
-  const a = await fits('after attach');
+  const attached = await fits('after attach');
 
   await ctx.send('Emulation.setDeviceMetricsOverride', {
     width: 1700,
@@ -76,62 +76,68 @@ export default async function (ctx) {
   });
 
   await ctx.sleep(1200);
-  const b = await fits('at scale 2');
+  const scaled = await fits('at scale 2');
 
   await ctx.evaluate(
     `document.dispatchEvent(new KeyboardEvent('keydown', { key: '=', metaKey: true, bubbles: true, cancelable: true }))`,
   );
 
   await ctx.sleep(1200);
-  const c = await fits('after ⌘+');
+  const zoomed = await fits('after ⌘+');
 
-  ctx.assert.ok(c.zoom > a.zoom, 'the zoom step took');
+  ctx.assert.ok(zoomed.zoom > attached.zoom, 'the zoom step took');
 
   // The rows hold at every height (2026-10-29): xterm rounds its screen to whole CSS px and divides back, so at 2× an
   // odd device cell (16.5 px) read 16.51 at an odd row count, and a body that screen's height exactly held one row
   // fewer by the fit addon — and one more at the row fewer: a see-saw, a resize at every fit. The heights where that
   // happens for this cell, each fitted three times over.
-  const cell = Math.round((c.dpr * c.screen.h) / c.rows);
+  const cell = Math.round((zoomed.dpr * zoomed.screen.h) / zoomed.rows);
   const tricky = [];
 
-  for (let n = 30; n < 64; n++) {
-    const H = Math.round((n * cell) / c.dpr);
+  for (let rowCount = 30; rowCount < 64; rowCount++) {
+    const bodyHeight = Math.round((rowCount * cell) / zoomed.dpr);
 
-    if (Math.floor(H / (H / n)) < n) tricky.push({ n, H });
+    if (Math.floor(bodyHeight / (bodyHeight / rowCount)) < rowCount) tricky.push({ n: rowCount, H: bodyHeight });
   }
 
   ctx.assert.ok(
     tricky.length > 1,
-    `heights where a rounded row misleads the fit, for a ${cell} px cell at ${c.dpr}× (${JSON.stringify(tricky)})`,
+    `heights where a rounded row misleads the fit, for a ${cell} px cell at ${zoomed.dpr}× (${JSON.stringify(tricky)})`,
   );
 
   const bodyH = () => ctx.evaluate(`parseInt(getComputedStyle(document.querySelector('#termBody')).height)`);
 
-  const tall = h =>
+  const tall = height =>
     ctx
-      .send('Emulation.setDeviceMetricsOverride', { width: 1700, height: h, deviceScaleFactor: 2, mobile: false })
+      .send('Emulation.setDeviceMetricsOverride', { width: 1700, height, deviceScaleFactor: 2, mobile: false })
       .then(() => ctx.sleep(500));
 
   const seesaw = [];
 
-  for (const { n, H } of tricky.slice(-2)) {
-    let h = 1000 + H - (await bodyH());
+  for (const { n: rowCount, H: bodyHeight } of tricky.slice(-2)) {
+    let windowHeight = 1000 + bodyHeight - (await bodyH());
 
-    await tall(h);
-    h += H - (await bodyH());
-    await tall(h);
-    ctx.assert.equal(await bodyH(), H, `the body at ${H} px`);
+    await tall(windowHeight);
+    windowHeight += bodyHeight - (await bodyH());
+    await tall(windowHeight);
+    ctx.assert.equal(await bodyH(), bodyHeight, `the body at ${bodyHeight} px`);
     const rows = [];
 
-    for (let i = 0; i < 3; i++) {
+    for (let round = 0; round < 3; round++) {
       await ctx.evaluate(`window.dispatchEvent(new Event('focus'))`);
       await ctx.sleep(400);
       rows.push((await ctx.peix('term()')).rows);
     }
 
-    seesaw.push({ H, rows });
-    ctx.assert.deepEqual(rows, [n, n, n], `a ${H} px body holds ${n} rows, fit after fit (${rows.join(' → ')})`);
-    await fits(`at ${H} px`);
+    seesaw.push({ H: bodyHeight, rows });
+
+    ctx.assert.deepEqual(
+      rows,
+      [rowCount, rowCount, rowCount],
+      `a ${bodyHeight} px body holds ${rowCount} rows, fit after fit (${rows.join(' → ')})`,
+    );
+
+    await fits(`at ${bodyHeight} px`);
   }
 
   await tall(1000);
@@ -141,7 +147,7 @@ export default async function (ctx) {
   );
 
   await ctx.sleep(800);
-  const z = await fits('after ⌘0');
+  const unzoomed = await fits('after ⌘0');
 
   await fills('after ⌘0');
 
@@ -150,23 +156,23 @@ export default async function (ctx) {
   const id = (await ctx.peix('state()')).termId;
 
   const size = async () => {
-    const t = (await ctx.server.terminals()).find(t => t.id === id);
+    const term = (await ctx.server.terminals()).find(entry => entry.id === id);
 
-    return `${t.cols}×${t.rows}`;
+    return `${term.cols}×${term.rows}`;
   };
 
   const other = new WebSocket(ctx.server.ws(`api/terminals/${id}/ws`));
 
-  await new Promise(r => other.addEventListener('open', r, { once: true }));
+  await new Promise(resolve => other.addEventListener('open', resolve, { once: true }));
   other.send(JSON.stringify({ t: 'resize', cols: 60, rows: 15 }));
   await waitFor(async () => (await size()) === '60×15', { what: "the other page's size on the PTY" });
   other.close();
   await ctx.evaluate(`window.dispatchEvent(new Event('focus'))`);
 
-  await waitFor(async () => (await size()) === `${z.cols}×${z.rows}`, {
-    what: `this page's size (${z.cols}×${z.rows}) back on the PTY once it is in front`,
+  await waitFor(async () => (await size()) === `${unzoomed.cols}×${unzoomed.rows}`, {
+    what: `this page's size (${unzoomed.cols}×${unzoomed.rows}) back on the PTY once it is in front`,
     timeout: 5000,
   });
 
-  return { attach: a, scale2: b, zoomed: c, seesaw };
+  return { attach: attached, scale2: scaled, zoomed, seesaw };
 }

@@ -19,19 +19,19 @@ export async function startFakeJira({
   const bulk = [];
 
   const auth = `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`;
-  const keys = projects || [...new Set(Object.keys(issues).map(k => k.split('-')[0]))];
+  const keys = projects || [...new Set(Object.keys(issues).map(key => key.split('-')[0]))];
 
-  const issue = (key, i) => ({
+  const issue = (key, spec) => ({
     key,
-    id: String(Math.abs([...key].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7))),
+    id: String(Math.abs([...key].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) | 0, 7))),
     fields: {
-      summary: i.summary || key,
-      issuetype: { name: i.type || 'Task' },
-      status: { name: i.status || 'To Do', statusCategory: { key: i.cat || 'new' } },
-      assignee: i.assignee
+      summary: spec.summary || key,
+      issuetype: { name: spec.type || 'Task' },
+      status: { name: spec.status || 'To Do', statusCategory: { key: spec.cat || 'new' } },
+      assignee: spec.assignee
         ? {
-            accountId: i.assignee === 'me' ? me.accountId : `acc-${i.assignee}`,
-            displayName: i.assignee === 'me' ? me.displayName : i.assignee,
+            accountId: spec.assignee === 'me' ? me.accountId : `acc-${spec.assignee}`,
+            displayName: spec.assignee === 'me' ? me.displayName : spec.assignee,
             avatarUrls: { '24x24': null },
           }
         : null,
@@ -54,12 +54,12 @@ export async function startFakeJira({
 
     let raw = '';
 
-    req.on('data', c => {
-      raw += c;
+    req.on('data', chunk => {
+      raw += chunk;
     });
 
     req.on('end', () =>
-      (delays[path] ? f => setTimeout(f, delays[path]) : f => f())(() => {
+      (delays[path] ? callback => setTimeout(callback, delays[path]) : callback => callback())(() => {
         if (req.method === 'GET' && path === '/rest/api/3/myself') return send(200, me);
 
         if (req.method === 'GET' && path === '/rest/api/3/project/search') {
@@ -70,14 +70,14 @@ export async function startFakeJira({
           const want = (JSON.parse(raw || '{}').issueIdsOrKeys || []).map(String);
 
           bulk.push(want);
-          const found = want.filter(k => issues[k]);
+          const found = want.filter(key => issues[key]);
 
           return send(200, {
-            issues: found.map(k => issue(k, issues[k])),
+            issues: found.map(key => issue(key, issues[key])),
             issueErrors: want
-              .filter(k => !issues[k])
-              .map(k => ({
-                issueIdsOrKeys: [k],
+              .filter(key => !issues[key])
+              .map(key => ({
+                issueIdsOrKeys: [key],
                 errorMessages: ['Issue does not exist or you do not have permission to see it.'],
               })),
           });

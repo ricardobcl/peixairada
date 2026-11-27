@@ -4,7 +4,7 @@
 // clips.mjs's. WebP rather than PNG: the grain made each PNG megabytes.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { chat, endBoard, kit, OUT, PAGE, VS, W, H } from './board.mjs';
+import { chat, endBoard, kit, OUT, PAGE, VS, WIDTH, HEIGHT } from './board.mjs';
 
 export { meta } from './board.mjs';
 
@@ -15,17 +15,17 @@ export default async function (ctx) {
     await ctx.settle();
     await ctx.sleep(300);
 
-    const r = await ctx.send('Page.captureScreenshot', {
+    const response = await ctx.send('Page.captureScreenshot', {
       format: 'webp',
       quality: 92,
       ...(clip ? { clip: { scale: 1, ...clip } } : {}),
     });
 
-    const f = join(OUT, `${name}.webp`);
+    const file = join(OUT, `${name}.webp`);
 
-    writeFileSync(f, Buffer.from(r.result.data, 'base64'));
-    shots.push(f);
-    ctx.log(`→ ${f}`);
+    writeFileSync(file, Buffer.from(response.result.data, 'base64'));
+    shots.push(file);
+    ctx.log(`→ ${file}`);
   };
 
   const { theme, scale, rect, grid, board } = kit(ctx);
@@ -97,7 +97,7 @@ export default async function (ctx) {
 
     await ctx.sleep(300);
     await snap('timeline-dark', { ...list, height: Math.min(list.height, 640) });
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: W - 5, y: H / 2 });
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: WIDTH - 5, y: HEIGHT / 2 });
     await ctx.waitFor(`!window.peix.state().timeline.shown`, { what: 'the timeline gone again' });
 
     // 5 · ⌥⌘A, every agent at once
@@ -172,20 +172,20 @@ export default async function (ctx) {
       await ctx.waitFor(`!!document.querySelector('#shotpane iframe')`, { what: 'VS Code Web over its half' });
       await ctx.sleep(9000); // the workbench loads, finds the repo
       // Quick Open, from a click in the editor's area: ProductCard.css, its gutter showing the uncommitted edit
-      const f = await rect('#shotpane iframe');
+      const frameRect = await rect('#shotpane iframe');
 
       await ctx.send('Input.dispatchMouseEvent', {
         type: 'mousePressed',
-        x: f.x + f.width * 0.65,
-        y: f.y + f.height * 0.5,
+        x: frameRect.x + frameRect.width * 0.65,
+        y: frameRect.y + frameRect.height * 0.5,
         button: 'left',
         clickCount: 1,
       });
 
       await ctx.send('Input.dispatchMouseEvent', {
         type: 'mouseReleased',
-        x: f.x + f.width * 0.65,
-        y: f.y + f.height * 0.5,
+        x: frameRect.x + frameRect.width * 0.65,
+        y: frameRect.y + frameRect.height * 0.5,
         button: 'left',
         clickCount: 1,
       });

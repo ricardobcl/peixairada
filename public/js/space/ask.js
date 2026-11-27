@@ -15,15 +15,15 @@ const SP_WORDS = /type something|tell claude|chat about/i;
 
 /** The screen's lines, a row the terminal wrapped joined to the one before; a box's side bars off. */
 const spScreen = xt => {
-  const b = xt.buffer.active;
+  const buffer = xt.buffer.active;
   const out = [];
 
-  for (let y = 0; y < xt.rows; y++) {
-    const line = b.getLine(b.viewportY + y);
-    const t = (line?.translateToString(true) || '').replace(/^\s*[│┃]\s?/, '').replace(/\s*[│┃]\s*$/, '');
+  for (let row = 0; row < xt.rows; row++) {
+    const line = buffer.getLine(buffer.viewportY + row);
+    const text = (line?.translateToString(true) || '').replace(/^\s*[│┃]\s?/, '').replace(/\s*[│┃]\s*$/, '');
 
-    if (line?.isWrapped && out.length) out[out.length - 1] += t;
-    else out.push(t);
+    if (line?.isWrapped && out.length) out[out.length - 1] += text;
+    else out.push(text);
   }
 
   return out;
@@ -35,11 +35,11 @@ const spScreen = xt => {
 function spAskOf(lines) {
   let start = -1;
 
-  for (let y = lines.length - 1; y >= 0; y--) {
-    const m = SP_OPT.exec(lines[y]);
+  for (let row = lines.length - 1; row >= 0; row--) {
+    const match = SP_OPT.exec(lines[row]);
 
-    if (m && m[3] === '1') {
-      start = y;
+    if (match && match[3] === '1') {
+      start = row;
       break;
     }
   }
@@ -48,28 +48,28 @@ function spAskOf(lines) {
   const opts = [];
   let cur = null;
 
-  for (let y = start; y < lines.length; y++) {
-    const l = lines[y];
-    const m = SP_OPT.exec(l);
+  for (let row = start; row < lines.length; row++) {
+    const line = lines[row];
+    const match = SP_OPT.exec(line);
 
-    if (m && +m[3] === opts.length + 1) {
-      opts.push((cur = { k: +m[3], t: m[4], d: [], on: !!m[2] }));
+    if (match && +match[3] === opts.length + 1) {
+      opts.push((cur = { k: +match[3], t: match[4], d: [], on: !!match[2] }));
       continue;
     }
 
-    if (!l.trim()) continue;
-    if (SP_HINT.test(l) || SP_RULE.test(l.trim())) break;
-    if (cur && /^\s{2,}/.test(l)) cur.d.push(l.trim());
+    if (!line.trim()) continue;
+    if (SP_HINT.test(line) || SP_RULE.test(line.trim())) break;
+    if (cur && /^\s{2,}/.test(line)) cur.d.push(line.trim());
     else break;
   }
 
   if (opts.length < 2) return null;
   const paras = [[]]; // from the first answer up: a paragraph's lines one sentence, two paragraphs at most
 
-  for (let y = start - 1, n = 0; y >= 0 && n < 10; y--) {
-    const l = lines[y].trim();
+  for (let row = start - 1, taken = 0; row >= 0 && taken < 10; row--) {
+    const line = lines[row].trim();
 
-    if (!l) {
+    if (!line) {
       if (paras[0].length) {
         if (paras.length === 2) break;
         paras.unshift([]);
@@ -78,18 +78,22 @@ function spAskOf(lines) {
       continue;
     }
 
-    if (SP_RULE.test(l) || SP_HINT.test(l)) break;
-    if (/^[☐☒✔◻■□]/.test(l)) continue;
-    paras[0].unshift(l);
-    n++;
+    if (SP_RULE.test(line) || SP_HINT.test(line)) break;
+    if (/^[☐☒✔◻■□]/.test(line)) continue;
+    paras[0].unshift(line);
+    taken++;
   }
 
-  const q = paras
-    .filter(p => p.length)
-    .map(p => p.join(' '))
+  const question = paras
+    .filter(paragraph => paragraph.length)
+    .map(paragraph => paragraph.join(' '))
     .join('\n');
 
-  return { q, opts: opts.map(o => ({ k: o.k, t: o.t, d: o.d.join(' ') })), sel: opts.find(o => o.on)?.k || 0 }; // sel: the ringed one
+  return {
+    q: question,
+    opts: opts.map(option => ({ k: option.k, t: option.t, d: option.d.join(' ') })),
+    sel: opts.find(option => option.on)?.k || 0,
+  }; // sel: the ringed one
 }
 
 // ⏎ after an answer's number only onto that answer (2026-11-24, review): the same select still up — its question and its
@@ -98,7 +102,7 @@ function spAskOf(lines) {
 // screen being a round trip behind the key; never sent, the select waits for a hand.
 const SP_ENTER_TRIES = 6;
 
-function spEnter(xt, send, ask, k, n = 0) {
+function spEnter(xt, send, ask, key, attempt = 0) {
   xt.write('', () => {
     const now = spAskOf(spScreen(xt));
 
@@ -106,27 +110,27 @@ function spEnter(xt, send, ask, k, n = 0) {
       !!now &&
       now.q === ask.q &&
       now.opts.length === ask.opts.length &&
-      now.opts.every((o, i) => o.t === ask.opts[i].t);
+      now.opts.every((option, index) => option.t === ask.opts[index].t);
 
     if (!same) return;
-    if (now.sel === k) return send();
-    if (n < SP_ENTER_TRIES) setTimeout(() => spEnter(xt, send, ask, k, n + 1), SP_ENTER_MS);
+    if (now.sel === key) return send();
+    if (attempt < SP_ENTER_TRIES) setTimeout(() => spEnter(xt, send, ask, key, attempt + 1), SP_ENTER_MS);
   });
 }
 
-function spAskPill(s) {
-  if (prefs.spAnswer === false || !asking(s)) return '';
-  const t = spDrawer(s);
+function spAskPill(session) {
+  if (prefs.spAnswer === false || !asking(session)) return '';
+  const term = spDrawer(session);
 
-  if (!t) {
-    return `<span class="spask off" title="${esc(`It asks in ${entryLabel(s)} — answer it there, or take it over here (⌥⌘C)`)}">? In ${esc(entryLabel(s))}</span>`;
+  if (!term) {
+    return `<span class="spask off" title="${esc(`It asks in ${entryLabel(session)} — answer it there, or take it over here (⌥⌘C)`)}">? In ${esc(entryLabel(session))}</span>`;
   }
 
-  return `<span class="spask" role="button" tabindex="-1" data-tid="${esc(t.id)}" aria-haspopup="dialog" aria-expanded="false" title="Its question (⏎ on the node)">? <span class="spakn">Answer</span></span>`;
+  return `<span class="spask" role="button" tabindex="-1" data-tid="${esc(term.id)}" aria-haspopup="dialog" aria-expanded="false" title="Its question (⏎ on the node)">? <span class="spakn">Answer</span></span>`;
 }
 
 // the drawer a question is read from; the harness's stand-in (`window.peixSpDrawer`, by chat) where no drawer can run
-const spDrawer = s => drawerOf(s) || window.peixSpDrawer?.[s.id] || null;
+const spDrawer = session => drawerOf(session) || window.peixSpDrawer?.[session.id] || null;
 
 const spMiniHost = () =>
   document.getElementById('spminis') ||
@@ -135,10 +139,10 @@ const spMiniHost = () =>
 /** A hidden xterm for each asking chat in a drawer here; the rest let go. Read every 400 ms while any is up. */
 function spMinis(list) {
   if (prefs.space && prefs.spAnswer !== false) {
-    for (const s of list) {
-      const t = asking(s) && spDrawer(s);
+    for (const session of list) {
+      const term = asking(session) && spDrawer(session);
 
-      if (t) mountMini(sp.minis, spMiniHost(), t, false);
+      if (term) mountMini(sp.minis, spMiniHost(), term, false);
     }
   }
 
@@ -150,22 +154,22 @@ function spMinis(list) {
 }
 
 function spAskRead() {
-  for (const [tid, m] of sp.minis) {
-    const lines = spScreen(m.xt);
+  for (const [tid, mini] of sp.minis) {
+    const lines = spScreen(mini.xt);
 
     sp.asks.set(tid, { lines, ask: spAskOf(lines) });
   }
 
   for (const tid of [...sp.asks.keys()]) if (!sp.minis.has(tid)) sp.asks.delete(tid);
 
-  for (const p of document.querySelectorAll('#spgrid .spask[data-tid]')) {
-    const a = sp.asks.get(p.dataset.tid)?.ask;
-    const said = a ? `${a.opts.length} answers` : 'Answer';
+  for (const pill of document.querySelectorAll('#spgrid .spask[data-tid]')) {
+    const ask = sp.asks.get(pill.dataset.tid)?.ask;
+    const said = ask ? `${ask.opts.length} answers` : 'Answer';
 
-    const n = p.querySelector('.spakn');
+    const label = pill.querySelector('.spakn');
 
-    if (n && n.textContent !== said) n.textContent = said;
-    p.setAttribute('aria-expanded', String(sp.ask?.tid === p.dataset.tid));
+    if (label && label.textContent !== said) label.textContent = said;
+    pill.setAttribute('aria-expanded', String(sp.ask?.tid === pill.dataset.tid));
   }
 
   if (sp.ask) spAskDraw();
@@ -173,21 +177,21 @@ function spAskRead() {
 
 function spAskDraw() {
   const el = $('#spaskp');
-  const a = sp.ask;
-  const read = sp.asks.get(a.tid);
+  const panel = sp.ask;
+  const read = sp.asks.get(panel.tid);
   const ask = read?.ask;
 
-  const late = !ask && performance.now() - a.at > 1500;
+  const late = !ask && performance.now() - panel.at > 1500;
   const rows = ask?.opts || [];
 
-  a.n = rows.length;
+  panel.n = rows.length;
 
   const html = ask
     ? (ask.q ? `<p class="spaq">${esc(ask.q)}</p>` : '') +
       rows
         .map(
-          (o, i) =>
-            `<button type="button" class="spao${a.sent === o.k ? ' sent' : a.sel === i ? ' sel' : ''}" data-k="${o.k}"><span class="k">${o.k}</span><span>${esc(o.t)}${o.d ? `<small>${esc(o.d)}</small>` : ''}</span></button>`,
+          (option, index) =>
+            `<button type="button" class="spao${panel.sent === option.k ? ' sent' : panel.sel === index ? ' sel' : ''}" data-k="${option.k}"><span class="k">${option.k}</span><span>${esc(option.t)}${option.d ? `<small>${esc(option.d)}</small>` : ''}</span></button>`,
         )
         .join('')
     : late
@@ -204,19 +208,19 @@ function spAskDraw() {
 
 function spAskPlace() {
   const el = $('#spaskp');
-  const p = sp.ask && document.querySelector(`#spgrid .spask[data-tid="${CSS.escape(sp.ask.tid)}"]`);
+  const pill = sp.ask && document.querySelector(`#spgrid .spask[data-tid="${CSS.escape(sp.ask.tid)}"]`);
 
-  if (!p) return spAskClose();
+  if (!pill) return spAskClose();
 
-  const r = p.getBoundingClientRect();
-  const w = el.offsetWidth;
-  const h = el.offsetHeight;
+  const rect = pill.getBoundingClientRect();
+  const width = el.offsetWidth;
+  const height = el.offsetHeight;
 
-  const left = Math.max(12, Math.min(innerWidth - w - 12, r.left + r.width / 2 - w / 2));
-  const below = r.bottom + 6 + h <= innerHeight - 12;
+  const left = Math.max(12, Math.min(innerWidth - width - 12, rect.left + rect.width / 2 - width / 2));
+  const below = rect.bottom + 6 + height <= innerHeight - 12;
 
   el.style.left = `${Math.round(left)}px`;
-  el.style.top = `${Math.round(below ? r.bottom + 6 : Math.max(12, r.top - 6 - h))}px`;
+  el.style.top = `${Math.round(below ? rect.bottom + 6 : Math.max(12, rect.top - 6 - height))}px`;
 }
 
 function spAskOpen(id, tid) {
@@ -230,8 +234,8 @@ function spAskOpen(id, tid) {
     el.setAttribute('aria-label', 'Its question');
 
     // the keys gone elsewhere — ⌘F, ⌥⌘C, a tab — take it down (2026-11-24, review); its own pill toggles it itself
-    el.addEventListener('focusout', e => {
-      const to = e.relatedTarget;
+    el.addEventListener('focusout', event => {
+      const to = event.relatedTarget;
 
       if (sp.ask && to && !el.contains(to) && !to.closest?.('.spask[data-tid]')) spAskClose();
     });
@@ -253,43 +257,43 @@ function spAskClose() {
     el._drawn = null;
   }
 
-  for (const p of document.querySelectorAll('#spgrid .spask[aria-expanded="true"]')) {
-    p.setAttribute('aria-expanded', 'false');
+  for (const pill of document.querySelectorAll('#spgrid .spask[aria-expanded="true"]')) {
+    pill.setAttribute('aria-expanded', 'false');
   }
 }
 
 /** The answer's key into the chat's drawer; one that wants words opens the chat with the keys in its drawer. */
-function spAnswer(k) {
-  const a = sp.ask;
+function spAnswer(key) {
+  const panel = sp.ask;
 
-  if (!a || a.sent) return;
+  if (!panel || panel.sent) return;
 
-  const m = sp.minis.get(a.tid);
-  const ask = sp.asks.get(a.tid)?.ask;
-  const o = ask?.opts.find(x => x.k === k);
+  const mini = sp.minis.get(panel.tid);
+  const ask = sp.asks.get(panel.tid)?.ask;
+  const option = ask?.opts.find(candidate => candidate.k === key);
 
-  if (m?.ws.readyState !== 1) return note($('#spaskp'), 'Its drawer is not answering — open the chat', true);
+  if (mini?.ws.readyState !== 1) return note($('#spaskp'), 'Its drawer is not answering — open the chat', true);
 
   // the number moves Claude Code's select onto the answer, ⏎ takes it (2026-11-24: the number alone left it waiting) —
   // once the screen shows it there (spEnter); one that wants words gets no ⏎: its box comes up, and the chat opens on it
-  const words = o && SP_WORDS.test(o.t);
-  const id = a.id;
+  const words = option && SP_WORDS.test(option.t);
+  const id = panel.id;
 
-  m.ws.send(JSON.stringify({ t: 'in', d: String(k) }));
-  a.sent = k;
-  noteMotion(a.id, 'answer');
+  mini.ws.send(JSON.stringify({ t: 'in', d: String(key) }));
+  panel.sent = key;
+  noteMotion(panel.id, 'answer');
   spAskDraw();
 
   if (ask && !words) {
     setTimeout(
       () =>
         spEnter(
-          m.xt,
+          mini.xt,
           () => {
-            if (m.ws.readyState === 1) m.ws.send(JSON.stringify({ t: 'in', d: '\r' }));
+            if (mini.ws.readyState === 1) mini.ws.send(JSON.stringify({ t: 'in', d: '\r' }));
           },
           ask,
-          k,
+          key,
         ),
       SP_ENTER_MS,
     );
@@ -297,7 +301,7 @@ function spAnswer(k) {
 
   setTimeout(
     () => {
-      if (sp.ask === a) spAskClose();
+      if (sp.ask === panel) spAskClose();
       if (words) spAskChat(id);
     },
     REDUCED.matches ? 0 : 450,
@@ -308,10 +312,10 @@ const spAskChat = id => {
   spAskClose();
 
   Promise.resolve(id === state.current ? null : openSession(id)).then(() => {
-    const s = state.sessions.get(id);
+    const session = state.sessions.get(id);
 
-    if (s) {
-      showChat(s);
+    if (session) {
+      showChat(session);
       focusTerm();
     }
   });
@@ -319,36 +323,38 @@ const spAskChat = id => {
 
 document.addEventListener(
   'keydown',
-  e => {
+  event => {
     // the panel's keys only while it has them: a digit typed into ⌘F's box or a drawer is that box's (2026-11-24, review)
-    if (!sp.ask || e.metaKey || e.ctrlKey || e.altKey || !$('#spaskp')?.contains(document.activeElement)) return;
+    if (!sp.ask || event.metaKey || event.ctrlKey || event.altKey || !$('#spaskp')?.contains(document.activeElement)) {
+      return;
+    }
 
-    const a = sp.ask;
-    const n = a.n || 9;
+    const panel = sp.ask;
+    const count = panel.n || 9;
 
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
       return spAskClose();
     }
 
-    if (/^[1-9]$/.test(e.key) && +e.key <= n) {
-      e.preventDefault();
-      e.stopPropagation();
-      return spAnswer(+e.key);
+    if (/^[1-9]$/.test(event.key) && +event.key <= count) {
+      event.preventDefault();
+      event.stopPropagation();
+      return spAnswer(+event.key);
     }
 
-    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && a.n) {
-      e.preventDefault();
-      e.stopPropagation();
-      a.sel = (a.sel + (e.key === 'ArrowDown' ? 1 : a.n - 1)) % a.n;
+    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && panel.n) {
+      event.preventDefault();
+      event.stopPropagation();
+      panel.sel = (panel.sel + (event.key === 'ArrowDown' ? 1 : panel.n - 1)) % panel.n;
       return spAskDraw();
     }
 
-    if (e.key === 'Enter' && a.n) {
-      e.preventDefault();
-      e.stopPropagation();
-      return spAnswer(a.sel + 1);
+    if (event.key === 'Enter' && panel.n) {
+      event.preventDefault();
+      event.stopPropagation();
+      return spAnswer(panel.sel + 1);
     }
   },
   true,
@@ -356,8 +362,8 @@ document.addEventListener(
 
 document.addEventListener(
   'pointerdown',
-  e => {
-    if (sp.ask && !e.target.closest?.('#spaskp, .spask[data-tid]')) spAskClose();
+  event => {
+    if (sp.ask && !event.target.closest?.('#spaskp, .spask[data-tid]')) spAskClose();
   },
   true,
 );
@@ -366,51 +372,51 @@ addEventListener('resize', () => {
   if (sp.ask) spAskPlace();
 });
 
-document.addEventListener('click', e => {
+document.addEventListener('click', event => {
   if (!sp.ask) return;
-  const o = e.target.closest?.('#spaskp .spao[data-k]');
+  const option = event.target.closest?.('#spaskp .spao[data-k]');
 
-  if (o) return spAnswer(+o.dataset.k);
-  if (e.target.closest?.('#spaskp .spaty')) spAskChat(sp.ask.id);
+  if (option) return spAnswer(+option.dataset.k);
+  if (event.target.closest?.('#spaskp .spaty')) spAskChat(sp.ask.id);
 });
 
 /** The node's ✓ or ↩, or D: a tick as the card's — only where the card has one (canTick) —, the chat on the right left open. */
 function spTick(id, mark) {
-  const s = state.sessions.get(id);
+  const session = state.sessions.get(id);
 
-  if (!s) return;
-  if (s.done) return tickDone(id, false, mark);
-  if (canTick(s)) return tickDone(id, true, mark, mark);
+  if (!session) return;
+  if (session.done) return tickDone(id, false, mark);
+  if (canTick(session)) return tickDone(id, true, mark, mark);
 
   note(
     document.querySelector(`#spgrid .spt[data-id="${CSS.escape(id)}"]`) || $('#space'),
-    asking(s) ? 'It is asking you — answer it first' : 'It is at work — tick it once it is idle',
+    asking(session) ? 'It is asking you — answer it first' : 'It is at work — tick it once it is idle',
   );
 }
 
 /** One agent's lane: its span on the clock (to now while it works), how long, its last step. */
-function spLane(r, s, W, now) {
-  const st = spSt(r);
-  const from = Date.parse(r.at);
-  const end = r.end ? Date.parse(r.end) : now;
+function spLane(row, session, windowMs, now) {
+  const st = spSt(row);
+  const from = Date.parse(row.at);
+  const end = row.end ? Date.parse(row.end) : now;
   const took = end - from;
-  const kind = spKind(r);
-  const hue = spHue(kind, r.color);
+  const kind = spKind(row);
+  const hue = spHue(kind, row.color);
 
-  const a = Math.max(0, 1 - (now - from) / W);
-  const b = Math.max(0, 1 - (now - end) / W);
+  const barStart = Math.max(0, 1 - (now - from) / windowMs);
+  const barEnd = Math.max(0, 1 - (now - end) / windowMs);
 
   const bar =
-    !Number.isFinite(from) || now - end >= W
+    !Number.isFinite(from) || now - end >= windowMs
       ? ''
-      : `<span class="spbar" data-st="${st}" style="left:${(a * 100).toFixed(2)}%;width:${Math.max(0.8, (b - a) * 100).toFixed(2)}%"></span>`;
+      : `<span class="spbar" data-st="${st}" style="left:${(barStart * 100).toFixed(2)}%;width:${Math.max(0.8, (barEnd - barStart) * 100).toFixed(2)}%"></span>`;
 
   const dur = !Number.isFinite(from)
     ? SP_WORD[st]
     : st === 'run'
       ? `at work · ${agDur(now - from)}`
       : st === 'quiet'
-        ? `quiet ${agDur(now - Date.parse(r.lastAt))}`
+        ? `quiet ${agDur(now - Date.parse(row.lastAt))}`
         : st === 'wait'
           ? `waiting · ${agDur(now - from)}`
           : st === 'done'
@@ -421,26 +427,26 @@ function spLane(r, s, W, now) {
                 ? `stopped after ${agDur(took)}`
                 : SP_WORD[st];
 
-  const open = AG_ID.test(String(r.id)) && r.st !== 'joined';
+  const open = AG_ID.test(String(row.id)) && row.st !== 'joined';
 
-  return `<div class="splane" data-st="${st}"${open ? ` data-ag="${esc(r.id)}" role="button" tabindex="0"` : ''}>${spAgent(r, kind, hue, s)}<span class="splt"><span class="spla">${esc(r.asked || 'An agent')}</span><span class="spll">${agNow(r, s) || (st === 'joined' ? 'In the team, nothing asked of it yet' : esc(spCap(kind)))}</span></span><span class="sptrack">${bar}<i class="spnow"></i></span><span class="spld">${esc(dur)}</span></div>`;
+  return `<div class="splane" data-st="${st}"${open ? ` data-ag="${esc(row.id)}" role="button" tabindex="0"` : ''}>${spAgent(row, kind, hue, session)}<span class="splt"><span class="spla">${esc(row.asked || 'An agent')}</span><span class="spll">${agNow(row, session) || (st === 'joined' ? 'In the team, nothing asked of it yet' : esc(spCap(kind)))}</span></span><span class="sptrack">${bar}<i class="spnow"></i></span><span class="spld">${esc(dur)}</span></div>`;
 }
 
 /** The open chat's agents, a strip under the nodes (2026-11-18, v3): folded to its head by `prefs.spLanes`. */
-function spSide(s) {
-  if (!s) return '';
+function spSide(session) {
+  if (!session) return '';
 
-  const rows = spRows(s);
-  const st = spState(s);
-  const mates = rows.filter(r => r.mate).length;
-  const w = spWin();
-  const W = w * 60_000;
+  const rows = spRows(session);
+  const st = spState(session);
+  const mates = rows.filter(row => row.mate).length;
+  const minutes = spWin();
+  const windowMs = minutes * 60_000;
   const now = Date.now();
   const open = prefs.spLanes !== false;
 
   const lanes = [...rows]
-    .sort((a, b) => (a.at ? Date.parse(a.at) : Infinity) - (b.at ? Date.parse(b.at) : Infinity))
-    .map(r => spLane(r, s, W, now))
+    .sort((left, right) => (left.at ? Date.parse(left.at) : Infinity) - (right.at ? Date.parse(right.at) : Infinity))
+    .map(row => spLane(row, session, windowMs, now))
     .join('');
 
   const who = !rows.length
@@ -450,12 +456,12 @@ function spSide(s) {
       : spCount(rows.length, 'agent');
 
   return (
-    `<div class="spsh"><button type="button" class="spfold" aria-expanded="${open}" aria-controls="spls"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5l3-3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Agents · ${esc(s.project)}</button>` +
+    `<div class="spsh"><button type="button" class="spfold" aria-expanded="${open}" aria-controls="spls"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5l3-3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Agents · ${esc(session.project)}</button>` +
     `<span class="spstate"><span class="spw" data-st="${st}">${SP_ST[st]}</span><span>· ${who}</span></span>` +
-    `<span class="spwin" role="group" aria-label="The lanes' span: the last…">${SP_WINS.map(x => `<button type="button" data-w="${x}" aria-pressed="${x === w}">${x === 60 ? '1h' : `${x}m`}</button>`).join('')}</span></div>${
+    `<span class="spwin" role="group" aria-label="The lanes' span: the last…">${SP_WINS.map(choice => `<button type="button" data-w="${choice}" aria-pressed="${choice === minutes}">${choice === 60 ? '1h' : `${choice}m`}</button>`).join('')}</span></div>${
       !open
         ? ''
-        : `<div class="spls" id="spls">${rows.length ? lanes : `<p class="spnone">${s.alive ? 'No agents in its last round. They show here as they start.' : 'Not running: agents show while its claude runs.'}</p>`}</div>`
+        : `<div class="spls" id="spls">${rows.length ? lanes : `<p class="spnone">${session.alive ? 'No agents in its last round. They show here as they start.' : 'Not running: agents show while its claude runs.'}</p>`}</div>`
     }`
   );
 }
@@ -463,7 +469,7 @@ function spSide(s) {
 /** The chats of the project in view, in the states picked: by state as the list's lanes go, then by the last word. Idle and Done hold back, as a long lane does. */
 // Favourites (2026-11-18, v11): a chat starred — its node's ★, or F on its node; the server's `fav` — is a category of
 // its own: first, a row of its own, whatever its state, in or out by the ★ chip on top. The state chips count the rest.
-const spCat = s => (s.fav ? 'fav' : spState(s));
+const spCat = session => (session.fav ? 'fav' : spState(session));
 // Find (2026-11-23; ⌘F with the keys in Space, its box on top): the list's fuzzy match over the chat's fields, its agents'
 // types and its folder; while typed, only the matches, best first, from every state — a done one at half its worth, as
 // ⌥⌘K's —, the chips counting them. ↑↓ ring one (sp.sel), ⏎ opens it, esc clears, then leaves the box.

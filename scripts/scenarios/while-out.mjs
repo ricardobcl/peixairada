@@ -29,15 +29,15 @@ export default async function (ctx) {
   await back();
   ctx.assert.equal(await line(), null, 'half an hour with nothing new: nothing said');
   // two replies land while you are out
-  const [a, b] = ctx.fixture.chats;
+  const [chatA, chatB] = ctx.fixture.chats;
 
   await away(30);
 
-  for (const c of [a, b]) {
+  for (const chat of [chatA, chatB]) {
     appendFileSync(
-      c.file,
-      `${replyLines({ id: c.id, cwd: c.cwd, text: 'Done, have a look.', at: new Date() })
-        .map(l => JSON.stringify(l))
+      chat.file,
+      `${replyLines({ id: chat.id, cwd: chat.cwd, text: 'Done, have a look.', at: new Date() })
+        .map(entry => JSON.stringify(entry))
         .join('\n')}\n`,
     );
   }

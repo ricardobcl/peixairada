@@ -3,47 +3,47 @@
 // where it reads and writes, and the chats it holds. A modal <dialog>, so the pane goes down under it and Esc closes
 // it like any other.
 function aboutOpen() {
-  const a = state.about || {};
+  const about = state.about || {};
   const all = projectList()[0] || {};
 
   const facts = [
-    ['version', esc(state.update?.version || a.version || '?')],
+    ['version', esc(state.update?.version || about.version || '?')],
     [
       'code',
-      (u =>
-        !u?.checkout
-          ? u?.checkout === false
+      (update =>
+        !update?.checkout
+          ? update?.checkout === false
             ? 'not a git checkout'
             : '?'
-          : `<code>${shortSha(u.head)}</code>${u.branch ? ` on ${esc(u.branch)}` : ''}${u.last ? ` · updated ${rel(u.last.at)} ago` : ''}${u.on ? ' · updates itself' : ''}`)(
+          : `<code>${shortSha(update.head)}</code>${update.branch ? ` on ${esc(update.branch)}` : ''}${update.last ? ` · updated ${rel(update.last.at)} ago` : ''}${update.on ? ' · updates itself' : ''}`)(
         state.update,
       ),
     ],
     [
       'server',
-      `http://127.0.0.1:${a.port || location.port}${a.node ? ` · node ${esc(a.node)}` : ''}${a.pid ? ` · pid ${a.pid}` : ''}${a.since ? ` · up ${rel(a.since)}` : ''}`,
+      `http://127.0.0.1:${about.port || location.port}${about.node ? ` · node ${esc(about.node)}` : ''}${about.pid ? ` · pid ${about.pid}` : ''}${about.since ? ` · up ${rel(about.since)}` : ''}`,
     ],
-    ['reads', `${esc(homePath(a.claudeDir || '~/.claude'))} — and writes nothing there`],
-    ['setup', esc(homePath(a.configFile || '?'))],
-    ['state', esc(homePath(a.stateFile || '?'))],
+    ['reads', `${esc(homePath(about.claudeDir || '~/.claude'))} — and writes nothing there`],
+    ['setup', esc(homePath(about.configFile || '?'))],
+    ['state', esc(homePath(about.stateFile || '?'))],
     [
       'chats',
-      `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready ?? 0} ready · ${all.working ?? 0} clauding`,
+      `${[...state.sessions.values()].filter(session => session.alive).length} live · ${all.ready ?? 0} ready · ${all.working ?? 0} clauding`,
     ],
   ];
 
   $('#about').innerHTML =
-    `${FISH_LOGO()}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div><p class="help">The keys and the switches are in the settings — ⌘, or the chat header's ···.</p><p class="help"><button class="btn" id="aboutTour" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button> <button class="btn" id="aboutCopy" title="The version, macOS and the shape of the window, for a report of something wrong — no chat, path or address">Copy details</button></p><pre id="aboutDetails" hidden></pre>`;
+    `${FISH_LOGO()}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([label, value]) => `<b>${label}</b><span>${value}</span>`).join('')}</div><p class="help">The keys and the switches are in the settings — ⌘, or the chat header's ···.</p><p class="help"><button class="btn" id="aboutTour" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button> <button class="btn" id="aboutCopy" title="The version, macOS and the shape of the window, for a report of something wrong — no chat, path or address">Copy details</button></p><pre id="aboutDetails" hidden></pre>`;
 
   if (inApp) post({ type: 'details' }); // asked now: by the click the clipboard wants its text at once
   $('#about').showModal();
   repostPane();
 }
 
-$('#about').addEventListener('click', e => {
-  if (e.target === $('#about')) $('#about').close();
-  else if (e.target.closest('#aboutTour')) tourStart();
-  else if (e.target.closest('#aboutCopy')) copyDetails();
+$('#about').addEventListener('click', event => {
+  if (event.target === $('#about')) $('#about').close();
+  else if (event.target.closest('#aboutTour')) tourStart();
+  else if (event.target.closest('#aboutCopy')) copyDetails();
 }); // the backdrop; the tour (2026-10-14)
 
 // What a report wants (2026-11-04): which board it is and what shape its window is, since a bug of one shape never reaches
@@ -52,62 +52,62 @@ $('#about').addEventListener('click', e => {
 // says nothing, which says that much.
 let shellDetails = null;
 
-window.peixDetails = d => {
-  shellDetails = d;
+window.peixDetails = details => {
+  shellDetails = details;
 };
 
 function detailsText() {
-  const a = state.about || {};
-  const u = state.update || {};
-  const d = shellDetails;
-  const s = state.sessions.get(state.current);
+  const about = state.about || {};
+  const update = state.update || {};
+  const details = shellDetails;
+  const session = state.sessions.get(state.current);
 
-  const code = !u.checkout
-    ? u.checkout === false
+  const code = !update.checkout
+    ? update.checkout === false
       ? 'not a git checkout'
       : '?'
-    : `commit ${shortSha(u.head)}${u.branch ? ` on ${u.branch}` : ''}`;
+    : `commit ${shortSha(update.head)}${update.branch ? ` on ${update.branch}` : ''}`;
 
-  const lines = [`peixAIrada ${u.version || a.version || '?'} · ${code}`];
+  const lines = [`peixAIrada ${update.version || about.version || '?'} · ${code}`];
 
   if (!inApp) lines.push(`a browser: ${navigator.userAgent}`, `window: ${innerWidth}×${innerHeight}`);
-  else if (!d) {
+  else if (!details) {
     lines.push(
-      `the app: says nothing of its window, so older than this page${u.app?.behind ? ' (behind this checkout)' : ''}`,
+      `the app: says nothing of its window, so older than this page${update.app?.behind ? ' (behind this checkout)' : ''}`,
     );
   } else {
     lines.push(
-      `the app: ${d.app || 'not a bundle'}${u.app ? (u.app.behind ? ', behind this checkout' : ', built from this checkout') : ''}`,
-      `macOS: ${d.macos}`,
-      `window: ${{ fill: 'the fill', full: "macOS's full screen", window: 'a normal window' }[d.mode] || d.mode}, ${d.w}×${d.h}, the page ${d.inset} pt down, zoom ${d.zoom}`,
-      `screen: ${d.screen ? `${d.screen[0]}×${d.screen[1]} @${d.screen[2]}×${d.housing ? ', a camera housing' : ''}` : 'none'}, ${d.screens} in all`,
+      `the app: ${details.app || 'not a bundle'}${update.app ? (update.app.behind ? ', behind this checkout' : ', built from this checkout') : ''}`,
+      `macOS: ${details.macos}`,
+      `window: ${{ fill: 'the fill', full: "macOS's full screen", window: 'a normal window' }[details.mode] || details.mode}, ${details.w}×${details.h}, the page ${details.inset} pt down, zoom ${details.zoom}`,
+      `screen: ${details.screen ? `${details.screen[0]}×${details.screen[1]} @${details.screen[2]}×${details.housing ? ', a camera housing' : ''}` : 'none'}, ${details.screens} in all`,
     );
   }
 
-  if (s) {
-    const p = placeOf(s);
+  if (session) {
+    const place = placeOf(session);
 
-    const r = (sel, q) => {
-      const b = $(sel).getBoundingClientRect();
+    const edgeOf = (sel, side) => {
+      const rect = $(sel).getBoundingClientRect();
 
-      return Math.round(b[q]);
+      return Math.round(rect[side]);
     };
 
     lines.push(
-      `column: ${splitNow() ? (stackNow() ? 'one half over the other' : 'side by side') : 'one half'} · tabs ${p.map(k => (k || 'none').split(':')[0]).join(' | ')} · the keys in half ${focusG + 1}`,
+      `column: ${splitNow() ? (stackNow() ? 'one half over the other' : 'side by side') : 'one half'} · tabs ${place.map(key => (key || 'none').split(':')[0]).join(' | ')} · the keys in half ${focusG + 1}`,
     );
 
-    p.forEach((k, g) => {
-      if (k && isPaneTab(k)) {
+    place.forEach((key, half) => {
+      if (key && isPaneTab(key)) {
         lines.push(
-          `half ${g + 1} in the page's px: strip ${r(GEL[g].tabs, 'top')}–${r(GEL[g].tabs, 'bottom')}, body ${r(GEL[g].body, 'top')}–${r(GEL[g].body, 'bottom')}, from x ${r(GEL[g].body, 'left')}`,
+          `half ${half + 1} in the page's px: strip ${edgeOf(GEL[half].tabs, 'top')}–${edgeOf(GEL[half].tabs, 'bottom')}, body ${edgeOf(GEL[half].body, 'top')}–${edgeOf(GEL[half].body, 'bottom')}, from x ${edgeOf(GEL[half].body, 'left')}`,
         );
       }
     });
 
-    if (d?.views?.length) {
+    if (details?.views?.length) {
       lines.push(
-        `pages' views in the window's pt: ${d.views.map(v => `${v[2]}×${v[3]} at ${v[0]},${v[1]}`).join(' · ')}`,
+        `pages' views in the window's pt: ${details.views.map(view => `${view[2]}×${view[3]} at ${view[0]},${view[1]}`).join(' · ')}`,
       );
     }
   }
@@ -122,7 +122,7 @@ function detailsText() {
 }
 
 async function copyDetails() {
-  const b = $('#aboutCopy');
+  const button = $('#aboutCopy');
   const box = $('#aboutDetails');
   const text = detailsText();
 
@@ -131,24 +131,24 @@ async function copyDetails() {
   let ok = await copyText(text);
 
   if (!ok) {
-    const r = document.createRange();
+    const range = document.createRange();
 
-    r.selectNodeContents(box);
+    range.selectNodeContents(box);
     const sel = getSelection();
 
     sel.removeAllRanges();
-    sel.addRange(r);
+    sel.addRange(range);
 
     try {
       ok = document.execCommand('copy');
     } catch {}
   }
 
-  b.textContent = ok ? 'Copied' : 'Select it and ⌘C';
-  clearTimeout(b.timer);
+  button.textContent = ok ? 'Copied' : 'Select it and ⌘C';
+  clearTimeout(button.timer);
 
-  b.timer = setTimeout(() => {
-    b.textContent = 'Copy details';
+  button.timer = setTimeout(() => {
+    button.textContent = 'Copy details';
   }, 1600);
 }
 
@@ -173,39 +173,39 @@ function takeEntries(id, data) {
 
   state.entries = data.entries;
   Object.assign(logOf, { id, gen: data.gen ?? null, upto: data.upto ?? null, waiting: false, pending: [] });
-  for (const d of pending) mergeEntries(d);
+  for (const batch of pending) mergeEntries(batch);
 }
 
 /** The stream's entries for the open chat: only those past what the page has; another reading or a gap is a fetch. */
-function mergeEntries(d) {
-  if (logOf.id !== d.sessionId) return;
+function mergeEntries(batch) {
+  if (logOf.id !== batch.sessionId) return;
 
   if (logOf.waiting) {
-    logOf.pending.push(d);
+    logOf.pending.push(batch);
     return;
   } // the fetch is on its way: after it
 
-  if (d.upto == null || logOf.upto == null) {
-    state.entries.push(...d.entries);
+  if (batch.upto == null || logOf.upto == null) {
+    state.entries.push(...batch.entries);
     return;
   } // a server from before the numbers, or a fetch that failed
 
-  if (d.gen !== logOf.gen) {
+  if (batch.gen !== logOf.gen) {
     refetchCurrent();
     return;
   }
 
-  const from = d.upto - d.entries.length;
+  const from = batch.upto - batch.entries.length;
 
-  if (d.upto <= logOf.upto) return; // had them all
+  if (batch.upto <= logOf.upto) return; // had them all
 
   if (from > logOf.upto) {
     refetchCurrent();
     return;
   } // some went missing between
 
-  state.entries.push(...d.entries.slice(logOf.upto - from));
-  logOf.upto = d.upto;
+  state.entries.push(...batch.entries.slice(logOf.upto - from));
+  logOf.upto = batch.upto;
 }
 
 // …and the summary: an answer older than a `session` event that came while it was on its way does not undo it
@@ -236,12 +236,12 @@ async function refetchCurrent() {
     return;
   } // what it had stands, and what came meanwhile is added
 
-  const s = takeSession(id, data, seen);
+  const session = takeSession(id, data, seen);
 
   takeEntries(id, data);
-  renderHead(s);
+  renderHead(session);
   renderLog();
-  syncTerm(s);
+  syncTerm(session);
 }
 
 // The stream is opened again by hand, never by the browser's own retry (2026-11-27): that sends its keyed address to
@@ -290,20 +290,20 @@ async function connect() {
     else connectSoon();
   };
 
-  es.addEventListener('snapshot', e => {
-    const d = JSON.parse(e.data);
+  es.addEventListener('snapshot', event => {
+    const snapshot = JSON.parse(event.data);
 
     state.snapshots++;
     if (state.snapshots === 1) setTimeout(cueWave, 600); // the harness waits on the count: a reloaded page has its board
     if ($('#lock').open) $('#lock').close(); // the stream let in: the key holds
-    state.sessions = new Map(d.sessions.map(s => [s.id, s]));
-    state.projects = d.projects || [];
-    state.pins = d.pins || [];
-    state.priority = d.priority || [];
-    state.hidden = d.hidden || [];
-    state.repos = d.repos || {};
+    state.sessions = new Map(snapshot.sessions.map(session => [session.id, session]));
+    state.projects = snapshot.projects || [];
+    state.pins = snapshot.pins || [];
+    state.priority = snapshot.priority || [];
+    state.hidden = snapshot.hidden || [];
+    state.repos = snapshot.repos || {};
 
-    for (const m of [
+    for (const map of [
       tabs,
       homes,
       splits,
@@ -324,35 +324,35 @@ async function connect() {
       reviews,
       agentTabs,
     ]) {
-      for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);
+      for (const id of [...map.keys()]) if (!state.sessions.has(id)) map.delete(id);
     }
 
     for (const id of Object.keys(prefs.agentCards)) if (!state.sessions.has(id)) delete prefs.agentCards[id]; // a chat gone from the board takes its page state with it
-    state.about = d.about || {};
-    if (d.config) state.config = d.config;
+    state.about = snapshot.about || {};
+    if (snapshot.config) state.config = snapshot.config;
     renderSetup();
-    state.notifications = d.notifications !== false;
+    state.notifications = snapshot.notifications !== false;
     showNotify();
-    takeUpdate(d.update);
-    pageFollows(d);
-    if (d.awake) state.awake = awakeOf(d.awake);
+    takeUpdate(snapshot.update);
+    pageFollows(snapshot);
+    if (snapshot.awake) state.awake = awakeOf(snapshot.awake);
 
-    if (d.chat) {
-      state.chat = d.chat;
+    if (snapshot.chat) {
+      state.chat = snapshot.chat;
       chatChanged();
     }
 
-    if (d.lunch) {
-      state.lunch = d.lunch;
+    if (snapshot.lunch) {
+      state.lunch = snapshot.lunch;
       lunchChanged();
     }
 
-    state.clones = new Map((d.clones || []).map(c => [c.dir, c])); // the clones under way, a reload in the middle of one
-    state.editors = d.editors || null;
+    state.clones = new Map((snapshot.clones || []).map(clone => [clone.dir, clone])); // the clones under way, a reload in the middle of one
+    state.editors = snapshot.editors || null;
     edSay(); // whether Zed is on this Mac, and its install
-    state.key = d.key || null;
+    state.key = snapshot.key || null;
     showKey();
-    state.serverNotify = d.notify === 'native'; // the server posts its own banners: the app must not double them
+    state.serverNotify = snapshot.notify === 'native'; // the server posts its own banners: the app must not double them
     renderBoard();
     welcomeSync();
     const want = hashId();
@@ -371,55 +371,59 @@ async function connect() {
     else if (state.current && state.sessions.has(state.current)) refetchCurrent();
   });
 
-  es.addEventListener('session', e => {
-    const s = JSON.parse(e.data);
-    const was = state.sessions.get(s.id);
+  es.addEventListener('session', event => {
+    const session = JSON.parse(event.data);
+    const was = state.sessions.get(session.id);
 
-    state.sessions.set(s.id, s);
-    sessionSeen.set(s.id, (sessionSeen.get(s.id) || 0) + 1);
-    const landed = was?.status === 'working' && s.status === 'idle' && !s.done;
+    state.sessions.set(session.id, session);
+    sessionSeen.set(session.id, (sessionSeen.get(session.id) || 0) + 1);
+    const landed = was?.status === 'working' && session.status === 'idle' && !session.done;
 
     if (landed) {
-      landedAt.set(s.id, performance.now());
-      noteMotion(s.id, 'landed');
+      landedAt.set(session.id, performance.now());
+      noteMotion(session.id, 'landed');
     } // the reply landed: the card flares once (flareLanded)
 
-    const woke = !!was && !!s.wokeAt && s.wokeAt !== was.wokeAt; // back from a snooze: its card flares once as it arrives (2026-11-24, round XXX's H4)
+    const woke = !!was && !!session.wokeAt && session.wokeAt !== was.wokeAt; // back from a snooze: its card flares once as it arrives (2026-11-24, round XXX's H4)
 
     if (woke) {
-      landedAt.set(s.id, performance.now());
-      noteMotion(s.id, 'woke');
+      landedAt.set(session.id, performance.now());
+      noteMotion(session.id, 'woke');
     }
 
-    const heard = was && asking(was) && !asking(s) && s.alive && !s.done;
+    const heard = was && asking(was) && !asking(session) && session.alive && !session.done;
 
     if (heard) {
-      heardAt.set(s.id, performance.now());
-      noteMotion(s.id, 'heard');
+      heardAt.set(session.id, performance.now());
+      noteMotion(session.id, 'heard');
     } // the question answered: its card hears it (flareLanded)
 
-    if (s.id === state.current && s.removed) {
+    if (session.id === state.current && session.removed) {
       if (!was?.removed) {
-        moveOn(s.id);
-        if (state.current === s.id) leaveChat();
+        moveOn(session.id);
+        if (state.current === session.id) leaveChat();
       }
     } // deleted from another page; found by ⌥⌘K, it stays open
-    else if (s.id === state.current && !visible(s) && s.done) {
+    else if (session.id === state.current && !visible(session) && session.done) {
       leaveChat();
     } // an empty chat ticked done: its card is gone, and so is the chat
-    else if (s.id === state.current && noneLeft(s)) leaveEmpty(s);
-    if (s.id === state.current && String(s.lastUserAt || '') > String(was?.lastUserAt || '')) followCard.id = s.id; // your word: the next draw takes the list to its card
+    else if (session.id === state.current && noneLeft(session)) leaveEmpty(session);
+
+    if (session.id === state.current && String(session.lastUserAt || '') > String(was?.lastUserAt || '')) {
+      followCard.id = session.id;
+    } // your word: the next draw takes the list to its card
+
     if (landed || heard || woke) renderBoard();
     else renderBoardSoon(); // a landing is drawn as it is said, flare and all
-    zeHeard(s, was, landed); // Zé's game, if it is up: a question pauses it
+    zeHeard(session, was, landed); // Zé's game, if it is up: a question pauses it
     ovSoon(); // the overview (⌥⌘A, 2026-10-10) follows its chats while it is up
     homeSoon(landed); // …and the home its facts, the day again when a turn lands
 
-    if (s.id === state.current) {
-      renderHead(s);
-      syncTerm(s);
+    if (session.id === state.current) {
+      renderHead(session);
+      syncTerm(session);
       renderPresence();
-    } else if (state.sessions.get(state.current)?.links?.some(l => l.id === s.id)) {
+    } else if (state.sessions.get(state.current)?.links?.some(link => link.id === session.id)) {
       renderResume(state.sessions.get(state.current));
     } // where it went on may have only just come up (2026-11-04)
 
@@ -427,81 +431,81 @@ async function connect() {
     if (
       $('#pick').open &&
       pick.mode === 'chats' &&
-      (pick.list.some(x => x.id === s.id) || scopeChats(pick.ctx).some(x => x.id === s.id))
+      (pick.list.some(chat => chat.id === session.id) || scopeChats(pick.ctx).some(chat => chat.id === session.id))
     ) {
       pickRender(true);
     }
   });
 
-  es.addEventListener('entries', e => {
-    const d = JSON.parse(e.data);
+  es.addEventListener('entries', event => {
+    const batch = JSON.parse(event.data);
 
-    if (d.sessionId === state.current) {
-      mergeEntries(d);
+    if (batch.sessionId === state.current) {
+      mergeEntries(batch);
       renderLog();
     }
   });
 
-  es.addEventListener('projects', e => {
-    state.projects = JSON.parse(e.data).projects || [];
+  es.addEventListener('projects', event => {
+    state.projects = JSON.parse(event.data).projects || [];
     renderBoardSoon();
   });
 
-  es.addEventListener('repos', e => {
-    state.repos = JSON.parse(e.data).repos || {};
+  es.addEventListener('repos', event => {
+    state.repos = JSON.parse(event.data).repos || {};
   });
 
-  es.addEventListener('pins', e => {
-    state.pins = JSON.parse(e.data).pins || [];
+  es.addEventListener('pins', event => {
+    state.pins = JSON.parse(event.data).pins || [];
     renderBoardSoon();
   });
 
-  es.addEventListener('priority', e => {
-    state.priority = JSON.parse(e.data).priority || [];
+  es.addEventListener('priority', event => {
+    state.priority = JSON.parse(event.data).priority || [];
     renderBoardSoon();
   }); // Top priority's order (2026-11-24), another page's or a /clear's
 
-  es.addEventListener('hidden', e => {
-    state.hidden = JSON.parse(e.data).hidden || [];
+  es.addEventListener('hidden', event => {
+    state.hidden = JSON.parse(event.data).hidden || [];
     renderBoard();
     if ($('#pick').open) pickRender();
   });
 
-  es.addEventListener('notifications', e => {
-    state.notifications = JSON.parse(e.data).on !== false;
+  es.addEventListener('notifications', event => {
+    state.notifications = JSON.parse(event.data).on !== false;
     showNotify();
   });
 
-  es.addEventListener('update', e => takeUpdate(JSON.parse(e.data)));
+  es.addEventListener('update', event => takeUpdate(JSON.parse(event.data)));
 
-  es.addEventListener('awake', e => {
-    state.awake = awakeOf(JSON.parse(e.data));
+  es.addEventListener('awake', event => {
+    state.awake = awakeOf(JSON.parse(event.data));
     awakeChanged();
   });
 
-  es.addEventListener('clone', e => cloneEvent(JSON.parse(e.data)));
+  es.addEventListener('clone', event => cloneEvent(JSON.parse(event.data)));
 
-  es.addEventListener('editor', e => {
-    state.editors = JSON.parse(e.data);
+  es.addEventListener('editor', event => {
+    state.editors = JSON.parse(event.data);
     edSay();
   });
 
-  es.addEventListener('key', e => {
-    state.key = JSON.parse(e.data);
+  es.addEventListener('key', event => {
+    state.key = JSON.parse(event.data);
     showKey();
   });
 
-  es.addEventListener('config', e => {
-    const c = JSON.parse(e.data);
+  es.addEventListener('config', event => {
+    const config = JSON.parse(event.data);
 
-    if (JSON.stringify(c) === JSON.stringify(state.config)) return;
-    state.config = c;
+    if (JSON.stringify(config) === JSON.stringify(state.config)) return;
+    state.config = config;
     configChanged();
   }); // the echo of a save made here is no news
 
-  es.addEventListener('terminal', e => {
-    const t = JSON.parse(e.data);
-    const term = termFor(t.id);
+  es.addEventListener('terminal', event => {
+    const termNews = JSON.parse(event.data);
+    const term = termFor(termNews.id);
 
     if (!term) return;
 
@@ -509,15 +513,15 @@ async function connect() {
     // process a new session id and the server re-linked the holder (2026-09-20). Follow it — the drawer stays
     // attached, the pane shows the chat it now runs; the old card is a stale chat now, and opening it again would
     // resume the old context in a second process.
-    if (t.sessionId && t.sessionId !== term.sessionId) {
+    if (termNews.sessionId && termNews.sessionId !== term.sessionId) {
       const was = term.sessionId;
 
-      term.sessionId = t.sessionId;
-      if (was) carryChat(was, t.sessionId);
-      if (state.current !== t.sessionId) openSession(t.sessionId);
+      term.sessionId = termNews.sessionId;
+      if (was) carryChat(was, termNews.sessionId);
+      if (state.current !== termNews.sessionId) openSession(termNews.sessionId);
     }
 
-    if (t.exited !== null) termEnded(term, t.exited);
+    if (termNews.exited !== null) termEnded(term, termNews.exited);
   });
 
   // The process's column goes on with it (2026-10-14): its tabs, its split and how it stands, its pages, its changes
@@ -542,36 +546,36 @@ async function connect() {
 
     const sets = [splits, autoSplit, stacked, changesOpen, timelineOpen];
 
-    if (![...maps, ...sets].some(m => m.has(from)) || [...maps, ...sets].some(m => m.has(to))) return;
+    if (![...maps, ...sets].some(store => store.has(from)) || [...maps, ...sets].some(store => store.has(to))) return;
 
-    for (const m of maps) {
-      if (m.has(from)) {
-        m.set(to, m.get(from));
-        m.delete(from);
+    for (const map of maps) {
+      if (map.has(from)) {
+        map.set(to, map.get(from));
+        map.delete(from);
       }
     }
 
-    for (const m of sets) {
-      if (m.has(from)) {
-        m.add(to);
-        m.delete(from);
+    for (const set of sets) {
+      if (set.has(from)) {
+        set.add(to);
+        set.delete(from);
       }
     }
   }
 
-  es.addEventListener('alert', e => onAlert(JSON.parse(e.data)));
+  es.addEventListener('alert', event => onAlert(JSON.parse(event.data)));
 
-  es.addEventListener('chat', e => {
-    state.chat = JSON.parse(e.data);
+  es.addEventListener('chat', event => {
+    state.chat = JSON.parse(event.data);
     chatChanged();
   });
 
-  es.addEventListener('lunch', e => {
-    state.lunch = JSON.parse(e.data);
+  es.addEventListener('lunch', event => {
+    state.lunch = JSON.parse(event.data);
     lunchChanged();
   });
 
-  es.addEventListener('chatmsgs', e => chatMsgs(JSON.parse(e.data)));
+  es.addEventListener('chatmsgs', event => chatMsgs(JSON.parse(event.data)));
 }
 
 connect(); // a ticket in the address first, and the server proven: the stream wants the key

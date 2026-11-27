@@ -19,18 +19,18 @@ export default async function (ctx) {
   });
 
   const chats = () => ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'chat'))`).then(JSON.parse);
-  const [a, b] = ctx.fixture.chats;
+  const [chatA, chatB] = ctx.fixture.chats;
 
   ctx.assert.deepEqual(await chats(), [], 'nothing said with no chat open');
 
-  await ctx.openChat(a.id);
+  await ctx.openChat(chatA.id);
   await ctx.waitFor(`window.__posts.some(m => m.type === 'chat')`, { what: 'the chat told to the shell' });
   out.first = await chats();
   ctx.assert.equal(out.first.length, 1, 'once');
 
   ctx.assert.deepEqual(
     out.first[0],
-    { type: 'chat', project: 'repo-a', title: 'Two PRs mentioned', cwd: a.cwd },
+    { type: 'chat', project: 'repo-a', title: 'Two PRs mentioned', cwd: chatA.cwd },
     'its project, title and folder',
   );
 
@@ -39,13 +39,13 @@ export default async function (ctx) {
   await ctx.sleep(300);
   ctx.assert.equal((await chats()).length, 1, 'still once after a render with the same header');
 
-  await ctx.openChat(b.id);
+  await ctx.openChat(chatB.id);
   await ctx.waitFor(`window.__posts.filter(m => m.type === 'chat').length === 2`, { what: 'the second chat told' });
   out.second = (await chats())[1];
 
   ctx.assert.deepEqual(
     [out.second.title, out.second.cwd],
-    ['Plain chat', b.cwd],
+    ['Plain chat', chatB.cwd],
     'the second chat, its title and folder',
   );
 

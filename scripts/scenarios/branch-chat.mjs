@@ -46,7 +46,7 @@ export default async function (ctx) {
   );
 
   await ctx.waitPrompt();
-  out.screen = (await ctx.screen()).find(l => l.startsWith('fake claude')) || '';
+  out.screen = (await ctx.screen()).find(line => line.startsWith('fake claude')) || '';
 
   ctx.assert.match(
     out.screen,
@@ -97,9 +97,9 @@ export default async function (ctx) {
   ctx.assert.equal(out.origMenu.length, 1);
   ctx.assert.match(out.origMenu[0], /^Its branch “/);
   await ctx.evaluate(`document.querySelector('#hmenu').close()`);
-  const t = (await ctx.peix(`session(${sid(copy)})`)).terminal;
+  const term = (await ctx.peix(`session(${sid(copy)})`)).terminal;
 
-  if (t) await ctx.server.api(`/api/terminals/${t.id}`, { method: 'DELETE' });
+  if (term) await ctx.server.api(`/api/terminals/${term.id}`, { method: 'DELETE' });
 
   // ---- a branch closed before a word (2026-11-04): no transcript was written, so no card, and the column goes back ----
   await ctx.openChat(twoPrs.id);

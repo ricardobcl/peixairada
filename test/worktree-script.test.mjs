@@ -21,8 +21,8 @@ const env = {
   GIT_COMMITTER_EMAIL: 't@t',
 };
 
-const git = (cwd, ...a) =>
-  execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env })
+const git = (cwd, ...args) =>
+  execFileSync('git', ['-C', cwd, ...args], { stdio: 'pipe', env })
     .toString()
     .trim();
 
@@ -38,16 +38,16 @@ git(repo, 'add', '.');
 git(repo, 'commit', '-qm', 'base');
 
 const real = git(repo, 'rev-parse', '--show-toplevel');
-const wt = n => join(real, '.claude', 'worktrees', n);
+const wt = name => join(real, '.claude', 'worktrees', name);
 
 const sh = (args, more = {}) => {
-  const r = spawnSync(join(repo, 'scripts', 'worktree.sh'), args, {
+  const result = spawnSync(join(repo, 'scripts', 'worktree.sh'), args, {
     cwd: repo,
     env: { ...env, ...more },
     encoding: 'utf8',
   });
 
-  return { code: r.status, out: r.stdout + r.stderr };
+  return { code: result.status, out: result.stdout + result.stderr };
 };
 
 const commit = (name, file) => {
@@ -60,10 +60,10 @@ const commit = (name, file) => {
 const branches = () => git(repo, 'branch', '--format=%(refname:short)').split('\n');
 
 test('new makes .claude/worktrees/<name> on its branch from main, needing no node_modules of its own', () => {
-  const r = sh(['new', 'a']);
+  const result = sh(['new', 'a']);
 
-  assert.equal(r.code, 0, r.out);
-  assert.equal(r.out.trim(), wt('a'));
+  assert.equal(result.code, 0, result.out);
+  assert.equal(result.out.trim(), wt('a'));
   assert.equal(git(wt('a'), 'branch', '--show-current'), 'a');
   assert.equal(git(wt('a'), 'rev-parse', 'HEAD'), git(repo, 'rev-parse', 'main'));
   assert.ok(!existsSync(join(wt('a'), 'node_modules')), "no link: Node finds the checkout's up the folders");
@@ -74,16 +74,16 @@ test('new makes .claude/worktrees/<name> on its branch from main, needing no nod
 test('done keeps a worktree with a commit not on main, or anything not committed, and says why', () => {
   sh(['new', 'b']);
   commit('b', 'b.txt');
-  let r = sh(['done', 'b']);
+  let result = sh(['done', 'b']);
 
-  assert.equal(r.code, 1);
-  assert.match(r.out, /b: kept — 1 commit\(s\) not on main/);
+  assert.equal(result.code, 1);
+  assert.match(result.out, /b: kept — 1 commit\(s\) not on main/);
   assert.ok(existsSync(wt('b')));
   sh(['new', 'c']);
   writeFileSync(join(wt('c'), 'loose.txt'), 'x\n');
-  r = sh(['done', 'c']);
-  assert.equal(r.code, 1);
-  assert.match(r.out, /c: kept — not committed:\n\?\? loose\.txt/);
+  result = sh(['done', 'c']);
+  assert.equal(result.code, 1);
+  assert.match(result.out, /c: kept — not committed:\n\?\? loose\.txt/);
   assert.ok(existsSync(wt('c')));
 });
 
@@ -94,11 +94,11 @@ test('done takes a worktree whose work is on main — fast-forwarded or cherry-p
   const pick = commit('b', 'b2.txt');
 
   git(repo, 'cherry-pick', git(repo, 'rev-parse', 'b~1'), pick);
-  const r = sh(['done', 'ff', 'b']);
+  const result = sh(['done', 'ff', 'b']);
 
-  assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /ff: removed, and its branch ff/);
-  assert.match(r.out, /b: removed, and its branch b/);
+  assert.equal(result.code, 0, result.out);
+  assert.match(result.out, /ff: removed, and its branch ff/);
+  assert.match(result.out, /b: removed, and its branch b/);
   assert.ok(!existsSync(wt('ff')) && !existsSync(wt('b')));
   assert.ok(!branches().includes('ff') && !branches().includes('b'));
 });
@@ -106,35 +106,35 @@ test('done takes a worktree whose work is on main — fast-forwarded or cherry-p
 test("an old worktree's link to the checkout's node_modules goes, the link alone; a link elsewhere keeps it", () => {
   sh(['new', 'linked']);
   symlinkSync('../../../node_modules', join(wt('linked'), 'node_modules'));
-  let r = sh(['done', 'linked']);
+  let result = sh(['done', 'linked']);
 
-  assert.equal(r.code, 0, r.out);
+  assert.equal(result.code, 0, result.out);
   assert.ok(existsSync(join(repo, 'node_modules', 'x')), 'what it pointed at is still there');
   const other = join(tmp, 'elsewhere');
 
   mkdirSync(other);
   sh(['new', 'odd']);
   symlinkSync(other, join(wt('odd'), 'node_modules'));
-  r = sh(['done', 'odd']);
-  assert.equal(r.code, 1);
-  assert.match(r.out, /odd: kept — its node_modules links somewhere else/);
+  result = sh(['done', 'odd']);
+  assert.equal(result.code, 1);
+  assert.match(result.out, /odd: kept — its node_modules links somewhere else/);
 });
 
 test('a process whose current folder is inside keeps the worktree', async () => {
   sh(['new', 'busy']);
-  const p = spawn('sleep', ['30'], { cwd: wt('busy'), stdio: 'ignore' });
+  const sleeper = spawn('sleep', ['30'], { cwd: wt('busy'), stdio: 'ignore' });
 
   try {
-    const r = sh(['done', 'busy']);
+    const result = sh(['done', 'busy']);
 
-    assert.equal(r.code, 1);
-    assert.match(r.out, /busy: kept — a process works inside it/);
+    assert.equal(result.code, 1);
+    assert.match(result.out, /busy: kept — a process works inside it/);
     assert.match(sh(['list']).out, /^busy \(busy\): .*, in use,/m);
   } finally {
-    p.kill();
+    sleeper.kill();
   }
 
-  await new Promise(res => p.once('exit', res));
+  await new Promise(res => sleeper.once('exit', res));
   assert.equal(sh(['done', 'busy']).code, 0);
 });
 
@@ -145,17 +145,17 @@ test('prune takes only finished work: a commit of its own, all on main, left a w
   git(repo, 'merge', '-q', '--ff-only', 'landed');
   sh(['new', 'open']);
   commit('open', 'o.txt');
-  let r = sh(['prune']);
+  let result = sh(['prune']);
 
-  assert.match(r.out, /fresh: kept — no commit of its own yet/);
-  assert.match(r.out, /landed: kept — touched within the hour/);
+  assert.match(result.out, /fresh: kept — no commit of its own yet/);
+  assert.match(result.out, /landed: kept — touched within the hour/);
   assert.ok(existsSync(wt('landed')));
-  r = sh(['prune'], { QUIET_S: '0' });
-  assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /landed: removed/);
-  assert.match(r.out, /open: kept — 1 commit\(s\) not on main/);
-  assert.match(r.out, /fresh: kept — no commit of its own yet/);
-  assert.match(r.out, /c: kept — no commit of its own yet/);
+  result = sh(['prune'], { QUIET_S: '0' });
+  assert.equal(result.code, 0, result.out);
+  assert.match(result.out, /landed: removed/);
+  assert.match(result.out, /open: kept — 1 commit\(s\) not on main/);
+  assert.match(result.out, /fresh: kept — no commit of its own yet/);
+  assert.match(result.out, /c: kept — no commit of its own yet/);
   assert.ok(!existsSync(wt('landed')) && existsSync(wt('open')) && existsSync(wt('fresh')));
 });
 
@@ -164,18 +164,22 @@ test('a MAIN that names nothing stops it before anything is taken — never a br
   commit('lost', 'lost.txt');
 
   for (const args of [['done', 'lost'], ['prune'], ['list']]) {
-    const r = sh(args, { MAIN: 'nope', QUIET_S: '0' });
+    const result = sh(args, { MAIN: 'nope', QUIET_S: '0' });
 
-    assert.notEqual(r.code, 0, r.out);
-    assert.match(r.out, /nope: no such branch here/);
+    assert.notEqual(result.code, 0, result.out);
+    assert.match(result.out, /nope: no such branch here/);
   }
 
   assert.ok(existsSync(wt('lost')) && branches().includes('lost'), 'the worktree and its commit still there');
 });
 
 test("run from inside a worktree, it works on the main checkout's", () => {
-  const r = spawnSync(join(wt('open'), 'scripts', 'worktree.sh'), ['list'], { cwd: wt('open'), env, encoding: 'utf8' });
+  const result = spawnSync(join(wt('open'), 'scripts', 'worktree.sh'), ['list'], {
+    cwd: wt('open'),
+    env,
+    encoding: 'utf8',
+  });
 
-  assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /^open \(open\): 1 not on main/m);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^open \(open\): 1 not on main/m);
 });

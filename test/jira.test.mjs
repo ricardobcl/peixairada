@@ -24,7 +24,7 @@ test('ticketsIn: keys in prose and in inline code, links with their URL; not in 
   );
 
   assert.deepEqual(
-    said.map(t => [t.key, t.url]),
+    said.map(ticket => [ticket.key, ticket.url]),
     [
       ['ACME-12', null],
       ['OPS-7', null],
@@ -34,13 +34,13 @@ test('ticketsIn: keys in prose and in inline code, links with their URL; not in 
   );
 
   assert.deepEqual(
-    ticketsIn('UTF-8, SHA-256 and GPT-4 look like keys').map(t => t.key),
+    ticketsIn('UTF-8, SHA-256 and GPT-4 look like keys').map(ticket => ticket.key),
     ['UTF-8', 'SHA-256', 'GPT-4'],
     "they look like keys — the site's projects say which are",
   );
 
   assert.deepEqual(
-    ticketsIn('acme-12 is lower case, ACME-012 starts at 0').map(t => t.key),
+    ticketsIn('acme-12 is lower case, ACME-012 starts at 0').map(ticket => ticket.key),
     [],
   );
 });
@@ -89,19 +89,20 @@ test('end to end: what Jira knows wears its status, what it does not is never sh
   const branched = makeFixture(fx.dir, [{ cwd: process.cwd(), prompt: 'carry on', reply: 'ok' }]).chats[0];
 
   // that chat's branch names its ticket
-  const f = branched.file;
+  const file = branched.file;
 
-  const lines = readFileSync(f, 'utf8')
+  const lines = readFileSync(file, 'utf8')
     .trim()
     .split('\n')
-    .map(l => JSON.parse(l));
+    .map(line => JSON.parse(line));
 
-  for (const l of lines) if (l.gitBranch) l.gitBranch = 'feature/acme-31-the-branch';
-  (await import('node:fs')).writeFileSync(f, `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
+  for (const line of lines) if (line.gitBranch) line.gitBranch = 'feature/acme-31-the-branch';
+  (await import('node:fs')).writeFileSync(file, `${lines.map(line => JSON.stringify(line)).join('\n')}\n`);
   const srv = await startTestServer({ claudeDir: fx.dir, env: { JIRA_API_TOKEN: jira.token, PR_TTL_MS: '0' } });
 
   try {
-    const chat = id => srv.api('api/sessions').then(r => r.body.sessions.find(s => s.id === id));
+    const chat = id =>
+      srv.api('api/sessions').then(response => response.body.sessions.find(session => session.id === id));
 
     assert.deepEqual((await chat(fx.chats[0].id)).tickets, [], 'no site, no tickets');
     assert.equal(jira.bulk.length, 0, 'and nothing asked');
@@ -114,18 +115,23 @@ test('end to end: what Jira knows wears its status, what it does not is never sh
 
     assert.equal(put.status, 200, JSON.stringify(put.body));
     await waitFor(async () => (await chat(fx.chats[0].id)).tickets.length === 2, { what: "the chat's two tickets" });
-    const t = (await chat(fx.chats[0].id)).tickets;
+    const tickets = (await chat(fx.chats[0].id)).tickets;
 
     assert.deepEqual(
-      t.map(x => [x.key, x.cat, x.status, x.summary]),
+      tickets.map(ticket => [ticket.key, ticket.cat, ticket.status, ticket.summary]),
       [
         ['ACME-12', 'doing', 'In Progress', 'Fees for the new market'],
         ['OPS-7', 'done', 'Done', 'Rotate the keys'],
       ],
     );
 
-    assert.equal(t[0].url, `${jira.url}/browse/ACME-12`, "the site's own link");
-    assert.deepEqual([t[0].assignee.name, t[0].assignee.me, t[1].assignee.me], ['Me Myself', true, false]);
+    assert.equal(tickets[0].url, `${jira.url}/browse/ACME-12`, "the site's own link");
+
+    assert.deepEqual(
+      [tickets[0].assignee.name, tickets[0].assignee.me, tickets[1].assignee.me],
+      ['Me Myself', true, false],
+    );
+
     await waitFor(async () => (await chat(branched.id)).tickets[0]?.key === 'ACME-31', { what: "the branch's ticket" });
     assert.equal((await chat(branched.id)).tickets[0].branch, true);
     const asked = jira.bulk.flat();
@@ -187,7 +193,7 @@ test(
         res.end('{}');
       });
 
-      await new Promise(r => other.listen(0, '127.0.0.1', r));
+      await new Promise(resolve => other.listen(0, '127.0.0.1', resolve));
 
       try {
         await put('api/config', { jira: { site: `http://127.0.0.1:${other.address().port}`, email: jira.email } });
@@ -196,7 +202,7 @@ test(
         assert.match(info.error, /the token kept is for http:\/\/127\.0\.0\.1:\d+ — paste one for/);
 
         assert.ok(
-          auth.every(a => a === null),
+          auth.every(authorization => authorization === null),
           `no token went to the other site: ${JSON.stringify(auth)}`,
         );
 
@@ -231,20 +237,21 @@ test(
     });
 
     const fx = makeFixture(tmpDir('peix-fx-'), [{ cwd: process.cwd(), prompt: 'hello', reply: 'hi' }]);
-    const c = fx.chats[0];
+    const fixtureChat = fx.chats[0];
 
     const srv = await startTestServer({ claudeDir: fx.dir, env: { JIRA_API_TOKEN: jira.token } });
 
     try {
-      const chat = () => srv.api('api/sessions').then(r => r.body.sessions.find(s => s.id === c.id));
+      const chat = () =>
+        srv.api('api/sessions').then(response => response.body.sessions.find(session => session.id === fixtureChat.id));
 
       assert.equal((await putJson(srv, 'api/config', { jira: { site: jira.url, email: jira.email } })).status, 200);
       await waitFor(() => jira.calls['/rest/api/3/project/search'] === 1, { what: 'the projects asked for' });
 
       appendFileSync(
-        c.file,
-        `${replyLines({ id: c.id, cwd: c.cwd, text: 'UTF-8 is no ticket, ACME-12 is.' })
-          .map(l => JSON.stringify(l))
+        fixtureChat.file,
+        `${replyLines({ id: fixtureChat.id, cwd: fixtureChat.cwd, text: 'UTF-8 is no ticket, ACME-12 is.' })
+          .map(line => JSON.stringify(line))
           .join('\n')}\n`,
       );
 
@@ -298,7 +305,8 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir, env: { JIRA_API_TOKEN: old.token } });
 
     try {
-      const chat = () => srv.api('api/sessions').then(r => r.body.sessions.find(s => s.id === fx.chats[0].id));
+      const chat = () =>
+        srv.api('api/sessions').then(response => response.body.sessions.find(session => session.id === fx.chats[0].id));
 
       await putJson(srv, 'api/config', { jira: { site: old.url, email: old.email } });
       await waitFor(() => old.calls['/rest/api/3/issue/bulkfetch'] === 1, { what: 'ACME-12 asked of the old site' });

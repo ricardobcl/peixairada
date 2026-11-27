@@ -43,29 +43,29 @@ export default async function (ctx) {
   })().catch(e => { window.__res = JSON.stringify({ error: e.stack }); }); })()`);
 
   await ctx.waitFor(`window.__res`, { timeout: 100000, every: 500, what: 'the rounds' });
-  const R = JSON.parse(await ctx.evaluate(`window.__res`));
+  const rounds = JSON.parse(await ctx.evaluate(`window.__res`));
 
-  assert.ok(!R.error, R.error);
+  assert.ok(!rounds.error, rounds.error);
 
-  const t = R.map(r => r.t).sort((a, b) => a - b);
-  const med = t[t.length >> 1];
-  const foc = R.reduce((s, r) => s + r.foc, 0) / R.reduce((s, r) => s + r.t, 0);
+  const durations = rounds.map(round => round.t).sort((left, right) => left - right);
+  const med = durations[durations.length >> 1];
+  const foc = rounds.reduce((sum, round) => sum + round.foc, 0) / rounds.reduce((sum, round) => sum + round.t, 0);
 
   ctx.log(
     'median round',
     Math.round(med),
     's, levels',
-    R.map(r => r.level).join(' '),
+    rounds.map(round => round.level).join(' '),
     'Focus',
     `${(foc * 100).toFixed(0)} %`,
   );
 
   assert.ok(
-    R.every(r => r.over),
+    rounds.every(round => round.over),
     'every round ends',
   );
 
   assert.ok(med > 120 && med < 480, `rounds of a few minutes: ${Math.round(med)} s`);
   assert.ok(foc < 0.15, `the Focus an event: ${foc}`);
-  return { med: Math.round(med), levels: R.map(r => r.level), rules };
+  return { med: Math.round(med), levels: rounds.map(round => round.level), rules };
 }

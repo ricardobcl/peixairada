@@ -101,7 +101,7 @@ export default async function (ctx) {
   out.split = {
     on: await ctx.peix('state().split'),
     focusG: await ctx.peix('state().focusG'),
-    halves: await ctx.peix('state().halves').then(h => h.map(k => k && k.split(':')[0])),
+    halves: await ctx.peix('state().halves').then(halves => halves.map(tab => tab && tab.split(':')[0])),
   };
 
   ctx.assert.deepEqual(
@@ -124,7 +124,7 @@ export default async function (ctx) {
   });
 
   ctx.assert.deepEqual(
-    await ctx.peix('state().halves').then(h => h.map(k => k && k.split(':')[0])),
+    await ctx.peix('state().halves').then(halves => halves.map(tab => tab && tab.split(':')[0])),
     ['chat', 'shell'],
     'walking the tabs moved none of them',
   );
@@ -183,8 +183,8 @@ export default async function (ctx) {
     `window.__hits = []; const real = window.fetch; window.fetch = (u, o) => { const s = String(u); if (/\\/(terminal|vscode-web|focus|shell)$/.test(s)) { window.__hits.push([s, o?.method]); return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'stubbed' }) }); } return real(u, o); }`,
   );
 
-  for (const k of ['KeyT', 'KeyE', 'KeyV', 'KeyC']) {
-    await ctx.key(k);
+  for (const code of ['KeyT', 'KeyE', 'KeyV', 'KeyC']) {
+    await ctx.key(code);
     await ctx.sleep(200);
   }
 
@@ -192,12 +192,12 @@ export default async function (ctx) {
 
   for (const route of ['/shell', '/vscode-web', '/terminal']) {
     ctx.assert.ok(
-      out.hits.some(h => h[0].endsWith(route)),
+      out.hits.some(hit => hit[0].endsWith(route)),
       `${route} was hit (T zsh, E web editor, C claude)`,
     );
   }
 
-  ctx.assert.ok(!out.hits.some(h => h[0].endsWith('/focus')), '⌥⌘V does nothing');
+  ctx.assert.ok(!out.hits.some(hit => hit[0].endsWith('/focus')), '⌥⌘V does nothing');
 
   // ⌃⌘ is not the chord
   await ctx.evaluate(

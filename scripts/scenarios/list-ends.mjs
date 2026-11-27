@@ -41,7 +41,7 @@ export default async function (ctx) {
   const out = {};
   const cwd = join(tmpdir(), 'peix-ends', 'ends-repo');
   const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));
-  const live = (i, extra = {}) => ({ pid: sleeps[i].pid, startedAt: Date.now() - 3600_000, ...extra });
+  const live = (index, extra = {}) => ({ pid: sleeps[index].pid, startedAt: Date.now() - 3600_000, ...extra });
 
   const long =
     'This is a reply long enough to fill the three lines a large card gives it, so that the list runs well past the bottom of the window and has cards out of sight both ways once it is scrolled.';
@@ -74,12 +74,12 @@ export default async function (ctx) {
           at: new Date(now - 30_000),
         }),
     },
-    ...Array.from({ length: 22 }, (_, i) => ({
+    ...Array.from({ length: 22 }, (_, index) => ({
       cwd,
-      title: `Ready chat ${i + 1}`,
-      prompt: `question number ${i + 1}, asked at some length so the card has a prompt to show`,
+      title: `Ready chat ${index + 1}`,
+      prompt: `question number ${index + 1}, asked at some length so the card has a prompt to show`,
       reply: long,
-      at: new Date(now - (i + 3) * 3600_000),
+      at: new Date(now - (index + 3) * 3600_000),
     })),
   ]);
 
@@ -183,6 +183,6 @@ export default async function (ctx) {
 
     return out;
   } finally {
-    for (const p of sleeps) p.kill();
+    for (const child of sleeps) child.kill();
   }
 }

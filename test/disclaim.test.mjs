@@ -113,11 +113,11 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
 
     try {
-      const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 100, rows: 30 });
+      const response = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 100, rows: 30 });
 
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      const t = r.body.terminal;
-      const spec = JSON.parse(readFileSync(join(srv.dir, 'terms', `${t.id}.json`), 'utf8'));
+      assert.equal(response.status, 201, JSON.stringify(response.body));
+      const term = response.body.terminal;
+      const spec = JSON.parse(readFileSync(join(srv.dir, 'terms', `${term.id}.json`), 'utf8'));
 
       assert.ok(
         spec.disclaim?.startsWith(join(srv.dir, 'bin', 'disclaim-')),
@@ -127,22 +127,25 @@ test(
       // the registry's pid is still the PTY's: the fake registers it, and the chat is alive on it
       await waitFor(
         async () => {
-          const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+          const found = (await srv.api('api/sessions')).body.sessions.find(session => session.id === chat.id);
 
-          return s.alive && s.live?.pid === t.pid;
+          return found.alive && found.live?.pid === term.pid;
         },
         { what: "the chat alive on the drawer's pid" },
       );
 
-      assert.equal(responsible(probe, t.pid), t.pid, 'claude answers to macOS for itself');
-      const z = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30 });
+      assert.equal(responsible(probe, term.pid), term.pid, 'claude answers to macOS for itself');
+      const zsh = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30 });
 
-      assert.equal(z.status, 201, JSON.stringify(z.body));
-      const zs = JSON.parse(readFileSync(join(srv.dir, 'terms', `${z.body.terminal.id}.json`), 'utf8'));
+      assert.equal(zsh.status, 201, JSON.stringify(zsh.body));
+      const zs = JSON.parse(readFileSync(join(srv.dir, 'terms', `${zsh.body.terminal.id}.json`), 'utf8'));
 
       assert.equal(zs.disclaim, undefined, 'a zsh runs as it did');
+
       if (noControl) ctx.diagnostic(`the zsh tab's own answer not checked: ${noControl}`);
-      else assert.notEqual(responsible(probe, z.body.terminal.pid), z.body.terminal.pid, 'and answers to the board');
+      else {
+        assert.notEqual(responsible(probe, zsh.body.terminal.pid), zsh.body.terminal.pid, 'and answers to the board');
+      }
     } finally {
       await srv.stop();
     }

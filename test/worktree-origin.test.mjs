@@ -27,8 +27,8 @@ const env = {
   GIT_COMMITTER_EMAIL: 't@t',
 };
 
-const git = (cwd, ...a) =>
-  execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env })
+const git = (cwd, ...args) =>
+  execFileSync('git', ['-C', cwd, ...args], { stdio: 'pipe', env })
     .toString()
     .trim();
 
@@ -42,10 +42,10 @@ writeFileSync(join(seed, '.gitignore'), '.claude/\n');
 git(seed, 'add', '.');
 git(seed, 'commit', '-q', '-m', 'base');
 git(seed, 'push', '-q', origin, 'main', 'main:refs/heads/feat/theirs');
-let n = 0;
+let count = 0;
 
 const clone = () => {
-  const co = join(tmp, `co${++n}`);
+  const co = join(tmp, `co${++count}`);
 
   execFileSync('git', ['clone', '-q', '--no-local', origin, co], { stdio: 'pipe', env });
   return co;
@@ -66,14 +66,14 @@ test(
     overSsh(co, `sh -c 'sleep 6' --`);
 
     const t0 = Date.now();
-    const r = await ensureWorktree({ cwd: co, branch: 'feat/hung', fresh: true, base: 'refs/heads/main' });
+    const tree = await ensureWorktree({ cwd: co, branch: 'feat/hung', fresh: true, base: 'refs/heads/main' });
     const took = Date.now() - t0;
 
-    assert.equal(r.made, true, JSON.stringify(r));
-    assert.deepEqual([r.unasked, r.from], [true, 'refs/heads/main']);
+    assert.equal(tree.made, true, JSON.stringify(tree));
+    assert.deepEqual([tree.unasked, tree.from], [true, 'refs/heads/main']);
     assert.ok(took >= 900 && took < 4000, `took ${took} ms`);
-    assert.equal(git(r.path, 'branch', '--show-current'), 'feat/hung');
-    assert.equal(git(r.path, 'rev-parse', 'HEAD'), git(co, 'rev-parse', 'main'));
+    assert.equal(git(tree.path, 'branch', '--show-current'), 'feat/hung');
+    assert.equal(git(tree.path, 'rev-parse', 'HEAD'), git(co, 'rev-parse', 'main'));
   },
 );
 
@@ -84,10 +84,15 @@ test(
     const co = clone();
 
     overSsh(co, 'false');
-    const r = await ensureWorktree({ cwd: co, branch: 'feat/denied', fresh: true });
+    const tree = await ensureWorktree({ cwd: co, branch: 'feat/denied', fresh: true });
 
-    assert.deepEqual([r.made, r.unasked, r.from], [true, true, 'refs/remotes/origin/main'], JSON.stringify(r));
-    assert.throws(() => git(r.path, 'rev-parse', '--abbrev-ref', '@{u}'), /no upstream|fatal/, 'tracking nothing');
+    assert.deepEqual(
+      [tree.made, tree.unasked, tree.from],
+      [true, true, 'refs/remotes/origin/main'],
+      JSON.stringify(tree),
+    );
+
+    assert.throws(() => git(tree.path, 'rev-parse', '--abbrev-ref', '@{u}'), /no upstream|fatal/, 'tracking nothing');
   },
 );
 
@@ -121,9 +126,9 @@ test('no origin at all is nothing to say', { timeout: 20_000 }, async () => {
   const co = clone();
 
   git(co, 'remote', 'remove', 'origin');
-  const r = await ensureWorktree({ cwd: co, branch: 'feat/alone', fresh: true });
+  const tree = await ensureWorktree({ cwd: co, branch: 'feat/alone', fresh: true });
 
-  assert.deepEqual([r.made, r.unasked], [true, undefined], JSON.stringify(r));
+  assert.deepEqual([tree.made, tree.unasked], [true, undefined], JSON.stringify(tree));
 });
 
 test("a PR's or a named branch, not fresh, still has to come from origin", { timeout: 20_000 }, async () => {

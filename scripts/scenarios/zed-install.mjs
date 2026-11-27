@@ -5,22 +5,22 @@
 // words go — what Zed is not (in the pane) stays — and the row opens the folder in Zed.
 export const meta = { server: true, fake: true, fixture: 'auto', env: { FAKE_BREW_MS: '700' } };
 
-const E = `document.querySelector('#zedBtn').click()`;
+const CLICK_ZED = `document.querySelector('#zedBtn').click()`;
 
 // ··· 's folder in Zed with the browser's ways out caught: what it would have opened
 const opened = `(() => {
   const seen = [], click = HTMLAnchorElement.prototype.click, open = window.open;
   HTMLAnchorElement.prototype.click = function () { seen.push(this.href); };
   window.open = u => { seen.push('window.open ' + u); };
-  try { ${E}; } finally { HTMLAnchorElement.prototype.click = click; window.open = open; }
+  try { ${CLICK_ZED}; } finally { HTMLAnchorElement.prototype.click = click; window.open = open; }
   return JSON.stringify(seen);
 })()`;
 
 export default async function (ctx) {
   const out = {};
-  const s = ctx.fixture.chats[0];
+  const chat = ctx.fixture.chats[0];
 
-  await ctx.openChat(s.id);
+  await ctx.openChat(chat.id);
   out.before = await ctx.peix('state().editors');
 
   ctx.assert.deepEqual(
@@ -63,6 +63,6 @@ export default async function (ctx) {
   out.after = await ctx.peix('state().editors');
   ctx.assert.match(out.after.zed.app, /\/apps\/Zed\.app$/);
   out.e = JSON.parse(await ctx.evaluate(opened));
-  ctx.assert.deepEqual(out.e, [`zed://file${s.cwd}`], 'the row opens the folder in Zed now');
+  ctx.assert.deepEqual(out.e, [`zed://file${chat.cwd}`], 'the row opens the folder in Zed now');
   return out;
 }

@@ -67,18 +67,18 @@ let prPauseUntil = 0; // gh failing as a whole (offline, rate-limited): the poll
 
 /** Asked about within `ttl`. Merged and closed are terminal — never asked about twice. */
 function prFresh(url, ttl = PR_TTL_MS, now = Date.now()) {
-  const e = prStatus.get(url);
+  const known = prStatus.get(url);
 
-  if (!e) return false;
-  if (!e.missing && (e.state === 'merged' || e.state === 'closed')) return true;
-  return now - e.checkedAt < (e.state && !e.missing ? ttl : Math.max(ttl, PR_TTL_ERROR_MS));
+  if (!known) return false;
+  if (!known.missing && (known.state === 'merged' || known.state === 'closed')) return true;
+  return now - known.checkedAt < (known.state && !known.missing ? ttl : Math.max(ttl, PR_TTL_ERROR_MS));
 }
 
-export const touchedAt = s => Math.max(Date.parse(s.lastActivity) || 0, s.openedAt || 0);
+export const touchedAt = session => Math.max(Date.parse(session.lastActivity) || 0, session.openedAt || 0);
 
 /** How often a chat's PRs are polled, by how long ago it was touched; Infinity past PR_POLL's last row. */
-export function prEvery(s, now = Date.now()) {
-  const age = now - touchedAt(s);
+export function prEvery(session, now = Date.now()) {
+  const age = now - touchedAt(session);
 
   return PR_POLL.find(([within]) => age < within)?.[1] ?? Infinity;
 }
@@ -97,11 +97,13 @@ function prWatch(url, now = Date.now()) {
 export function duePrs(list, now = Date.now()) {
   const every = new Map(); // url -> the shortest interval a chat mentioning it asks for
 
-  for (const s of [...list].filter(s => !forgotten(s)).sort((a, b) => touchedAt(b) - touchedAt(a))) {
+  for (const session of [...list]
+    .filter(chat => !forgotten(chat))
+    .sort((left, right) => touchedAt(right) - touchedAt(left))) {
     // a chat done for good asks nothing
-    const ms = prEvery(s, now);
+    const ms = prEvery(session, now);
 
-    for (const pr of s.prs) if (!(every.get(pr.url) <= ms)) every.set(pr.url, ms);
+    for (const pr of session.prs) if (!(every.get(pr.url) <= ms)) every.set(pr.url, ms);
   }
 
   return [...every].filter(([url, ms]) => !prFresh(url, Math.min(ms, prWatch(url, now)), now)).map(([url]) => url);
@@ -114,7 +116,7 @@ export function sweepPrs() {
 }
 
 export function queuePr(url, ttl = PR_TTL_MS) {
-  if (prQueue.has(url) || prAsking.has(url) || prSplit.some(b => b.includes(url)) || prFresh(url, ttl)) return;
+  if (prQueue.has(url) || prAsking.has(url) || prSplit.some(half => half.includes(url)) || prFresh(url, ttl)) return;
   prQueue.add(url);
 
   prTimer ??= setTimeout(() => {
@@ -124,8 +126,8 @@ export function queuePr(url, ttl = PR_TTL_MS) {
 }
 
 /** Whatever a chat's header and card will show, refreshed if it has aged out. */
-export function queueSessionPrs(s) {
-  for (const pr of s.prs) queuePr(pr.url);
+export function queueSessionPrs(session) {
+  for (const pr of session.prs) queuePr(pr.url);
 }
 
 /** What GitHub said of one PR: `found` is prTurn's answer, undefined for a PR it would not show us — `missing`, whose
@@ -145,7 +147,7 @@ export function setPrInfo(
   updated = null,
   review = null,
 ) {
-  const chats = [...sessions.values()].filter(s => s.prs.some(p => p.url === url));
+  const chats = [...sessions.values()].filter(session => session.prs.some(pr => pr.url === url));
   const ticked = chats.filter(isDone);
   const { turn, moved, from, released } = moveTurn(url, found, now);
 
@@ -186,8 +188,8 @@ export function setPrInfo(
   const branches = JSON.stringify(refs);
   const rs = JSON.stringify(rounds);
 
-  for (const s of chats) {
-    const pr = s.prs.find(p => p.url === url);
+  for (const session of chats) {
+    const pr = session.prs.find(entry => entry.url === url);
 
     if (
       pr.state !== state ||
@@ -211,19 +213,19 @@ export function setPrInfo(
       pr.updated = updated;
       pr.rounds = rounds;
       pr.logged = logged;
-      schedulePush(s);
+      schedulePush(session);
     }
   }
 
-  for (const s of chats) if (s.prActs.some(a => !a.url)) takeActs(s); // a push to its branch, now that GitHub has named the branch
+  for (const session of chats) if (session.prActs.some(act => !act.url)) takeActs(session); // a push to its branch, now that GitHub has named the branch
 
   // Said once, as the ball comes back to you — or when a chat you had ticked comes back with it, or the next move after
   // a round let go; never on a chat done for good, and not at all when every chat that mentions it is.
-  if (moved && (from === 'them' || released || ticked.some(s => !isDone(s)))) {
+  if (moved && (from === 'them' || released || ticked.some(session => !isDone(session)))) {
     notifyPr(
       url,
       turn,
-      chats.filter(s => !forgotten(s)),
+      chats.filter(session => !forgotten(session)),
     );
   }
 }
@@ -245,13 +247,13 @@ function drainPrQueue() {
 
   for (const url of take) {
     prQueue.delete(url);
-    const m = prMatch(url);
+    const match = prMatch(url);
 
-    if (!m) continue;
+    if (!match) continue;
 
     // owner/repo/number came out of PR_RE, so they cannot break out of the query string
     parts.push(
-      `p${batch.length}: repository(owner: "${m[1]}", name: "${m[2]}") { pullRequest(number: ${m[3]}) { ${PR_FIELDS} } }`,
+      `p${batch.length}: repository(owner: "${match[1]}", name: "${match[2]}") { pullRequest(number: ${match[3]}) { ${PR_FIELDS} } }`,
     );
 
     batch.push(url);
@@ -280,8 +282,8 @@ function drainPrQueue() {
         const errs = body.errors || [];
 
         data = body.data;
-        none = new Set(errs.filter(e => e.type === 'NOT_FOUND').map(e => e.path?.[0]));
-        refused = !data && errs.some(e => e?.locations) && !errs.some(e => e?.type === 'RATE_LIMITED'); // a parse or validation error points into the query
+        none = new Set(errs.filter(error => error.type === 'NOT_FOUND').map(error => error.path?.[0]));
+        refused = !data && errs.some(error => error?.locations) && !errs.some(error => error?.type === 'RATE_LIMITED'); // a parse or validation error points into the query
       } catch {}
 
       if (refused) {
@@ -319,8 +321,8 @@ function drainPrQueue() {
       prPauseUntil = 0; // back: the sweeps poll again at once, not when a pause of up to 30 min would have run out
       const me = data.viewer?.login || null;
 
-      batch.forEach((url, i) => {
-        const pr = data?.[`p${i}`]?.pullRequest;
+      batch.forEach((url, index) => {
+        const pr = data?.[`p${index}`]?.pullRequest;
 
         const state = !pr
           ? null
@@ -332,7 +334,7 @@ function drainPrQueue() {
                 ? 'draft'
                 : 'open';
 
-        if (!pr && none.has(`p${i}`)) forgetRef(url);
+        if (!pr && none.has(`p${index}`)) forgetRef(url);
         const turn = pr && me ? prTurn(pr, me, prTurns[url]?.said) : undefined;
 
         if (pr && me) {

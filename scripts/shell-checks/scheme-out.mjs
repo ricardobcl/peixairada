@@ -9,11 +9,11 @@ export default async function (ctx) {
   const gone = `file:///private/var/empty/peix-${Date.now()}-nothing`;
   const count = re => (ctx.appLog().match(new RegExp(re.source, 'g')) || []).length;
 
-  const heard = async (re, n = 1) => {
-    const t = Date.now();
+  const heard = async (re, times = 1) => {
+    const startedAt = Date.now();
 
-    while (count(re) < n && Date.now() - t < 5000) await new Promise(r => setTimeout(r, 100));
-    return count(re) >= n;
+    while (count(re) < times && Date.now() - startedAt < 5000) await new Promise(resolve => setTimeout(resolve, 100));
+    return count(re) >= times;
   };
 
   // the board's own word: a page script posting `external` with a file URL
@@ -59,7 +59,7 @@ export default async function (ctx) {
   ctx.assert.ok(await heard(/pane: file: not loaded/), 'a pane key that is a file is not loaded');
 
   ctx.assert.equal(
-    Object.keys((await ctx.win()).panes).some(k => k.includes('peix-')),
+    Object.keys((await ctx.win()).panes).some(key => key.includes('peix-')),
     false,
     'no view made for it',
   );

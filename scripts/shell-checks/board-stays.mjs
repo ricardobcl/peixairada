@@ -7,10 +7,10 @@ export default async function (ctx) {
   const away = ctx.solid('ff0000');
 
   await ctx.js(`setTimeout(() => { location.href = ${JSON.stringify(away)}; }, 0); return true`);
-  const t = Date.now();
+  const startedAt = Date.now();
 
-  while (!/board: a navigation to http:\/\/127\.0\.0\.1 refused/.test(ctx.appLog()) && Date.now() - t < 5000) {
-    await new Promise(r => setTimeout(r, 100));
+  while (!/board: a navigation to http:\/\/127\.0\.0\.1 refused/.test(ctx.appLog()) && Date.now() - startedAt < 5000) {
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
   ctx.assert.match(
@@ -19,7 +19,7 @@ export default async function (ctx) {
     "a script's navigation off the board is refused",
   );
 
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise(resolve => setTimeout(resolve, 500));
   ctx.assert.equal(await ctx.js(`return location.port`), String(ctx.server.port), 'the view is still on the board');
   ctx.assert.equal(await ctx.js(`return !!window.peix`), true, 'and it is the board');
   return { stayed: true };

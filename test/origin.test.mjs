@@ -11,7 +11,7 @@ import { startTestServer, tmpDir } from '../lib/testserver.mjs';
 
 const ask = (srv, headers, method = 'GET', path = '/api/sessions') =>
   new Promise((res, rej) => {
-    const r = request(
+    const outgoing = request(
       { host: '127.0.0.1', port: srv.port, method, path, headers: { 'x-peix-key': srv.key, ...headers } },
       resp => {
         resp.resume();
@@ -19,8 +19,8 @@ const ask = (srv, headers, method = 'GET', path = '/api/sessions') =>
       },
     );
 
-    r.on('error', rej);
-    r.end();
+    outgoing.on('error', rej);
+    outgoing.end();
   });
 
 /** The status the upgrade was refused with, or 'open' */
@@ -38,7 +38,7 @@ const wsStatus = (srv, headers) =>
       ws.close();
     });
 
-    ws.on('error', e => res(`error: ${e.code || e.message}`)); // a refused connection fails now, not at the test's timeout
+    ws.on('error', error => res(`error: ${error.code || error.message}`)); // a refused connection fails now, not at the test's timeout
   });
 
 test(
@@ -179,8 +179,8 @@ test("bound past loopback, only an address, a loopback name or this Mac's name i
 
   for (const bind of ['0.0.0.0', '::', '192.168.1.5']) {
     const foreign = foreignTo(bind, 7331);
-    const says = (r, what) => assert.ok(foreign(r), `${bind}: ${what} is refused`);
-    const ok = (r, what) => assert.equal(foreign(r), null, `${bind}: ${what} passes`);
+    const says = (incoming, what) => assert.ok(foreign(incoming), `${bind}: ${what} is refused`);
+    const ok = (incoming, what) => assert.equal(foreign(incoming), null, `${bind}: ${what} passes`);
 
     says(
       req({

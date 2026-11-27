@@ -38,8 +38,8 @@ import { terms } from './terminals/terms.mjs';
 // settings once trusted — reaches it.
 const REVIEWS_DIR = join(dirname(STATE_FILE), 'reviews');
 
-const wtSlug = b =>
-  String(b)
+const wtSlug = branch =>
+  String(branch)
     .replace(/[^\w.-]+/g, '-')
     .replace(/^[-.]+|[-.]+$/g, '')
     .slice(0, 80) || 'wt';
@@ -55,19 +55,19 @@ export async function ensureWorktree({
   share = false,
   base = null,
 }) {
-  const w = await worktreesFor(cwd);
+  const trees = await worktreesFor(cwd);
 
-  if (w.error) return { code: 409, error: w.error };
+  if (trees.error) return { code: 409, error: trees.error };
 
   let want = null;
   let refs = null;
 
   if (pr) {
-    want = prAsked(pr, w.main);
+    want = prAsked(pr, trees.main);
     if (!want) return { code: 400, error: 'which PR? — its number or URL' };
 
     if (!want.mine) {
-      return { code: 409, error: `that PR is not in this checkout's repo${w.repo ? ` (${w.repo})` : ''}` };
+      return { code: 409, error: `that PR is not in this checkout's repo${trees.repo ? ` (${trees.repo})` : ''}` };
     }
 
     refs = prStatus.get(want.url)?.refs || null;
@@ -78,49 +78,49 @@ export async function ensureWorktree({
 
   if (!pr && (!branch || detach)) return { code: 400, error: detach ? 'detached at what? — a PR' : 'which branch?' };
 
-  if (branch && !(await branchNameOk(w.main, branch))) {
+  if (branch && !(await branchNameOk(trees.main, branch))) {
     return { code: 400, error: `${branch} is not a branch name the board makes` };
   }
 
-  if (base !== null && !(await baseOk(w.main, base))) {
+  if (base !== null && !(await baseOk(trees.main, base))) {
     return { code: 400, error: `${base} is not a branch here to start from` };
   }
 
   if (!detach) {
-    const t = w.worktrees.find(x => x.branch === branch);
+    const existing = trees.worktrees.find(tree => tree.branch === branch);
 
     // a new chat's branch (fresh) out in a tree already: that tree is shared only when asked for — the page said so first
-    if (t && fresh && !share) {
+    if (existing && fresh && !share) {
       return {
         code: 409,
-        error: `${branch} is out in ${tildePath(t.path)} already — a chat there shares its files`,
-        path: t.path,
+        error: `${branch} is out in ${tildePath(existing.path)} already — a chat there shares its files`,
+        path: existing.path,
         out: true,
       };
     }
 
-    if (t) return { path: t.path, branch, made: false, here: t.path === w.here };
-    const gone = goneSay(branch, w);
+    if (existing) return { path: existing.path, branch, made: false, here: existing.path === trees.here };
+    const gone = goneSay(branch, trees);
 
     if (gone) return { code: 409, error: gone };
   }
 
-  const key = `${w.main}\0${detach ? `pr-${want?.n}` : branch}`;
+  const key = `${trees.main}\0${detach ? `pr-${want?.n}` : branch}`;
 
   if (wtAsking.has(key)) return wtAsking.get(key);
-  const p = makeWorktree(w, { want, refs, branch, detach, fresh, base }).finally(() => wtAsking.delete(key));
+  const making = makeWorktree(trees, { want, refs, branch, detach, fresh, base }).finally(() => wtAsking.delete(key));
 
-  wtAsking.set(key, p);
-  return p;
+  wtAsking.set(key, making);
+  return making;
 }
 
-async function makeWorktree(w, { want, refs, branch, detach, fresh, base = null }) {
-  const main = w.main;
+async function makeWorktree(trees, { want, refs, branch, detach, fresh, base = null }) {
+  const main = trees.main;
 
-  const fail = (e, what) => ({
+  const fail = (error, what) => ({
     code: 500,
     error: `${what}: ${
-      String(e.stderr || e.message)
+      String(error.stderr || error.message)
         .trim()
         .split('\n')[0]
     }`,
@@ -163,14 +163,17 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh, base = null 
             GIT_NET,
           );
         }
-      } catch (e) {
-        return fail(e, `could not fetch PR #${want.n}`);
+      } catch (error) {
+        return fail(error, `could not fetch PR #${want.n}`);
       }
     }
 
-    const t = w.worktrees.find(x => x.detached && x.head === oid);
+    const existing = trees.worktrees.find(tree => tree.detached && tree.head === oid);
 
-    if (t) return { path: t.path, branch: null, made: false, detached: true, here: t.path === w.here };
+    if (existing) {
+      return { path: existing.path, branch: null, made: false, detached: true, here: existing.path === trees.here };
+    }
+
     start = ['--detach', null, oid];
   } else if (await gitOr(main, ['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`])) {
     start = [null, branch]; // a branch of this repo's, checked out nowhere
@@ -184,7 +187,7 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh, base = null 
           ...GIT_NET,
           timeout: WT_ASK_MS,
         }).then(
-          o => o.split('\n').some(l => l.endsWith(`\trefs/heads/${branch}`)),
+          listing => listing.split('\n').some(line => line.endsWith(`\trefs/heads/${branch}`)),
           () => null,
         )));
 
@@ -206,15 +209,15 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh, base = null 
         );
 
         start = ['--track', '-b', branch, null, `refs/remotes/origin/${branch}`];
-      } catch (e) {
-        if (!fresh) return fail(e, `no branch ${branch} here, nor on origin`);
+      } catch (error) {
+        if (!fresh) return fail(error, `no branch ${branch} here, nor on origin`);
       }
     }
 
     if (!start.length) {
       // a new branch (a new chat on one): from the base asked for (2026-10-28; origin's as origin has it now), else from
       // origin's default branch as origin has it now — tracking nothing yet
-      const theirs = base ? /^refs\/remotes\/origin\/(.+)$/.exec(base)?.[1] : w.dflt;
+      const theirs = base ? /^refs\/remotes\/origin\/(.+)$/.exec(base)?.[1] : trees.dflt;
 
       if (theirs && !unasked) {
         try {
@@ -249,20 +252,20 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh, base = null 
   if (stranger) {
     try {
       dir = realpathSync(privateDir(REVIEWS_DIR));
-    } catch (e) {
-      return { code: 500, error: e.message };
+    } catch (error) {
+      return { code: 500, error: error.message };
     }
   }
 
   const slug = wtSlug(stranger ? `${basename(main)}-pr-${want.n}` : detach ? `pr-${want.n}` : branch);
   let path = join(dir, slug);
 
-  for (let i = 2; existsSync(path); i++) path = join(dir, `${slug}-${i}`);
+  for (let suffix = 2; existsSync(path); suffix++) path = join(dir, `${slug}-${suffix}`);
 
   try {
-    await gitOut(main, ['worktree', 'add', '--quiet', ...start.map(a => a ?? path)]);
-  } catch (e) {
-    return fail(e, 'git worktree add failed');
+    await gitOut(main, ['worktree', 'add', '--quiet', ...start.map(arg => arg ?? path)]);
+  } catch (error) {
+    return fail(error, 'git worktree add failed');
   }
 
   await treeMade(main, path, {
@@ -288,7 +291,11 @@ async function treeMade(main, path, rec) {
   if (path.startsWith(`${main}/`) && (await gitOr(main, ['check-ignore', '-q', path], false)) === false) {
     try {
       appendFileSync(
-        join(await gitOr(main, ['rev-parse', '--git-common-dir']).then(d => resolve(main, d)), 'info', 'exclude'),
+        join(
+          await gitOr(main, ['rev-parse', '--git-common-dir']).then(commonDir => resolve(main, commonDir)),
+          'info',
+          'exclude',
+        ),
         '\n/.claude/worktrees/\n',
       );
     } catch {}
@@ -313,9 +320,9 @@ async function treeMade(main, path, rec) {
  *  removes it as any other. */
 export async function restoreTree(path, said) {
   const repo = path.slice(0, path.lastIndexOf('/.claude/worktrees/'));
-  const w = await worktreesFor(repo);
+  const trees = await worktreesFor(repo);
 
-  if (w.error) return { code: 409, error: w.error };
+  if (trees.error) return { code: 409, error: trees.error };
 
   if (inClaudeDir(path)) {
     return {
@@ -324,8 +331,8 @@ export async function restoreTree(path, said) {
     };
   }
 
-  const branch = said && said !== 'HEAD' && (await branchNameOk(w.main, said)) ? said : null;
-  const out = branch && w.worktrees.find(t => t.branch === branch);
+  const branch = said && said !== 'HEAD' && (await branchNameOk(trees.main, said)) ? said : null;
+  const out = branch && trees.worktrees.find(tree => tree.branch === branch);
 
   if (out) return { path: out.path, branch, made: false };
   let real = path;
@@ -334,30 +341,31 @@ export async function restoreTree(path, said) {
     real = join(realpathSync(repo), relative(repo, path));
   } catch {} // as git names its trees
 
-  const mine = w.gone.find(t => t.path === real || t.path === path);
-  const held = branch && w.gone.find(t => t.branch === branch && t !== mine);
+  const mine = trees.gone.find(tree => tree.path === real || tree.path === path);
+  const held = branch && trees.gone.find(tree => tree.branch === branch && tree !== mine);
 
   if (held) return { code: 409, error: goneSay(branch, { gone: [held] }) };
-  const key = `${w.main}\0${branch || real}`; // ensureWorktree's for a branch: one making of it at a time
+  const key = `${trees.main}\0${branch || real}`; // ensureWorktree's for a branch: one making of it at a time
 
   if (wtAsking.has(key)) return wtAsking.get(key);
 
-  const p = (async () => {
-    const has = ref => gitOr(w.main, ['rev-parse', '--verify', '--quiet', ref]);
+  const making = (async () => {
+    const has = ref => gitOr(trees.main, ['rev-parse', '--verify', '--quiet', ref]);
     let start;
 
     if (branch && (await has(`refs/heads/${branch}`))) start = [real, branch];
     else if (branch && (await has(`refs/remotes/origin/${branch}`))) {
       start = ['--track', '-b', branch, real, `refs/remotes/origin/${branch}`];
     } else {
-      const here = `refs/heads/${w.dflt}`;
-      const there = `refs/remotes/origin/${w.dflt}`;
-      const [h, t] = await Promise.all([has(here), has(there)]);
+      const here = `refs/heads/${trees.dflt}`;
+      const there = `refs/remotes/origin/${trees.dflt}`;
+      const [hasHere, hasThere] = await Promise.all([has(here), has(there)]);
 
       const from =
-        h && (!t || (await gitOr(w.main, ['merge-base', '--is-ancestor', there, here], false)) !== false)
+        hasHere &&
+        (!hasThere || (await gitOr(trees.main, ['merge-base', '--is-ancestor', there, here], false)) !== false)
           ? here
-          : t
+          : hasThere
             ? there
             : 'HEAD'; // full refs: never a branch of that name
 
@@ -365,70 +373,70 @@ export async function restoreTree(path, said) {
     }
 
     try {
-      await gitOut(w.main, ['worktree', 'add', '--quiet', ...(mine ? ['--force'] : []), ...start]);
-    } catch (e) {
+      await gitOut(trees.main, ['worktree', 'add', '--quiet', ...(mine ? ['--force'] : []), ...start]);
+    } catch (error) {
       return {
         code: 500,
         error: `git worktree add failed: ${
-          String(e.stderr || e.message)
+          String(error.stderr || error.message)
             .trim()
             .split('\n')[0]
         }`,
       };
     }
 
-    await treeMade(w.main, real, { branch, pr: null });
+    await treeMade(trees.main, real, { branch, pr: null });
     return { path: real, branch, made: true };
   })().finally(() => wtAsking.delete(key));
 
-  wtAsking.set(key, p);
-  return p;
+  wtAsking.set(key, making);
+  return making;
 }
 
 /** A worktree's node_modules linked to its main tree's — only when the lockfiles are the same (worktreesFor's `same`). */
 export async function linkModules(path) {
-  const w = await worktreesFor(path);
-  const t = w.worktrees?.find(x => x.path === w.here);
+  const trees = await worktreesFor(path);
+  const ownTree = trees.worktrees?.find(tree => tree.path === trees.here);
 
-  if (!t || t.path === w.main) return { code: 409, error: 'not a worktree of a checkout' };
+  if (!ownTree || ownTree.path === trees.main) return { code: 409, error: 'not a worktree of a checkout' };
 
-  if (inClaudeDir(t.path)) {
+  if (inClaudeDir(ownTree.path)) {
     return {
       code: 409,
-      error: `${tildePath(t.path)} is under ${tildePath(CLAUDE_DIR)} — the board writes nothing there`,
+      error: `${tildePath(ownTree.path)} is under ${tildePath(CLAUDE_DIR)} — the board writes nothing there`,
     };
   }
 
-  if (t.modules !== 'same') {
+  if (ownTree.modules !== 'same') {
     return {
       code: 409,
       error:
-        t.modules === 'here'
+        ownTree.modules === 'here'
           ? 'it has a node_modules already'
           : "its lockfile is not the main tree's — npm ci there instead",
     };
   }
 
   try {
-    symlinkSync(join(w.main, 'node_modules'), join(t.path, 'node_modules'));
-  } catch (e) {
-    return { code: 500, error: e.message };
+    symlinkSync(join(trees.main, 'node_modules'), join(ownTree.path, 'node_modules'));
+  } catch (error) {
+    return { code: 500, error: error.message };
   }
 
-  if (worktreesMade[t.path]) {
-    worktreesMade[t.path].linked = true;
+  if (worktreesMade[ownTree.path]) {
+    worktreesMade[ownTree.path].linked = true;
     saveState();
   }
 
-  return { ok: true, path: t.path };
+  return { ok: true, path: ownTree.path };
 }
 
 /** The work tree a path is in (gitTopOf), real — as git names the trees it lists. */
-export const treeOf = p => {
-  const t = gitTopOf(p);
+export const treeOf = path => {
+  const top = gitTopOf(path);
 
   try {
-    return t && realpathSync(t);
+    return top && realpathSync(top);
   } catch {
     return null;
   }
@@ -436,8 +444,8 @@ export const treeOf = p => {
 
 /** Whether a chat or a drawer works in that tree: a live chat's folder, a drawer not ended. */
 const busyIn = tree =>
-  [...sessions.values()].some(s => s.alive && treeOf(s.live?.cwd || s.cwd) === tree) ||
-  [...terms.values()].some(t => t.exited === null && treeOf(t.cwd) === tree);
+  [...sessions.values()].some(session => session.alive && treeOf(session.live?.cwd || session.cwd) === tree) ||
+  [...terms.values()].some(term => term.exited === null && treeOf(term.cwd) === tree);
 
 /** Why a tree the board made stays — null when nothing holds it: a chat or a drawer in it, another branch out in it
  *  than the one it was made for (or, detached, another commit — 2026-10-14: a `git switch -c` there after the merge is
@@ -464,7 +472,7 @@ async function keepWorktree(path, rec) {
     ])
   )
     .split('\n')
-    .filter(l => l && !(rec.linked && l === '?? node_modules'));
+    .filter(line => line && !(rec.linked && line === '?? node_modules'));
 
   if (st.length) return 'changes not committed';
 
@@ -487,10 +495,10 @@ function prOfBranch(rec) {
 
   let best = null;
 
-  for (const [url, p] of prStatus) {
-    if (!url.startsWith(pre) || p.refs?.head !== rec.branch || p.refs.fork || !p.state) continue;
-    if ((p.state === 'merged' || p.state === 'closed') && !(Date.parse(p.created) >= made)) continue;
-    if (!best || (Date.parse(p.created) || 0) > (Date.parse(best[1].created) || 0)) best = [url, p];
+  for (const [url, pr] of prStatus) {
+    if (!url.startsWith(pre) || pr.refs?.head !== rec.branch || pr.refs.fork || !pr.state) continue;
+    if ((pr.state === 'merged' || pr.state === 'closed') && !(Date.parse(pr.created) >= made)) continue;
+    if (!best || (Date.parse(pr.created) || 0) > (Date.parse(best[1].created) || 0)) best = [url, pr];
   }
 
   return best?.[0] ?? null;
@@ -517,7 +525,7 @@ async function landed(path, rec) {
   const mine = await ownCommits(path);
   const since = (await gitOr(path, ['rev-list', `${rec.head}..HEAD`], '')).split('\n');
 
-  return since.some(c => mine.has(c));
+  return since.some(commit => mine.has(commit));
 }
 
 /** The commits made in a tree, as its HEAD's reflog says them: a commit (an amend too), a cherry-pick, a revert, a merge
@@ -529,9 +537,9 @@ async function ownCommits(path) {
 
   return new Set(
     lines
-      .map(l => [l.slice(0, l.indexOf(' ')), l.slice(l.indexOf(' ') + 1)])
+      .map(line => [line.slice(0, line.indexOf(' ')), line.slice(line.indexOf(' ') + 1)])
       .filter(([, gs]) => OWN_MOVE.test(gs))
-      .map(([c]) => c),
+      .map(([commit]) => commit),
   );
 }
 
@@ -567,10 +575,10 @@ export async function sweepWorktrees() {
       changed = true;
       gone.push(path);
       console.log(`[peixairada] worktree ${tildePath(path)} removed — ${why}, nothing in it`);
-    } catch (e) {
+    } catch (error) {
       console.error(
         `[peixairada] worktree ${tildePath(path)} kept: ${
-          String(e.stderr || e.message)
+          String(error.stderr || error.message)
             .trim()
             .split('\n')[0]
         }`,
@@ -629,8 +637,8 @@ export async function sweepWorktrees() {
 /** Whether this chat's folder may have its branch switched to `branch` — never by the board: the switch is typed
  *  into the chat's zsh, unrun, and offered only when no other chat works in that tree, this one is not mid-turn,
  *  nothing is uncommitted and no merge or rebase is under way. `why` says what stands in the way. */
-export async function switchGuard(s, branch) {
-  const cwd = s.live?.cwd || s.cwd;
+export async function switchGuard(session, branch) {
+  const cwd = session.live?.cwd || session.cwd;
   const tree = treeOf(cwd);
   const why = [];
 
@@ -638,16 +646,19 @@ export async function switchGuard(s, branch) {
   if (headAt(tree) === branch) return { ok: false, why: [`it is on ${branch} already`] };
 
   const elsewhere = parseWorktrees(await gitOut(tree, ['worktree', 'list', '--porcelain'])).find(
-    w => w.branch === branch,
+    worktree => worktree.branch === branch,
   );
 
   if (elsewhere) why.push(`${branch} is out in ${basename(elsewhere.path)} — open that instead`); // git would refuse it
-  if (statusOf(s) === 'working') why.push('this chat is mid-turn');
-  const name = o => titles[o.id] || o.customTitle || o.title || 'a chat';
-  const others = [...sessions.values()].filter(o => o.id !== s.id && treeOf(o.live?.cwd || o.cwd) === tree);
+  if (statusOf(session) === 'working') why.push('this chat is mid-turn');
+  const name = chat => titles[chat.id] || chat.customTitle || chat.title || 'a chat';
 
-  const live = others.filter(o => o.alive);
-  const recent = others.filter(o => !o.alive && Date.now() - Date.parse(o.lastActivity || 0) < 86_400_000);
+  const others = [...sessions.values()].filter(
+    other => other.id !== session.id && treeOf(other.live?.cwd || other.cwd) === tree,
+  );
+
+  const live = others.filter(other => other.alive);
+  const recent = others.filter(other => !other.alive && Date.now() - Date.parse(other.lastActivity || 0) < 86_400_000);
 
   if (live.length) {
     why.push(
@@ -655,7 +666,9 @@ export async function switchGuard(s, branch) {
     );
   } else if (recent.length) why.push(`another chat was here today — ${name(recent[0])}`);
 
-  if ([...terms.values()].some(t => t.exited === null && t.sessionId !== s.id && treeOf(t.cwd) === tree)) {
+  if (
+    [...terms.values()].some(term => term.exited === null && term.sessionId !== session.id && treeOf(term.cwd) === tree)
+  ) {
     why.push('another chat’s drawer is open here');
   }
 
@@ -668,7 +681,9 @@ export async function switchGuard(s, branch) {
 
   if (
     gd &&
-    ['MERGE_HEAD', 'rebase-merge', 'rebase-apply', 'CHERRY_PICK_HEAD', 'REVERT_HEAD'].some(f => existsSync(join(gd, f)))
+    ['MERGE_HEAD', 'rebase-merge', 'rebase-apply', 'CHERRY_PICK_HEAD', 'REVERT_HEAD'].some(file =>
+      existsSync(join(gd, file)),
+    )
   ) {
     why.push('a merge or a rebase is under way');
   }

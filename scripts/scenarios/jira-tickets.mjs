@@ -27,7 +27,7 @@ export default async function (ctx) {
 
   try {
     const {
-      chats: [c],
+      chats: [chat],
     } = makeFixture(ctx.fixture.dir, [
       {
         cwd: process.cwd(),
@@ -38,7 +38,7 @@ export default async function (ctx) {
       },
     ]);
 
-    const card = `document.querySelector('#slist > .card[data-id="${c.id}"]')`;
+    const card = `document.querySelector('#slist > .card[data-id="${chat.id}"]')`;
 
     await ctx.waitFor(`!!${card}`, { what: "the chat's card" });
     ctx.assert.equal(await ctx.evaluate(`${card}.querySelectorAll('.ctk').length`), 0, 'no site set up, no tickets');
@@ -153,7 +153,7 @@ export default async function (ctx) {
     );
 
     // The header: dots in the matrix, after the PRs; the rows under it
-    await ctx.openChat(c.id);
+    await ctx.openChat(chat.id);
 
     await ctx.waitFor(`document.querySelectorAll('#shead > .tmx .mxs.tk').length === 2`, {
       what: "the header's ticket dots",

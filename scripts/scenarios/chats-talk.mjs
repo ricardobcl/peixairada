@@ -19,10 +19,10 @@ export default async function (ctx) {
   const root = realpathSync(tmpDir('peix-talk-'));
 
   const sleeps = [0, 1].map(() => spawn('sleep', ['300'], { stdio: 'ignore' }));
-  const ago = s => new Date(now - s * 1000);
+  const ago = seconds => new Date(now - seconds * 1000);
 
-  const A = { cwd: join(root, 'storefront') };
-  const B = { cwd: join(root, 'billing-api') };
+  const STOREFRONT = { cwd: join(root, 'storefront') };
+  const BILLING = { cwd: join(root, 'billing-api') };
 
   try {
     let first;
@@ -30,30 +30,30 @@ export default async function (ctx) {
 
     const { chats } = makeFixture(ctx.fixture.dir, [
       {
-        ...A,
+        ...STOREFRONT,
         title: 'Retry declined payments',
         prompt: 'retry declined cards, then tell billing',
         reply: 'Merged the retry module.',
         at: ago(900),
         live: { pid: sleeps[0].pid, name: 'storefront-1', startedAt: now - 3600_000 },
         lines: id => {
-          A.id = id;
+          STOREFRONT.id = id;
           return [];
         },
       },
       {
-        ...B,
+        ...BILLING,
         title: 'Queue for invoice webhooks',
         prompt: 'queue the invoice webhooks',
         reply: 'Queued them on SQS.',
         at: ago(800),
         live: { pid: sleeps[1].pid, name: 'billing-api', startedAt: now - 3600_000 },
         lines: id => {
-          B.id = id;
+          BILLING.id = id;
 
           first = peerLines({
-            from: A,
-            to: B,
+            from: STOREFRONT,
+            to: BILLING,
             fromName: 'storefront-1',
             toName: 'billing-api',
             pid: sleeps[0].pid,
@@ -62,8 +62,8 @@ export default async function (ctx) {
           });
 
           second = peerLines({
-            from: A,
-            to: B,
+            from: STOREFRONT,
+            to: BILLING,
             fromName: 'storefront-1',
             toName: 'billing-api',
             pid: sleeps[0].pid,
@@ -73,10 +73,10 @@ export default async function (ctx) {
 
           return [
             ...first.delivered,
-            ...replyLines({ id, cwd: B.cwd, text: 'Switched to the shared retry module.', at: ago(560) }),
+            ...replyLines({ id, cwd: BILLING.cwd, text: 'Switched to the shared retry module.', at: ago(560) }),
             ...toolLines({
               id,
-              cwd: B.cwd,
+              cwd: BILLING.cwd,
               name: 'Bash',
               input: { command: 'npm test', description: 'Run the webhook tests' },
               at: ago(60),
@@ -87,21 +87,21 @@ export default async function (ctx) {
       },
     ]);
 
-    const [a, b] = chats;
+    const [sender, receiver] = chats;
 
     // the sender's side: its SendMessages and their results, written once the fixture knew both ids, and its turn's end
     appendFileSync(
-      a.file,
+      sender.file,
       `${[
         ...first.sent,
         ...second.sent,
-        ...replyLines({ id: a.id, cwd: A.cwd, text: 'Told billing-api twice.', at: ago(20) }),
+        ...replyLines({ id: sender.id, cwd: STOREFRONT.cwd, text: 'Told billing-api twice.', at: ago(20) }),
       ]
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 
-    const card = `#slist > .card[data-id="${b.id}"]`;
+    const card = `#slist > .card[data-id="${receiver.id}"]`;
 
     await ctx.waitFor(`document.querySelector('${card} .chip.peerin')`, {
       what: 'the receiving card’s mark',
@@ -120,16 +120,16 @@ export default async function (ctx) {
       'the card says who messaged it, by that chat’s title',
     );
 
-    ctx.assert.equal(out.mark.sid, a.id);
+    ctx.assert.equal(out.mark.sid, sender.id);
     ctx.assert.match(out.mark.tip, /waiting for this chat/, 'the newest is the one still queued');
 
     ctx.assert.equal(
-      await ctx.evaluate(`!!document.querySelector('#slist > .card[data-id="${a.id}"] .chip.peerin')`),
+      await ctx.evaluate(`!!document.querySelector('#slist > .card[data-id="${sender.id}"] .chip.peerin')`),
       false,
       'the sender’s card has no mark',
     );
 
-    await ctx.openChat(b.id);
+    await ctx.openChat(receiver.id);
 
     await ctx.waitFor(
       `document.querySelector('#log .msg.peer:not(.queued)') && document.querySelector('#log > .peerq .msg.peer.queued')`,
@@ -144,7 +144,7 @@ export default async function (ctx) {
       bubbles: document.querySelectorAll('#log .msg.user').length }))(document.querySelector('#log .msg.peer:not(.queued)'))`);
 
     ctx.assert.match(out.row.who, /from Retry declined payments/);
-    ctx.assert.equal(out.row.sid, a.id);
+    ctx.assert.equal(out.row.sid, sender.id);
     ctx.assert.equal(out.row.mode, 'prompting', 'the sender’s permission mode said');
     ctx.assert.match(out.row.text, /retry module is merged/);
     ctx.assert.equal(out.row.code, true, 'its words drawn as Claude’s are');
@@ -157,16 +157,16 @@ export default async function (ctx) {
     ctx.assert.equal(out.queued.pq, 'queued');
     ctx.assert.match(out.queued.text, /webhook secret/);
     ctx.assert.equal(out.queued.beforePresence, true, 'the queue is the log’s foot, before the clauding line');
-    const sum = await ctx.evaluate(`peix.session('${b.id}')`);
+    const sum = await ctx.evaluate(`peix.session('${receiver.id}')`);
 
     ctx.assert.equal(sum.lastPrompt, 'queue the invoice webhooks', 'your last prompt, still yours');
     await ctx.shot('chats-talk-large');
 
     // the sender's name, clicked: that chat, and its SendMessage row links back
     await ctx.evaluate(`document.querySelector('#log .msg.peer .peerlink').click()`);
-    await ctx.waitFor(`document.querySelector('#log[data-sid="${a.id}"]')`, { what: 'the sender open' });
+    await ctx.waitFor(`document.querySelector('#log[data-sid="${sender.id}"]')`, { what: 'the sender open' });
 
-    await ctx.waitFor(`document.querySelector('#log .tool .peerlink[data-sid="${b.id}"]')`, {
+    await ctx.waitFor(`document.querySelector('#log .tool .peerlink[data-sid="${receiver.id}"]')`, {
       what: 'the SendMessage row’s link',
     });
 
@@ -183,15 +183,15 @@ export default async function (ctx) {
     await ctx.shot('chats-talk-sender');
 
     // the card's mark, clicked, opens the sender too
-    await ctx.openChat(b.id);
+    await ctx.openChat(receiver.id);
     await ctx.evaluate(`document.querySelector('${card} .chip.peerin').click()`);
-    await ctx.waitFor(`peix.state().current === '${a.id}'`, { what: 'the mark opens the sender' });
+    await ctx.waitFor(`peix.state().current === '${sender.id}'`, { what: 'the mark opens the sender' });
 
     // dark and light
     for (const scheme of ['dark', 'light']) {
       await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: scheme }] });
       await ctx.reload();
-      await ctx.openChat(b.id);
+      await ctx.openChat(receiver.id);
 
       await ctx.waitFor(`document.querySelector('#log .msg.peer') && document.querySelector('${card} .chip.peerin')`, {
         what: `the rows in ${scheme}`,
@@ -210,6 +210,6 @@ export default async function (ctx) {
 
     return out;
   } finally {
-    for (const s of sleeps) s.kill();
+    for (const child of sleeps) child.kill();
   }
 }

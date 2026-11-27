@@ -16,12 +16,12 @@ export default async function (ctx) {
 
   const { chats } = makeFixture(
     ctx.fixture.dir,
-    Array.from({ length: 34 }, (_, i) => ({
+    Array.from({ length: 34 }, (_, index) => ({
       cwd,
-      title: `Old chat ${String(i).padStart(2, '0')}`,
-      prompt: `an old question ${i}`,
+      title: `Old chat ${String(index).padStart(2, '0')}`,
+      prompt: `an old question ${index}`,
       reply: 'an old answer',
-      at: new Date(now - 8 * day - i * 3_600_000),
+      at: new Date(now - 8 * day - index * 3_600_000),
     })),
   );
 

@@ -23,9 +23,9 @@ const AGENTS_OWN = [
   { name: 'statusline-setup', description: 'Sets up Claude Code’s status line' },
 ];
 
-const jsonAt = p => {
+const jsonAt = path => {
   try {
-    return JSON.parse(readFileSync(p, 'utf8'));
+    return JSON.parse(readFileSync(path, 'utf8'));
   } catch {
     return null;
   }
@@ -33,35 +33,38 @@ const jsonAt = p => {
 
 /** An agent file's frontmatter: `key: value` lines, a `|` or `>` block's indented lines, quotes dropped. */
 export function agentFront(text) {
-  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);
+  const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);
 
-  if (!m) return null;
+  if (!match) return null;
 
   const out = {};
-  const lines = m[1].split(/\r?\n/);
+  const lines = match[1].split(/\r?\n/);
 
-  for (let i = 0; i < lines.length; i++) {
-    const kv = /^([A-Za-z][\w-]*):[ \t]*(.*)$/.exec(lines[i]);
+  for (let index = 0; index < lines.length; index++) {
+    const kv = /^([A-Za-z][\w-]*):[ \t]*(.*)$/.exec(lines[index]);
 
     if (!kv) continue;
-    let v = kv[2];
+    let value = kv[2];
 
-    if (/^[|>][+-]?\s*$/.test(v)) {
+    if (/^[|>][+-]?\s*$/.test(value)) {
       const body = [];
 
-      while (i + 1 < lines.length && (/^\s/.test(lines[i + 1]) || !lines[i + 1].trim())) body.push(lines[++i].trim());
-      v = body.join(v[0] === '>' ? ' ' : '\n');
-    } else v = v.trim().replace(/^(["'])([\s\S]*)\1$/, '$2');
-    out[kv[1]] = v.trim();
+      while (index + 1 < lines.length && (/^\s/.test(lines[index + 1]) || !lines[index + 1].trim())) {
+        body.push(lines[++index].trim());
+      }
+
+      value = body.join(value[0] === '>' ? ' ' : '\n');
+    } else value = value.trim().replace(/^(["'])([\s\S]*)\1$/, '$2');
+    out[kv[1]] = value.trim();
   }
 
   return out;
 }
 
 /** What a list row says of an agent: its description's first paragraph, before any examples. */
-const agentWords = d =>
+const agentWords = description =>
   snippet(
-    String(d || '')
+    String(description || '')
       .split(/\n\s*\n|\bExamples?:|<example>/i)[0]
       .replace(/\\n/g, ' '),
     200,
@@ -72,7 +75,7 @@ function agentsIn(dir, source, more = {}) {
 
   try {
     names = readdirSync(dir)
-      .filter(n => n.endsWith('.md'))
+      .filter(fileName => fileName.endsWith('.md'))
       .sort();
   } catch {
     return [];
@@ -80,24 +83,24 @@ function agentsIn(dir, source, more = {}) {
 
   const out = [];
 
-  for (const n of names) {
-    let f;
+  for (const fileName of names) {
+    let front;
 
     try {
-      f = agentFront(readFileSync(join(dir, n), 'utf8').slice(0, 65536));
+      front = agentFront(readFileSync(join(dir, fileName), 'utf8').slice(0, 65536));
     } catch {
       continue;
     }
 
-    const name = f?.name || n.slice(0, -3);
+    const name = front?.name || fileName.slice(0, -3);
 
-    if (!f || name.includes(':') || !AGENT_NAME.test(name)) continue;
+    if (!front || name.includes(':') || !AGENT_NAME.test(name)) continue;
 
     out.push({
       name: more.plugin ? `${more.plugin}:${name}` : name,
-      description: agentWords(f.description),
-      model: f.model || '',
-      color: AGENT_COLORS.has(f.color) ? f.color : null,
+      description: agentWords(front.description),
+      model: front.model || '',
+      color: AGENT_COLORS.has(front.color) ? front.color : null,
       source,
       ...more,
     });
@@ -111,13 +114,13 @@ function agentDirs(cwd) {
   const home = homedir();
   const dirs = [];
 
-  for (let d = resolve(cwd); d !== home;) {
-    dirs.push(d);
-    if (existsSync(join(d, '.git'))) break;
-    const up = dirname(d);
+  for (let dir = resolve(cwd); dir !== home;) {
+    dirs.push(dir);
+    if (existsSync(join(dir, '.git'))) break;
+    const up = dirname(dir);
 
-    if (up === d) break;
-    d = up;
+    if (up === dir) break;
+    dir = up;
   }
 
   return dirs;
@@ -134,29 +137,30 @@ export function agentsFor(cwd) {
   const list = [];
   const seen = new Set();
 
-  const add = a => {
-    if (!seen.has(a.name)) {
-      seen.add(a.name);
-      list.push(a);
+  const add = agent => {
+    if (!seen.has(agent.name)) {
+      seen.add(agent.name);
+      list.push(agent);
     }
   };
 
-  for (const d of agentDirs(cwd)) agentsIn(join(d, '.claude', 'agents'), 'folder', { at: d }).forEach(add);
+  for (const dir of agentDirs(cwd)) agentsIn(join(dir, '.claude', 'agents'), 'folder', { at: dir }).forEach(add);
   agentsIn(join(CLAUDE_DIR, 'agents'), 'user').forEach(add);
   const installed = jsonAt(join(CLAUDE_DIR, 'plugins', 'installed_plugins.json'))?.plugins || {};
 
-  for (const [key, on] of Object.entries(Object.assign({}, ...settings.map(s => s?.enabledPlugins || {})))) {
-    const at = on === true && (installed[key] || []).find(e => typeof e?.installPath === 'string')?.installPath;
+  for (const [key, on] of Object.entries(Object.assign({}, ...settings.map(config => config?.enabledPlugins || {})))) {
+    const at =
+      on === true && (installed[key] || []).find(install => typeof install?.installPath === 'string')?.installPath;
 
     if (at) agentsIn(join(at, 'agents'), 'plugin', { plugin: key.split('@')[0] }).forEach(add);
   }
 
-  for (const a of AGENTS_OWN) add({ ...a, model: '', color: null, source: 'builtin' });
-  const k = [2, 1, 0].find(i => typeof settings[i]?.agent === 'string' && settings[i].agent); // local over the folder's over yours
+  for (const agent of AGENTS_OWN) add({ ...agent, model: '', color: null, source: 'builtin' });
+  const scope = [2, 1, 0].find(index => typeof settings[index]?.agent === 'string' && settings[index].agent); // local over the folder's over yours
 
   return {
     agents: list,
-    setting: k === undefined ? null : { name: settings[k].agent, from: ['user', 'folder', 'local'][k] },
+    setting: scope === undefined ? null : { name: settings[scope].agent, from: ['user', 'folder', 'local'][scope] },
   };
 }
 
@@ -166,17 +170,17 @@ const agentLook = new Map();
 export function agentColor(cwd, name) {
   if (!cwd || !name) return null;
 
-  const k = `${cwd}\0${name}`;
-  const hit = agentLook.get(k);
+  const key = `${cwd}\0${name}`;
+  const hit = agentLook.get(key);
 
   if (hit && Date.now() - hit.at < 60_000) return hit.color;
   let color = null;
 
   try {
-    color = agentsFor(cwd).agents.find(a => a.name === name)?.color || null;
+    color = agentsFor(cwd).agents.find(agent => agent.name === name)?.color || null;
   } catch {}
 
   if (agentLook.size > 500) agentLook.clear();
-  agentLook.set(k, { at: Date.now(), color });
+  agentLook.set(key, { at: Date.now(), color });
   return color;
 }

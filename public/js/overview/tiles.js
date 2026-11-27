@@ -13,10 +13,10 @@ async function loadTails(ids, then) {
 
   // `then` only on news (2026-10-14): every 2 s while the overview is up, and a draw for nothing is a draw under a press
   try {
-    const d = await api('GET', `/api/tails?ids=${ids.map(encodeURIComponent).join(',')}`);
+    const response = await api('GET', `/api/tails?ids=${ids.map(encodeURIComponent).join(',')}`);
     let news = false;
 
-    for (const [id, items] of Object.entries(d.tails || {})) {
+    for (const [id, items] of Object.entries(response.tails || {})) {
       if (JSON.stringify(tails.get(id)) !== JSON.stringify(items)) news = true;
       tails.set(id, items);
     }
@@ -28,49 +28,51 @@ async function loadTails(ids, then) {
   }
 }
 
-const firstLine = t =>
-  String(t || '')
+const firstLine = text =>
+  String(text || '')
     .split('\n')[0]
     .slice(0, 60);
 
 /** The tail as rows: each tool call with its result's first line (none yet: it is running), Claude's words, yours. */
-function tailHtml(items = [], n = 8, cwd = '') {
-  const res = new Map(items.filter(x => x.kind === 'tool_result').map(x => [x.toolUseId, x]));
+function tailHtml(items = [], limit = 8, cwd = '') {
+  const res = new Map(items.filter(item => item.kind === 'tool_result').map(item => [item.toolUseId, item]));
   const rows = [];
 
-  const short = t => pathTail(t, cwd); // a path in the chat's folder from there, a long one its last two segments
+  const short = text => pathTail(text, cwd); // a path in the chat's folder from there, a long one its last two segments
 
-  for (const x of items) {
-    if (x.kind === 'tool_use' && (x.name === 'AskUserQuestion' || x.name === 'ExitPlanMode')) continue; // the question is the tile's own line
-    if (x.kind === 'tool_use') {
-      const r = res.get(x.toolUseId);
+  for (const item of items) {
+    if (item.kind === 'tool_use' && (item.name === 'AskUserQuestion' || item.name === 'ExitPlanMode')) continue; // the question is the tile's own line
+    if (item.kind === 'tool_use') {
+      const result = res.get(item.toolUseId);
 
       rows.push(
-        `<div class="tl ${r ? (r.isError ? 'err' : 'ok') : 'run'}"><i></i><b>${esc(toolName(x.name))}</b><span>${esc(short(x.text))}</span><em>${r ? esc(firstLine(short(r.text))) : '…'}</em></div>`,
+        `<div class="tl ${result ? (result.isError ? 'err' : 'ok') : 'run'}"><i></i><b>${esc(toolName(item.name))}</b><span>${esc(short(item.text))}</span><em>${result ? esc(firstLine(short(result.text))) : '…'}</em></div>`,
       );
-    } else if (x.kind === 'text') {
+    } else if (item.kind === 'text') {
       rows.push(
-        x.role === 'assistant' ? `<div class="say">${esc(x.text)}</div>` : `<div class="you">${esc(x.text)}</div>`,
+        item.role === 'assistant'
+          ? `<div class="say">${esc(item.text)}</div>`
+          : `<div class="you">${esc(item.text)}</div>`,
       );
-    } else if (x.kind === 'interrupt') rows.push('<div class="you">— interrupted</div>');
+    } else if (item.kind === 'interrupt') rows.push('<div class="you">— interrupted</div>');
   }
 
-  return rows.slice(-n).join('') || '<div class="say none">nothing yet</div>';
+  return rows.slice(-limit).join('') || '<div class="say none">nothing yet</div>';
 }
 
 /** A drawer drawn small in `host`, one per terminal and surface (`reg`), kept across redraws — a redraw moves it in. */
-function mountMini(reg, host, t, crop = true) {
-  let m = reg.get(t.id);
+function mountMini(reg, host, term, crop = true) {
+  let mini = reg.get(term.id);
 
-  if (!m) {
+  if (!mini) {
     const el = document.createElement('div');
 
     el.className = 'mini';
     el.inert = true; // a picture: its helper textarea out of the tab order (2026-10-12)
 
     const xt = new Terminal({
-      cols: t.cols || 120,
-      rows: t.rows || 30,
+      cols: term.cols || 120,
+      rows: term.rows || 30,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
       fontSize: 12,
       lineHeight: 1.1,
@@ -82,39 +84,39 @@ function mountMini(reg, host, t, crop = true) {
 
     xt.open(el);
     exactGlyphs(xt);
-    const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`));
+    const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${term.id}/ws`));
 
     ws.binaryType = 'arraybuffer';
 
-    ws.onmessage = e => {
-      if (typeof e.data !== 'string') xt.write(new Uint8Array(e.data), () => cropSoon(m));
-      else if (JSON.parse(e.data).t === 'clear') xt.write('', () => xt.clear());
+    ws.onmessage = event => {
+      if (typeof event.data !== 'string') xt.write(new Uint8Array(event.data), () => cropSoon(mini));
+      else if (JSON.parse(event.data).t === 'clear') xt.write('', () => xt.clear());
     };
 
-    m = { xt, ws, el, cols: xt.cols, rows: xt.rows, scale: 1, foot: 0 };
-    reg.set(t.id, m);
+    mini = { xt, ws, el, cols: xt.cols, rows: xt.rows, scale: 1, foot: 0 };
+    reg.set(term.id, mini);
   }
 
-  if (t.cols && t.rows && (t.cols !== m.cols || t.rows !== m.rows)) {
-    m.xt.resize(t.cols, t.rows);
-    m.cols = t.cols;
-    m.rows = t.rows;
+  if (term.cols && term.rows && (term.cols !== mini.cols || term.rows !== mini.rows)) {
+    mini.xt.resize(term.cols, term.rows);
+    mini.cols = term.cols;
+    mini.rows = term.rows;
   }
 
-  if (m.el.parentElement !== host) host.append(m.el);
-  m.used = true;
-  m.crop = crop;
+  if (mini.el.parentElement !== host) host.append(mini.el);
+  mini.used = true;
+  mini.crop = crop;
 
   requestAnimationFrame(() => {
-    const sc = m.el.querySelector('.xterm-screen');
-    const w = sc?.offsetWidth;
+    const sc = mini.el.querySelector('.xterm-screen');
+    const width = sc?.offsetWidth;
     const hw = host.clientWidth;
 
-    if (w && hw) m.scale = Math.max(0.7, Math.min(1, hw / w));
-    placeMini(m);
+    if (width && hw) mini.scale = Math.max(0.7, Math.min(1, hw / width));
+    placeMini(mini);
   });
 
-  return m;
+  return mini;
 }
 
 // Claude Code's own footer is out of the tile (2026-10-12): the tile keeps the bottom of the screen in view, and the
@@ -123,55 +125,56 @@ function mountMini(reg, host, t, crop = true) {
 // the screen is moved below the tile's edge, so what is over it — the work, the spinner — sits at the bottom. Not on
 // a chat asking you, whose choices are where the prompt box was; no two rules, nothing moved.
 function footRows(xt) {
-  const b = xt.buffer.active;
+  const buffer = xt.buffer.active;
   const rules = [];
 
-  for (let y = xt.rows - 1; y >= Math.max(0, xt.rows - 30) && rules.length < 2; y--) {
-    const l =
-      b
-        .getLine(b.viewportY + y)
+  for (let row = xt.rows - 1; row >= Math.max(0, xt.rows - 30) && rules.length < 2; row--) {
+    const line =
+      buffer
+        .getLine(buffer.viewportY + row)
         ?.translateToString(true)
         .trim() || '';
 
-    if (l.length >= xt.cols * 0.5 && /^─+$/.test(l)) rules.push(y);
+    if (line.length >= xt.cols * 0.5 && /^─+$/.test(line)) rules.push(row);
   }
 
   return rules.length === 2 ? xt.rows - rules[1] : 0;
 }
 
-function placeMini(m) {
-  m.foot = m.crop ? footRows(m.xt) : 0;
-  const rh = (m.el.querySelector('.xterm-screen')?.offsetHeight || 0) / m.xt.rows;
+function placeMini(mini) {
+  mini.foot = mini.crop ? footRows(mini.xt) : 0;
+  const rh = (mini.el.querySelector('.xterm-screen')?.offsetHeight || 0) / mini.xt.rows;
 
-  m.el.style.transform = `translateY(${Math.round(m.foot * rh * m.scale)}px) scale(${m.scale})`;
+  mini.el.style.transform = `translateY(${Math.round(mini.foot * rh * mini.scale)}px) scale(${mini.scale})`;
 }
 
-const cropSoon = m => {
-  if (m.cropT) return;
+const cropSoon = mini => {
+  if (mini.cropT) return;
 
-  m.cropT = setTimeout(() => {
-    m.cropT = 0;
-    if (m.el.isConnected) placeMini(m);
+  mini.cropT = setTimeout(() => {
+    mini.cropT = 0;
+    if (mini.el.isConnected) placeMini(mini);
   }, 250);
 };
 
 /** The minis a redraw did not use: their sockets closed, their xterms gone. All of them with `all`. */
 function sweepMinis(reg, all = false) {
-  for (const [id, m] of reg) {
-    if (!all && m.used) {
-      m.used = false;
+  for (const [id, mini] of reg) {
+    if (!all && mini.used) {
+      mini.used = false;
       continue;
     }
 
-    m.ws.onmessage = null;
-    m.ws.close();
-    m.xt.dispose();
-    m.el.remove();
+    mini.ws.onmessage = null;
+    mini.ws.close();
+    mini.xt.dispose();
+    mini.el.remove();
     reg.delete(id);
   }
 }
 
-const drawerOf = s => (s.terminal && s.terminal.exited === null && !s.terminal.shell ? s.terminal : null);
+const drawerOf = session =>
+  session.terminal && session.terminal.exited === null && !session.terminal.shell ? session.terminal : null;
 
 // ---- tiles: the board's panels laid out as Hyprland's (2026-10-10) ------------------------------------------------
 // The only layout since 2026-10-14 (a switch, Settings → Board → tiles, before; main.tiles is in the markup). Its look
@@ -181,12 +184,12 @@ const drawerOf = s => (s.terminal && s.terminal.exited === null && !s.terminal.s
 $('#chat').classList.add('kf'); // the chat wears the border at first
 
 // the panel the keys are in wears the border: the list or the chat (a pointer press or a focus inside it)
-const markKf = e => {
-  const p = e.target.closest?.('#sessions, #chat');
+const markKf = event => {
+  const panel = event.target.closest?.('#sessions, #chat');
 
-  if (!p) return;
-  for (const x of document.querySelectorAll('main.tiles .kf')) if (x !== p) x.classList.remove('kf');
-  p.classList.add('kf');
+  if (!panel) return;
+  for (const marked of document.querySelectorAll('main.tiles .kf')) if (marked !== panel) marked.classList.remove('kf');
+  panel.classList.add('kf');
 };
 
 document.addEventListener('pointerdown', markKf, true);
@@ -202,25 +205,31 @@ document.addEventListener('focusin', markKf, true);
 // layoutNotch (the fill, every header drawn or resized).
 function tileNotch() {
   const BW = TILE_BW;
-  const M = 60;
-  const n = state.notch;
+  const MARGIN = 60;
+  const notch = state.notch;
 
   const panels = [$('#sessions'), $('#chat')];
 
-  if (!n && !panels.some(p => p.classList.contains('ncutp'))) return;
-  const rects = panels.map(p => p.getBoundingClientRect()); // every read, then every write
+  if (!notch && !panels.some(panel => panel.classList.contains('ncutp'))) return;
+  const rects = panels.map(panel => panel.getBoundingClientRect()); // every read, then every write
 
-  panels.forEach((p, i) => {
-    const r = rects[i];
-    const cut = !!n && r.width > 0 && r.top < n.top + BW && r.left < n.right + BW && r.right > n.left - BW;
+  panels.forEach((panel, index) => {
+    const rect = rects[index];
 
-    let c = p.querySelector(':scope > .ncut');
+    const cut =
+      !!notch &&
+      rect.width > 0 &&
+      rect.top < notch.top + BW &&
+      rect.left < notch.right + BW &&
+      rect.right > notch.left - BW;
+
+    let ring = panel.querySelector(':scope > .ncut');
 
     if (!cut) {
-      if (p.classList.contains('ncutp')) {
-        p.classList.remove('ncutp');
-        p.style.clipPath = '';
-        for (const x of p.querySelectorAll(':scope > :is(.ncut, .ncap)')) x.remove();
+      if (panel.classList.contains('ncutp')) {
+        panel.classList.remove('ncutp');
+        panel.style.clipPath = '';
+        for (const part of panel.querySelectorAll(':scope > :is(.ncut, .ncap)')) part.remove();
       }
 
       return;
@@ -228,66 +237,66 @@ function tileNotch() {
 
     // in the panel's border box: the hole is the housing, its left to its right, down to its bottom; a side past the
     // panel's edge has no border of its own (the hole runs off that edge)
-    const x1 = n.left - r.left;
-    const x2 = n.right - r.left;
-    const y2 = n.top - r.top;
-    const L = x1 > 0;
-    const R = x2 < r.width;
+    const x1 = notch.left - rect.left;
+    const x2 = notch.right - rect.left;
+    const y2 = notch.top - rect.top;
+    const leftInside = x1 > 0;
+    const rightInside = x2 < rect.width;
 
-    const a = L ? x1 : -M;
-    const b = R ? x2 : r.width + M;
-    const k = Math.min(HOUSING_R, (b - a) / 2, y2); // the cut's lower corners
+    const holeLeft = leftInside ? x1 : -MARGIN;
+    const holeRight = rightInside ? x2 : rect.width + MARGIN;
+    const cornerRadius = Math.min(HOUSING_R, (holeRight - holeLeft) / 2, y2); // the cut's lower corners
 
-    const t = Math.max(0, Math.min(HOUSING_R, y2 - k)); // the panel's corners beside the cut's top
-    const hole = `${L ? `M${a - t} ${-M}V0A${t} ${t} 0 0 1 ${a} ${t}` : `M${a} ${-M}`}V${y2 - k}A${k} ${k} 0 0 0 ${a + k} ${y2}H${b - k}A${k} ${k} 0 0 0 ${b} ${y2 - k}${R ? `V${t}A${t} ${t} 0 0 1 ${b + t} 0` : ''}V${-M}Z`;
+    const flare = Math.max(0, Math.min(HOUSING_R, y2 - cornerRadius)); // the panel's corners beside the cut's top
+    const hole = `${leftInside ? `M${holeLeft - flare} ${-MARGIN}V0A${flare} ${flare} 0 0 1 ${holeLeft} ${flare}` : `M${holeLeft} ${-MARGIN}`}V${y2 - cornerRadius}A${cornerRadius} ${cornerRadius} 0 0 0 ${holeLeft + cornerRadius} ${y2}H${holeRight - cornerRadius}A${cornerRadius} ${cornerRadius} 0 0 0 ${holeRight} ${y2 - cornerRadius}${rightInside ? `V${flare}A${flare} ${flare} 0 0 1 ${holeRight + flare} 0` : ''}V${-MARGIN}Z`;
 
-    p.classList.add('ncutp');
-    p.style.clipPath = `path(evenodd, 'M${-M} ${-M}H${r.width + M}V${r.height + M}H${-M}Z ${hole}')`;
+    panel.classList.add('ncutp');
+    panel.style.clipPath = `path(evenodd, 'M${-MARGIN} ${-MARGIN}H${rect.width + MARGIN}V${rect.height + MARGIN}H${-MARGIN}Z ${hole}')`;
 
-    if (!c) {
-      c = document.createElement('i');
-      c.className = 'ncut';
-      p.append(c);
+    if (!ring) {
+      ring = document.createElement('i');
+      ring.className = 'ncut';
+      panel.append(ring);
     }
 
-    const left = L ? x1 - BW : 0;
-    const right = R ? x2 + BW : r.width; // the ring's outer edges, in the border box
+    const left = leftInside ? x1 - BW : 0;
+    const right = rightInside ? x2 + BW : rect.width; // the ring's outer edges, in the border box
 
-    Object.assign(c.style, {
+    Object.assign(ring.style, {
       left: `${left - BW}px`,
       top: `${-BW}px`,
       width: `${right - left}px`,
       height: `${y2 + BW}px`,
-      borderLeftWidth: L ? `${BW}px` : '0',
-      borderRightWidth: R ? `${BW}px` : '0',
-      borderBottomLeftRadius: L ? `${k + BW}px` : '0',
-      borderBottomRightRadius: R ? `${k + BW}px` : '0',
+      borderLeftWidth: leftInside ? `${BW}px` : '0',
+      borderRightWidth: rightInside ? `${BW}px` : '0',
+      borderBottomLeftRadius: leftInside ? `${cornerRadius + BW}px` : '0',
+      borderBottomRightRadius: rightInside ? `${cornerRadius + BW}px` : '0',
     }); // the inner edge's radius is the cut's
 
     // the border round the panel's two corners at the top of the cut: a quarter of a ring each, the clip's own curve outside
-    for (const [side, on, x] of [
-      ['l', L, x1 - t],
-      ['r', R, x2],
+    for (const [side, on, capLeft] of [
+      ['l', leftInside, x1 - flare],
+      ['r', rightInside, x2],
     ]) {
-      let q = p.querySelector(`:scope > .ncap.${side}`);
+      let cap = panel.querySelector(`:scope > .ncap.${side}`);
 
-      if (!on || !t) {
-        q?.remove();
+      if (!on || !flare) {
+        cap?.remove();
         continue;
       }
 
-      if (!q) {
-        q = document.createElement('i');
-        q.className = `ncap ${side}`;
-        p.append(q);
+      if (!cap) {
+        cap = document.createElement('i');
+        cap.className = `ncap ${side}`;
+        panel.append(cap);
       }
 
-      Object.assign(q.style, {
-        left: `${x - BW}px`,
+      Object.assign(cap.style, {
+        left: `${capLeft - BW}px`,
         top: `${-BW}px`,
-        width: `${t}px`,
-        height: `${t}px`,
-        [side === 'l' ? 'borderTopRightRadius' : 'borderTopLeftRadius']: `${t}px`,
+        width: `${flare}px`,
+        height: `${flare}px`,
+        [side === 'l' ? 'borderTopRightRadius' : 'borderTopLeftRadius']: `${flare}px`,
       });
     }
   });

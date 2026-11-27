@@ -38,9 +38,9 @@ const HOLD = 1600; // frames a second in the clip; the last one held before it l
 
 const IMG2WEBP =
   process.env.IMG2WEBP ||
-  ['/opt/homebrew/bin/img2webp', '/usr/local/bin/img2webp'].find(f => {
+  ['/opt/homebrew/bin/img2webp', '/usr/local/bin/img2webp'].find(path => {
     try {
-      return statSync(f).isFile();
+      return statSync(path).isFile();
     } catch {
       return false;
     }
@@ -105,50 +105,50 @@ export default async function (ctx) {
   let pointer = { x: CW * 0.7, y: CH * 0.55 };
 
   // ---- the hand: a pointer that glides, a click, a key pressed — each also drawn ----
-  const at = async t =>
-    typeof t !== 'string'
-      ? t
+  const at = async target =>
+    typeof target !== 'string'
+      ? target
       : ctx.evaluate(
-          `(r => r && ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector(${JSON.stringify(t)})?.getBoundingClientRect())`,
+          `(r => r && ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector(${JSON.stringify(target)})?.getBoundingClientRect())`,
         );
 
   const move = async (to, ms = 520) => {
-    const b = await at(to);
+    const goal = await at(to);
 
-    if (!b) throw new Error(`nothing at ${to}`);
+    if (!goal) throw new Error(`nothing at ${to}`);
 
-    const a = pointer;
+    const from = pointer;
     const t0 = Date.now();
 
-    for (let k = 0; k < 1;) {
+    for (let progress = 0; progress < 1;) {
       // by the clock: a step is two calls, slower while the screencast runs
-      k = Math.min(1, (Date.now() - t0) / ms);
-      const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2; // ease in and out
+      progress = Math.min(1, (Date.now() - t0) / ms);
+      const eased = progress < 0.5 ? 2 * progress * progress : 1 - (-2 * progress + 2) ** 2 / 2; // ease in and out
 
-      const x = Math.round(a.x + (b.x - a.x) * e);
-      const y = Math.round(a.y + (b.y - a.y) * e);
+      const pointerX = Math.round(from.x + (goal.x - from.x) * eased);
+      const pointerY = Math.round(from.y + (goal.y - from.y) * eased);
 
-      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
-      await ctx.evaluate(`window.__clip?.at(${x}, ${y})`);
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: pointerX, y: pointerY });
+      await ctx.evaluate(`window.__clip?.at(${pointerX}, ${pointerY})`);
     }
 
-    pointer = b;
-    return b;
+    pointer = goal;
+    return goal;
   };
 
   const click = async (to, { alt = false, ms } = {}) => {
     if (to) await move(to, ms);
 
-    const { x, y } = pointer;
+    const { x: pointerX, y: pointerY } = pointer;
     const modifiers = alt ? 1 : 0;
 
-    await ctx.evaluate(`window.__clip?.click(${x}, ${y})`);
+    await ctx.evaluate(`window.__clip?.click(${pointerX}, ${pointerY})`);
     if (alt) await ctx.evaluate(`window.__clip?.keys(['⌥', 'click'])`);
 
     await ctx.send('Input.dispatchMouseEvent', {
       type: 'mousePressed',
-      x,
-      y,
+      x: pointerX,
+      y: pointerY,
       button: 'left',
       buttons: 1,
       clickCount: 1,
@@ -159,8 +159,8 @@ export default async function (ctx) {
 
     await ctx.send('Input.dispatchMouseEvent', {
       type: 'mouseReleased',
-      x,
-      y,
+      x: pointerX,
+      y: pointerY,
       button: 'left',
       buttons: 0,
       clickCount: 1,
@@ -190,15 +190,17 @@ export default async function (ctx) {
   };
 
   const raise = () => ctx.evaluate(`window.__clip?.raise()`);
-  const append = (c, lines) => appendFileSync(c.file, `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
+
+  const append = (fixtureChat, lines) =>
+    appendFileSync(fixtureChat.file, `${lines.map(line => JSON.stringify(line)).join('\n')}\n`);
 
   // ---- the camera: Chrome's screencast — a frame each time the page is drawn anew —, then resampled to FPS ----
   const record = async (name, steps) => {
     const frames = [];
 
-    const off = ctx.on('Page.screencastFrame', p => {
-      frames.push({ t: p.metadata.timestamp * 1000, data: p.data });
-      ctx.send('Page.screencastFrameAck', { sessionId: p.sessionId }).catch(() => {});
+    const off = ctx.on('Page.screencastFrame', frame => {
+      frames.push({ t: frame.metadata.timestamp * 1000, data: frame.data });
+      ctx.send('Page.screencastFrameAck', { sessionId: frame.sessionId }).catch(() => {});
     });
 
     await ctx.send('Page.startScreencast', { format: 'png', everyNthFrame: 1 });
@@ -218,10 +220,10 @@ export default async function (ctx) {
     const step = 1000 / FPS;
     const end = frames.at(-1).t;
 
-    for (let t = frames[0].t, j = 0; t <= end; t += step) {
-      while (j + 1 < frames.length && frames[j + 1].t <= t) j++;
-      if (kept.at(-1)?.data === frames[j].data) kept.at(-1).ms += step;
-      else kept.push({ data: frames[j].data, ms: step });
+    for (let time = frames[0].t, frameIndex = 0; time <= end; time += step) {
+      while (frameIndex + 1 < frames.length && frames[frameIndex + 1].t <= time) frameIndex++;
+      if (kept.at(-1)?.data === frames[frameIndex].data) kept.at(-1).ms += step;
+      else kept.push({ data: frames[frameIndex].data, ms: step });
     }
 
     kept.at(-1).ms = HOLD;
@@ -233,11 +235,11 @@ export default async function (ctx) {
     // size, every pixel within a level or two. -min_size and -m 6 took a minute or more a clip for a tenth less
     const args = ['-loop', '0'];
 
-    kept.forEach((f, i) => {
-      const file = join(dir, `${String(i).padStart(4, '0')}.png`);
+    kept.forEach((frame, index) => {
+      const file = join(dir, `${String(index).padStart(4, '0')}.png`);
 
-      writeFileSync(file, Buffer.from(f.data, 'base64'));
-      args.push('-d', String(Math.max(20, Math.round(f.ms))), '-near_lossless', '60', '-m', '4', file);
+      writeFileSync(file, Buffer.from(frame.data, 'base64'));
+      args.push('-d', String(Math.max(20, Math.round(frame.ms))), '-near_lossless', '60', '-m', '4', file);
     });
 
     const out = join(OUT, `clip-${name}.webp`);
@@ -246,7 +248,7 @@ export default async function (ctx) {
     execFileSync(IMG2WEBP, [join(dir, 'args')], { stdio: 'ignore' });
 
     const size = statSync(out).size;
-    const seconds = kept.reduce((s, f) => s + f.ms, 0) / 1000;
+    const seconds = kept.reduce((sum, frame) => sum + frame.ms, 0) / 1000;
 
     made.push({ name, frames: kept.length, seconds: +seconds.toFixed(1), kb: Math.round(size / 1024) });
 
@@ -267,17 +269,17 @@ export default async function (ctx) {
     await sleep(600);
   };
 
-  const card = t => `#slist > .card[data-id="${chat(t).id}"]`;
+  const card = title => `#slist > .card[data-id="${chat(title).id}"]`;
 
-  const lines = c =>
-    readFileSync(c.file, 'utf8')
+  const lines = fixtureChat =>
+    readFileSync(fixtureChat.file, 'utf8')
       .trim()
       .split('\n')
-      .map(l => JSON.parse(l));
+      .map(line => JSON.parse(line));
 
   // the drawer typed into as a hand would, a key at a time, then ⏎
-  const typeIn = async (text, g = 0, every = 45) => {
-    const box = `document.querySelector('#termBody${g ? 'B' : ''} textarea')`;
+  const typeIn = async (text, half = 0, every = 45) => {
+    const box = `document.querySelector('#termBody${half ? 'B' : ''} textarea')`;
 
     for (const ch of text) {
       await ctx.evaluate(
@@ -301,9 +303,13 @@ export default async function (ctx) {
     );
 
   const quickOpen = async file => {
-    const f = await rect('#shotpane iframe:not([style*="display: none"])');
+    const frameRect = await rect('#shotpane iframe:not([style*="display: none"])');
 
-    await click({ x: Math.round(f.x + f.width * 0.62), y: Math.round(f.y + f.height * 0.55) }, { ms: 300 });
+    await click(
+      { x: Math.round(frameRect.x + frameRect.width * 0.62), y: Math.round(frameRect.y + frameRect.height * 0.55) },
+      { ms: 300 },
+    );
+
     await sleep(250);
     await ctx.evaluate(`window.__clip?.keys(['⌘', 'P'])`);
 
@@ -494,7 +500,7 @@ export default async function (ctx) {
             `window.peix.session(${JSON.stringify(chat('Bump Node to 22').id)})?.prs?.find(p => p.url.endsWith('/92'))?.checks === 'pass'`,
             { what: '#92 green', timeout: 15000 },
           )
-          .catch(e => ctx.log(e.message));
+          .catch(error => ctx.log(error.message));
 
         await sleep(1500);
         await click('#shead .hmove', { alt: true });
@@ -508,13 +514,13 @@ export default async function (ctx) {
 
       await record('board', async () => {
         await sleep(1600);
-        const c = chat('Retry declined payments');
+        const payments = chat('Retry declined payments');
 
         append(
-          c,
+          payments,
           replyLines({
-            id: c.id,
-            cwd: c.cwd,
+            id: payments.id,
+            cwd: payments.cwd,
             text: 'Declined cards now retry three times with backoff — 1 s, 2 s, 4 s — before the error shows. The payment tests pass.',
             at: new Date(),
             model: FABLE,
@@ -531,19 +537,21 @@ export default async function (ctx) {
 
     // a PR named in a chat becomes its chip — on the card, in the header — with its state from GitHub, no setup
     prs: async () => {
-      const c = chat('Queue for invoice webhooks');
+      const webhooks = chat('Queue for invoice webhooks');
 
       await start(chat('Dark mode for the product grid').id, { prsOpen: true });
-      const ask = lines(c).find(l => l.message?.content?.[0]?.name === 'AskUserQuestion').message.content[0].id;
+
+      const ask = lines(webhooks).find(line => line.message?.content?.[0]?.name === 'AskUserQuestion').message
+        .content[0].id;
 
       await record('prs', async () => {
         await sleep(700);
         await click(`${card('Queue for invoice webhooks')} .title`);
         await sleep(900);
 
-        append(c, [
+        append(webhooks, [
           {
-            ...lines(c).at(-1),
+            ...lines(webhooks).at(-1),
             type: 'user',
             uuid: randomUUID(),
             timestamp: new Date().toISOString(),
@@ -563,10 +571,10 @@ export default async function (ctx) {
         await sleep(1200);
 
         append(
-          c,
+          webhooks,
           toolLines({
-            id: c.id,
-            cwd: c.cwd,
+            id: webhooks.id,
+            cwd: webhooks.cwd,
             name: 'Bash',
             input: { command: 'gh pr create --draft --fill', description: 'Open the PR' },
             result: 'https://github.com/acme/billing-api/pull/57',
@@ -574,14 +582,14 @@ export default async function (ctx) {
           }),
         );
 
-        append(c, [prLinkLine({ id: c.id, url: 'https://github.com/acme/billing-api/pull/57' })]);
+        append(webhooks, [prLinkLine({ id: webhooks.id, url: 'https://github.com/acme/billing-api/pull/57' })]);
         await sleep(1200);
 
         append(
-          c,
+          webhooks,
           replyLines({
-            id: c.id,
-            cwd: c.cwd,
+            id: webhooks.id,
+            cwd: webhooks.cwd,
             text: 'Webhooks now go on SQS and the handler answers at once. Opened https://github.com/acme/billing-api/pull/57 as a draft.',
             at: new Date(),
             model: FABLE,
@@ -589,7 +597,7 @@ export default async function (ctx) {
         );
 
         await ctx
-          .waitFor(`window.peix.session(${JSON.stringify(c.id)})?.prs?.some(p => p.state)`, {
+          .waitFor(`window.peix.session(${JSON.stringify(webhooks.id)})?.prs?.some(p => p.state)`, {
             what: '#57 answered',
             timeout: 15000,
           })

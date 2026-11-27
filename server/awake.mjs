@@ -41,14 +41,14 @@ export function keepAwake(on) {
       throw new Error('caffeinate not found');
     }
 
-    const p = spawn(bin, ['-i', '-w', String(process.pid)], { stdio: 'ignore' });
+    const child = spawn(bin, ['-i', '-w', String(process.pid)], { stdio: 'ignore' });
 
-    caffeinate = p;
-    p.once('error', e => console.error('[peixairada] caffeinate:', e.message));
+    caffeinate = child;
+    child.once('error', error => console.error('[peixairada] caffeinate:', error.message));
 
     // ended by someone else, or failed to start: the switch is off — the mark goes rather than claim what is not so
-    p.once('exit', () => {
-      if (caffeinate !== p) return;
+    child.once('exit', () => {
+      if (caffeinate !== child) return;
       caffeinate = null;
       setAwakeOn(false);
       saveState();
@@ -58,10 +58,10 @@ export function keepAwake(on) {
 
     console.log('[peixairada] keeping the Mac awake (caffeinate -i)');
   } else if (!on && caffeinate) {
-    const p = caffeinate;
+    const child = caffeinate;
 
     caffeinate = null;
-    p.kill();
+    child.kill();
     console.log('[peixairada] the Mac may sleep again');
   }
 
@@ -79,21 +79,21 @@ export async function readPower() {
 
   const ask = args =>
     execFileP(bin, args, { timeout: 5000 }).then(
-      r => r.stdout,
-      e => {
-        console.error(`[peixairada] pmset ${args.join(' ')}:`, String(e.message || e).split('\n')[0]);
+      result => result.stdout,
+      error => {
+        console.error(`[peixairada] pmset ${args.join(' ')}:`, String(error.message || error).split('\n')[0]);
         return null;
       },
     );
 
-  const [g, ps] = await Promise.all([ask(['-g']), ask(['-g', 'ps'])]);
+  const [settings, ps] = await Promise.all([ask(['-g']), ask(['-g', 'ps'])]);
   const was = JSON.stringify([lidOff, idleSleep, powerSrc]);
 
-  if (g != null) {
-    lidOff = /^\s*SleepDisabled\s+1\b/m.test(g);
-    const m = /^\s*sleep\s+(\d+)/m.exec(g.slice(g.indexOf('Currently in use')));
+  if (settings != null) {
+    lidOff = /^\s*SleepDisabled\s+1\b/m.test(settings);
+    const match = /^\s*sleep\s+(\d+)/m.exec(settings.slice(settings.indexOf('Currently in use')));
 
-    idleSleep = m ? Number(m[1]) : null;
+    idleSleep = match ? Number(match[1]) : null;
   }
 
   if (ps != null) {
@@ -114,7 +114,7 @@ export function lidRuns(on, mode, found) {
   const args = ['-a', 'disablesleep', on ? '1' : '0'];
 
   if (mode === 'none') return { plain: [found, args] };
-  const q = t => `"${t.replace(/[\\"]/g, '\\$&')}"`;
+  const quote = text => `"${text.replace(/[\\"]/g, '\\$&')}"`;
 
   return {
     sudo: ['/usr/bin/sudo', [ROOT_PMSET, ...args]],
@@ -122,7 +122,7 @@ export function lidRuns(on, mode, found) {
       '/usr/bin/osascript',
       [
         '-e',
-        `do shell script quoted form of ${q(ROOT_PMSET)} & ${q(` ${args.join(' ')}`)} with prompt ${q(on ? 'peixAIrada wants to keep this Mac awake with its lid closed.' : 'peixAIrada wants to let this Mac sleep again when its lid closes.')} with administrator privileges`,
+        `do shell script quoted form of ${quote(ROOT_PMSET)} & ${quote(` ${args.join(' ')}`)} with prompt ${quote(on ? 'peixAIrada wants to keep this Mac awake with its lid closed.' : 'peixAIrada wants to let this Mac sleep again when its lid closes.')} with administrator privileges`,
       ],
     ],
   };
@@ -155,10 +155,10 @@ export async function setLid(on) {
       ? execFileP(...run.plain, { timeout: 10_000 })
       : mode === 'osascript'
         ? viaDialog()
-        : viaSudo().catch(e => {
+        : viaSudo().catch(error => {
             console.log(
               `[peixairada] sudo pmset did not go through (${
-                String(e.stderr || e.message)
+                String(error.stderr || error.message)
                   .trim()
                   .split('\n')[0]
               }) — asking with the dialog`,
@@ -169,14 +169,14 @@ export async function setLid(on) {
 
   try {
     await lidAsking;
-  } catch (e) {
+  } catch (error) {
     throw new Error(
-      /-128|cancel/i.test(String(e.stderr || e.message))
+      /-128|cancel/i.test(String(error.stderr || error.message))
         ? 'cancelled'
-        : String(e.stderr || e.message)
+        : String(error.stderr || error.message)
             .trim()
             .split('\n')[0],
-      { cause: e },
+      { cause: error },
     );
   } finally {
     lidAsking = null;

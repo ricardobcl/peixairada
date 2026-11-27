@@ -17,21 +17,21 @@ export default async function (ctx) {
     'the key given as the app gives it, from the fake home',
   );
 
-  const w = await ctx.win();
+  const win = await ctx.win();
 
-  ctx.assert.ok(w.titled && !w.fill && !w.full, 'a normal window, as the app starts on a Mac it has not run on');
-  ctx.assert.equal(w.active, false, 'never in front');
-  ctx.assert.equal(w.seen, true, 'seen, one pixel of it: WebKit runs its frames');
+  ctx.assert.ok(win.titled && !win.fill && !win.full, 'a normal window, as the app starts on a Mac it has not run on');
+  ctx.assert.equal(win.active, false, 'never in front');
+  ctx.assert.equal(win.seen, true, 'seen, one pixel of it: WebKit runs its frames');
   ctx.assert.equal(await ctx.js(`return document.visibilityState`), 'visible');
   ctx.assert.match(ctx.appLog(), /pane: the page starts/, "its log is the fake home's");
   await ctx.full();
   await ctx.until(`peix.state().fill === true`, 'the page told of the fill');
-  const f = await ctx.win();
+  const filled = await ctx.win();
 
-  ctx.assert.ok(f.fill && !f.titled, 'the fill: borderless');
-  ctx.assert.equal(f.w, w.w, "its frame not the screen's");
+  ctx.assert.ok(filled.fill && !filled.titled, 'the fill: borderless');
+  ctx.assert.equal(filled.w, win.w, "its frame not the screen's");
   await ctx.full();
   await ctx.until(`peix.state().fill === false`, 'the page told it is over');
   ctx.assert.equal((await ctx.win()).active, false, 'never in front, the fill included');
-  return { inset: w.inset, size: `${w.w}×${w.h}` };
+  return { inset: win.inset, size: `${win.w}×${win.h}` };
 }

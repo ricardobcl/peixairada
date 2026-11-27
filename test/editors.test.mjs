@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { startTestServer, waitFor } from '../lib/testserver.mjs';
 
 const FAKE = fileURLToPath(new URL('../scripts/fakes/fakebrew.mjs', import.meta.url));
-const lines = f => (existsSync(f) ? readFileSync(f, 'utf8').trim().split('\n') : []);
+const lines = file => (existsSync(file) ? readFileSync(file, 'utf8').trim().split('\n') : []);
 
 test(
   'Zed: not here, installed once however often asked, then here — and Launch Services told',
@@ -28,11 +28,11 @@ test(
         zed: { app: null, brew: true, installing: false, line: null, error: null },
       });
 
-      const a = await srv.post('api/editors/zed/install', {});
-      const b = await srv.post('api/editors/zed/install', {});
+      const first = await srv.post('api/editors/zed/install', {});
+      const second = await srv.post('api/editors/zed/install', {});
 
       assert.deepEqual(
-        [a.status, a.body.zed.installing, b.status, b.body.zed.installing],
+        [first.status, first.body.zed.installing, second.status, second.body.zed.installing],
         [202, true, 202, true],
         'started, and a second ask joins it',
       );
@@ -60,9 +60,9 @@ test(
         'one brew, then Launch Services told of the app',
       );
 
-      const c = await srv.post('api/editors/zed/install', {});
+      const again = await srv.post('api/editors/zed/install', {});
 
-      assert.deepEqual([c.status, c.body.zed.app], [200, app], 'here already: nothing to do');
+      assert.deepEqual([again.status, again.body.zed.app], [200, app], 'here already: nothing to do');
       assert.equal(lines(log).length, 2, 'no brew run for it');
       assert.match(srv.logText(), /Zed: installed, /);
     } finally {
@@ -82,10 +82,10 @@ test("Zed: a failed install says brew's error, and the next ask tries again", { 
       what: 'the failure said',
     });
 
-    const z = (await srv.api('api/editors')).body.zed;
+    const zed = (await srv.api('api/editors')).body.zed;
 
-    assert.deepEqual([z.app, z.installing], [null, false]);
-    assert.match(z.error, /^Error: Download failed on Cask 'zed'/, "brew's own line");
+    assert.deepEqual([zed.app, zed.installing], [null, false]);
+    assert.match(zed.error, /^Error: Download failed on Cask 'zed'/, "brew's own line");
     assert.equal((await srv.post('api/editors/zed/install', {})).status, 202, 'tried again');
   } finally {
     await srv.stop();

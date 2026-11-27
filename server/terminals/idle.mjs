@@ -16,34 +16,34 @@ export function sweepDrawers() {
   if (!(DRAWER_IDLE_MS > 0)) return;
   const now = Date.now();
 
-  for (const t of terms.values()) {
-    if (t.shell || t.exited !== null || t.clients.size) continue;
-    const s = t.sessionId ? sessions.get(t.sessionId) : null;
+  for (const term of terms.values()) {
+    if (term.shell || term.exited !== null || term.clients.size) continue;
+    const session = term.sessionId ? sessions.get(term.sessionId) : null;
 
-    if (s) {
-      const st = statusOf(s);
+    if (session) {
+      const st = statusOf(session);
 
       if (
-        s.agentsRunning ||
-        s.tasks?.size ||
-        (s.live?.status ? s.live.status !== 'idle' : st === 'working' || st === 'needs-input')
+        session.agentsRunning ||
+        session.tasks?.size ||
+        (session.live?.status ? session.live.status !== 'idle' : st === 'working' || st === 'needs-input')
       ) {
         continue;
       }
     }
 
     const last = Math.max(
-      Date.parse(t.startedAt) || 0,
-      Date.parse(s?.lastActivity) || 0,
-      Date.parse(s?.startedAt) || 0,
+      Date.parse(term.startedAt) || 0,
+      Date.parse(session?.lastActivity) || 0,
+      Date.parse(session?.startedAt) || 0,
     );
 
     if (now - last < DRAWER_IDLE_MS) continue;
 
     console.log(
-      `[peixairada] terminal ${t.id}: idle ${Math.round((now - last) / 3600_000)} h with no page on it — ending it${s ? ` (chat ${s.id})` : ''}`,
+      `[peixairada] terminal ${term.id}: idle ${Math.round((now - last) / 3600_000)} h with no page on it — ending it${session ? ` (chat ${session.id})` : ''}`,
     );
 
-    killTerm(t);
+    killTerm(term);
   }
 }

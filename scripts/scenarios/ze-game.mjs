@@ -30,17 +30,17 @@ export default async function (ctx) {
       .then(JSON.parse);
 
   // drops what it is given into the round, nothing falling on its own meanwhile; at: [dx, dy] from Zé's feet
-  const drop = (kind, e, at, more = {}) =>
+  const drop = (kind, emoji, at, more = {}) =>
     ctx.evaluate(`(() => { const g = window.peix.ze().g; g.spawn = 1e9; g.hurt = 0;
-    g.items.push({ kind: ${JSON.stringify(kind)}, e: ${JSON.stringify(e)}, pts: 15, say: ${JSON.stringify(kind === 'veg' ? 'BLEH! test' : 'test')}, x: g.x + g.f * ${at[0]}, y: g.y + ${at[1]}, vx: 0, vy: 0, g: 0, rot: 0, spin: 0, ...${JSON.stringify(more)} }); })()`);
+    g.items.push({ kind: ${JSON.stringify(kind)}, e: ${JSON.stringify(emoji)}, pts: 15, say: ${JSON.stringify(kind === 'veg' ? 'BLEH! test' : 'test')}, x: g.x + g.f * ${at[0]}, y: g.y + ${at[1]}, vx: 0, vy: 0, g: 0, rot: 0, spin: 0, ...${JSON.stringify(more)} }); })()`);
 
-  const eat = async (kind, e, n = 1) => {
-    // n onto his head, one by one, each met before the next
-    for (let i = 0; i < n; i++) {
+  const eat = async (kind, emoji, count = 1) => {
+    // `count` of them onto his head, one by one, each met before the next
+    for (let index = 0; index < count; index++) {
       const before = await ctx.evaluate(`window.peix.ze().g.items.length`);
 
-      await drop(kind, e, [0, -150]);
-      await ctx.waitFor(`window.peix.ze().g.items.length <= ${before}`, { what: `${kind} ${i + 1} met` });
+      await drop(kind, emoji, [0, -150]);
+      await ctx.waitFor(`window.peix.ze().g.items.length <= ${before}`, { what: `${kind} ${index + 1} met` });
     }
   };
 
@@ -119,7 +119,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.hit.streak, 0);
 
   ctx.assert.ok(
-    out.hit.words.some(w => /^BLEH!/.test(w)),
+    out.hit.words.some(word => /^BLEH!/.test(word)),
     'BLEH said',
   );
 
@@ -129,7 +129,7 @@ export default async function (ctx) {
   ctx.assert.equal((await game()).mass, 6, 'not touching him');
   await press('Space', ' ', 32);
   await ctx.waitFor(`window.peix.ze().g.score === 20`, { what: 'the carrot kicked' });
-  ctx.assert.ok((await game()).words.some(w => w === 'WATAAA!' || w === 'KRAV MAGA!'));
+  ctx.assert.ok((await game()).words.some(word => word === 'WATAAA!' || word === 'KRAV MAGA!'));
 
   // six meats in a row: the Ford Focus — faster, space its horn; its time up, it drives off
   await ctx.evaluate(`window.peix.ze().g.streak = 3`);
@@ -239,7 +239,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.dragon.mass, before.mass, 'a green takes nothing off the dragon');
 
   ctx.assert.ok(
-    out.dragon.words.some(w => /^\+10$/.test(w)),
+    out.dragon.words.some(word => /^\+10$/.test(word)),
     'ten for it',
   );
 

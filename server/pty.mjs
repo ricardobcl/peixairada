@@ -10,14 +10,21 @@ import { ROOT } from './env.mjs';
 // Only when the bit is missing: a chmod to the same mode is still a write, and from the app in
 // /Applications every start tripped App Management ("prevented from modifying apps on your Mac").
 try {
-  const h = join(ROOT, 'node_modules', 'node-pty', 'prebuilds', `${process.platform}-${process.arch}`, 'spawn-helper');
+  const helper = join(
+    ROOT,
+    'node_modules',
+    'node-pty',
+    'prebuilds',
+    `${process.platform}-${process.arch}`,
+    'spawn-helper',
+  );
 
-  if (existsSync(h) && (statSync(h).mode & 0o111) !== 0o111) chmodSync(h, 0o755);
+  if (existsSync(helper) && (statSync(helper).mode & 0o111) !== 0o111) chmodSync(helper, 0o755);
 } catch {}
 
 export const nodePty = await import('node-pty')
-  .then(m => m.default ?? m)
-  .catch(e => {
-    console.error('[peixairada] node-pty unavailable — terminals are disabled:', e.message);
+  .then(imported => imported.default ?? imported)
+  .catch(error => {
+    console.error('[peixairada] node-pty unavailable — terminals are disabled:', error.message);
     return null;
   });

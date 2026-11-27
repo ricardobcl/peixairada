@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const read = f => readFileSync(join(ROOT, f), 'utf8');
+const read = path => readFileSync(join(ROOT, path), 'utf8');
 const fails = [];
 
 const npmTest = JSON.parse(read('package.json')).scripts?.test || '';
@@ -23,26 +23,26 @@ if (!/--import[= ]\.\/test\/env\.mjs\b/.test(npmTest)) {
   );
 }
 
-const files = ['test', 'scripts/scenarios', 'scripts/shell-checks'].flatMap(d =>
-  readdirSync(join(ROOT, d))
-    .filter(f => f.endsWith('.mjs'))
-    .map(f => `${d}/${f}`),
+const files = ['test', 'scripts/scenarios', 'scripts/shell-checks'].flatMap(dir =>
+  readdirSync(join(ROOT, dir))
+    .filter(name => name.endsWith('.mjs'))
+    .map(name => `${dir}/${name}`),
 );
 
-for (const f of files) {
-  const t = read(f);
+for (const file of files) {
+  const text = read(file);
 
   const at = re => {
-    const m = re.exec(t);
+    const match = re.exec(text);
 
-    return m ? m.index : -1;
+    return match ? match.index : -1;
   };
 
-  if (/\bmkdtempSync\b/.test(t)) {
-    fails.push(`${f}: a bare mkdtempSync — tmpDir() from lib/testserver.mjs removes its folder on exit`);
+  if (/\bmkdtempSync\b/.test(text)) {
+    fails.push(`${file}: a bare mkdtempSync — tmpDir() from lib/testserver.mjs removes its folder on exit`);
   }
 
-  if (!f.startsWith('test/')) continue;
+  if (!file.startsWith('test/')) continue;
 
   const env = at(/^import '\.\/env\.mjs';/m);
   const stat = at(/^import [^;]*from '\.\.\/server\.mjs';/m);
@@ -50,11 +50,11 @@ for (const f of files) {
   const own = at(/process\.env\.STATE_FILE = /);
 
   if (stat >= 0 && !(env >= 0 && env < stat)) {
-    fails.push(`${f}: imports ../server.mjs without import './env.mjs' above it`);
+    fails.push(`${file}: imports ../server.mjs without import './env.mjs' above it`);
   }
 
   if (dyn >= 0 && !(env >= 0 && env < dyn) && !(own >= 0 && own < dyn)) {
-    fails.push(`${f}: imports ../server.mjs before setting STATE_FILE or importing ./env.mjs`);
+    fails.push(`${file}: imports ../server.mjs before setting STATE_FILE or importing ./env.mjs`);
   }
 }
 
@@ -79,10 +79,10 @@ const asPath = src => {
   let out = '';
   let depth = 0;
 
-  for (const c of src.replace(/\\\//g, '/')) {
-    if (c === '(' && !depth++) out += ':id';
-    else if (c === ')') depth--;
-    else if (!depth) out += c;
+  for (const char of src.replace(/\\\//g, '/')) {
+    if (char === '(' && !depth++) out += ':id';
+    else if (char === ')') depth--;
+    else if (!depth) out += char;
   }
 
   return out;
@@ -93,8 +93,8 @@ const routeFiles = [
   'server/http.mjs',
   ...(existsSync(join(ROOT, 'server/routes'))
     ? readdirSync(join(ROOT, 'server/routes'))
-        .filter(f => f.endsWith('.mjs'))
-        .map(f => `server/routes/${f}`)
+        .filter(name => name.endsWith('.mjs'))
+        .map(name => `server/routes/${name}`)
     : []),
 ];
 
@@ -103,32 +103,37 @@ const http = routeFiles.map(read).join('\n');
 if (http.length < 1000) fails.push('server/http.mjs: the routes were not found');
 
 const routes = new Set(
-  [...http.matchAll(/\bp === '(\/[^']*)'/g)]
-    .map(m => m[1])
-    .concat([...http.matchAll(/\bp\.match\(\/\^(.+?)\$\/\)/g)].map(m => asPath(m[1]))),
+  [...http.matchAll(/\bpath === '(\/[^']*)'/g)]
+    .map(match => match[1])
+    .concat([...http.matchAll(/\bpath\.match\(\/\^(.+?)\$\/\)/g)].map(match => asPath(match[1]))),
 );
 
 const corpus = files.map(read).join('\n');
-const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const esc = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-for (const r of routes) {
-  if (DRIVEN[r]) continue;
+for (const route of routes) {
+  if (DRIVEN[route]) continue;
 
-  const parts = r.slice(1).split(':id').map(esc);
-  const named = new RegExp(`(?<=['"\`/])${parts.join('.{1,60}?')}${r.endsWith(':id') ? '[^\\s\'"`)]' : '(?![\\w/-])'}`);
+  const parts = route.slice(1).split(':id').map(esc);
+
+  const named = new RegExp(
+    `(?<=['"\`/])${parts.join('.{1,60}?')}${route.endsWith(':id') ? '[^\\s\'"`)]' : '(?![\\w/-])'}`,
+  );
 
   if (!named.test(corpus)) {
     fails.push(
-      `the server answers ${r}, which no test or scenario names: test it, or put it on DRIVEN (scripts/check-tests.mjs) with the scenario that drives it`,
+      `the server answers ${route}, which no test or scenario names: test it, or put it on DRIVEN (scripts/check-tests.mjs) with the scenario that drives it`,
     );
   }
 }
 
-for (const [r, by] of Object.entries(DRIVEN)) {
-  if (!routes.has(r)) fails.push(`scripts/check-tests.mjs: DRIVEN names ${r}, which the server no longer answers`);
+for (const [route, by] of Object.entries(DRIVEN)) {
+  if (!routes.has(route)) {
+    fails.push(`scripts/check-tests.mjs: DRIVEN names ${route}, which the server no longer answers`);
+  }
 
   if (!existsSync(join(ROOT, by))) {
-    fails.push(`scripts/check-tests.mjs: DRIVEN's ${r} is driven by ${by}, which is not there`);
+    fails.push(`scripts/check-tests.mjs: DRIVEN's ${route} is driven by ${by}, which is not there`);
   }
 }
 

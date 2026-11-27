@@ -32,71 +32,72 @@ export const termsAvailable = () => !!nodePty && existsSync(HOLDER);
 
 /** The chat's drawer (`shell` false) or its zsh (true) — a live one over an exited one still lingering in `terms`. The
  *  same rule as termIndex, for one chat. An editor's tab (`editor`, 2026-10-21) is a shell's kind, and never its zsh. */
-function drawerOf(s, shell) {
+function drawerOf(session, shell) {
   let hit = null;
 
-  for (const t of terms.values()) {
+  for (const term of terms.values()) {
     if (
-      t.sessionId === s.id &&
-      !!t.shell === shell &&
-      !t.editor &&
-      (!hit || (hit.exited !== null && t.exited === null))
+      term.sessionId === session.id &&
+      !!term.shell === shell &&
+      !term.editor &&
+      (!hit || (hit.exited !== null && term.exited === null))
     ) {
-      hit = t;
+      hit = term;
     }
   }
 
   return hit;
 }
 
-export const termOf = s => drawerOf(s, false);
-export const shellOf = s => drawerOf(s, true);
+export const termOf = session => drawerOf(session, false);
+export const shellOf = session => drawerOf(session, true);
 /** Every zsh of the chat (2026-10-13: ⌘T opens another) and its editors' (vim), the exited ones still lingering too,
  *  oldest first — each its tab. */
-const byStart = (a, b) => String(a.startedAt).localeCompare(String(b.startedAt));
+const byStart = (left, right) => String(left.startedAt).localeCompare(String(right.startedAt));
 
-export const shellsOf = s => [...terms.values()].filter(t => t.sessionId === s.id && t.shell).sort(byStart);
+export const shellsOf = session =>
+  [...terms.values()].filter(term => term.sessionId === session.id && term.shell).sort(byStart);
 export const NO_TERMS = Object.freeze({ term: null, shell: null, shells: [] });
 
 /** Every chat's drawer and zsh in one pass, by the same rule — for the summaries of the whole board, which asked
  *  termOf and shellOf per chat, each a walk over every terminal (322 chats × 75 terminals × 2 per snapshot, 2026-09-27). */
 export function termIndex() {
-  const m = new Map();
+  const bySession = new Map();
 
-  for (const t of terms.values()) {
-    if (!t.sessionId) continue;
-    let e = m.get(t.sessionId);
+  for (const term of terms.values()) {
+    if (!term.sessionId) continue;
+    let entry = bySession.get(term.sessionId);
 
-    if (!e) m.set(t.sessionId, (e = { term: null, shell: null, shells: [] }));
-    const k = t.shell ? 'shell' : 'term';
+    if (!entry) bySession.set(term.sessionId, (entry = { term: null, shell: null, shells: [] }));
+    const kind = term.shell ? 'shell' : 'term';
 
-    if (!t.editor && (!e[k] || (e[k].exited !== null && t.exited === null))) e[k] = t;
-    if (t.shell) e.shells.push(t);
+    if (!term.editor && (!entry[kind] || (entry[kind].exited !== null && term.exited === null))) entry[kind] = term;
+    if (term.shell) entry.shells.push(term);
   }
 
-  for (const e of m.values()) e.shells.sort(byStart);
-  return m;
+  for (const entry of bySession.values()) entry.shells.sort(byStart);
+  return bySession;
 }
 
-export function termSummary(t) {
-  return t
+export function termSummary(term) {
+  return term
     ? {
-        id: t.id,
-        sessionId: t.sessionId,
-        cwd: t.cwd,
-        pid: t.pid,
-        holderPid: t.holderPid,
-        resume: t.resume,
-        shell: !!t.shell,
-        editor: t.editor || null,
-        task: t.task || null,
-        startedAt: t.startedAt,
-        exited: t.exited,
-        cols: t.cols,
-        rows: t.rows,
-        clients: t.clients.size,
-        connected: !!(t.sock && !t.sock.destroyed),
-        lastSnapshotChars: t.lastSnap,
+        id: term.id,
+        sessionId: term.sessionId,
+        cwd: term.cwd,
+        pid: term.pid,
+        holderPid: term.holderPid,
+        resume: term.resume,
+        shell: !!term.shell,
+        editor: term.editor || null,
+        task: term.task || null,
+        startedAt: term.startedAt,
+        exited: term.exited,
+        cols: term.cols,
+        rows: term.rows,
+        clients: term.clients.size,
+        connected: !!(term.sock && !term.sock.destroyed),
+        lastSnapshotChars: term.lastSnap,
       }
     : null;
 }
@@ -106,7 +107,7 @@ export function termSummary(t) {
 // go: CLAUDECODE and CLAUDE_CODE_*. CLAUDE_DIR is this project's own (a fixture in tests — the fake claude reads it)
 // and CLAUDE_BIN the override the server already resolved; neither means anything to the CLI.
 export const cleanEnv = () =>
-  Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^CLAUDECODE$|^CLAUDE_CODE_/.test(k)));
+  Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^CLAUDECODE$|^CLAUDE_CODE_/.test(name)));
 
 export function termEnv() {
   const env = cleanEnv();
@@ -199,10 +200,10 @@ const BOARD_ENV = new Set([
     'ps',
     'osascript',
     'cc',
-  ].map(n => `${n.toUpperCase()}_BIN`),
+  ].map(name => `${name.toUpperCase()}_BIN`),
 ]); // findBin's
 
-export const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([k]) => !BOARD_ENV.has(k)));
+export const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([name]) => !BOARD_ENV.has(name)));
 
 // Take a chat over from wherever it runs — iTerm, VS Code: end that claude, then resume the chat here.
 // Nothing respawns a CLI process, and VS Code's extension does not respawn its own either (see inVsCode),
@@ -223,7 +224,7 @@ function sameProcess({ pid, procStart }) {
 }
 
 /** A background session's job (2026-11-04): what `claude attach` and `claude stop` take, as the registry names it. */
-export const jobOf = l => (l?.kind === 'bg' && /^[0-9a-f]{8}$/.test(l.jobId || '') ? l.jobId : null);
+export const jobOf = entry => (entry?.kind === 'bg' && /^[0-9a-f]{8}$/.test(entry.jobId || '') ? entry.jobId : null);
 
 export function endClaude(entry) {
   const { pid } = entry;
@@ -252,9 +253,9 @@ export function endClaude(entry) {
     else {
       try {
         process.kill(pid, 'SIGTERM');
-      } catch (e) {
+      } catch (error) {
         return resolve(
-          e.code === 'ESRCH' ? { ok: true } : { code: 500, error: `could not signal pid ${pid}: ${e.message}` },
+          error.code === 'ESRCH' ? { ok: true } : { code: 500, error: `could not signal pid ${pid}: ${error.message}` },
         );
       }
     }

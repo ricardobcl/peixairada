@@ -22,7 +22,7 @@ export default async function (ctx) {
   const cwd = join(tmpdir(), 'peix-watch', 'watch-repo');
 
   const sleeps = Array.from({ length: 8 }, () => spawn('sleep', ['300'], { stdio: 'ignore' }));
-  const live = i => ({ pid: sleeps[i].pid, startedAt: Date.now() - 3600_000 });
+  const live = index => ({ pid: sleeps[index].pid, startedAt: Date.now() - 3600_000 });
 
   const now = Date.now();
   const at = ms => new Date(now - ms);
@@ -147,7 +147,7 @@ export default async function (ctx) {
       },
     ]);
 
-    const chat = t => chats.find(c => c.title === t);
+    const chat = title => chats.find(fixtureChat => fixtureChat.title === title);
     const ci = chat('Watching CI');
     const card = `document.querySelector('#slist > .card[data-id="${ci.id}"]')`;
 
@@ -158,7 +158,9 @@ export default async function (ctx) {
 
     await ctx.settle();
     await ctx.waitFor(`!document.querySelector('.rn.rolling')`);
-    const mine = l => l.filter(x => x.startsWith('lane:') || chats.some(c => c.title === x));
+
+    const mine = list =>
+      list.filter(label => label.startsWith('lane:') || chats.some(fixtureChat => fixtureChat.title === label));
 
     out.lanes = mine(await lanes(ctx));
 
@@ -191,10 +193,10 @@ export default async function (ctx) {
 
     await ctx.waitFor(`/in \\d/.test(${line(bk.id)}?.textContent || '')`, { what: 'the wake-up on its card' });
 
-    const hm = t => {
-      const d = new Date(t);
+    const hm = time => {
+      const date = new Date(time);
 
-      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     };
 
     out.wake =
@@ -237,7 +239,7 @@ export default async function (ctx) {
     );
 
     // ---- no ping-pong: a turn its monitor's notice woke stays in Watching, the clauding ring lit on it ----
-    const append = lines => appendFileSync(ci.file, `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
+    const append = lines => appendFileSync(ci.file, `${lines.map(entry => JSON.stringify(entry)).join('\n')}\n`);
 
     append([
       taskNoteLine({ id: ci.id, cwd, taskId: mon, summary: 'Monitor event', event: 'Build: pass' }),
@@ -377,9 +379,9 @@ export default async function (ctx) {
     await ctx.waitFor(`window.peix.session('${pl.id}')?.done === true`, { what: 'a plain chat ticked at once' });
     return out;
   } finally {
-    for (const p of sleeps) {
+    for (const child of sleeps) {
       try {
-        p.kill();
+        child.kill();
       } catch {}
     }
   }

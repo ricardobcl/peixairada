@@ -30,20 +30,20 @@ const dd = argv.indexOf('--');
 const scenarioArgs = dd >= 0 ? argv.splice(dd).slice(1) : [];
 
 const opt = (name, dflt = null) => {
-  const i = argv.indexOf(name);
+  const index = argv.indexOf(name);
 
-  if (i < 0) return dflt;
-  const v = argv[i + 1];
+  if (index < 0) return dflt;
+  const value = argv[index + 1];
 
-  argv.splice(i, 2);
-  return v;
+  argv.splice(index, 2);
+  return value;
 };
 
 const flag = name => {
-  const i = argv.indexOf(name);
+  const index = argv.indexOf(name);
 
-  if (i < 0) return false;
-  argv.splice(i, 1);
+  if (index < 0) return false;
+  argv.splice(index, 1);
   return true;
 };
 
@@ -57,7 +57,7 @@ const shotsDir = opt('--shots');
 const keep = flag('--keep');
 const timeout = Number(opt('--timeout', 120_000));
 
-const file = argv.find(a => !a.startsWith('--'));
+const file = argv.find(argument => !argument.startsWith('--'));
 
 if (!(timeout > 0)) {
   console.error('--timeout wants a number of ms');
@@ -76,9 +76,9 @@ const macTz = process.env.TZ;
 
 {
   const now = new Date();
-  const o = Math.round(12 - now.getUTCHours() - now.getUTCMinutes() / 60);
+  const offset = Math.round(12 - now.getUTCHours() - now.getUTCMinutes() / 60);
 
-  process.env.TZ = o ? `Etc/GMT${o > 0 ? '-' : '+'}${Math.abs(o)}` : 'Etc/GMT';
+  process.env.TZ = offset ? `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}` : 'Etc/GMT';
 } // Etc's signs are POSIX's: GMT-5 is five hours ahead
 
 const mod = await import(pathToFileURL(resolve(file)).href);
@@ -102,7 +102,7 @@ if (meta.newHeadless && HEADLESS_SHELL) {
 const shots = shotsDir || join(tmpdir(), 'peixairada-shots');
 
 mkdirSync(shots, { recursive: true });
-const log = (...a) => console.error(`[${name}]`, ...a);
+const log = (...args) => console.error(`[${name}]`, ...args);
 
 const cleanups = [];
 // One cleanup, which every way out waits on (2026-10-14): a second finish returned at once before — the bail closed
@@ -112,11 +112,11 @@ let cleaning = null;
 
 const cleanup = () =>
   (cleaning ||= (async () => {
-    for (const c of cleanups.reverse()) {
+    for (const step of cleanups.reverse()) {
       try {
-        await c();
-      } catch (e) {
-        log('cleanup:', e.message);
+        await step();
+      } catch (error) {
+        log('cleanup:', error.message);
       }
     }
   })());
@@ -139,8 +139,8 @@ for (const [sig, code] of [
 }
 
 for (const ev of ['uncaughtException', 'unhandledRejection']) {
-  process.on(ev, e => {
-    log(`${ev}: ${e?.stack || e}`);
+  process.on(ev, error => {
+    log(`${ev}: ${error?.stack || error}`);
     finish(1);
   });
 }
@@ -179,7 +179,7 @@ try {
       meta.fixture === 'auto' ? defaultFixture(dir, { cwdA, cwdB: realpathSync(tmpdir()) }) : { dir, chats: [] };
 
     log(
-      `fixture ${dir}${fixture.chats.length ? ` — chats ${fixture.chats.map(c => c.id.slice(0, 8)).join(', ')}` : ''}`,
+      `fixture ${dir}${fixture.chats.length ? ` — chats ${fixture.chats.map(chat => chat.id.slice(0, 8)).join(', ')}` : ''}`,
     );
   }
 
@@ -208,15 +208,15 @@ try {
   });
 
   await openBoard(cdp, boardUrl, { hash: hash || null });
-} catch (e) {
-  log(`setup failed: ${e.stack || e}`);
+} catch (error) {
+  log(`setup failed: ${error.stack || error}`);
   clearTimeout(bail);
   await finish(1);
 }
 
 // The rows of a half's terminal. The left half keeps the plain ids — it is the whole column while nothing is
 // split — so `ROWS(0)` is what every scenario written before the split already asked for.
-const ROWS = g => `[...document.querySelectorAll('#termBody${g ? 'B' : ''} .xterm-rows > div')]`;
+const ROWS = half => `[...document.querySelectorAll('#termBody${half ? 'B' : ''} .xterm-rows > div')]`;
 
 const ctx = {
   url: boardUrl,
@@ -254,11 +254,11 @@ const ctx = {
   exceptions: cdp.exceptions,
   console: cdp.console,
   shot: async (label, clip) => {
-    const f = join(shots, `${name}-${label}.png`);
+    const shotPath = join(shots, `${name}-${label}.png`);
 
-    await cdp.shot(f, clip);
-    log(`screenshot → ${f}`);
-    return f;
+    await cdp.shot(shotPath, clip);
+    log(`screenshot → ${shotPath}`);
+    return shotPath;
   },
   openChat: id => openChat(cdp, id),
   /** ⌥⌘ + a letter, as the page's hotkeys expect it (e.code; e.key is a symbol with ⌥ held on a Mac). */
@@ -271,13 +271,13 @@ const ctx = {
     cdp.evaluate(
       `document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'x', metaKey: true, bubbles: true, cancelable: true }))`,
     ),
-  /** The drawer's rows as text, trailing blanks trimmed, empty rows dropped. `g` is the half of the chat column:
+  /** The drawer's rows as text, trailing blanks trimmed, empty rows dropped. `half` is which half of the chat column:
       0 — the whole of it while nothing is split — or 1. */
-  screen: (g = 0) => cdp.evaluate(`${ROWS(g)}.map(r => r.textContent.replace(/\\s+$/, '')).filter(Boolean)`),
+  screen: (half = 0) => cdp.evaluate(`${ROWS(half)}.map(r => r.textContent.replace(/\\s+$/, '')).filter(Boolean)`),
   /** Type into a half's drawer as a hand would: the text as an InputEvent on xterm's textarea, then Enter as a keydown —
       what the drawer sends on as keystrokes (four scenarios each spelled this out until 2026-09-27). */
-  type: async (text, g = 0) => {
-    const box = `document.querySelector('#termBody${g ? 'B' : ''} textarea')`;
+  type: async (text, half = 0) => {
+    const box = `document.querySelector('#termBody${half ? 'B' : ''} textarea')`;
 
     await cdp.evaluate(
       `${box}.dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(text)}, inputType: 'insertText', bubbles: true }))`,
@@ -293,46 +293,51 @@ const ctx = {
       `(() => { const q = document.querySelector(${JSON.stringify(selector)}); q.value = ${JSON.stringify(text)}; q.dispatchEvent(new Event('input', { bubbles: true })); })()`,
     ),
   /** Wait for a half's drawer to show a prompt line (the fake's or Claude's ❯). */
-  waitPrompt: (timeout = 30_000, g = 0) =>
-    cdp.waitFor(`${ROWS(g)}.some(r => r.textContent.includes('❯'))`, {
+  waitPrompt: (timeout = 30_000, half = 0) =>
+    cdp.waitFor(`${ROWS(half)}.some(r => r.textContent.includes('❯'))`, {
       timeout,
       every: 250,
-      what: `the ❯ prompt in ${g ? 'the right half' : 'the drawer'}`,
+      what: `the ❯ prompt in ${half ? 'the right half' : 'the drawer'}`,
     }),
   /** A drag through the browser's own input: a press at the middle of `from`, eight moves to the middle of `to`, a
       release there — the pointer events a hand makes. `mid` runs before the release, to look at the drag in flight;
       what it returns is what this returns. Selectors, or {x, y} points. */
   drag: async (from, to, mid = null) => {
-    const at = t =>
-      typeof t !== 'string'
-        ? t
+    const at = target =>
+      typeof target !== 'string'
+        ? target
         : cdp.evaluate(
-            `(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector(${JSON.stringify(t)}).getBoundingClientRect())`,
+            `(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector(${JSON.stringify(target)}).getBoundingClientRect())`,
           );
 
-    const a = await at(from);
-    const b = await at(to);
+    const start = await at(from);
+    const end = await at(to);
 
-    const mouse = (type, x, y, buttons) =>
-      cdp.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons, clickCount: 1 });
+    const mouse = (type, pointerX, pointerY, buttons) =>
+      cdp.send('Input.dispatchMouseEvent', { type, x: pointerX, y: pointerY, button: 'left', buttons, clickCount: 1 });
 
-    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: a.x, y: a.y });
-    await mouse('mousePressed', a.x, a.y, 1);
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: start.x, y: start.y });
+    await mouse('mousePressed', start.x, start.y, 1);
 
-    for (let i = 1; i <= 8; i++) {
-      await mouse('mouseMoved', Math.round(a.x + ((b.x - a.x) * i) / 8), Math.round(a.y + ((b.y - a.y) * i) / 8), 1);
+    for (let step = 1; step <= 8; step++) {
+      await mouse(
+        'mouseMoved',
+        Math.round(start.x + ((end.x - start.x) * step) / 8),
+        Math.round(start.y + ((end.y - start.y) * step) / 8),
+        1,
+      );
     }
 
     const seen = mid ? await mid() : undefined;
 
-    await mouse('mouseReleased', b.x, b.y, 0);
+    await mouse('mouseReleased', end.x, end.y, 0);
     return seen;
   },
   /** What each frame of a half's drawer showed, from now until `frames()` (lib/framewatch.mjs). */
-  watchFrames: (g = 0) => cdp.evaluate(`window.__frames = ${FRAME_WATCH}(${g}); 0`),
+  watchFrames: (half = 0) => cdp.evaluate(`window.__frames = ${FRAME_WATCH}(${half}); 0`),
   frames: () => cdp.evaluate(`JSON.stringify(window.__frames.stop())`).then(JSON.parse),
   /** A read-only look into the page's closure (window.peix). */
-  peix: what => cdp.evaluate(`JSON.stringify(window.peix.${what})`).then(v => JSON.parse(v)),
+  peix: what => cdp.evaluate(`JSON.stringify(window.peix.${what})`).then(json => JSON.parse(json)),
 };
 
 let code = 0;
@@ -345,7 +350,7 @@ try {
     code = 1;
   }
 
-  const csp = cdp.console.filter(l => /CSP violation/.test(l));
+  const csp = cdp.console.filter(line => /CSP violation/.test(line));
 
   if (csp.length && meta.csp !== false) {
     log("the page's policy refused:", csp);
@@ -353,9 +358,9 @@ try {
   }
 
   console.log(JSON.stringify(result ?? { ok: true }, null, 1));
-} catch (e) {
+} catch (error) {
   code = 1;
-  console.error(`[${name}] FAILED: ${e.stack || e}`);
+  console.error(`[${name}] FAILED: ${error.stack || error}`);
   if (server) console.error(`[${name}] server log tail:\n${server.logText().slice(-1500)}`);
 
   try {

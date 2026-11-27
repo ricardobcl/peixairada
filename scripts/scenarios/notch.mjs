@@ -22,7 +22,7 @@ export default async function (ctx) {
     mobile: false,
   });
 
-  const urls = Array.from({ length: 6 }, (_, i) => `https://github.com/acme/repo-a/pull/${201 + i}`);
+  const urls = Array.from({ length: 6 }, (_, index) => `https://github.com/acme/repo-a/pull/${201 + index}`);
 
   const [chat] = makeFixture(ctx.fixture.dir, [
     {
@@ -40,8 +40,8 @@ export default async function (ctx) {
   const fill = (on, notch = NOTCH) =>
     ctx.evaluate(`window.peixFill(${on}, ${JSON.stringify(notch)})`).then(() => ctx.sleep(250));
 
-  const listWidth = w =>
-    ctx.evaluate(`document.querySelector('#sessions').style.width = '${w}px'`).then(() => ctx.sleep(250));
+  const listWidth = width =>
+    ctx.evaluate(`document.querySelector('#sessions').style.width = '${width}px'`).then(() => ctx.sleep(250));
 
   // The row, measured: what is in the strip, and whether anything of the header sits under the housing (x within it,
   // and its top above the strip's bottom).

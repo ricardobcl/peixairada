@@ -41,7 +41,7 @@ export default async function (ctx) {
 
   writeFileSync(outFile, '');
   const holder = spawn('/bin/sh', ['-c', `exec sleep 120 >> ${JSON.stringify(outFile)}`], { stdio: 'ignore' });
-  const live = i => ({ pid: sleeps[i].pid, startedAt: Date.now() - 3600_000 });
+  const live = index => ({ pid: sleeps[index].pid, startedAt: Date.now() - 3600_000 });
 
   const now = Date.now();
   const at = ms => new Date(now - ms);
@@ -199,16 +199,16 @@ export default async function (ctx) {
     },
   ]);
 
-  const chat = t => chats.find(c => c.title === t);
+  const chat = title => chats.find(candidate => candidate.title === title);
   // Three sub-agent transcripts for the agents chat, each mid-turn: <slug>/<id>/subagents/agent-*.jsonl
   const agents = chat('Three agents out');
   const agentDir = join(dirname(agents.file), agents.id, 'subagents');
 
   mkdirSync(agentDir, { recursive: true });
 
-  for (const n of [1, 2, 3]) {
+  for (const index of [1, 2, 3]) {
     writeFileSync(
-      join(agentDir, `agent-${n}.jsonl`),
+      join(agentDir, `agent-${index}.jsonl`),
       `${JSON.stringify({ isSidechain: true, type: 'user', message: { role: 'user', content: 'go' } })}\n`,
     );
   }
@@ -231,7 +231,7 @@ export default async function (ctx) {
       `sessions().filter(s => s.cwd === ${JSON.stringify(cwd)}).map(s => ({ title: s.title, status: s.status, agents: s.agents, tasks: (s.tasks || []).map(t => t.kind + ':' + t.what + ':' + t.events), ask: s.ask && (s.ask.tool + '/' + s.ask.options + (s.ask.waitingFor ? '/' + s.ask.waitingFor : '')) }))`,
     );
 
-    const by = t => out.server.find(x => x.title === t);
+    const by = title => out.server.find(session => session.title === title);
 
     ctx.assert.equal(by('Normal work').status, 'working', 'a tool call with no answer is work in progress');
 
@@ -258,7 +258,7 @@ export default async function (ctx) {
     );
 
     // ---- what the card does with it ----
-    out.cards = (await cards(ctx)).filter(c =>
+    out.cards = (await cards(ctx)).filter(entry =>
       [
         'Normal work',
         'Watching CI',
@@ -266,7 +266,7 @@ export default async function (ctx) {
         'Waiting on you',
         'Both at once',
         'Blocked on a prompt',
-      ].includes(c.title),
+      ].includes(entry.title),
     );
 
     await ctx.shot('card-signals');
@@ -274,7 +274,7 @@ export default async function (ctx) {
     await ctx.evaluate(`document.documentElement.dataset.theme = 'light'`);
     await ctx.shot('card-signals-light');
     await ctx.evaluate(`delete document.documentElement.dataset.theme`);
-    const card = t => out.cards.find(c => c.title === t);
+    const card = title => out.cards.find(entry => entry.title === title);
 
     ctx.assert.deepEqual(card('Normal work').cls, ['working'], 'plain work: the clauding ring, nothing else');
     ctx.assert.equal(card('Normal work').lights, '', '…one light (the default)');
@@ -399,7 +399,7 @@ export default async function (ctx) {
     out.ring.push(await ring());
 
     ctx.assert.deepEqual(
-      out.ring.map(r => r.start),
+      out.ring.map(reading => reading.start),
       [0, 0],
       'the ring is at start time 0 on the document clock, before the update and on the new card after it',
     );
@@ -410,10 +410,10 @@ export default async function (ctx) {
       'and it is a transform animation, the kind the compositor runs',
     );
 
-    for (const r of out.ring) {
+    for (const reading of out.ring) {
       ctx.assert.ok(
-        Math.min(Math.abs(r.angle - r.expect), 360 - Math.abs(r.angle - r.expect)) <= 3,
-        `the light is where the clock says: ${r.angle}° for ${r.expect}°`,
+        Math.min(Math.abs(reading.angle - reading.expect), 360 - Math.abs(reading.angle - reading.expect)) <= 3,
+        `the light is where the clock says: ${reading.angle}° for ${reading.expect}°`,
       );
     }
 
@@ -428,7 +428,7 @@ export default async function (ctx) {
     out.starts = await starts();
 
     ctx.assert.ok(
-      Object.keys(out.starts).length >= 3 && Object.values(out.starts).every(t => t === 0),
+      Object.keys(out.starts).length >= 3 && Object.values(out.starts).every(start => start === 0),
       `every ring in step: ${JSON.stringify(out.starts)}`,
     );
 
@@ -445,7 +445,7 @@ export default async function (ctx) {
         input: { command: 'npm run lint', description: 'lint' },
         at: new Date(),
       })
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 
@@ -464,9 +464,9 @@ export default async function (ctx) {
 
     // ---- while Claude works, a choice (2026-11-25, round XXVI): the ring, an arc beside the project or a still edge,
     // Settings › Chat list's — CSS alone, a monitor keeping its light ----
-    const pickLook = v =>
+    const pickLook = choice =>
       ctx.evaluate(
-        `(s => { s.value = ${JSON.stringify(v)}; s.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#claudingLook'))`,
+        `(s => { s.value = ${JSON.stringify(choice)}; s.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#claudingLook'))`,
       );
 
     const looks = () =>
@@ -496,11 +496,11 @@ export default async function (ctx) {
     await ctx.sleep(120);
     out.looks.arc = await looks();
 
-    for (const t of ['Normal work', 'Both at once']) {
+    for (const title of ['Normal work', 'Both at once']) {
       ctx.assert.deepEqual(
-        [out.looks.arc[t].ring, out.looks.arc[t].arc, out.looks.arc[t].halo],
+        [out.looks.arc[title].ring, out.looks.arc[title].arc, out.looks.arc[title].halo],
         ['hidden', 'ring', false],
-        `${t}: an arc beside the project turns, nothing round the card, no halo: ${JSON.stringify(out.looks.arc)}`,
+        `${title}: an arc beside the project turns, nothing round the card, no halo: ${JSON.stringify(out.looks.arc)}`,
       );
     }
 
@@ -663,7 +663,7 @@ export default async function (ctx) {
     appendFileSync(
       nwc.file,
       `${toolLines({ id: nwc.id, cwd, name: 'Grep', input: { pattern: 'parseArgs', path: 'src' }, at: new Date() })
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 
@@ -676,17 +676,17 @@ export default async function (ctx) {
     ctx.assert.match(out.doing2 || '', /^Grep/, `the next: ${out.doing2}`);
 
     // ---- a monitor's event, on its card (2026-10-11): the live line says the newest, and a new one rolls in with a blip ----
-    const b = chat('Watching CI');
+    const watching = chat('Watching CI');
     const live = `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === 'Watching CI')?.querySelector('.state.live')?.textContent`;
 
     out.live = await ctx.evaluate(live);
     ctx.assert.equal(out.live, 'Build: pass', 'the newest event on the card');
 
     appendFileSync(
-      b.file,
+      watching.file,
       `${JSON.stringify(
         taskNoteLine({
-          id: b.id,
+          id: watching.id,
           cwd,
           taskId: mon,
           summary: 'Monitor event: "CI checks on PR #382"',
@@ -695,7 +695,7 @@ export default async function (ctx) {
       )}\n`,
     );
 
-    await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'blip' && m.id === '${b.id}')`, {
+    await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'blip' && m.id === '${watching.id}')`, {
       what: 'the light blipping for the event',
     });
 
@@ -703,13 +703,13 @@ export default async function (ctx) {
     ctx.assert.equal(await ctx.evaluate(live), 'Tests: 212 passed', 'rolled in');
 
     // ---- the end of a monitor takes the chip away ----
-    writeFileSync(b.file, '', { flag: 'a' });
+    writeFileSync(watching.file, '', { flag: 'a' });
 
     appendFileSync(
-      b.file,
+      watching.file,
       `${JSON.stringify(
         taskNoteLine({
-          id: b.id,
+          id: watching.id,
           cwd,
           taskId: mon,
           summary: 'Monitor "CI checks on PR #382" completed',
@@ -722,7 +722,7 @@ export default async function (ctx) {
       what: 'the monitor gone when it reported its end',
     });
 
-    out.afterEnd = (await cards(ctx)).find(c => c.title === 'Watching CI');
+    out.afterEnd = (await cards(ctx)).find(entry => entry.title === 'Watching CI');
     ctx.assert.deepEqual(out.afterEnd.cls, ['idle'], 'the ring goes with it');
     ctx.assert.deepEqual(out.afterEnd.chips, [], '…and so does the chip');
 
@@ -770,7 +770,7 @@ export default async function (ctx) {
         result: 'Your questions have been answered: "Which one?"="this"',
         input: { questions: [{ question: 'Which one?', options: [{ label: 'this' }, { label: 'that' }] }] },
       })
-        .map(l => JSON.stringify(l))
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 
@@ -792,11 +792,11 @@ export default async function (ctx) {
     );
 
     // ---- the ring round the row (the sidebar's .rg since 2026-11-01; the tiles' card a lit edge, the ring its own) ----
-    const look = t =>
+    const look = title =>
       ctx
         .evaluate(
           `JSON.stringify((c => ({ anim: getComputedStyle(c.querySelector(':scope > .rg'), '::before').animationName,
-      lights: c.style.getPropertyValue('--lights') || '1' }))([...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === ${JSON.stringify(t)})))`,
+      lights: c.style.getPropertyValue('--lights') || '1' }))([...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === ${JSON.stringify(title)})))`,
         )
         .then(JSON.parse);
 
@@ -805,9 +805,9 @@ export default async function (ctx) {
     ctx.assert.equal((await look('Three agents out')).lights, '3', 'a light per agent');
     return out;
   } finally {
-    for (const p of [...sleeps, holder]) {
+    for (const child of [...sleeps, holder]) {
       try {
-        p.kill();
+        child.kill();
       } catch {}
     }
   }

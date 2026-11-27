@@ -13,7 +13,7 @@ function welcomeMark() {
 
   $('#wsugs')
     .querySelectorAll('.wsug')
-    .forEach(b => b.classList.toggle('on', homePath(welcome.sugs[+b.dataset.i].dir) === dir));
+    .forEach(button => button.classList.toggle('on', homePath(welcome.sugs[+button.dataset.i].dir) === dir));
 
   if (welcome.make && welcome.make !== dir) {
     welcome.make = null;
@@ -43,8 +43,8 @@ function welcomeSync() {
   $('#wdir').focus();
 
   api('GET', '/api/config/suggest')
-    .then(d => {
-      welcome.sugs = d.roots || [];
+    .then(result => {
+      welcome.sugs = result.roots || [];
       const top = welcome.sugs[0];
 
       if (top && !$('#wdir').value.trim()) {
@@ -54,8 +54,8 @@ function welcomeSync() {
 
       $('#wsugs').innerHTML = welcome.sugs
         .map(
-          (r, i) =>
-            `<button class="wsug" data-i="${i}" title="${esc(r.dir)}">${ICON.folder}<span class="pn"><b>${esc(homePath(r.dir))}</b><small>${r.repos} repo${r.repos === 1 ? '' : 's'}${r.chats ? ` · ${r.chats} with chats` : ''}</small></span><span class="wo">${r.org ? `github.com/${esc(r.org)}` : ''}</span></button>`,
+          (suggestion, index) =>
+            `<button class="wsug" data-i="${index}" title="${esc(suggestion.dir)}">${ICON.folder}<span class="pn"><b>${esc(homePath(suggestion.dir))}</b><small>${suggestion.repos} repo${suggestion.repos === 1 ? '' : 's'}${suggestion.chats ? ` · ${suggestion.chats} with chats` : ''}</small></span><span class="wo">${suggestion.org ? `github.com/${esc(suggestion.org)}` : ''}</span></button>`,
         )
         .join('');
 
@@ -69,16 +69,16 @@ async function welcomeAnswer(roots, create = false) {
 
   try {
     state.config = (await api('PUT', '/api/config', { roots, ...(create && { create: true }) })).config;
-  } catch (e) {
+  } catch (error) {
     const dir = roots[0]?.dir;
 
-    if (!create && /is not a folder here/.test(e.message)) {
+    if (!create && /is not a folder here/.test(error.message)) {
       welcome.make = dir;
       $('#werr').textContent = `${dir} isn't there yet.`;
       $('#wok').textContent = 'Make it and use it';
     } else {
       $('#werr').textContent =
-        e.status === 404 ? 'The running server predates the setup — scripts/launchd.sh restart' : e.message;
+        error.status === 404 ? 'The running server predates the setup — scripts/launchd.sh restart' : error.message;
     }
 
     return;
@@ -107,22 +107,22 @@ $('#wok').onclick = () => {
 $('#wskip').onclick = () => welcomeAnswer([]);
 $('#wdir').addEventListener('input', welcomeMark);
 
-$('#wsugs').addEventListener('click', e => {
-  const b = e.target.closest('.wsug');
+$('#wsugs').addEventListener('click', event => {
+  const button = event.target.closest('.wsug');
 
-  if (!b) return;
-  const r = welcome.sugs[+b.dataset.i];
+  if (!button) return;
+  const suggestion = welcome.sugs[+button.dataset.i];
 
-  $('#wdir').value = homePath(r.dir);
-  $('#worg').value = r.org || '';
+  $('#wdir').value = homePath(suggestion.dir);
+  $('#worg').value = suggestion.org || '';
   welcomeMark();
-  if (e.detail > 1) $('#wok').click();
+  if (event.detail > 1) $('#wok').click();
   else $('#wok').focus(); // a double click is the answer
 });
 
-$('#welcome').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && e.target.matches('input')) {
-    e.preventDefault();
+$('#welcome').addEventListener('keydown', event => {
+  if (event.key === 'Enter' && event.target.matches('input')) {
+    event.preventDefault();
     $('#wok').click();
   }
 });
@@ -147,14 +147,14 @@ $('#optMeta').checked = prefs.optMeta !== false;
 optMetaSay();
 $('#autoTile').checked = !!prefs.autoTile;
 
-$('#autoTile').addEventListener('change', e => {
-  prefs.autoTile = e.target.checked;
+$('#autoTile').addEventListener('change', event => {
+  prefs.autoTile = event.target.checked;
   savePrefs();
   postTiles();
 }); // the next terminal: the tiles there are stay as they are
 
-$('#optMeta').addEventListener('change', e => {
-  prefs.optMeta = e.target.checked;
+$('#optMeta').addEventListener('change', event => {
+  prefs.optMeta = event.target.checked;
   savePrefs();
   optMetaSay();
   for (const tm of terms) if (tm.xt) tm.xt.options.macOptionIsMeta = prefs.optMeta;
@@ -188,8 +188,8 @@ window.peixVoiceOver = on => {
   showReader();
 };
 
-$('#termReader').addEventListener('change', e => {
-  prefs.termReader = e.target.checked;
+$('#termReader').addEventListener('change', event => {
+  prefs.termReader = event.target.checked;
   savePrefs();
   showReader();
 });

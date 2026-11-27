@@ -21,7 +21,8 @@ export default async function (ctx) {
       `(el => { const r = el.getBoundingClientRect(); el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 8, clientY: r.top + 8 })); })(${sel})`,
     );
 
-  const row = t => `[...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith(${sid(t)}))`;
+  const row = label =>
+    `[...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith(${sid(label)}))`;
 
   const enter = sel =>
     ctx.evaluate(
@@ -145,12 +146,12 @@ export default async function (ctx) {
     );
 
     ctx.assert.ok(
-      out.picker.some(r => r.off && /out of the board's reach/.test(r.text)),
+      out.picker.some(option => option.off && /out of the board's reach/.test(option.text)),
       `the picker dims it, saying why: ${JSON.stringify(out.picker)}`,
     );
 
     ctx.assert.ok(
-      out.picker.some(r => !r.off && /^Plain chat/.test(r.text)),
+      out.picker.some(option => !option.off && /^Plain chat/.test(option.text)),
       'and keeps the one it can send to',
     );
 
@@ -163,8 +164,8 @@ export default async function (ctx) {
     } catch {}
   }
 
-  const t = (await ctx.peix(`session(${sid(plain.id)})`)).terminal;
+  const term = (await ctx.peix(`session(${sid(plain.id)})`)).terminal;
 
-  if (t) await ctx.server.api(`/api/terminals/${t.id}`, { method: 'DELETE' });
+  if (term) await ctx.server.api(`/api/terminals/${term.id}`, { method: 'DELETE' });
   return out;
 }

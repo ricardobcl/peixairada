@@ -39,7 +39,11 @@ export default async function (ctx) {
   await ctx.evaluate(`${sw}.click()`);
   ctx.assert.equal(await ctx.evaluate(`${sw}.checked`), false, 'the switch is off');
 
-  for (let i = 0; i < 20 && (await ctx.server.api('api/sessions')).body.notifications !== false; i++) {
+  for (
+    let attempt = 0;
+    attempt < 20 && (await ctx.server.api('api/sessions')).body.notifications !== false;
+    attempt++
+  ) {
     await ctx.sleep(100);
   }
 

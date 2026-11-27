@@ -6,16 +6,16 @@
 /** The cup with nothing to hold off (2026-10-09): the Mac set never to sleep on its own on the power it draws from now
  *  (pmset's `sleep` 0 — on a charger, as System Settings › Battery › Options has it), or the lid's setting keeping it
  *  from sleeping at all. Then it is muted, on or off — on, it still holds idle sleep off the moment that changes. */
-function cupMoot(a) {
-  return a.lid ? 'lid' : a.idleSleep === 0 ? 'set' : '';
+function cupMoot(status) {
+  return status.lid ? 'lid' : status.idleSleep === 0 ? 'set' : '';
 }
 
-function cupTip(a, more = '') {
-  const moot = cupMoot(a);
-  const ac = a.power === 'ac';
+function cupTip(status, more = '') {
+  const moot = cupMoot(status);
+  const ac = status.power === 'ac';
 
   if (!moot) {
-    return a.awake
+    return status.awake
       ? 'Keeping this Mac awake while the board runs: idle sleep is held off (the display may still sleep, and closing the lid still sleeps it). Click to let it sleep'
       : `Keep this Mac awake while the board runs — idle sleep held off; the display may still sleep${more}`;
   }
@@ -27,10 +27,16 @@ function cupTip(a, more = '') {
 
   const when = moot === 'lid' ? "once the lid's setting lets go" : ac ? 'on battery' : 'should that change';
 
-  return `${why}. ${a.awake ? `On: it holds idle sleep off ${when}. Click to turn it off` : `Switch it on to hold idle sleep off ${when}`}`;
+  return `${why}. ${status.awake ? `On: it holds idle sleep off ${when}. Click to turn it off` : `Switch it on to hold idle sleep off ${when}`}`;
 }
 
-const awakeOf = d => ({ awake: !!d.awake, lid: !!d.lid, idleSleep: d.idleSleep ?? null, power: d.power ?? null });
+const awakeOf = data => ({
+  awake: !!data.awake,
+  lid: !!data.lid,
+  idleSleep: data.idleSleep ?? null,
+  power: data.power ?? null,
+});
+
 const awakeChanged = () => renderBar();
 
 async function setAwake(body, at) {
@@ -41,13 +47,13 @@ async function setAwake(body, at) {
 
   try {
     state.awake = awakeOf(await api('PUT', '/api/awake', body));
-  } catch (e) {
-    if (e.body && 'awake' in e.body) state.awake = awakeOf(e.body);
+  } catch (error) {
+    if (error.body && 'awake' in error.body) state.awake = awakeOf(error.body);
 
-    if (e.message !== 'cancelled') {
+    if (error.message !== 'cancelled') {
       note(
         at || $('#shead'),
-        `Could not ${'lid' in body ? "change the lid's setting" : 'keep the Mac awake'}: ${e.message}`,
+        `Could not ${'lid' in body ? "change the lid's setting" : 'keep the Mac awake'}: ${error.message}`,
         true,
       );
     }
@@ -59,10 +65,10 @@ async function setAwake(body, at) {
 
 // A chat whose claude ended before a first word (2026-11-04: a branch, a new one): no line of it was written, so it has
 // no card and nothing to resume. The column does not stay on it: back to the chat a branch copied, else home.
-const noneLeft = s => !s.alive && !s.file && !termLive(s) && !visible(s);
+const noneLeft = session => !session.alive && !session.file && !termLive(session) && !visible(session);
 
-const leaveEmpty = s => {
-  const from = s.links?.find(l => l.k === 'branch' && l.dir === 'in' && state.sessions.has(l.id))?.id;
+const leaveEmpty = session => {
+  const from = session.links?.find(link => link.k === 'branch' && link.dir === 'in' && state.sessions.has(link.id))?.id;
 
   if (from) openSession(from);
   else leaveChat();
@@ -99,27 +105,27 @@ function leaveChat(head = NO_CHAT.head, log = NO_CHAT.log, color = null) {
 async function newChat(cwd, task = null, more = null) {
   if (isHidden(cwd)) showProject(cwd); // working in a folder again is the plainest way of saying it belongs on the board
 
-  let d;
+  let started;
   let box = null; // box: the column saying a clone is under way, while it is still on show
 
   try {
-    d = await withCheckout(
+    started = await withCheckout(
       `new:${cwd}`,
       () => api('POST', '/api/terminals', { cwd, task, ...more, ...termSize() }),
-      c => {
+      clone => {
         leaveChat(
-          `<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">cloning ${esc(c.ref)}…</span></h2>`,
-          `<div class="empty clonebox" data-dir="${esc(c.dir)}"><b>Cloning ${esc(c.ref)}</b> into ${esc(homePath(c.dir))}: the folder is not checked out yet, and the chat starts once it is.<span class="cp"></span><i class="cbar"></i></div>`,
+          `<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">cloning ${esc(clone.ref)}…</span></h2>`,
+          `<div class="empty clonebox" data-dir="${esc(clone.dir)}"><b>Cloning ${esc(clone.ref)}</b> into ${esc(homePath(clone.dir))}: the folder is not checked out yet, and the chat starts once it is.<span class="cp"></span><i class="cbar"></i></div>`,
           repoColor(cwd),
         );
 
         box = $('#log .clonebox');
       },
     );
-  } catch (e) {
+  } catch (error) {
     if (!box || box.isConnected) {
-      $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(e.message)}</div>`;
-    } else note($('#shead'), `Could not start a chat in ${folderName(cwd)}: ${e.message}`, true);
+      $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(error.message)}</div>`;
+    } else note($('#shead'), `Could not start a chat in ${folderName(cwd)}: ${error.message}`, true);
     return;
   }
 
@@ -139,6 +145,6 @@ async function newChat(cwd, task = null, more = null) {
   if (!inProject({ cwd }, projectStub(prefs.project))) scopeTo(ALL); // so the new chat lands in view (2026-11-04, a filter never takes a value you did not give it)
   savePrefs();
   renderBoard();
-  attachTerm(curTerm(), d.terminal);
-  if (d.sessionId) openSession(d.sessionId); // an id the board picked: no registry to wait on
+  attachTerm(curTerm(), started.terminal);
+  if (started.sessionId) openSession(started.sessionId); // an id the board picked: no registry to wait on
 }

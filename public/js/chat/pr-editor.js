@@ -4,45 +4,49 @@
 // pick, before): VS Code Web on a tab of the chat named `<repo> @ <branch>`, or vim there; the external editor a row
 // of its own. Switching the chat's own folder is offered last, typed into its zsh unrun, and
 // only when nothing else works there (GET …/switch says why not).
-const repoName = w => (w?.main || '').split('/').pop();
+const repoName = checkout => (checkout?.main || '').split('/').pop();
 
-async function editorMenu(s, url, at) {
-  const pr = (s.prs || []).find(p => p.url === url);
-  const r = pr?.refs;
+async function editorMenu(session, url, at) {
+  const pr = (session.prs || []).find(candidate => candidate.url === url);
+  const refs = pr?.refs;
 
-  if (!pr || !r) return;
+  if (!pr || !refs) return;
 
-  const w = await wtNow(s.cwd);
-  const where = whereOf(s, pr);
-  const name = repoName(w);
-  const b = r.head;
+  const checkout = await wtNow(session.cwd);
+  const where = whereOf(session, pr);
+  const name = repoName(checkout);
+  const branch = refs.head;
 
   const guard =
-    r.fork || where?.k === 'here'
+    refs.fork || where?.k === 'here'
       ? null
-      : await api('GET', `/api/sessions/${s.id}/switch?branch=${encodeURIComponent(b)}`).catch(e => ({
+      : await api('GET', `/api/sessions/${session.id}/switch?branch=${encodeURIComponent(branch)}`).catch(error => ({
           ok: false,
-          why: [e.message],
+          why: [error.message],
         }));
 
   const inEd = `in ${inEdName()}`;
-  const tree = where?.path && w?.worktrees.find(t => t.path === where.path);
+  const tree = where?.path && checkout?.worktrees.find(candidate => candidate.path === where.path);
 
   const rows = [];
 
   if (where?.k === 'here') {
-    rows.push({ t: `Open this folder ${inEd}`, sub: `it is on ${b}`, fn: () => openEditorAt(s, where.path, null, at) });
+    rows.push({
+      t: `Open this folder ${inEd}`,
+      sub: `it is on ${branch}`,
+      fn: () => openEditorAt(session, where.path, null, at),
+    });
   } else if (where?.k === 'wt') {
     rows.push({
       t: `Open ${where.t} ${inEd}`,
-      sub: `${treeName(w, where.path)} · on ${b}`,
-      fn: () => openEditorAt(s, where.path, `${name} @ ${b}`, at),
+      sub: `${treeName(checkout, where.path)} · on ${branch}`,
+      fn: () => openEditorAt(session, where.path, `${name} @ ${branch}`, at),
     });
-  } else if (!r.fork) {
+  } else if (!refs.fork) {
     rows.push({
       t: `A worktree for it, ${inEd}`,
-      sub: `${name}/.claude/worktrees/${b.replace(/[^\w.-]+/g, '-')} · on ${b}, tracking origin`,
-      fn: () => worktreeFor(s, { pr: url }, `${name} @ ${b}`, at),
+      sub: `${name}/.claude/worktrees/${branch.replace(/[^\w.-]+/g, '-')} · on ${branch}, tracking origin`,
+      fn: () => worktreeFor(session, { pr: url }, `${name} @ ${branch}`, at),
     });
   }
 
@@ -55,9 +59,9 @@ async function editorMenu(s, url, at) {
   } // 2026-10-21: Zed picked was Editor ▾'s before
 
   rows.push({
-    t: r.fork ? `Review it, detached, ${inEd}` : 'Review only, detached',
-    sub: `at ${r.headOid ? r.headOid.slice(0, 7) : 'its head'} — nothing to commit to; removed once the PR is merged or closed and nothing is in it`,
-    fn: () => worktreeFor(s, { pr: url, detach: true }, `${name} @ #${pr.number}`, at),
+    t: refs.fork ? `Review it, detached, ${inEd}` : 'Review only, detached',
+    sub: `at ${refs.headOid ? refs.headOid.slice(0, 7) : 'its head'} — nothing to commit to; removed once the PR is merged or closed and nothing is in it`,
+    fn: () => worktreeFor(session, { pr: url, detach: true }, `${name} @ #${pr.number}`, at),
   });
 
   if (tree?.modules === 'same') {
@@ -67,17 +71,17 @@ async function editorMenu(s, url, at) {
       fn: () =>
         api('POST', '/api/worktrees/modules', { path: tree.path }).then(
           () => {
-            wtData.delete(s.cwd);
+            wtData.delete(session.cwd);
             note(at, 'node_modules linked');
           },
-          e => note(at, e.message, true),
+          error => note(at, error.message, true),
         ),
     });
   } else if (tree?.modules === 'differ') {
     rows.push({
       t: 'npm ci there…',
       sub: `its lockfile differs — typed into the ${shName()}, not run`,
-      fn: () => typeInShell(s, `cd ${shellWord(tree.path)} && npm ci`, at),
+      fn: () => typeInShell(session, `cd ${shellWord(tree.path)} && npm ci`, at),
     });
   }
 
@@ -85,15 +89,15 @@ async function editorMenu(s, url, at) {
     rows.push(
       { hr: true },
       {
-        t: `Switch this folder to ${b}…`,
+        t: `Switch this folder to ${branch}…`,
         off: !guard.ok,
         sub: guard.ok
-          ? `git switch ${shArg(b)} typed into its ${shName()}, not run`
+          ? `git switch ${shArg(branch)} typed into its ${shName()}, not run`
           : `not offered: ${guard.why.join(' · ')}`,
-        fn: () => typeInShell(s, `git switch ${shArg(b)}`, at),
+        fn: () => typeInShell(session, `git switch ${shArg(branch)}`, at),
       },
     );
-  } else if (r.fork) {
+  } else if (refs.fork) {
     rows.push({ hr: true }, { t: 'Switch this folder…', off: true, sub: 'not offered: a fork’s branch' });
   }
 
@@ -103,47 +107,49 @@ async function editorMenu(s, url, at) {
 }
 
 /** A tree's path said from its repo — widgets/.claude/worktrees/x —, else its last two folders. */
-const treeName = (w, p) =>
-  w?.main && p.startsWith(`${w.main}/`) ? repoName(w) + p.slice(w.main.length) : p.split('/').slice(-2).join('/');
+const treeName = (checkout, path) =>
+  checkout?.main && path.startsWith(`${checkout.main}/`)
+    ? repoName(checkout) + path.slice(checkout.main.length)
+    : path.split('/').slice(-2).join('/');
 
-async function worktreeFor(s, ask, label, at) {
+async function worktreeFor(session, ask, label, at) {
   note(at, 'Finding its tree…');
-  let t;
+  let tree;
 
   try {
-    t = await api('POST', '/api/worktrees', { cwd: s.cwd, ...ask });
-  } catch (e) {
-    return note(at, e.message, true);
+    tree = await api('POST', '/api/worktrees', { cwd: session.cwd, ...ask });
+  } catch (error) {
+    return note(at, error.message, true);
   }
 
-  document.querySelectorAll('.note').forEach(n => n.remove()); // found: "finding" is over
-  wtData.delete(s.cwd);
-  renderHead(state.sessions.get(s.id)); // where its branch lives, again
-  openEditorAt(s, t.path, t.here ? null : label, at);
+  document.querySelectorAll('.note').forEach(element => element.remove()); // found: "finding" is over
+  wtData.delete(session.cwd);
+  renderHead(state.sessions.get(session.id)); // where its branch lives, again
+  openEditorAt(session, tree.path, tree.here ? null : label, at);
 }
 
 /** A folder in the in-app editor: vim on a tab of the chat, or VS Code Web on one — the chat's own folder its usual
  *  tab, any other one of its own, named by `label`. */
-async function openEditorAt(s, path, label, at) {
-  if (onVim()) return openVim(s, path, at);
-  let d;
+async function openEditorAt(session, path, label, at) {
+  if (onVim()) return openVim(session, path, at);
+  let data;
 
   try {
-    d = await api('POST', '/api/vscode-web');
-  } catch (e) {
-    return note(at, `VS Code Web did not start: ${e.message}`, true);
+    data = await api('POST', '/api/vscode-web');
+  } catch (error) {
+    return note(at, `VS Code Web did not start: ${error.message}`, true);
   }
 
-  const u = vswebAt(d, path);
+  const url = vswebAt(data, path);
 
-  if (label && path !== s.cwd) ideLabels.set(u, label);
-  openExternal(u, { ide: true, s, folder: path });
+  if (label && path !== session.cwd) ideLabels.set(url, label);
+  openExternal(url, { ide: true, s: session, folder: path });
 }
 
 // VS Code Web's address for a folder, with its connection token (2026-10-16): serve-web trades `tkn` for its cookie and
 // answers with the address without it, so the tab's address, its reload and a copy of it are the plain one
-const vswebAt = (d, folder) =>
-  `${d.url}?folder=${encodeURIComponent(folder)}${d.token ? `&tkn=${encodeURIComponent(d.token)}` : ''}`;
+const vswebAt = (data, folder) =>
+  `${data.url}?folder=${encodeURIComponent(folder)}${data.token ? `&tkn=${encodeURIComponent(data.token)}` : ''}`;
 
 const TITLE_MIN = 170; // the title's own flex-basis (.shead h2), below which the row wraps
 const TITLE_SHARE = 0.4; // the title keeps 40 % of the row at least (2026-10-12)
@@ -156,9 +162,9 @@ const HEAD_ROWS = 3;
 function fitHeadPrs() {
   // no PRs, the row still folds (2026-10-13): the changes' count and the branch's move have no matrix to give way first
   const head = $('#shead');
-  const m = head.querySelector(':scope > .tmx');
+  const matrix = head.querySelector(':scope > .tmx');
 
-  if (!m && !head.querySelector(':scope > :is(#diffBtn, .hdrift)')) return;
+  if (!matrix && !head.querySelector(':scope > :is(#diffBtn, .hdrift)')) return;
   for (const el of head.querySelectorAll(':scope > .hfold')) el.classList.remove('hfold'); // what the last fit put away
 
   // Every width in one layout, then the arithmetic (2026-09-27)
@@ -168,17 +174,20 @@ function fitHeadPrs() {
   const h2pad = h2 ? parseFloat(getComputedStyle(h2).paddingLeft) || 0 : 0; // the padding the h2 reaches the toolbar's edge by (the tab): its margin takes it back
 
   const row = [...head.children].filter(
-    el => el.tagName !== 'H2' && el !== m && !el.classList.contains('details') && el.getClientRects().length,
+    el => el.tagName !== 'H2' && el !== matrix && !el.classList.contains('details') && el.getClientRects().length,
   );
 
   // what grows (the move's line, the branch's move, a task's chip: flex 1 1 0) counts at its least — it gives way
   // before the matrix asks for a row more; the first two at their marks alone, their words (.q) going first
   const shrunk = el => {
-    const kids = [...el.children].filter(c => !c.classList.contains('vh'));
+    const kids = [...el.children].filter(child => !child.classList.contains('vh'));
     const st = getComputedStyle(el);
 
     return (
-      kids.reduce((w, c) => w + (c.classList.contains('q') ? 0 : c.getBoundingClientRect().width), 0) +
+      kids.reduce(
+        (total, child) => total + (child.classList.contains('q') ? 0 : child.getBoundingClientRect().width),
+        0,
+      ) +
       (parseFloat(st.columnGap) || 0) * (kids.length - 1) +
       parseFloat(st.paddingLeft) +
       parseFloat(st.paddingRight) +
@@ -219,27 +228,27 @@ function fitHeadPrs() {
     parseFloat(cs.paddingLeft) -
     parseFloat(cs.paddingRight) -
     title -
-    row.reduce((w, el) => w + least(el), 0) -
+    row.reduce((total, el) => total + least(el), 0) -
     gap * row.length;
 
   // the matrix: its number, and a width for so many columns, its box's padding in
-  const box = m?.querySelector('.mxg');
-  const squares = m ? [...m.querySelectorAll('.mxs')] : [];
-  const n = squares.length;
-  const num = m?.querySelector('.mxn');
+  const box = matrix?.querySelector('.mxg');
+  const squares = matrix ? [...matrix.querySelectorAll('.mxs')] : [];
+  const count = squares.length;
+  const num = matrix?.querySelector('.mxn');
 
-  const before = m
-    ? (num ? num.getBoundingClientRect().width + (parseFloat(getComputedStyle(m).columnGap) || 0) : 0) -
-      (parseFloat(getComputedStyle(m).marginRight) || 0)
+  const before = matrix
+    ? (num ? num.getBoundingClientRect().width + (parseFloat(getComputedStyle(matrix).columnGap) || 0) : 0) -
+      (parseFloat(getComputedStyle(matrix).marginRight) || 0)
     : 0;
 
-  const across = c => c * MX_PX.q + (c - 1) * MX_PX.g + 2 * MX_PAD;
+  const across = columns => columns * MX_PX.q + (columns - 1) * MX_PX.g + 2 * MX_PAD;
 
-  if (m) room -= gap;
+  if (matrix) room -= gap;
 
   // Too full for the number and three columns (2026-10-11): the move's line goes, then the changes' count — the card says the one, ··· has the
   // other — and last the branch's move, which the card's red branch still says (2026-10-13), so the row stays one line, ··· on it, whatever its width.
-  const needed = m ? before + across(Math.min(3, Math.ceil(n / HEAD_ROWS))) : 0;
+  const needed = matrix ? before + across(Math.min(3, Math.ceil(count / HEAD_ROWS))) : 0;
   const off = [];
 
   for (const el of [mv, head.querySelector('#diffBtn'), dr]) {
@@ -250,27 +259,28 @@ function fitHeadPrs() {
   }
 
   for (const el of off) el.classList.add('hfold');
-  for (const [el, w] of mins) el.style.setProperty('--hmin', `${Math.ceil(w)}px`);
-  if (!m) return;
+  for (const [el, width] of mins) el.style.setProperty('--hmin', `${Math.ceil(width)}px`);
+  if (!matrix) return;
 
   let rows = HEAD_ROWS;
-  let cols = Math.ceil(n / HEAD_ROWS);
+  let cols = Math.ceil(count / HEAD_ROWS);
 
-  for (let r = 1; r <= HEAD_ROWS; r++) {
-    const c = Math.ceil(n / r);
+  for (let rowCount = 1; rowCount <= HEAD_ROWS; rowCount++) {
+    const colCount = Math.ceil(count / rowCount);
 
-    if (c <= HEAD_COLS && before + across(c) <= room) {
-      rows = r;
-      cols = c;
+    if (colCount <= HEAD_COLS && before + across(colCount) <= room) {
+      rows = rowCount;
+      cols = colCount;
       break;
     }
   }
 
-  m.dataset.rows = rows;
-  m.style.setProperty('--cols', cols);
-  if (before + across(cols) > room) m.style.setProperty('--mxw', `${Math.max(needed, Math.floor(room)) - before}px`);
-  else m.style.removeProperty('--mxw');
-  squares.forEach((el, i) => el.classList.toggle('jw', i % cols === 0)); // a stack's line reaches back along its row, none at a row's start
+  matrix.dataset.rows = rows;
+  matrix.style.setProperty('--cols', cols);
+  if (before + across(cols) > room) {
+    matrix.style.setProperty('--mxw', `${Math.max(needed, Math.floor(room)) - before}px`);
+  } else matrix.style.removeProperty('--mxw');
+  squares.forEach((el, index) => el.classList.toggle('jw', index % cols === 0)); // a stack's line reaches back along its row, none at a row's start
   box.classList.remove('ovr');
   fadeSoon();
 }
@@ -278,10 +288,10 @@ function fitHeadPrs() {
 // The header's size changed: its width moves the fold (a height alone — a chip fold, the details — does not, and a
 // fold that changes the height would otherwise run this again); under the housing every change moves the hole.
 new ResizeObserver(() => {
-  const w = $('#shead').clientWidth;
+  const width = $('#shead').clientWidth;
 
-  if (w === fitHeadPrs.w && !state.notch) return;
-  fitHeadPrs.w = w;
+  if (width === fitHeadPrs.w && !state.notch) return;
+  fitHeadPrs.w = width;
   if (state.notch) layoutNotch();
   fitHeadPrs();
   paintHeadSplit();
@@ -292,25 +302,25 @@ new ResizeObserver(() => {
 // while it is up; closed by a click anywhere else, Esc (every dialog's), a hotkey (runHotkey), or an action that
 // goes somewhere — the toggles leave it up, so their new state is read where they were clicked.
 function placeMenu() {
-  const b = $('#moreBtn');
-  const m = $('#hmenu');
+  const button = $('#moreBtn');
+  const menu = $('#hmenu');
 
-  if (!b) return;
-  const r = b.getBoundingClientRect();
+  if (!button) return;
+  const rect = button.getBoundingClientRect();
 
-  m.style.top = `${Math.round(r.bottom + 4)}px`;
-  m.style.right = `${Math.max(8, Math.round(innerWidth - r.right))}px`;
-  m.style.left = 'auto';
+  menu.style.top = `${Math.round(rect.bottom + 4)}px`;
+  menu.style.right = `${Math.max(8, Math.round(innerWidth - rect.right))}px`;
+  menu.style.left = 'auto';
 }
 
 function openMenu() {
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (s) renderHead(s); // the rows read page state too (the editor's tab), which no SSE update redraws
-  const m = $('#hmenu');
+  if (session) renderHead(session); // the rows read page state too (the editor's tab), which no SSE update redraws
+  const menu = $('#hmenu');
 
-  m.show();
-  fillAges(m);
+  menu.show();
+  fillAges(menu);
   placeMenu();
   repostPane(); // the state dot's age: written here, not left to the 30 s tick
   // show() focuses the first row: kept (2026-10-12; blurred before, which left a keyboard nowhere) — :focus-visible
@@ -327,8 +337,10 @@ $('#hmenu').addEventListener('close', () => {
 
 // The path, not the target: a toggle redraws the menu under the click, and the button it landed on is detached by
 // the time the click gets here — closest() from it finds no menu, and the menu would shut on every toggle.
-document.addEventListener('click', e => {
-  if ($('#hmenu').open && !e.composedPath().some(n => n.id === 'hmenu' || n.id === 'moreBtn')) $('#hmenu').close();
+document.addEventListener('click', event => {
+  if ($('#hmenu').open && !event.composedPath().some(node => node.id === 'hmenu' || node.id === 'moreBtn')) {
+    $('#hmenu').close();
+  }
 });
 
 window.addEventListener('resize', () => {
@@ -340,17 +352,17 @@ const seen = el => (el && el.getClientRects().length ? el : $('#moreBtn') || $('
 
 // Rename on the board: kept in the server's state file, never in the transcript. Enter saves, Esc
 // cancels, blur saves; an empty name goes back to what the chat calls itself.
-function editTitle(s) {
-  const t = $('#shead h2 .t');
+function editTitle(session) {
+  const title = $('#shead h2 .t');
 
-  if (!t) return;
-  state.titleEdit = s.id;
+  if (!title) return;
+  state.titleEdit = session.id;
   const inp = document.createElement('input');
 
   inp.className = 'tedit';
-  inp.value = s.boardTitle || s.title;
-  inp.placeholder = s.aiTitle || s.prTitle || 'title';
-  t.replaceWith(inp);
+  inp.value = session.boardTitle || session.title;
+  inp.placeholder = session.aiTitle || session.prTitle || 'title';
+  title.replaceWith(inp);
   inp.focus();
   inp.select();
   let done = false;
@@ -365,32 +377,32 @@ function editTitle(s) {
     // board's own, and the chat's title stopped following them
     if (save && inp.value.trim() !== was) {
       try {
-        const d = await api('PUT', `/api/sessions/${s.id}/title`, { title: inp.value });
-        const cur = state.sessions.get(s.id);
+        const data = await api('PUT', `/api/sessions/${session.id}/title`, { title: inp.value });
+        const cur = state.sessions.get(session.id);
 
         if (cur) {
-          cur.title = d.title;
-          cur.boardTitle = d.boardTitle;
+          cur.title = data.title;
+          cur.boardTitle = data.boardTitle;
         }
-      } catch (e) {
-        note($('#shead'), `Could not rename: ${e.message}`, true);
+      } catch (error) {
+        note($('#shead'), `Could not rename: ${error.message}`, true);
       }
     }
 
-    const cur = state.sessions.get(s.id) || s;
+    const cur = state.sessions.get(session.id) || session;
 
     drawn.head = null;
     renderHead(cur);
     renderBoard(); // the title was edited in place: draw the header again whatever it says
   };
 
-  inp.onkeydown = e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
+  inp.onkeydown = event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
       end(true);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
       end(false);
     }
   };

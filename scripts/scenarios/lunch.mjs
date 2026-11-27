@@ -13,13 +13,13 @@ const PNG =
 
 const DAY = 86_400_000;
 
-const hm = t =>
-  `${String(new Date(t).getHours()).padStart(2, '0')}:${String(new Date(t).getMinutes()).padStart(2, '0')}`;
+const hm = time =>
+  `${String(new Date(time).getHours()).padStart(2, '0')}:${String(new Date(time).getMinutes()).padStart(2, '0')}`;
 
-const dayKey = t => {
-  const d = new Date(t);
+const dayKey = time => {
+  const date = new Date(time);
 
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
 export default async function (ctx) {
@@ -101,12 +101,14 @@ export default async function (ctx) {
   await ctx.server.post('api/lunch', { act: 'read' });
   const lunch = async () => (await ctx.server.api('api/lunch')).body;
 
-  await waitFor(async () => (await lunch()).places.every(p => p.state === 'menu'), {
+  await waitFor(async () => (await lunch()).places.every(place => place.state === 'menu'), {
     what: 'the three menus read',
   }).catch(async () => {
-    const l = await lunch();
+    const status = await lunch();
 
-    throw new Error(`not read: ${JSON.stringify(l.places.map(p => [p.name, p.state, p.error]))} ${l.error || ''}`);
+    throw new Error(
+      `not read: ${JSON.stringify(status.places.map(place => [place.name, place.state, place.error]))} ${status.error || ''}`,
+    );
   });
 
   await ctx.waitFor(`window.peix.state().snapshots > 0`, { what: 'the board' });
@@ -122,7 +124,7 @@ export default async function (ctx) {
     .then(JSON.parse);
 
   ctx.assert.deepEqual(
-    out.board.map(p => p[0]),
+    out.board.map(place => place[0]),
     ['Casa', 'Ramen', 'Trotas'],
   );
 

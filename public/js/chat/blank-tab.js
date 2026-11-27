@@ -1,185 +1,185 @@
 // ---- a blank tab: ⌘T on a page (2026-10-13) ----------------------------------------------------------------------
 /** A blank tab, in front where a new tab goes, the keys in its address. */
-function openBlank(s) {
-  const b = { n: ++blankSeq, q: '', sel: 0 };
+function openBlank(session) {
+  const blank = { n: ++blankSeq, q: '', sel: 0 };
 
-  blanks.set(s.id, [...(blanks.get(s.id) || []), b]);
-  openNewTab(s, `new:${b.n}`);
-  syncTerm(s);
+  blanks.set(session.id, [...(blanks.get(session.id) || []), blank]);
+  openNewTab(session, `new:${blank.n}`);
+  syncTerm(session);
   focusBoard();
   focusTerm();
 }
 
 /** What the box would open: what was typed first, then the chat's own pages not on a tab, the best match first. */
-function blankRows(s, b) {
-  const q = b.q.trim();
-  const pages = chatPages(s);
+function blankRows(session, blank) {
+  const query = blank.q.trim();
+  const pages = chatPages(session);
 
-  if (!q) return pages;
+  if (!query) return pages;
   const hits = [];
 
-  pages.forEach((x, i) => {
-    const m = fuzzy(
-      x.kind === 'pr'
-        ? [x.pr.label, x.pr.title || '']
-        : x.kind === 'ticket'
-          ? [x.t.key, x.t.summary || '']
-          : [x.name, x.url],
-      q.toLowerCase(),
+  pages.forEach((page, index) => {
+    const match = fuzzy(
+      page.kind === 'pr'
+        ? [page.pr.label, page.pr.title || '']
+        : page.kind === 'ticket'
+          ? [page.t.key, page.t.summary || '']
+          : [page.name, page.url],
+      query.toLowerCase(),
     );
 
-    if (m) hits.push([m.score, i, x]);
+    if (match) hits.push([match.score, index, page]);
   });
 
-  return [typedPage(q), ...hits.sort((a, c) => c[0] - a[0] || a[1] - c[1]).map(h => h[2])];
+  return [typedPage(query), ...hits.sort((left, right) => right[0] - left[0] || left[1] - right[1]).map(hit => hit[2])];
 }
 
 /** The half under a blank tab: the rows its box would open, the one ⏎ takes marked. */
-function blankHtml(s, b) {
-  const rows = blankRows(s, b);
-  const q = b.q.trim().toLowerCase();
+function blankHtml(session, blank) {
+  const rows = blankRows(session, blank);
+  const query = blank.q.trim().toLowerCase();
 
-  b.sel = Math.max(0, Math.min(b.sel, rows.length - 1));
+  blank.sel = Math.max(0, Math.min(blank.sel, rows.length - 1));
   return `<div class="blist">${
     rows.length
-      ? (q ? '' : `<div class="bhd">This chat's pages</div>`) +
+      ? (query ? '' : `<div class="bhd">This chat's pages</div>`) +
         rows
-          .map((x, i) =>
+          .map((page, index) =>
             launchRow(
-              x,
-              i,
-              j => (j === b.sel ? ' sel' : ''),
-              t => markHits(t, q),
+              page,
+              index,
+              rowIndex => (rowIndex === blank.sel ? ' sel' : ''),
+              text => markHits(text, query),
               false,
             ),
           )
           .join('')
       : '<div class="bnone">Type an address, or words to search the web</div>'
-  }</div><div class="bkeys"><kbd>⏎</kbd> opens <kbd>↑↓</kbd> picks <kbd>esc</kbd> ${b.q ? 'clears' : 'closes the tab'}</div>`;
+  }</div><div class="bkeys"><kbd>⏎</kbd> opens <kbd>↑↓</kbd> picks <kbd>esc</kbd> ${blank.q ? 'clears' : 'closes the tab'}</div>`;
 }
 
 /** Each half showing a blank tab gets its list, the other halves none. */
-function placeBlanks(s, p) {
+function placeBlanks(session, place) {
   for (const tm of terms) {
     const host = $(tm.el.body);
-    const b = s && isBlankTab(p[tm.g]) ? blankOf(s, p[tm.g]) : null;
+    const blank = session && isBlankTab(place[tm.g]) ? blankOf(session, place[tm.g]) : null;
 
     let el = host.querySelector(':scope > .gblank');
 
-    if (!b) {
+    if (!blank) {
       el?.remove();
       continue;
     }
 
     if (!el) el = host.appendChild(html2el('<div class="gblank"></div>'));
-    el.dataset.tab = p[tm.g];
-    setHtml(el, blankHtml(s, b));
+    el.dataset.tab = place[tm.g];
+    setHtml(el, blankHtml(session, blank));
   }
 }
 
 /** The tab becomes the page: in its half and its place, in front. A link the pane does not take goes where
       openExternal sends it, and the blank tab goes. */
-function fillBlank(s, k, x) {
-  if (!x) return;
+function fillBlank(session, key, page) {
+  if (!page) return;
 
-  const url = x.kind === 'pr' ? x.pr.url : x.kind === 'ticket' ? x.t.url : x.url;
-  const g = isSplit(s) ? homeOf(s, k) : 0;
+  const url = page.kind === 'pr' ? page.pr.url : page.kind === 'ticket' ? page.t.url : page.url;
+  const half = isSplit(session) ? homeOf(session, key) : 0;
 
   blanks.set(
-    s.id,
-    (blanks.get(s.id) || []).filter(b => `new:${b.n}` !== k),
+    session.id,
+    (blanks.get(session.id) || []).filter(blank => `new:${blank.n}` !== key),
   );
 
-  homes.get(s.id)?.delete(k);
+  homes.get(session.id)?.delete(key);
 
   if (!inApp || !IN_PANE.test(url)) {
-    openExternal(url, { s });
-    syncTerm(s);
+    openExternal(url, { s: session });
+    syncTerm(session);
     focusBoard();
     focusTerm();
     return;
   }
 
-  const t = pageTab(s, url) || pageKey(s, url);
-  const l = state.paneGh.get(s.id) || [];
+  const tab = pageTab(session, url) || pageKey(session, url);
+  const pageTabs = state.paneGh.get(session.id) || [];
 
-  if (!l.includes(t)) state.paneGh.set(s.id, [...l, t]);
+  if (!pageTabs.includes(tab)) state.paneGh.set(session.id, [...pageTabs, tab]);
 
-  if (isSplit(s)) {
-    if (!homes.has(s.id)) homes.set(s.id, new Map());
-    homes.get(s.id).set(t, g);
+  if (isSplit(session)) {
+    if (!homes.has(session.id)) homes.set(session.id, new Map());
+    homes.get(session.id).set(tab, half);
   }
 
   if (GH_PR.test(url)) shownPr.url = url;
-  setTab(s, t);
-  syncTerm(s);
+  setTab(session, tab);
+  syncTerm(session);
 }
 
 /** esc in the box: what was typed goes, and with nothing typed the tab does — it never held anything. */
-function blankEscape(s, k) {
-  const b = blankOf(s, k);
+function blankEscape(session, key) {
+  const blank = blankOf(session, key);
 
-  if (!b) return;
-  if (b.q) {
-    b.q = '';
-    b.sel = 0;
-    const box = document.querySelector(`.ptab[data-tab="${k}"] .paddr`);
+  if (!blank) return;
+  if (blank.q) {
+    blank.q = '';
+    blank.sel = 0;
+    const box = document.querySelector(`.ptab[data-tab="${key}"] .paddr`);
 
     if (box) box.value = '';
-    syncTerm(s);
+    syncTerm(session);
     focusTerm();
-  } else dropTab(s, k);
+  } else dropTab(session, key);
 }
 
 /** The box's own keys and its text; a row clicked; a press on the half's empty part keeps the keys in the box. */
 {
-  const at = e => {
-    const k = e.target.closest?.('.ptab.blank, .gblank')?.dataset.tab;
-    const s = state.sessions.get(state.current);
+  const at = event => {
+    const key = event.target.closest?.('.ptab.blank, .gblank')?.dataset.tab;
+    const session = state.sessions.get(state.current);
 
-    return { s, k, b: s && blankOf(s, k) };
+    return { s: session, k: key, b: session && blankOf(session, key) };
   };
 
-  $('#groups').addEventListener('input', e => {
-    if (!e.target.matches?.('.paddr')) return;
-    const { s, b } = at(e);
+  $('#groups').addEventListener('input', event => {
+    if (!event.target.matches?.('.paddr')) return;
+    const { s: session, b: blank } = at(event);
 
-    if (!b) return;
-    b.q = e.target.value;
-    b.sel = 0;
-    placeBlanks(s, placeOf(s));
+    if (!blank) return;
+    blank.q = event.target.value;
+    blank.sel = 0;
+    placeBlanks(session, placeOf(session));
   });
 
-  $('#groups').addEventListener('keydown', e => {
-    if (!e.target.matches?.('.paddr') || e.metaKey || e.ctrlKey || e.altKey) return;
-    const { s, k, b } = at(e);
+  $('#groups').addEventListener('keydown', event => {
+    if (!event.target.matches?.('.paddr') || event.metaKey || event.ctrlKey || event.altKey) return;
+    const { s: session, k: key, b: blank } = at(event);
 
-    if (!b) return;
+    if (!blank) return;
 
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      b.sel += e.key === 'ArrowDown' ? 1 : -1;
-      placeBlanks(s, placeOf(s));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      fillBlank(s, k, blankRows(s, b)[b.sel]);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      blankEscape(s, k);
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      blank.sel += event.key === 'ArrowDown' ? 1 : -1;
+      placeBlanks(session, placeOf(session));
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      fillBlank(session, key, blankRows(session, blank)[blank.sel]);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      blankEscape(session, key);
     }
   });
 
-  $('#groups').addEventListener('mousedown', e => {
-    const list = e.target.closest?.('.gblank');
+  $('#groups').addEventListener('mousedown', event => {
+    const list = event.target.closest?.('.gblank');
 
     if (!list) return;
-    e.preventDefault(); // the box keeps the keys
+    event.preventDefault(); // the box keeps the keys
 
-    const { s, k, b } = at(e);
-    const row = e.target.closest('.pkrow');
+    const { s: session, k: key, b: blank } = at(event);
+    const row = event.target.closest('.pkrow');
 
-    if (b && row) fillBlank(s, k, blankRows(s, b)[+row.dataset.i]);
+    if (blank && row) fillBlank(session, key, blankRows(session, blank)[+row.dataset.i]);
     else focusTerm();
   });
 }

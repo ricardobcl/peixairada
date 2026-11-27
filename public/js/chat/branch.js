@@ -2,18 +2,23 @@
 // A card's menu, the header's ···, the launcher: the server starts `claude --resume <id> --fork-session --session-id
 // <new>` in the chat's folder, the new id its own, and the column opens on the copy, its drawer attached; the chat it
 // copied goes on as it was, a branch of it listed on it.
-async function branchChat(s) {
-  if (!s?.file) return note($('#shead'), 'Nothing in it to branch yet', true);
-  let r;
+async function branchChat(session) {
+  if (!session?.file) return note($('#shead'), 'Nothing in it to branch yet', true);
+  let result;
 
   try {
-    r = await withCheckout(`branch:${s.id}`, () => api('POST', `/api/sessions/${s.id}/branch`, termSize()));
-  } catch (e) {
-    return note($('#shead'), `Could not branch it: ${e.message}`, true);
+    result = await withCheckout(`branch:${session.id}`, () =>
+      api('POST', `/api/sessions/${session.id}/branch`, termSize()),
+    );
+  } catch (error) {
+    return note($('#shead'), `Could not branch it: ${error.message}`, true);
   }
 
-  await openSession(r.sessionId);
-  if (state.current === r.sessionId) note($('#shead'), `A branch of “${s.title}” — that one goes on as it was`);
+  await openSession(result.sessionId);
+
+  if (state.current === result.sessionId) {
+    note($('#shead'), `A branch of “${session.title}” — that one goes on as it was`);
+  }
 }
 
 const sendPick = () => pickOpen('chatpick', { ask: 'Send to a chat', back: 'launch', why: sendWhy, then: sendOpen });
@@ -30,41 +35,41 @@ function hoShow() {
   $('#hoText').focus();
 }
 
-function sendOpen(s) {
-  const why = sendWhy(s);
+function sendOpen(session) {
+  const why = sendWhy(session);
 
-  if (why) return note($('#shead'), `Not to ${s.title}: ${why}`, true);
+  if (why) return note($('#shead'), `Not to ${session.title}: ${why}`, true);
   ho.gen++;
-  Object.assign(ho, { mode: 'send', ids: [s.id] });
+  Object.assign(ho, { mode: 'send', ids: [session.id] });
   $('#hoText').disabled = false;
   $('#hoGo').disabled = false;
   $('#hoTitle').textContent = 'Send to';
-  $('#hoChats').innerHTML = hoChat(s);
-  const t = $('#hoText');
+  $('#hoChats').innerHTML = hoChat(session);
+  const textArea = $('#hoText');
 
-  t.value = '';
-  t.rows = 4;
-  t.placeholder = 'For its Claude — what you would type in its drawer';
+  textArea.value = '';
+  textArea.rows = 4;
+  textArea.placeholder = 'For its Claude — what you would type in its drawer';
   $('#hoWhere').hidden = true;
-  hoSay(sendSay(s));
+  hoSay(sendSay(session));
   $('#hoKeys').innerHTML = '<kbd>⏎</kbd>send<kbd>⇧⏎</kbd>a new line<kbd>esc</kbd>';
   $('#hoGo').textContent = 'Send';
   hoShow();
 }
 
 const hoSay = (text, err = false) => {
-  const p = $('#hoSay');
+  const line = $('#hoSay');
 
-  p.textContent = text;
-  p.classList.toggle('err', err);
+  line.textContent = text;
+  line.classList.toggle('err', err);
 };
 
 /** A chat's drawer, come up with its Claude ready for words — the registry says idle — or null after `ms`. */
 async function drawerReady(id, ms = 20_000) {
-  for (const t0 = Date.now(); Date.now() - t0 < ms; await new Promise(r => setTimeout(r, 150))) {
-    const s = state.sessions.get(id);
+  for (const t0 = Date.now(); Date.now() - t0 < ms; await new Promise(resolve => setTimeout(resolve, 150))) {
+    const session = state.sessions.get(id);
 
-    if (s && drawerOf(s) && s.alive && s.live?.status === 'idle') return s;
+    if (session && drawerOf(session) && session.alive && session.live?.status === 'idle') return session;
   }
 
   return null;
@@ -72,26 +77,26 @@ async function drawerReady(id, ms = 20_000) {
 
 /** The words sent to the chat: typed into its drawer, or the resume's first prompt. Throws why not. */
 async function sendTo(s0, text) {
-  const s = state.sessions.get(s0.id) || s0;
-  const why = sendWhy(s);
+  const session = state.sessions.get(s0.id) || s0;
+  const why = sendWhy(session);
 
   if (why) throw new Error(`Not sent: ${why}`);
 
-  if (drawerOf(s)) {
-    const no = await drawerType(s, text, true);
+  if (drawerOf(session)) {
+    const no = await drawerType(session, text, true);
 
     if (no) throw new Error(`Not sent: ${no}`);
     return;
   }
 
-  const r = await withCheckout(s.id, () =>
-    api('POST', `/api/sessions/${s.id}/terminal`, { ...termSize(), prompt: text }),
+  const result = await withCheckout(session.id, () =>
+    api('POST', `/api/sessions/${session.id}/terminal`, { ...termSize(), prompt: text }),
   );
 
-  showTerminal(s, r.terminal);
-  saidBack(r.back);
-  if (r.prompted) return;
-  const up = await drawerReady(s.id); // a drawer another ask had started: the words go in once its Claude is up
+  showTerminal(session, result.terminal);
+  saidBack(result.back);
+  if (result.prompted) return;
+  const up = await drawerReady(session.id); // a drawer another ask had started: the words go in once its Claude is up
 
   if (!up) throw new Error('Its drawer did not come up — not sent');
   const no = await drawerType(up, text, true);
@@ -114,26 +119,30 @@ async function hoGo() {
   }
 
   if (ho.mode === 'fold') {
-    const [a, b] = ho.ids.map(id => state.sessions.get(id));
+    const [source, target] = ho.ids.map(id => state.sessions.get(id));
 
-    if (!a || !b) return hoSay('A chat of the two is gone from the board', true);
+    if (!source || !target) return hoSay('A chat of the two is gone from the board', true);
     $('#handoff').close();
-    return foldGo(a, b, text).catch(e => note($('#shead'), e.message, true));
+    return foldGo(source, target, text).catch(error => note($('#shead'), error.message, true));
   }
 
-  const s = state.sessions.get(ho.ids[0]);
+  const session = state.sessions.get(ho.ids[0]);
 
-  if (!s) return hoSay('That chat is gone from the board', true);
+  if (!session) return hoSay('That chat is gone from the board', true);
   ho.busy = true;
   $('#hoGo').disabled = true;
-  hoSay(drawerOf(s) ? 'Sending…' : 'Opening its drawer…');
+  hoSay(drawerOf(session) ? 'Sending…' : 'Opening its drawer…');
 
   try {
-    await sendTo(s, text);
+    await sendTo(session, text);
     $('#handoff').close();
-    note(document.querySelector(`#slist > .card[data-id="${CSS.escape(s.id)}"]`) || $('#shead'), `Sent to ${s.title}`);
-  } catch (e) {
-    hoSay(e.message, true);
+
+    note(
+      document.querySelector(`#slist > .card[data-id="${CSS.escape(session.id)}"]`) || $('#shead'),
+      `Sent to ${session.title}`,
+    );
+  } catch (error) {
+    hoSay(error.message, true);
   } finally {
     ho.busy = false;
     $('#hoGo').disabled = false;
@@ -143,12 +152,12 @@ async function hoGo() {
 $('#hoGo').onclick = hoGo;
 $('#hoCancel').onclick = () => $('#handoff').close();
 
-$('#hoText').addEventListener('keydown', e => {
+$('#hoText').addEventListener('keydown', event => {
   // Send: ⏎ sends, ⇧⏎ a new line
-  if (e.key !== 'Enter' || e.isComposing) return;
+  if (event.key !== 'Enter' || event.isComposing) return;
 
-  if (ho.mode === 'send' ? !e.shiftKey && !e.altKey : e.metaKey) {
-    e.preventDefault();
+  if (ho.mode === 'send' ? !event.shiftKey && !event.altKey : event.metaKey) {
+    event.preventDefault();
     hoGo();
   }
 });
@@ -160,18 +169,18 @@ window.peixDragging = on => {
   setDropping(!!on && !room);
 }; // the chat's panel with the keys takes the drop (chatTakesDrop)
 
-const pastedFiles = e => [...(e.clipboardData?.files || [])];
+const pastedFiles = event => [...(event.clipboardData?.files || [])];
 
 onGroup(tm =>
   $(tm.el.tbody).addEventListener(
     'paste',
-    e => {
+    event => {
       // capture, so xterm's own paste (the text, a file's name) does not run
-      const files = pastedFiles(e);
+      const files = pastedFiles(event);
 
       if (!files.length) return;
-      e.preventDefault();
-      e.stopPropagation();
+      event.preventDefault();
+      event.stopPropagation();
       if (inApp) termSend(tm, '\x16');
       else uploadFiles(files).then(attachPaths);
     },

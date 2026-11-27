@@ -32,10 +32,10 @@ function parseLine(raw, onLine, file) {
 
   try {
     onLine(line);
-  } catch (e) {
+  } catch (error) {
     if (!badFiles.has(file)) {
       badFiles.add(file);
-      console.error(`[peixairada] ${file}: a line could not be folded, skipped — ${e?.message || e}`);
+      console.error(`[peixairada] ${file}: a line could not be folded, skipped — ${error?.message || error}`);
     }
   }
 }
@@ -59,16 +59,16 @@ export function readLines(fd, start, end, onLine, dec = new StringDecoder('utf8'
   let rest = '';
 
   while (pos < end) {
-    const n = readSync(fd, buf, 0, Math.min(buf.length, end - pos), pos);
+    const bytesRead = readSync(fd, buf, 0, Math.min(buf.length, end - pos), pos);
 
-    if (!n) break;
-    pos += n;
-    rest += dec.write(buf.subarray(0, n));
-    let i;
+    if (!bytesRead) break;
+    pos += bytesRead;
+    rest += dec.write(buf.subarray(0, bytesRead));
+    let index;
 
-    while ((i = rest.indexOf('\n')) >= 0) {
-      onLine(rest.slice(0, i));
-      rest = rest.slice(i + 1);
+    while ((index = rest.indexOf('\n')) >= 0) {
+      onLine(rest.slice(0, index));
+      rest = rest.slice(index + 1);
     }
   }
 
@@ -97,12 +97,12 @@ export function indexFile(file, { full = false } = {}) {
 
   const id = basename(file, '.jsonl');
   const prev = sessions.get(id);
-  const s = newSession(id, file);
+  const session = newSession(id, file);
 
-  s.bornAt = st.birthtimeMs;
+  session.bornAt = st.birthtimeMs;
 
   if (prev) {
-    for (const k of [
+    for (const key of [
       'live',
       'rivals',
       'alive',
@@ -120,129 +120,132 @@ export function indexFile(file, { full = false } = {}) {
       'forkAt',
       'backOwed',
     ]) {
-      s[k] = prev[k];
+      session[key] = prev[key];
     }
 
     clearTimeout(prev.pushTimer);
     clearTimeout(prev.notifyTimer);
     clearTimeout(prev.driftTimer);
-    s.silent = !!prev.file;
+    session.silent = !!prev.file;
   }
 
   const start = full || st.size <= TAIL_BYTES ? 0 : st.size - TAIL_BYTES;
 
-  s.loaded = start === 0 || full;
-  s.truncatedHead = start > 0;
-  s.dec = new StringDecoder('utf8');
-  s.reading = true;
+  session.loaded = start === 0 || full;
+  session.truncatedHead = start > 0;
+  session.dec = new StringDecoder('utf8');
+  session.reading = true;
 
   try {
-    if (start > 0) readLines(fd, 0, Math.min(HEAD_BYTES, start), raw => parseLine(raw, line => headPrs(s, line), file)); // its last line, cut, is dropped
+    if (start > 0) {
+      readLines(fd, 0, Math.min(HEAD_BYTES, start), raw => parseLine(raw, line => headPrs(session, line), file));
+    } // its last line, cut, is dropped
+
     let skip = start > 0; // a tail starts mid-line: the first "line" is the end of one
 
-    s.partial = readLines(
+    session.partial = readLines(
       fd,
       start,
       st.size,
       raw => {
         if (skip) skip = false;
-        else parseLine(raw, line => fold(s, line), file);
+        else parseLine(raw, line => fold(session, line), file);
       },
-      s.dec,
+      session.dec,
     );
   } finally {
     closeSync(fd);
-    s.reading = false;
+    session.reading = false;
   }
 
-  s.offset = st.size;
-  s.newEntries = []; // initial load: nothing is "new"
-  if (!s.cwd && prev?.cwd) s.cwd = prev.cwd;
-  if (!s.tasks?.size && prev?.tasks?.size) s.tasks = prev.tasks; // a tail re-read has not seen the calls that started them
-  if (prev?.mateTypes?.size) s.mateTypes = new Map([...prev.mateTypes, ...(s.mateTypes || [])]); // nor the spawns that named its teammates' categories
+  session.offset = st.size;
+  session.newEntries = []; // initial load: nothing is "new"
+  if (!session.cwd && prev?.cwd) session.cwd = prev.cwd;
+  if (!session.tasks?.size && prev?.tasks?.size) session.tasks = prev.tasks; // a tail re-read has not seen the calls that started them
+  if (prev?.mateTypes?.size) session.mateTypes = new Map([...prev.mateTypes, ...(session.mateTypes || [])]); // nor the spawns that named its teammates' categories
 
-  for (const [id, t] of s.tasks || []) {
-    const p = prev?.tasks?.get(id);
+  for (const [id, task] of session.tasks || []) {
+    const prevTask = prev?.tasks?.get(id);
 
-    if (p) {
-      t.heldAt = p.heldAt;
-      t.askedAt = p.askedAt;
+    if (prevTask) {
+      task.heldAt = prevTask.heldAt;
+      task.askedAt = prevTask.askedAt;
     }
   } // …and lsof's word is the machine's, not the lines' (2026-11-04)
 
-  if (!s.wakes && prev?.wakes?.size) s.wakes = prev.wakes; // …nor the wake-ups it set (2026-10-31)
-  if (prev?.agentEnds?.size) s.agentEnds = new Map([...prev.agentEnds, ...(s.agentEnds || [])]); // …nor how its agents ended, past the tail (2026-11-02)
+  if (!session.wakes && prev?.wakes?.size) session.wakes = prev.wakes; // …nor the wake-ups it set (2026-10-31)
+  if (prev?.agentEnds?.size) session.agentEnds = new Map([...prev.agentEnds, ...(session.agentEnds || [])]); // …nor how its agents ended, past the tail (2026-11-02)
 
   if (prev) {
-    s.diskDrift = prev.diskDrift;
-    s.diskSeen = prev.diskSeen;
-    s.linesIn = prev.linesIn;
+    session.diskDrift = prev.diskDrift;
+    session.diskSeen = prev.diskSeen;
+    session.linesIn = prev.linesIn;
   } // the disk's word, not the transcript's: a re-read's old prompts do not clear it
 
-  settleDrift(s);
-  delete s.silent;
-  sessions.set(id, s);
+  settleDrift(session);
+  delete session.silent;
+  sessions.set(id, session);
   fileToSession.set(file, id);
 
   if (prev) {
-    for (const k of prev.pendingNotify || []) queueNotify(s, k);
-    schedulePush(s);
+    for (const kind of prev.pendingNotify || []) queueNotify(session, kind);
+    schedulePush(session);
   } // the alerts still owed, and the fresh summary
 
-  return s;
+  return session;
 }
 
 /** The PRs at the head of a transcript the boot reads only the tail of (2026-10-27): the chat's own is most often named
  *  in its first prompt — "review <url>" — and the card went without it, titled by another, until the chat was opened.
  *  Only what names a PR, read as fold reads it: the rest of the head is the past, and the tail's to tell. */
-function headPrs(s, line) {
-  noteFirstLine(s, line);
+function headPrs(session, line) {
+  noteFirstLine(session, line);
 
   const ts = line.timestamp || null;
-  const c = line.message?.content;
-  const blocks = Array.isArray(c) ? c : [];
+  const content = line.message?.content;
+  const blocks = Array.isArray(content) ? content : [];
 
   if (line.type === 'pr-link') {
     const url = line.prUrl || line.url;
 
-    if (url) notePr(s, url, ts, null);
+    if (url) notePr(session, url, ts, null);
     return;
   }
 
   if (line.type === 'agent-setting') {
-    fold(s, line);
+    fold(session, line);
     return;
   } // the chat's first line: the tail has it again only after a resume
 
   if ((line.type !== 'user' && line.type !== 'assistant') || line.isSidechain) return;
-  if (line.cwd) s.cwd = line.cwd; // a short reference is the folder's repo's; the tail's lines have the last word
+  if (line.cwd) session.cwd = line.cwd; // a short reference is the folder's repo's; the tail's lines have the last word
 
   if (line.type === 'assistant') {
-    for (const b of blocks) {
-      if (b?.type === 'text' && b.text?.trim()) notePrs(s, b.text, ts, 'claude');
-      else if (b?.type === 'tool_use' && b.name === 'Bash') noteOpening(s, b, ts);
+    for (const block of blocks) {
+      if (block?.type === 'text' && block.text?.trim()) notePrs(session, block.text, ts, 'claude');
+      else if (block?.type === 'tool_use' && block.name === 'Bash') noteOpening(session, block, ts);
     }
   } else if (!line.isMeta && !line.isCompactSummary) {
-    const results = blocks.filter(b => b?.type === 'tool_result');
+    const results = blocks.filter(block => block?.type === 'tool_result');
 
     if (results.length) {
-      for (const b of results) if (s.opening.size) noteOpened(s, b);
+      for (const result of results) if (session.opening.size) noteOpened(session, result);
       return;
     }
 
-    const raw = textOf(c);
+    const raw = textOf(content);
     const text = cleanPrompt(raw);
 
-    if (text && !raw.startsWith('[Request interrupted') && !SYNTHETIC_RE.test(text)) notePrs(s, text, ts, 'user');
+    if (text && !raw.startsWith('[Request interrupted') && !SYNTHETIC_RE.test(text)) notePrs(session, text, ts, 'user');
   }
 }
 
 /** Called on fs events: read what was appended since the last offset. */
 export function tailFile(file) {
   const id = fileToSession.get(file);
-  const s = id && sessions.get(id);
+  const session = id && sessions.get(id);
 
-  if (!s) {
+  if (!session) {
     const ns = indexFile(file);
 
     if (ns) {
@@ -261,8 +264,8 @@ export function tailFile(file) {
     return;
   }
 
-  if (st.size < s.offset) {
-    const ns = indexFile(file, { full: s.loaded });
+  if (st.size < session.offset) {
+    const ns = indexFile(file, { full: session.loaded });
 
     if (ns) {
       applyLiveness(ns);
@@ -272,7 +275,7 @@ export function tailFile(file) {
     return;
   }
 
-  if (st.size === s.offset) return;
+  if (st.size === session.offset) return;
   let fd;
 
   try {
@@ -284,30 +287,30 @@ export function tailFile(file) {
   let text;
 
   try {
-    const buf = Buffer.alloc(st.size - s.offset);
+    const buf = Buffer.alloc(st.size - session.offset);
 
-    readSync(fd, buf, 0, buf.length, s.offset);
+    readSync(fd, buf, 0, buf.length, session.offset);
     // one decoder for the file's whole life (2026-10-03): an append read while a character was half written decoded
     // each half alone — "não" came out "n��o", and stayed so
-    text = s.partial + s.dec.write(buf);
+    text = session.partial + session.dec.write(buf);
   } finally {
     closeSync(fd);
   }
 
-  s.offset = st.size;
+  session.offset = st.size;
   const nl = text.lastIndexOf('\n');
 
-  s.partial = text.slice(nl + 1);
+  session.partial = text.slice(nl + 1);
   let changed = false;
 
   parseLines(
     text.slice(0, nl + 1),
     line => {
-      if (fold(s, line)) changed = true;
+      if (fold(session, line)) changed = true;
     },
     file,
   );
 
-  if (settleDrift(s)) changed = true;
-  if (changed || s.newEntries.length) schedulePush(s);
+  if (settleDrift(session)) changed = true;
+  if (changed || session.newEntries.length) schedulePush(session);
 }

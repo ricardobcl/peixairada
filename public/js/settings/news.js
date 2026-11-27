@@ -15,7 +15,7 @@ const NEWS_STARS = [
   [230, 196],
   [70, 120],
 ]
-  .map(([x, y]) => `<i class="st" style="left:${x}px;top:${y}px"></i>`)
+  .map(([left, top]) => `<i class="st" style="left:${left}px;top:${top}px"></i>`)
   .join('');
 
 const NEWS = {
@@ -63,23 +63,28 @@ function newsDone() {
   return seenNews(NEWS.id);
 }
 
-/** -1, 0, 1 as release `a` is older than, the same as, newer than `b` (lib/changelog.mjs' verCmp). */
-const relCmp = (a, b) => {
-  const p = v => (/^v?(\d+)\.(\d+)(?:\.(\d+))?$/.exec(String(v || '')) || []).slice(1).map(Number);
+/** -1, 0, 1 as release `left` is older than, the same as, newer than `right` (lib/changelog.mjs' verCmp). */
+const relCmp = (left, right) => {
+  const parts = version => (/^v?(\d+)\.(\d+)(?:\.(\d+))?$/.exec(String(version || '')) || []).slice(1).map(Number);
 
-  const x = p(a);
-  const y = p(b);
+  const leftParts = parts(left);
+  const rightParts = parts(right);
 
-  for (let k = 0; k < 3; k++) if ((x[k] || 0) !== (y[k] || 0)) return (x[k] || 0) < (y[k] || 0) ? -1 : 1;
+  for (let index = 0; index < 3; index++) {
+    if ((leftParts[index] || 0) !== (rightParts[index] || 0)) {
+      return (leftParts[index] || 0) < (rightParts[index] || 0) ? -1 : 1;
+    }
+  }
+
   return 0;
 };
 
 /** What's new for a release's notes: a page a release, the tour of the newest first when it names it (`tour`). */
 function relItem(notes, running, withTour = true) {
-  const pages = notes.map(n => ({
-    title: `What’s new in ${relName(n.version)}`,
-    tag: `Release ${relName(n.version)}${n.title ? ` · ${n.title}` : ''}`,
-    md: n.md,
+  const pages = notes.map(release => ({
+    title: `What’s new in ${relName(release.version)}`,
+    tag: `Release ${relName(release.version)}${release.title ? ` · ${release.title}` : ''}`,
+    md: release.md,
   }));
 
   const tour = withTour && NEWS.release && !newsDone() && relCmp(NEWS.release, notes[0]?.version) === 0;
@@ -108,9 +113,9 @@ function relPending() {
   relNews.asking = true;
 
   api('GET', `/api/update/notes?since=${encodeURIComponent(seen)}`)
-    .then(r => {
+    .then(result => {
       relNews.for = run;
-      relNews.item = r.notes?.length ? relItem(r.notes, run) : null;
+      relNews.item = result.notes?.length ? relItem(result.notes, run) : null;
       if (relNews.item) return newsSoon();
       prefs.releaseSeen = run; // a release with no notes: nothing to show, seen
       savePrefs();
@@ -130,11 +135,11 @@ const newsNext = () => relPending() || (newsDone() ? null : NEWS);
 
 /** self: opened by itself — the app not brought forward, the keys on the dialog, not on Next, so a ⏎ or a space meant
  *  for where they were presses nothing (2026-11-24, review). `item`: the tour (NEWS) or a release's notes (relItem). */
-function newsOpen(i = 0, self = false, item = NEWS) {
+function newsOpen(pageIndex = 0, self = false, item = NEWS) {
   const dlg = $('#news');
 
   if (!dlg.open) {
-    for (const d of document.querySelectorAll('dialog[open]')) d.close();
+    for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
     news.later = false;
     news.item = item;
     dlg.showModal();
@@ -142,7 +147,7 @@ function newsOpen(i = 0, self = false, item = NEWS) {
     if (inApp && !self) post({ type: 'focus' });
   }
 
-  newsShow(i, !self);
+  newsShow(pageIndex, !self);
 
   if (self) {
     dlg.tabIndex = -1;
@@ -153,29 +158,29 @@ function newsOpen(i = 0, self = false, item = NEWS) {
 /** The newest releases' notes on demand (⌥⌘L › Release notes): every one the checkout has, newest first. */
 function relNotesOpen() {
   api('GET', '/api/update/notes?since=0.0.0')
-    .then(r => {
-      if (!r.notes?.length) return note($('#sbar'), 'No release notes here yet — CHANGELOG.md has none', true);
-      newsOpen(0, false, relItem(r.notes.slice(0, 3), r.running, false));
+    .then(result => {
+      if (!result.notes?.length) return note($('#sbar'), 'No release notes here yet — CHANGELOG.md has none', true);
+      newsOpen(0, false, relItem(result.notes.slice(0, 3), result.running, false));
     })
     .catch(err => note($('#sbar'), `Could not read the release notes: ${err.message}`, true));
 }
 
-function newsShow(i, keys = true) {
+function newsShow(pageIndex, keys = true) {
   const it = news.item;
-  const n = it.pages.length;
+  const pageCount = it.pages.length;
 
-  news.i = Math.max(0, Math.min(n - 1, i));
+  news.i = Math.max(0, Math.min(pageCount - 1, pageIndex));
 
   const pg = it.pages[news.i];
-  const last = news.i === n - 1;
+  const last = news.i === pageCount - 1;
   const notes = pg.md != null;
 
   $('#news').classList.toggle('notes', notes);
   $('#newsPic').innerHTML = notes ? '' : NEWS_STARS + pg.pic();
 
   $('#newsTag').textContent = notes
-    ? `${pg.tag}${n > 1 ? ` · ${news.i + 1} of ${n}` : ''}`
-    : `New in ${NEWS.name} · ${news.i + 1} of ${n}`;
+    ? `${pg.tag}${pageCount > 1 ? ` · ${news.i + 1} of ${pageCount}` : ''}`
+    : `New in ${NEWS.name} · ${news.i + 1} of ${pageCount}`;
 
   $('#newsTitle').textContent = pg.title;
   $('#newsText').innerHTML = notes ? '' : pg.text;
@@ -185,11 +190,11 @@ function newsShow(i, keys = true) {
   $('#newsMd').scrollTop = 0;
 
   $('#newsDots').innerHTML =
-    n > 1
+    pageCount > 1
       ? it.pages
           .map(
-            (p, k) =>
-              `<button type="button" class="${k === news.i ? 'on' : ''}" data-i="${k}" tabindex="-1" aria-label="${k + 1}: ${esc(p.title)}"></button>`,
+            (page, index) =>
+              `<button type="button" class="${index === news.i ? 'on' : ''}" data-i="${index}" tabindex="-1" aria-label="${index + 1}: ${esc(page.title)}"></button>`,
           )
           .join('')
       : '';
@@ -198,12 +203,12 @@ function newsShow(i, keys = true) {
   $('#newsLater').hidden = last;
   $('#newsNext').textContent = last ? it.goSay : 'Next';
   $('#newsNext').title = last ? `${it.goSay} · ⏎` : 'The next page · →';
-  $('#newsSay').textContent = `Page ${news.i + 1} of ${n}: ${pg.title}`;
-  const b = $('#newsBody');
+  $('#newsSay').textContent = `Page ${news.i + 1} of ${pageCount}: ${pg.title}`;
+  const body = $('#newsBody');
 
-  b.classList.remove('in');
-  void b.offsetWidth;
-  b.classList.add('in');
+  body.classList.remove('in');
+  void body.offsetWidth;
+  body.classList.add('in');
   if (keys) $('#newsNext').focus({ preventScroll: true });
 }
 
@@ -254,20 +259,20 @@ $('#newsLater').onclick = () => {
   $('#news').close();
 };
 
-$('#newsDots').addEventListener('click', e => {
-  const d = e.target.closest('button[data-i]');
+$('#newsDots').addEventListener('click', event => {
+  const dot = event.target.closest('button[data-i]');
 
-  if (d) newsShow(+d.dataset.i);
+  if (dot) newsShow(+dot.dataset.i);
 });
 
-$('#news').addEventListener('keydown', e => {
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
+$('#news').addEventListener('keydown', event => {
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
 
-  if (e.key === 'ArrowRight' && news.i < news.item.pages.length - 1) {
-    e.preventDefault();
+  if (event.key === 'ArrowRight' && news.i < news.item.pages.length - 1) {
+    event.preventDefault();
     newsShow(news.i + 1);
-  } else if (e.key === 'ArrowLeft' && news.i) {
-    e.preventDefault();
+  } else if (event.key === 'ArrowLeft' && news.i) {
+    event.preventDefault();
     newsShow(news.i - 1);
   }
 });
@@ -284,10 +289,10 @@ $('#news').addEventListener('close', () => {
   if (done) return;
 
   if (news.later && !prefs.newsLater) {
-    const d = new Date();
+    const midnight = new Date();
 
-    d.setHours(24, 0, 0, 0);
-    prefs.newsLater = d.getTime();
+    midnight.setHours(24, 0, 0, 0);
+    prefs.newsLater = midnight.getTime();
   } else {
     if (it.running) {
       prefs.releaseSeen = it.running;

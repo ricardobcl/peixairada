@@ -11,8 +11,8 @@ import { tmpDir } from '../../lib/testserver.mjs';
 // the scenario body, and the server sees them from its first answer.
 const ORG_DIR = tmpDir('peix-org-');
 
-for (const f of ['alpha-service', 'ledger-service', 'wallet-api']) {
-  mkdirSync(join(ORG_DIR, f, '.git'), { recursive: true });
+for (const folder of ['alpha-service', 'ledger-service', 'wallet-api']) {
+  mkdirSync(join(ORG_DIR, folder, '.git'), { recursive: true });
 }
 
 mkdirSync(join(ORG_DIR, 'wallet-api-fix')); // `git worktree add ../wallet-api-fix`: a .git file naming the repo's worktrees/
@@ -71,7 +71,7 @@ export default async function (ctx) {
     `the box says what the step now takes, the directory named: ${out.hint}`,
   );
 
-  const kinds = out.rows.map(r => r.kind);
+  const kinds = out.rows.map(row => row.kind);
 
   ctx.assert.deepEqual(
     [...new Set(kinds)],
@@ -80,12 +80,15 @@ export default async function (ctx) {
   );
 
   ctx.assert.deepEqual(
-    out.rows.filter(r => r.kind === 'folder').map(r => r.name),
+    out.rows.filter(row => row.kind === 'folder').map(row => row.name),
     ['alpha-service', 'ledger-service', 'wallet-api'],
     'the worktree beside wallet-api is not offered',
   );
 
-  ctx.assert.ok(out.rows.find(r => r.name === 'alpha-service').path.startsWith('/'), 'a folder row shows where it is');
+  ctx.assert.ok(
+    out.rows.find(row => row.name === 'alpha-service').path.startsWith('/'),
+    'a folder row shows where it is',
+  );
 
   // ---- typing ranks them with everything else, and a name that is none of them offers the clone ----
   await type(ctx, 'ledger');
@@ -95,7 +98,7 @@ export default async function (ctx) {
   await type(ctx, 'alpha-service');
 
   ctx.assert.equal(
-    (await rows(ctx)).filter(r => r.kind === 'clone').length,
+    (await rows(ctx)).filter(row => row.kind === 'clone').length,
     0,
     'a name that is a folder here is not offered as a clone',
   );
@@ -103,7 +106,7 @@ export default async function (ctx) {
   await type(ctx, 'wallet-api-');
 
   ctx.assert.ok(
-    !(await rows(ctx)).some(r => r.name === 'wallet-api-fix'),
+    !(await rows(ctx)).some(row => row.name === 'wallet-api-fix'),
     'a worktree is not found by part of its name',
   );
 
@@ -111,7 +114,7 @@ export default async function (ctx) {
   out.worktree = await rows(ctx);
 
   ctx.assert.deepEqual(
-    out.worktree.map(r => [r.kind, r.name]),
+    out.worktree.map(row => [row.kind, row.name]),
     [['folder', 'wallet-api-fix']],
     'by its whole name it is offered as itself, not as a clone',
   );
@@ -121,7 +124,7 @@ export default async function (ctx) {
   await ctx.shot('new-chat-clone-row');
 
   ctx.assert.deepEqual(
-    out.clone.map(r => r.kind),
+    out.clone.map(row => row.kind),
     ['clone'],
     'nothing matches: the clone row is the whole list',
   );
@@ -142,7 +145,7 @@ export default async function (ctx) {
   });
 
   ctx.assert.deepEqual(
-    await rows(ctx).then(r => r.map(x => x.name)),
+    await rows(ctx).then(listed => listed.map(row => row.name)),
     ['＋ new chat'],
     'a fresh clone has no chats: ＋ is the whole list (2026-09-22)',
   );
@@ -188,20 +191,20 @@ export default async function (ctx) {
     what: "the org's three folders again (nothing spawned, so none of them has a chat)",
   });
 
-  out.beforeHide = (await rows(ctx)).map(r => r.name);
+  out.beforeHide = (await rows(ctx)).map(row => row.name);
   await ctx.evaluate(`document.querySelector('#picklist .pkrow.folder .pkx').click()`);
 
   await ctx.waitFor(`[...document.querySelectorAll('#picklist .pkrow.folder')].length === 2`, {
     what: 'the row gone from the list',
   });
 
-  out.afterHide = (await rows(ctx)).map(r => r.name);
+  out.afterHide = (await rows(ctx)).map(row => row.name);
   out.hidden = await ctx.peix('state().hidden');
   await ctx.shot('hidden-row');
   ctx.assert.equal(out.beforeHide.length - out.afterHide.length, 1, '✕ takes the row out of the step');
 
   ctx.assert.deepEqual(
-    out.hidden.map(k => k.split('/').pop()),
+    out.hidden.map(path => path.split('/').pop()),
     ['alpha-service'],
     'and the board remembers which one by its folder',
   );

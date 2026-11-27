@@ -14,8 +14,8 @@ export default async function (ctx) {
   const noted = re =>
     ctx.waitFor(`${re}.test(document.querySelector('.note')?.textContent || '')`, { what: `the note ${re}` });
 
-  const said = re => ctx.peix('buffer()').then(rows => rows.filter(r => re.test(r)).length);
-  const type = (text, g = 0) => ctx.type(text, g); // the drawer's keyboard, as a hand would use it
+  const said = re => ctx.peix('buffer()').then(rows => rows.filter(row => re.test(row)).length);
+  const type = (text, half = 0) => ctx.type(text, half); // the drawer's keyboard, as a hand would use it
 
   await ctx.openChat(chat.id);
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#viewBtn')`), false, 'no drawer, no button');

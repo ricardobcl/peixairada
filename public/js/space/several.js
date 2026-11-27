@@ -1,6 +1,6 @@
 // ---- several at once (2026-11-24): ⇧-click or ⇧-arrows choose nodes; a bar for them — done, star, mute —, esc lets go
 function spBarDraw(list) {
-  const ids = new Set(list.map(s => s.id));
+  const ids = new Set(list.map(session => session.id));
 
   for (const id of [...sp.chosen]) if (!ids.has(id)) sp.chosen.delete(id);
 
@@ -10,9 +10,9 @@ function spBarDraw(list) {
   bar.hidden = !chosen.length;
   if (!chosen.length) return setHtml(bar, '');
 
-  const allFav = chosen.every(s => s.fav);
-  const allMuted = chosen.every(s => s.muted);
-  const allDone = chosen.every(s => s.done);
+  const allFav = chosen.every(session => session.fav);
+  const allMuted = chosen.every(session => session.muted);
+  const allDone = chosen.every(session => session.done);
 
   setHtml(
     bar,
@@ -20,30 +20,30 @@ function spBarDraw(list) {
   );
 }
 
-$('#spbar').addEventListener('click', e => {
-  const b = e.target.closest('button[data-do]');
+$('#spbar').addEventListener('click', event => {
+  const button = event.target.closest('button[data-do]');
 
-  if (!b) return;
+  if (!button) return;
 
   const chosen = [...sp.chosen].map(id => state.sessions.get(id)).filter(Boolean);
-  const what = b.dataset.do;
+  const what = button.dataset.do;
 
   if (what === 'done') {
-    const back = chosen.every(s => s.done);
+    const back = chosen.every(session => session.done);
 
-    for (const s of chosen) if (back || canTick(s)) tickDone(s.id, !back, b);
+    for (const session of chosen) if (back || canTick(session)) tickDone(session.id, !back, button);
   }
 
   if (what === 'star') {
-    const on = !chosen.every(s => s.fav);
+    const on = !chosen.every(session => session.fav);
 
-    for (const s of chosen) if (!!s.fav !== on) setFav(s.id, on);
+    for (const session of chosen) if (!!session.fav !== on) setFav(session.id, on);
   }
 
   if (what === 'mute') {
-    const on = !chosen.every(s => s.muted);
+    const on = !chosen.every(session => session.muted);
 
-    for (const s of chosen) if (!!s.muted !== on) setMuted(s.id, on);
+    for (const session of chosen) if (!!session.muted !== on) setMuted(session.id, on);
   }
 
   sp.chosen.clear();
@@ -54,17 +54,17 @@ $('#spbar').addEventListener('click', e => {
   // the divider: Space's share of the column, dragged; the left button only, as the list's splitter
   const div = $('#spdiv');
 
-  div.addEventListener('pointerdown', e => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    div.setPointerCapture(e.pointerId);
+  div.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    div.setPointerCapture(event.pointerId);
     div.classList.add('drag');
     const box = $('#main').getBoundingClientRect();
 
     const move = ev => {
-      const f = Math.min(0.9, Math.max(0.05, (ev.clientX - box.left) / box.width));
+      const share = Math.min(0.9, Math.max(0.05, (ev.clientX - box.left) / box.width));
 
-      prefs.spaceAt = Math.round(f * 1000) / 1000;
+      prefs.spaceAt = Math.round(share * 1000) / 1000;
       $('#main').style.setProperty('--sp', String(prefs.spaceAt));
     };
 
@@ -72,9 +72,9 @@ $('#spbar').addEventListener('click', e => {
       div.classList.remove('drag');
       div.removeEventListener('pointermove', move);
       savePrefs();
-      const s = state.sessions.get(state.current);
+      const session = state.sessions.get(state.current);
 
-      if (s) syncTerm(s);
+      if (session) syncTerm(session);
     };
 
     div.addEventListener('pointermove', move);

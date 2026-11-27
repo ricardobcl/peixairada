@@ -36,16 +36,16 @@ export default async function (ctx) {
     try {
       return execFileSync('pmset', ['-g', 'assertions'], { encoding: 'utf8' })
         .split('\n')
-        .filter(l => /audio/i.test(l))
-        .map(l => l.trim());
-    } catch (e) {
-      return [`pmset: ${e.message}`];
+        .filter(line => /audio/i.test(line))
+        .map(line => line.trim());
+    } catch (error) {
+      return [`pmset: ${error.message}`];
     }
   };
 
-  const drop = (kind, e, dy = -150) =>
+  const drop = (kind, emoji, dy = -150) =>
     ctx.evaluate(`(() => { const g = window.peix.ze().g; g.spawn = 1e9; g.hurt = 0;
-    g.items.push({ kind: '${kind}', e: '${e}', pts: 15, say: 'test', x: g.x, y: g.y + ${dy}, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 }); })()`);
+    g.items.push({ kind: '${kind}', e: '${emoji}', pts: 15, say: 'test', x: g.x, y: g.y + ${dy}, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 }); })()`);
 
   const round = async () => {
     // ⌥⌘Z, a real space: a round, its band running
@@ -67,21 +67,21 @@ export default async function (ctx) {
       { what: `${what}: every context closed` },
     );
 
-    const a = await audio();
-    const f = await ctx.evaluate(`window.peix.ze().frames`);
+    const before = await audio();
+    const frames = await ctx.evaluate(`window.peix.ze().frames`);
 
     await ctx.sleep(wait);
-    const b = await audio();
+    const after = await audio();
 
-    ctx.assert.equal(b.made, a.made, `${what}: no node made after it closed`);
-    ctx.assert.equal(await ctx.evaluate(`window.peix.ze().frames`), f, `${what}: no frame drawn after it closed`);
+    ctx.assert.equal(after.made, before.made, `${what}: no node made after it closed`);
+    ctx.assert.equal(await ctx.evaluate(`window.peix.ze().frames`), frames, `${what}: no frame drawn after it closed`);
 
     ctx.assert.ok(
-      b.contexts.every(s => s === 'closed'),
-      `${what}: ${b.contexts}`,
+      after.contexts.every(state => state === 'closed'),
+      `${what}: ${after.contexts}`,
     );
 
-    return b;
+    return after;
   };
 
   // the board alone, and the game's title: nothing
@@ -96,8 +96,8 @@ export default async function (ctx) {
     // who holds the output, said by coreaudiod, against every process of this Chrome
     const lines = execFileSync('pmset', ['-g', 'assertions'], { encoding: 'utf8' }).split('\n');
 
-    const holders = lines.flatMap((l, i) =>
-      /com\.apple\.audio/.test(l) ? [(lines[i + 1] || '').match(/Created for PID: (\d+)/)?.[1]] : [],
+    const holders = lines.flatMap((line, index) =>
+      /com\.apple\.audio/.test(line) ? [(lines[index + 1] || '').match(/Created for PID: (\d+)/)?.[1]] : [],
     );
 
     const mine = execFileSync('/usr/bin/pgrep', ['-f', ctx.profile], { encoding: 'utf8' }).trim().split('\n');
@@ -105,7 +105,7 @@ export default async function (ctx) {
     ctx.assert.ok(mine.length > 1, 'this Chrome found');
 
     ctx.assert.deepEqual(
-      holders.filter(p => mine.includes(p)),
+      holders.filter(pid => mine.includes(pid)),
       [],
       'the band plays to no device: a test run makes no sound',
     );
@@ -113,7 +113,7 @@ export default async function (ctx) {
 
   await ctx.evaluate(`window.peix.ze().g.streak = 3`);
 
-  for (let i = 0; i < 3; i++) {
+  for (let index = 0; index < 3; index++) {
     await drop('meat', '🥩');
     await ctx.sleep(120);
   }

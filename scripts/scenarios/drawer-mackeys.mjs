@@ -72,5 +72,5 @@ export default async function (ctx) {
   await ctx.sleep(150);
   out.altCmdLeft = await ctx.evaluate(`window.__sent.join('')`);
   ctx.assert.equal(out.altCmdLeft, '', '⌥⌘← sends nothing to claude');
-  return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, JSON.stringify(v)]));
+  return Object.fromEntries(Object.entries(out).map(([key, value]) => [key, JSON.stringify(value)]));
 }

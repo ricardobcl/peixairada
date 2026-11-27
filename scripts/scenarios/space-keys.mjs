@@ -58,36 +58,36 @@ export default async function (ctx) {
 
   const out = {};
   const now = Date.now();
-  const at = m => new Date(now - m * 60_000);
+  const at = minutes => new Date(now - minutes * 60_000);
 
-  const d = n => {
-    const p = join(dir, n);
+  const folder = name => {
+    const path = join(dir, name);
 
-    mkdirSync(p, { recursive: true });
-    return p;
+    mkdirSync(path, { recursive: true });
+    return path;
   };
 
   const {
     chats: [retry, queue, bump, grid, docs],
   } = makeFixture(ctx.fixture.dir, [
     {
-      cwd: d('storefront'),
+      cwd: folder('storefront'),
       title: 'Retry declined card payments',
       prompt: 'see https://github.com/acme/store/pull/11',
       reply: 'Looked.',
       at: at(5),
     },
     {
-      cwd: d('billing-api'),
+      cwd: folder('billing-api'),
       title: 'Queue for invoice webhooks',
       prompt: 'move them',
       reply: 'Moving.',
       at: at(10),
       live: { pid: sleep.pid, startedAt: now - 3_600_000 },
     },
-    { cwd: d('mobile-app'), title: 'Bump the build number', prompt: 'bump it', reply: 'Bumped.', at: at(15) },
+    { cwd: folder('mobile-app'), title: 'Bump the build number', prompt: 'bump it', reply: 'Bumped.', at: at(15) },
     { cwd: join(dir, 'storefront'), title: 'Product grid theme', prompt: 'fix it', reply: 'Fixed.', at: at(20) },
-    { cwd: d('docs'), title: 'Write the retry docs', prompt: 'docs', reply: 'Written.', at: at(25) },
+    { cwd: folder('docs'), title: 'Write the retry docs', prompt: 'docs', reply: 'Written.', at: at(25) },
   ]);
 
   agentFiles({
@@ -116,16 +116,16 @@ export default async function (ctx) {
   };
 
   const click = async (sel, modifiers = 0) => {
-    const r = await ctx.evaluate(
+    const point = await ctx.evaluate(
       `(() => { const b = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; })()`,
     );
 
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.x, y: r.y, modifiers });
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y, modifiers });
 
     await ctx.send('Input.dispatchMouseEvent', {
       type: 'mousePressed',
-      x: r.x,
-      y: r.y,
+      x: point.x,
+      y: point.y,
       button: 'left',
       clickCount: 1,
       modifiers,
@@ -133,8 +133,8 @@ export default async function (ctx) {
 
     await ctx.send('Input.dispatchMouseEvent', {
       type: 'mouseReleased',
-      x: r.x,
-      y: r.y,
+      x: point.x,
+      y: point.y,
       button: 'left',
       clickCount: 1,
       modifiers,
@@ -233,7 +233,7 @@ export default async function (ctx) {
     `[...document.querySelectorAll('#spgrid .spt')].map(b => { const r = b.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top)]; })`,
   );
 
-  const perRow = geo.filter(g => g[1] === geo[0][1]).length;
+  const perRow = geo.filter(position => position[1] === geo[0][1]).length;
 
   ctx.assert.ok(perRow >= 2 && perRow < 7, `more than one row: ${perRow} a row`);
   await ctx.evaluate(`document.querySelector('#spgrid .spt').focus()`);

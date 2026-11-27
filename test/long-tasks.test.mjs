@@ -76,32 +76,32 @@ const started = (id, ago, out) => [
 ];
 
 const write = (name, lines) => {
-  const f = join(tmp, `${name}.jsonl`);
+  const file = join(tmp, `${name}.jsonl`);
 
-  writeFileSync(f, `${lines.map(l => JSON.stringify(l)).join('\n')}\n`);
-  return f;
+  writeFileSync(file, `${lines.map(line => JSON.stringify(line)).join('\n')}\n`);
+  return file;
 };
 
 const output = name => {
-  const f = join(tmp, `${name}.output`);
+  const file = join(tmp, `${name}.output`);
 
-  writeFileSync(f, '');
-  return f;
+  writeFileSync(file, '');
+  return file;
 };
 
 const read = (file, status = 'idle') => {
-  const s = indexFile(file);
+  const session = indexFile(file);
 
-  s.alive = true;
-  s.live = { pid: process.pid, startedAt: Date.now() - 8 * HOUR, status };
-  return s;
+  session.alive = true;
+  session.live = { pid: process.pid, startedAt: Date.now() - 8 * HOUR, status };
+  return session;
 };
 
-const ids = s => summary(s).tasks.map(t => t.id);
+const ids = session => summary(session).tasks.map(task => task.id);
 
-const leave = s => {
-  clearTimeout(s.pushTimer);
-  sessions.delete(s.id);
+const leave = session => {
+  clearTimeout(session.pushTimer);
+  sessions.delete(session.id);
 };
 
 test('a command the machine says runs outlives the cap; the cap counts from its last word', async () => {
@@ -157,11 +157,11 @@ test('a command nobody holds goes, in silence when it was never shown; one with 
 });
 
 test('the registry says shell and the tail names no task: the chat is read whole, once', async () => {
-  const padding = Array.from({ length: 20 }, (_, i) => ({
+  const padding = Array.from({ length: 20 }, (_, index) => ({
     type: 'system',
     subtype: 'informational',
     content: 'x'.repeat(500),
-    timestamp: at(30_000 - i),
+    timestamp: at(30_000 - index),
   }));
 
   const end = {
@@ -193,7 +193,7 @@ test('the registry says shell and the tail names no task: the chat is read whole
   assert.equal(s1.alive, true);
 
   assert.deepEqual(
-    summary(s1).tasks.map(t => [t.id, t.what]),
+    summary(s1).tasks.map(task => [task.id, task.what]),
     [['farrun', 'the watch loop']],
   );
 

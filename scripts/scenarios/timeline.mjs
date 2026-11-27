@@ -12,31 +12,32 @@ import { makeFixture } from '../fixture.mjs';
 
 export const meta = { server: true, fixture: 'auto' };
 
-const pad2 = n => String(n).padStart(2, '0');
+const pad2 = number => String(number).padStart(2, '0');
 
-const noonBack = n => {
-  const d = new Date();
+const noonBack = days => {
+  const date = new Date();
 
-  d.setDate(d.getDate() - n);
-  d.setHours(12, 0, 0, 0);
-  return d;
+  date.setDate(date.getDate() - days);
+  date.setHours(12, 0, 0, 0);
+  return date;
 };
 
-const railDay = n => {
-  const d = noonBack(n);
-  const dm = `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}`;
+const railDay = days => {
+  const date = noonBack(days);
+  const dm = `${pad2(date.getDate())}-${pad2(date.getMonth() + 1)}`;
 
-  return n < 7
-    ? `${d.toLocaleDateString('en', { weekday: 'short' })} ${dm}`
-    : d.getFullYear() === new Date().getFullYear()
+  return days < 7
+    ? `${date.toLocaleDateString('en', { weekday: 'short' })} ${dm}`
+    : date.getFullYear() === new Date().getFullYear()
       ? dm
-      : `${dm}-${d.getFullYear()}`;
+      : `${dm}-${date.getFullYear()}`;
 };
 
-const settled = (ctx, k) => ctx.waitFor(`window.peix.state().timeline.k === ${k}`, { what: `the swell at ${k}` });
+const settled = (ctx, swell) =>
+  ctx.waitFor(`window.peix.state().timeline.k === ${swell}`, { what: `the swell at ${swell}` });
 
-const move = (ctx, x, y) =>
-  ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Math.round(x), y: Math.round(y) });
+const move = (ctx, pointerX, pointerY) =>
+  ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Math.round(pointerX), y: Math.round(pointerY) });
 
 // Where everything on the rail is, and where the list says it should be: a label's middle against its run's first
 // card, both as a fraction of the whole (the rail's inner height, the list's scroll height). At rest a label is placed
@@ -96,8 +97,8 @@ export default async function (ctx) {
     what: "the fourteen chats and the fixture's two",
   });
 
-  for (const c of chats.slice(-2)) {
-    await ctx.server.api(`api/sessions/${c.id}/done`, {
+  for (const doneChat of chats.slice(-2)) {
+    await ctx.server.api(`api/sessions/${doneChat.id}/done`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ done: true }),
@@ -122,7 +123,7 @@ export default async function (ctx) {
   out.at = await rail(ctx);
 
   ctx.assert.deepEqual(
-    out.at.runs.map(r => [r.g, r.n]),
+    out.at.runs.map(run => [run.g, run.n]),
     [
       ['ready', 3],
       ['ready', 4],
@@ -135,10 +136,10 @@ export default async function (ctx) {
 
   ctx.assert.equal(out.at.labs.length, 5, 'a label for each run');
 
-  for (const l of out.at.labs) {
+  for (const label of out.at.labs) {
     ctx.assert.ok(
-      Math.abs(l.at - l.want) < 0.006,
-      `a label sits where its run begins in the list (${l.at.toFixed(3)} against ${l.want.toFixed(3)})`,
+      Math.abs(label.at - label.want) < 0.006,
+      `a label sits where its run begins in the list (${label.at.toFixed(3)} against ${label.want.toFixed(3)})`,
     );
   }
 
@@ -150,7 +151,7 @@ export default async function (ctx) {
   );
 
   ctx.assert.ok(
-    out.at.labs.every(l => !l.on),
+    out.at.labs.every(label => !label.on),
     'no labels at rest',
   );
 
@@ -170,7 +171,7 @@ export default async function (ctx) {
     `the rail over the cards' edge, out of sight (${JSON.stringify(place)})`,
   );
 
-  const rgb = hex => `rgb(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+  const rgb = hex => `rgb(${[1, 3, 5].map(offset => parseInt(hex.slice(offset, offset + 2), 16)).join(', ')})`;
 
   ctx.assert.equal(
     out.at.thumb.color,
@@ -182,8 +183,8 @@ export default async function (ctx) {
   await ctx.shot('rest', { x: 0, y: 0, width: 420, height: 920 });
 
   // called out: the pointer on the coloured edge — not straight away, after a second held there
-  const x = out.at.rect.left + 6;
-  const yOf = (r, i) => r.rect.top + 6 + r.labs[i].at * r.H;
+  const railX = out.at.rect.left + 6;
+  const yOf = (reading, labelIndex) => reading.rect.top + 6 + reading.labs[labelIndex].at * reading.H;
 
   await move(ctx, 1, yOf(out.at, 2));
   await ctx.sleep(500);
@@ -191,39 +192,39 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.state().timeline.shown`, { what: 'the rail called out by a second on the edge' });
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#tline')).visibility`), 'visible');
   // pointed at, over the third run's tick: labels come out, that one nearest and largest, none overlapping
-  await move(ctx, x, yOf(out.at, 2));
+  await move(ctx, railX, yOf(out.at, 2));
   await settled(ctx, 1);
   await ctx.settle(); // the thumb's own widening, a .15 s transition the swell does not wait for (it read 7.2 of 8)
   out.hover = await rail(ctx);
   ctx.assert.equal(out.hover.thumb.width, 8, 'the thumb widens under the pointer');
-  const shown = out.hover.labs.filter(l => l.on).sort((a, b) => a.top - b.top);
+  const shown = out.hover.labs.filter(label => label.on).sort((left, right) => left.top - right.top);
 
   ctx.assert.ok(shown.length >= 3, `several days out (${shown.length})`);
-  const near = out.hover.labs.find(l => l.near);
+  const near = out.hover.labs.find(label => label.near);
 
   ctx.assert.equal(near?.run, 2, 'the one under the pointer is the nearest');
   ctx.assert.equal(near.text, `${railDay(10)} · 3 idle`, 'a label says its day, how many and in which state');
 
   ctx.assert.ok(
-    shown.every(l => l.h <= near.h + 0.5) && shown.some(l => l.h < near.h - 2),
+    shown.every(label => label.h <= near.h + 0.5) && shown.some(label => label.h < near.h - 2),
     'the nearest is the largest, the others smaller',
   );
 
-  for (let i = 1; i < shown.length; i++) {
-    ctx.assert.ok(shown[i].top >= shown[i - 1].bottom - 0.5, 'no two labels overlap');
+  for (let index = 1; index < shown.length; index++) {
+    ctx.assert.ok(shown[index].top >= shown[index - 1].bottom - 0.5, 'no two labels overlap');
   }
 
   ctx.assert.deepEqual(
     out.hover.labs
-      .filter(l => l.on)
-      .map(l => l.run)
+      .filter(label => label.on)
+      .map(label => label.run)
       .sort(),
-    [0, 1, 2, 3, 4].filter(i => out.hover.labs[i].on),
+    [0, 1, 2, 3, 4].filter(index => out.hover.labs[index].on),
     'labels keep their runs',
   );
 
   ctx.assert.ok(
-    out.hover.labs.some(l => l.text === `today · 3 ready`),
+    out.hover.labs.some(label => label.text === `today · 3 ready`),
     'today is today',
   );
 
@@ -237,7 +238,7 @@ export default async function (ctx) {
 
   // out among the labels, in the gap between two of them: still the rail — the days stay out (2026-09-25) — and a click
   // there goes to the day ringed as nearest
-  const below = shown.find(l => l.top > near.bottom + 4);
+  const below = shown.find(label => label.top > near.bottom + 4);
   const gap = { x: out.at.rect.left + 70, y: (near.bottom + below.top) / 2 };
 
   await move(ctx, gap.x, gap.y);
@@ -307,7 +308,7 @@ export default async function (ctx) {
     "the list's edge is the rail's",
   );
 
-  await move(ctx, x, yOf(out.at, 2));
+  await move(ctx, railX, yOf(out.at, 2));
   await ctx.sleep(300);
 
   // a click on that label: its first card to the top of the list, under the top pill
@@ -347,25 +348,25 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#slist').scrollTop = 0`);
   await ctx.sleep(100);
   // (from the list's own numbers: what the rail draws is swollen round the pointer, and only the pointer's own spot is true)
-  const railAt = (r, v) => r.rect.top + 6 + (v / r.full) * r.H;
+  const railAt = (reading, position) => reading.rect.top + 6 + (position / reading.full) * reading.H;
 
-  const a = await rail(ctx);
-  const ty = railAt(a, a.scroll + a.view / 2);
+  const beforeDrag = await rail(ctx);
+  const ty = railAt(beforeDrag, beforeDrag.scroll + beforeDrag.view / 2);
 
-  await ctx.drag({ x: Math.round(x), y: Math.round(ty) }, { x: Math.round(x), y: Math.round(ty + 120) });
-  const b = await rail(ctx);
+  await ctx.drag({ x: Math.round(railX), y: Math.round(ty) }, { x: Math.round(railX), y: Math.round(ty + 120) });
+  const afterDrag = await rail(ctx);
 
   ctx.assert.ok(
-    Math.abs(b.scroll - (120 / a.H) * a.full) < 6,
-    `dragging the thumb 120 px scrolls the list 120/H of itself (${Math.round(b.scroll)} against ${Math.round((120 / a.H) * a.full)})`,
+    Math.abs(afterDrag.scroll - (120 / beforeDrag.H) * beforeDrag.full) < 6,
+    `dragging the thumb 120 px scrolls the list 120/H of itself (${Math.round(afterDrag.scroll)} against ${Math.round((120 / beforeDrag.H) * beforeDrag.full)})`,
   );
 
   // a press on the track far from the thumb: the thumb comes to it, centred
-  const far = a.rect.top + 6 + 0.8 * a.H;
+  const far = beforeDrag.rect.top + 6 + 0.8 * beforeDrag.H;
 
   await ctx.send('Input.dispatchMouseEvent', {
     type: 'mousePressed',
-    x: Math.round(x),
+    x: Math.round(railX),
     y: Math.round(far),
     button: 'left',
     buttons: 1,
@@ -374,18 +375,18 @@ export default async function (ctx) {
 
   await ctx.send('Input.dispatchMouseEvent', {
     type: 'mouseReleased',
-    x: Math.round(x),
+    x: Math.round(railX),
     y: Math.round(far),
     button: 'left',
     buttons: 0,
     clickCount: 1,
   });
 
-  const c = await rail(ctx);
-  const mid = railAt(c, c.scroll + c.view / 2);
+  const afterPress = await rail(ctx);
+  const mid = railAt(afterPress, afterPress.scroll + afterPress.view / 2);
 
   ctx.assert.ok(
-    Math.abs(mid - far) < 3 || c.scroll >= c.full - c.view - 1,
+    Math.abs(mid - far) < 3 || afterPress.scroll >= afterPress.full - afterPress.view - 1,
     'a press on the track brings the thumb to it',
   );
 
@@ -395,7 +396,7 @@ export default async function (ctx) {
 
   await ctx.send('Input.dispatchMouseEvent', {
     type: 'mouseWheel',
-    x: Math.round(x),
+    x: Math.round(railX),
     y: Math.round(far),
     deltaX: 0,
     deltaY: 300,
@@ -410,7 +411,7 @@ export default async function (ctx) {
   await settled(ctx, 0);
 
   ctx.assert.ok(
-    (await rail(ctx)).labs.every(l => !l.on),
+    (await rail(ctx)).labs.every(label => !label.on),
     'no labels once the pointer has left',
   );
 

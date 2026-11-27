@@ -33,8 +33,8 @@ export default async function (ctx) {
 
     head('main');
 
-    const T = Date.now();
-    const ts = ms => new Date(T + ms).toISOString();
+    const START = Date.now();
+    const ts = ms => new Date(START + ms).toISOString();
 
     const projDir = join(ctx.fixture.dir, 'projects', slugOf(cwd));
 
@@ -81,7 +81,7 @@ export default async function (ctx) {
       writeFileSync(
         file,
         `${[...lines(id), { type: 'ai-title', sessionId: id, aiTitle: title }]
-          .map(l => JSON.stringify(l))
+          .map(entry => JSON.stringify(entry))
           .join('\n')}\n`,
       );
 
@@ -91,12 +91,12 @@ export default async function (ctx) {
           pid,
           sessionId: id,
           cwd,
-          startedAt: T - 3600_000,
+          startedAt: START - 3600_000,
           version: 'fixture',
           kind: 'interactive',
           entrypoint: 'cli',
           status,
-          statusUpdatedAt: T,
+          statusUpdatedAt: START,
         }),
       );
 
@@ -139,7 +139,9 @@ export default async function (ctx) {
       ],
     });
 
-    const sum = id => ctx.server.api('api/sessions').then(r => r.body.sessions.find(s => s.id === id));
+    const sum = id =>
+      ctx.server.api('api/sessions').then(response => response.body.sessions.find(session => session.id === id));
+
     const card = id => `document.querySelector('#slist > .card[data-id="${id}"]')`;
 
     // ---- the poll reads the HEAD file: the chat at work is told, once — once a line of its own has come in since, for
@@ -232,23 +234,23 @@ export default async function (ctx) {
     ctx.assert.ok(out.chip.oneLine, "on the title's row");
 
     // contrast: the chip's words on its tint over the header, and the card's mark on the card
-    const lum = c => {
-      const [r, g, b] = c
+    const lum = color => {
+      const [red, green, blue] = color
         .match(/[\d.]+/g)
         .slice(0, 3)
         .map(Number)
-        .map(v => {
-          v /= 255;
-          return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+        .map(channel => {
+          channel /= 255;
+          return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
         });
 
-      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
     };
 
-    const ratio = (a, b) => {
-      const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+    const ratio = (first, second) => {
+      const [lighter, darker] = [lum(first), lum(second)].sort((left, right) => right - left);
 
-      return (x + 0.05) / (y + 0.05);
+      return (lighter + 0.05) / (darker + 0.05);
     };
 
     out.px = await ctx.evaluate(`(() => {
@@ -263,17 +265,17 @@ export default async function (ctx) {
 
     // the tint is the red at 16 % over the header's black or panel, composited by hand — `color(srgb r g b / a)` in 0–1
     const mix = (fg, bg) => {
-      const f = fg.match(/[\d.]+/g).map(Number);
+      const fgChannels = fg.match(/[\d.]+/g).map(Number);
       const unit = /^color\(/.test(fg) ? 255 : 1;
-      const k = f[3] ?? 1;
-      const b = bg.match(/[\d.]+/g).map(Number);
+      const alpha = fgChannels[3] ?? 1;
+      const bgChannels = bg.match(/[\d.]+/g).map(Number);
 
-      return `rgb(${[0, 1, 2].map(i => Math.round(f[i] * unit * k + b[i] * (1 - k))).join(',')})`;
+      return `rgb(${[0, 1, 2].map(channel => Math.round(fgChannels[channel] * unit * alpha + bgChannels[channel] * (1 - alpha))).join(',')})`;
     };
 
     out.contrast = {
       chip: +ratio(out.px.ink, mix(out.px.tint, out.px.under)).toFixed(2),
-      mark: +Math.min(...out.px.grounds.map(g => ratio(out.px.mark, g))).toFixed(2),
+      mark: +Math.min(...out.px.grounds.map(ground => ratio(out.px.mark, ground))).toFixed(2),
       theme: await ctx.evaluate(`document.documentElement.dataset.theme`),
     };
 
@@ -319,9 +321,9 @@ export default async function (ctx) {
     );
 
     // ---- narrowed, the row stays one line: the chip gives way, then folds ----
-    for (const w of [900, 640]) {
+    for (const width of [900, 640]) {
       await ctx.send('Emulation.setDeviceMetricsOverride', {
-        width: w,
+        width,
         height: 900,
         deviceScaleFactor: 1,
         mobile: false,
@@ -329,12 +331,12 @@ export default async function (ctx) {
 
       await ctx.sleep(400);
 
-      out[`w${w}`] =
+      out[`w${width}`] =
         await ctx.evaluate(`(() => { const h = document.querySelector('#shead'), b = h.querySelector('#driftBtn'), more = h.querySelector('.hmore');
         return { folded: b.classList.contains('hfold'), width: Math.round(b.getBoundingClientRect().width), clipped: b.querySelector('.q').scrollWidth > b.querySelector('.q').clientWidth,
           oneLine: Math.abs(more.getBoundingClientRect().top - h.querySelector('h2').getBoundingClientRect().top) < 12 }; })()`);
 
-      ctx.assert.ok(out[`w${w}`].oneLine, `${w} px: the row is one line (${JSON.stringify(out[`w${w}`])})`);
+      ctx.assert.ok(out[`w${width}`].oneLine, `${width} px: the row is one line (${JSON.stringify(out[`w${width}`])})`);
     }
 
     await ctx.send('Emulation.clearDeviceMetricsOverride');
@@ -392,31 +394,41 @@ export default async function (ctx) {
     ctx.assert.deepEqual(out.acksAfter, {}, 'the set-aside went with its move');
 
     // ---- the chat's own switch, written after the line that first shows its branch: nothing shown, nothing said ----
-    const now = () => Date.now() - T;
+    const now = () => Date.now() - START;
 
     const alone = (folder, title, branch, pid) => {
       // a chat at work in a checkout of its own
       const dir = join(root, folder);
 
       mkdirSync(join(dir, '.git'), { recursive: true });
-      const c = { id: randomUUID(), head: b => writeFileSync(join(dir, '.git', 'HEAD'), `ref: refs/heads/${b}\n`) };
 
-      c.at = (l, msg) => ({ ...l, cwd: dir, ...(msg && { message: { ...l.message, id: msg } }) });
-      c.add = (...ls) => appendFileSync(c.file, `${ls.map(l => JSON.stringify(c.at(...[].concat(l)))).join('\n')}\n`);
-      c.head(branch);
+      const soloChat = {
+        id: randomUUID(),
+        head: branchName => writeFileSync(join(dir, '.git', 'HEAD'), `ref: refs/heads/${branchName}\n`),
+      };
+
+      soloChat.at = (entry, msg) => ({ ...entry, cwd: dir, ...(msg && { message: { ...entry.message, id: msg } }) });
+
+      soloChat.add = (...ls) =>
+        appendFileSync(
+          soloChat.file,
+          `${ls.map(entry => JSON.stringify(soloChat.at(...[].concat(entry)))).join('\n')}\n`,
+        );
+
+      soloChat.head(branch);
       const proj = join(ctx.fixture.dir, 'projects', slugOf(dir));
 
       mkdirSync(proj, { recursive: true });
-      c.file = join(proj, `${c.id}.jsonl`);
+      soloChat.file = join(proj, `${soloChat.id}.jsonl`);
 
       writeFileSync(
-        c.file,
+        soloChat.file,
         `${[
-          c.at(prompt(c.id, branch, now() - 20_000, 'run the tests')),
-          c.at(calls(c.id, branch, now() - 15_000, 'npm test')),
-          { type: 'ai-title', sessionId: c.id, aiTitle: title },
+          soloChat.at(prompt(soloChat.id, branch, now() - 20_000, 'run the tests')),
+          soloChat.at(calls(soloChat.id, branch, now() - 15_000, 'npm test')),
+          { type: 'ai-title', sessionId: soloChat.id, aiTitle: title },
         ]
-          .map(l => JSON.stringify(l))
+          .map(entry => JSON.stringify(entry))
           .join('\n')}\n`,
       );
 
@@ -424,9 +436,9 @@ export default async function (ctx) {
         join(ctx.fixture.dir, 'sessions', `${pid}.json`),
         JSON.stringify({
           pid,
-          sessionId: c.id,
+          sessionId: soloChat.id,
           cwd: dir,
-          startedAt: T - 3600_000,
+          startedAt: START - 3600_000,
           version: 'fixture',
           kind: 'interactive',
           entrypoint: 'cli',
@@ -435,7 +447,7 @@ export default async function (ctx) {
         }),
       );
 
-      return c;
+      return soloChat;
     };
 
     const saidTo = id =>
@@ -455,7 +467,7 @@ export default async function (ctx) {
     const watch = setInterval(
       () =>
         sum(own.id).then(
-          x => looks.push(x?.drift || null),
+          session => looks.push(session?.drift || null),
           () => {},
         ),
       200,
@@ -531,7 +543,7 @@ export default async function (ctx) {
 
     return out;
   } finally {
-    for (const p of sleeps) p.kill();
+    for (const child of sleeps) child.kill();
     rmSync(root, { recursive: true, force: true });
   }
 }

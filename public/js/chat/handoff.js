@@ -7,59 +7,59 @@
 const ho = { mode: null, ids: [], busy: false, gen: 0 }; // the box's: send, merge or fold, the chats, an ask under way, which opening
 
 /** Why the board cannot send to this chat, or null. */
-function sendWhy(s) {
-  if (!s) return 'it is not on the board';
-  if (asking(s)) return 'it is asking you something — answer it first';
-  if (drawerOf(s)) return null;
+function sendWhy(session) {
+  if (!session) return 'it is not on the board';
+  if (asking(session)) return 'it is asking you something — answer it first';
+  if (drawerOf(session)) return null;
 
-  if (s.alive) {
-    return `it runs in ${inVsCode(s) ? 'VS Code' : 'another terminal'}, out of the board's reach — ⌥⌘C takes it over`;
+  if (session.alive) {
+    return `it runs in ${inVsCode(session) ? 'VS Code' : 'another terminal'}, out of the board's reach — ⌥⌘C takes it over`;
   }
 
-  if (!s.file) return 'there is nothing in it to resume yet';
-  return s.cwd ? null : 'no folder is known for it';
+  if (!session.file) return 'there is nothing in it to resume yet';
+  return session.cwd ? null : 'no folder is known for it';
 }
 
 /** How the words will land, in words — under the box. */
-const sendSay = s =>
-  drawerOf(s)
-    ? `Typed into its drawer here and sent${s.status === 'working' ? ' — it is clauding: Claude Code takes it in as it would from you' : ''}.`
-    : `Its Claude isn’t running: its drawer opens here (claude --resume), with this as its first prompt${s.folderMissing && s.cloneRef ? ` — after cloning ${s.cloneRef}` : ''}.`;
+const sendSay = session =>
+  drawerOf(session)
+    ? `Typed into its drawer here and sent${session.status === 'working' ? ' — it is clauding: Claude Code takes it in as it would from you' : ''}.`
+    : `Its Claude isn’t running: its drawer opens here (claude --resume), with this as its first prompt${session.folderMissing && session.cloneRef ? ` — after cloning ${session.cloneRef}` : ''}.`;
 
 /** A chat as the box lists it: its project's square, name and title. */
-const hoChat = (s, extra = '') =>
-  `<div class="hochat" style="${repoStyle(repoColor(s.cwd))}" data-id="${esc(s.id)}"><span class="sq"></span><b>${projIcon(s.project)}${esc(s.project)}</b><span class="ht">${ticks(esc(s.title))}</span>${extra}</div>`;
+const hoChat = (session, extra = '') =>
+  `<div class="hochat" style="${repoStyle(repoColor(session.cwd))}" data-id="${esc(session.id)}"><span class="sq"></span><b>${projIcon(session.project)}${esc(session.project)}</b><span class="ht">${ticks(esc(session.title))}</span>${extra}</div>`;
 
 /** A card's rows for the right-click menu: what can be done with it and another chat — and the chats tied to it. */
-function talkRows(s) {
-  const no = sendWhy(s);
-  const mno = mergeWhy(s);
-  const fno = foldFromWhy(s);
+function talkRows(session) {
+  const no = sendWhy(session);
+  const mno = mergeWhy(session);
+  const fno = foldFromWhy(session);
 
   return [
     { hr: true },
-    { t: 'Send to this chat…', ...(no ? { off: true, sub: no } : {}), fn: () => sendOpen(s) },
+    { t: 'Send to this chat…', ...(no ? { off: true, sub: no } : {}), fn: () => sendOpen(session) },
     {
       t: 'Merge with…',
       ...(mno ? { off: true, sub: mno } : { sub: 'a new chat, its first prompt where each stands' }),
-      fn: () => mergePick([s.id]),
+      fn: () => mergePick([session.id]),
     },
     {
       t: 'Fold into…',
       ...(fno ? { off: true, sub: fno } : { sub: 'where it stands, typed into another chat — then done' }),
-      fn: () => foldPick(s),
+      fn: () => foldPick(session),
     },
     {
       t: 'Branch from here',
-      ...(s.file
+      ...(session.file
         ? { sub: 'a copy in a drawer of its own — this one goes on as it is' }
         : { off: true, sub: 'nothing in it to branch yet' }),
-      fn: () => branchChat(s),
+      fn: () => branchChat(session),
     },
-    ...(s.links || []).map(l => ({
-      t: linkSay(l),
-      ...(state.sessions.has(l.id) ? {} : { off: true }),
-      fn: () => openSession(l.id, { locate: true }),
+    ...(session.links || []).map(link => ({
+      t: linkSay(link),
+      ...(state.sessions.has(link.id) ? {} : { off: true }),
+      fn: () => openSession(link.id, { locate: true }),
     })),
   ];
 }
@@ -69,7 +69,7 @@ function talkRows(s) {
 // some by a word beside its project — `branch`, `merged`, `merge of 2` — its tooltip saying with which; the header's ···
 // and the card's right-click menu list them, each a row that opens its chat.
 /** A tie in words: what it is, and the chat at its other end — “Merged into ‘Queue for invoice webhooks’”. */
-function linkSay(l) {
+function linkSay(link) {
   const say = {
     'merge:out': 'Merged into',
     'merge:in': 'Merged from',
@@ -79,38 +79,38 @@ function linkSay(l) {
     'branch:out': 'Its branch',
     'continued:out': 'Went on as',
     'continued:in': 'Goes on from',
-  }[`${l.k}:${l.dir}`];
+  }[`${link.k}:${link.dir}`];
 
-  return `${say} “${state.sessions.get(l.id)?.title || 'a chat no longer on the board'}”`;
+  return `${say} “${state.sessions.get(link.id)?.title || 'a chat no longer on the board'}”`;
 }
 
-function linkChip(s) {
-  const ls = s.links || [];
+function linkChip(session) {
+  const ls = session.links || [];
 
   if (!ls.length) return '';
-  const n = k => ls.filter(l => `${l.k}:${l.dir}` === k).length;
+  const countOf = kind => ls.filter(link => `${link.k}:${link.dir}` === kind).length;
 
   const words = [
     ['branch:in', () => 'branch'],
-    ['branch:out', c => `${c} branch${c > 1 ? 'es' : ''}`],
-    ['merge:in', c => `merge of ${c}`],
+    ['branch:out', count => `${count} branch${count > 1 ? 'es' : ''}`],
+    ['merge:in', count => `merge of ${count}`],
     ['merge:out', () => 'merged'],
-    ['fold:in', c => `${c} folded in`],
+    ['fold:in', count => `${count} folded in`],
     ['fold:out', () => 'folded'],
     ['continued:in', () => 'went on from a chat'],
     ['continued:out', () => 'went on'],
   ]
-    .filter(([k]) => n(k))
-    .map(([k, say]) => say(n(k)));
+    .filter(([kind]) => countOf(kind))
+    .map(([kind, say]) => say(countOf(kind)));
 
-  return `<span class="chip lnk" title="${esc(ls.map(linkSay).join('\n'))}">${ls.some(l => l.k === 'branch' || l.k === 'continued') ? ICON.branch : ICON.prMerged}${esc(words.slice(0, 2).join(' · '))}</span>`;
+  return `<span class="chip lnk" title="${esc(ls.map(linkSay).join('\n'))}">${ls.some(link => link.k === 'branch' || link.k === 'continued') ? ICON.branch : ICON.prMerged}${esc(words.slice(0, 2).join(' · '))}</span>`;
 }
 
-function linkMenuHtml(s) {
-  return (s.links || [])
+function linkMenuHtml(session) {
+  return (session.links || [])
     .map(
-      l =>
-        `<button class="hmi" data-lnk="${esc(l.id)}"${state.sessions.has(l.id) ? '' : ' disabled'} title="Open it">${l.k === 'branch' || l.k === 'continued' ? ICON.branch : ICON.prMerged}<span class="lbl">${esc(linkSay(l))}</span><span class="k"></span></button>`,
+      link =>
+        `<button class="hmi" data-lnk="${esc(link.id)}"${state.sessions.has(link.id) ? '' : ' disabled'} title="Open it">${link.k === 'branch' || link.k === 'continued' ? ICON.branch : ICON.prMerged}<span class="lbl">${esc(linkSay(link))}</span><span class="k"></span></button>`,
     )
     .join('');
 }
@@ -120,7 +120,7 @@ function linkMenuHtml(s) {
 // the handoff the server writes from their transcripts (GET /api/handoff) in the box, yours to change, and the folder
 // the new chat starts in — the first chat's, another's, or none. Start: a new chat in a drawer, the handoff its first
 // prompt (POST /api/terminals with `prompt` and `from`); the old chats stay as they are, tied to it.
-const mergeWhy = s => (s?.file ? null : 'nothing in it to hand off yet');
+const mergeWhy = session => (session?.file ? null : 'nothing in it to hand off yet');
 
 const mergePick = (picked = [], back = null) =>
   pickOpen('chatpick', {
@@ -130,10 +130,10 @@ const mergePick = (picked = [], back = null) =>
     min: 2,
     why: mergeWhy,
     go: mergeOpen,
-    goSay: n =>
-      n >= 2
-        ? `Merge these ${n} chats into a new one →`
-        : `Merge — ${n} chat${n === 1 ? '' : 's'} in so far, ⏎ on another`,
+    goSay: count =>
+      count >= 2
+        ? `Merge these ${count} chats into a new one →`
+        : `Merge — ${count} chat${count === 1 ? '' : 's'} in so far, ⏎ on another`,
     ...(back && { back }),
   });
 
@@ -143,19 +143,19 @@ async function mergeOpen(ids) {
   if (list.length < 2) return note($('#shead'), 'Two chats at least to merge', true);
   const gen = ++ho.gen;
 
-  Object.assign(ho, { mode: 'merge', ids: list.map(s => s.id) });
+  Object.assign(ho, { mode: 'merge', ids: list.map(session => session.id) });
   $('#hoTitle').textContent = `Merge ${list.length} chats into a new chat`;
-  $('#hoChats').innerHTML = list.map(s => hoChat(s)).join('');
-  const t = $('#hoText');
+  $('#hoChats').innerHTML = list.map(session => hoChat(session)).join('');
+  const textArea = $('#hoText');
 
-  t.value = '';
-  t.rows = 14;
-  t.placeholder = 'Reading where each stands…';
-  t.disabled = true;
-  const dirs = [...new Set(list.map(s => s.cwd).filter(Boolean))];
+  textArea.value = '';
+  textArea.rows = 14;
+  textArea.placeholder = 'Reading where each stands…';
+  textArea.disabled = true;
+  const dirs = [...new Set(list.map(session => session.cwd).filter(Boolean))];
 
   $('#hoCwd').innerHTML =
-    dirs.map(d => `<option value="${esc(d)}">${esc(homePath(d))}</option>`).join('') +
+    dirs.map(dir => `<option value="${esc(dir)}">${esc(homePath(dir))}</option>`).join('') +
     (state.about.scratch ? `<option value="${esc(state.about.scratch)}">no folder — the board’s own</option>` : '');
 
   $('#hoWhere').hidden = false;
@@ -172,12 +172,12 @@ async function mergeOpen(ids) {
 
 /** The handoff the server writes for the box's chats, into the box — unless the box was opened anew meanwhile. */
 async function hoFill(gen, kind) {
-  const t = $('#hoText');
+  const textArea = $('#hoText');
 
   $('#hoGo').disabled = true; // nothing to confirm until it is there to read (2026-11-02)
 
   try {
-    const d = await api(
+    const data = await api(
       'GET',
       `/api/handoff?kind=${kind}&ids=${ho.ids
         .slice(0, kind === 'fold' ? 1 : 12)
@@ -185,19 +185,19 @@ async function hoFill(gen, kind) {
         .join(',')}`,
     );
 
-    if (gen === ho.gen) t.value = d.text;
-  } catch (e) {
+    if (gen === ho.gen) textArea.value = data.text;
+  } catch (error) {
     if (gen === ho.gen) {
-      hoSay(`Could not read where ${kind === 'fold' ? 'it stands' : 'they stand'}: ${e.message}`, true);
+      hoSay(`Could not read where ${kind === 'fold' ? 'it stands' : 'they stand'}: ${error.message}`, true);
     }
   } finally {
     if (gen === ho.gen) {
       $('#hoGo').disabled = false;
-      t.disabled = false;
-      t.placeholder = 'The handoff';
-      t.focus();
-      t.setSelectionRange(0, 0);
-      t.scrollTop = 0;
+      textArea.disabled = false;
+      textArea.placeholder = 'The handoff';
+      textArea.focus();
+      textArea.setSelectionRange(0, 0);
+      textArea.scrollTop = 0;
     }
   }
 }
@@ -207,40 +207,44 @@ async function hoFill(gen, kind) {
 // reach — a drawer here, or none running), the handoff in the box. Fold: that chat opened, its drawer resumed if it
 // has none, the handoff typed in and not sent — yours to read and send, as a review's prompt is — then the first chat
 // ticked done, tied to it. A chat at work is not folded: the tick would end it mid-turn.
-const foldFromWhy = s =>
-  !s?.file ? 'nothing in it to hand off yet' : !canTick(s) ? 'it is at work — fold it once it is idle' : null;
+const foldFromWhy = session =>
+  !session?.file
+    ? 'nothing in it to hand off yet'
+    : !canTick(session)
+      ? 'it is at work — fold it once it is idle'
+      : null;
 
-const foldPick = (s, back = null) =>
+const foldPick = (session, back = null) =>
   pickOpen('chatpick', {
-    ask: `Fold “${s.title}” into`,
-    skip: [s.id],
+    ask: `Fold “${session.title}” into`,
+    skip: [session.id],
     why: sendWhy,
-    then: b => foldOpen(s, b),
+    then: target => foldOpen(session, target),
     ...(back && { back }),
   });
 
-async function foldOpen(a, b) {
-  const no = foldFromWhy(a) || sendWhy(b);
+async function foldOpen(source, target) {
+  const no = foldFromWhy(source) || sendWhy(target);
 
   if (no) return note($('#shead'), `Not folded: ${no}`, true);
   const gen = ++ho.gen;
 
-  Object.assign(ho, { mode: 'fold', ids: [a.id, b.id] });
+  Object.assign(ho, { mode: 'fold', ids: [source.id, target.id] });
   $('#hoTitle').textContent = 'Fold one chat into another?';
 
   $('#hoChats').innerHTML =
-    hoChat(a, '<span class="hx">then done</span>') + hoChat(b, '<span class="hx">gets it, unsent</span>');
+    hoChat(source, '<span class="hx">then done</span>') + hoChat(target, '<span class="hx">gets it, unsent</span>');
 
-  const t = $('#hoText');
+  const textArea = $('#hoText');
 
-  t.value = '';
-  t.rows = 12;
-  t.placeholder = 'Reading where it stands…';
-  t.disabled = true;
+  textArea.value = '';
+  textArea.rows = 12;
+  textArea.placeholder = 'Reading where it stands…';
+  textArea.disabled = true;
   $('#hoWhere').hidden = true;
 
   hoSay(
-    `Typed into “${b.title}”'s drawer${drawerOf(b) ? '' : ', resumed here for it,'} and not sent: read it there, and ⏎ sends it. “${a.title}” is then ticked done, tied to it.`,
+    `Typed into “${target.title}”'s drawer${drawerOf(target) ? '' : ', resumed here for it,'} and not sent: read it there, and ⏎ sends it. “${source.title}” is then ticked done, tied to it.`,
   );
 
   $('#hoKeys').innerHTML = '<kbd>⌘⏎</kbd>fold<kbd>esc</kbd>';
@@ -251,26 +255,29 @@ async function foldOpen(a, b) {
 
 /** The fold itself: the chat it goes into opened, its drawer up, the words typed unsent; then the tie and the tick. */
 async function foldGo(a0, b0, text) {
-  const a = state.sessions.get(a0.id) || a0;
-  const no = foldFromWhy(a) || sendWhy(state.sessions.get(b0.id) || b0);
+  const source = state.sessions.get(a0.id) || a0;
+  const no = foldFromWhy(source) || sendWhy(state.sessions.get(b0.id) || b0);
 
   if (no) throw new Error(`Not folded: ${no}`);
   await openSession(b0.id);
-  const b = state.sessions.get(b0.id) || b0;
+  const target = state.sessions.get(b0.id) || b0;
 
-  if (!drawerOf(b)) {
-    await termAction(b);
+  if (!drawerOf(target)) {
+    await termAction(target);
 
-    if (!(await drawerReady(b.id))) {
-      throw new Error(`“${b.title}” did not come up — nothing typed, “${a.title}” as it was`);
+    if (!(await drawerReady(target.id))) {
+      throw new Error(`“${target.title}” did not come up — nothing typed, “${source.title}” as it was`);
     }
   }
 
-  for (let i = 0; i < 40 && !claudeTm(state.sessions.get(b.id) || b); i++) await new Promise(r => setTimeout(r, 100)); // the page's own socket to it
-  const unt = await drawerType(state.sessions.get(b.id) || b, text, false);
+  for (let attempt = 0; attempt < 40 && !claudeTm(state.sessions.get(target.id) || target); attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  } // the page's own socket to it
 
-  if (unt) throw new Error(`Not typed into “${b.title}”: ${unt} — “${a.title}” as it was`);
-  if (state.current === b.id) focusTerm();
-  await api('POST', `/api/sessions/${a.id}/fold`, { into: b.id });
-  tickDone(a.id, true, $('#shead'));
+  const unt = await drawerType(state.sessions.get(target.id) || target, text, false);
+
+  if (unt) throw new Error(`Not typed into “${target.title}”: ${unt} — “${source.title}” as it was`);
+  if (state.current === target.id) focusTerm();
+  await api('POST', `/api/sessions/${source.id}/fold`, { into: target.id });
+  tickDone(source.id, true, $('#shead'));
 }

@@ -30,7 +30,7 @@ test('every commit is a version, a new minor starts the count again, and no hist
     writeFileSync(join(dir, 'package.json'), `${JSON.stringify({ name: 'tiny', version, ...extra }, null, 2)}\n`);
 
   const commit = (msg, files = {}) => {
-    for (const [f, body] of Object.entries(files)) writeFileSync(join(dir, f), body);
+    for (const [file, body] of Object.entries(files)) writeFileSync(join(dir, file), body);
     git('add', '-A');
     git('commit', '-q', '-m', msg);
   };

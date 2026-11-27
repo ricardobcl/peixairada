@@ -33,21 +33,21 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const argv = process.argv.slice(2);
 
 const flag = name => {
-  const i = argv.indexOf(name);
+  const index = argv.indexOf(name);
 
-  if (i < 0) return false;
-  argv.splice(i, 1);
+  if (index < 0) return false;
+  argv.splice(index, 1);
   return true;
 };
 
 const value = name => {
-  const i = argv.indexOf(name);
+  const index = argv.indexOf(name);
 
-  if (i < 0) return null;
-  const v = argv[i + 1];
+  if (index < 0) return null;
+  const given = argv[index + 1];
 
-  argv.splice(i, 2);
-  return v;
+  argv.splice(index, 2);
+  return given;
 };
 
 const JSON_OUT = flag('--json');
@@ -59,13 +59,13 @@ const PREFS = value('--prefs');
 let APP = null;
 
 {
-  const i = argv.indexOf('--app');
+  const index = argv.indexOf('--app');
 
-  if (i >= 0) {
-    const s = Number(argv[i + 1]);
+  if (index >= 0) {
+    const seconds = Number(argv[index + 1]);
 
-    APP = s > 0 ? s : 10;
-    argv.splice(i, s > 0 ? 2 : 1);
+    APP = seconds > 0 ? seconds : 10;
+    argv.splice(index, seconds > 0 ? 2 : 1);
   }
 }
 
@@ -90,7 +90,7 @@ const CEIL = {
 
 const PHASES = ['rest', 'pointer', 'scroll', 'home'];
 
-const N = 400;
+const CHAT_COUNT = 400;
 const DONE = 300;
 const WORK = 5;
 const IDLE = 18;
@@ -105,42 +105,44 @@ const ps = (field, pid) =>
 
 const cpuTime = pid => {
   // [[dd-]hh:]mm:ss.cc
-  const r = ps('time', pid);
+  const printed = ps('time', pid);
 
-  if (!r) return null;
+  if (!printed) return null;
 
-  const [d, t] = r.includes('-') ? r.split('-') : [0, r];
-  const p = t.split(':').map(Number);
+  const [days, clock] = printed.includes('-') ? printed.split('-') : [0, printed];
+  const parts = clock.split(':').map(Number);
 
-  while (p.length < 3) p.unshift(0);
-  return +d * 86400 + p[0] * 3600 + p[1] * 60 + p[2];
+  while (parts.length < 3) parts.unshift(0);
+  return +days * 86400 + parts[0] * 3600 + parts[1] * 60 + parts[2];
 };
 
 const footprintMb = pid => {
-  const m = spawnSync('footprint', [String(pid)], { encoding: 'utf8' }).stdout.match(/Footprint: ([\d.]+) (KB|MB|GB)/);
+  const match = spawnSync('footprint', [String(pid)], { encoding: 'utf8' }).stdout.match(
+    /Footprint: ([\d.]+) (KB|MB|GB)/,
+  );
 
-  return m ? +m[1] * { KB: 1 / 1024, MB: 1, GB: 1024 }[m[2]] : null;
+  return match ? +match[1] * { KB: 1 / 1024, MB: 1, GB: 1024 }[match[2]] : null;
 };
 
 // `sample`'s "top of stack" section: the functions the process was in, the waits of idle threads left out
 const IDLE_FN =
   /^(__psynch_cvwait|__psynch_mutexwait|__workq_kernreturn|mach_msg2?_trap|__semwait_signal|semaphore_\w+_trap|kevent\w*|__select|__ulock_wait2?|start_wqthread|thread_start|_pthread_start|__sigsuspend)$/;
 
-const shortFn = f => {
+const shortFn = name => {
   // WebCore::Foo::bar<…>(args…) const → Foo::bar
-  let s = f.replace(/\(anonymous namespace\)::/g, '');
+  let stripped = name.replace(/\(anonymous namespace\)::/g, '');
 
-  for (let k = 0; k < 12 && /<[^<>]*>/.test(s); k++) s = s.replace(/<[^<>]*>/g, '');
+  for (let pass = 0; pass < 12 && /<[^<>]*>/.test(stripped); pass++) stripped = stripped.replace(/<[^<>]*>/g, '');
   return (
-    s
+    stripped
       .replace(/\(.*$/s, '')
       .replace(/^(WebCore|WebKit|WTF|JSC|Inspector)::/, '')
       .trim()
-      .slice(0, 90) || f.slice(0, 90)
+      .slice(0, 90) || name.slice(0, 90)
   );
 };
 
-function topOfStack(file, n = 6) {
+function topOfStack(file, count = 6) {
   let text;
 
   try {
@@ -156,17 +158,17 @@ function topOfStack(file, n = 6) {
 
   for (const line of text.slice(at).split('\n').slice(1)) {
     if (!line.trim()) break;
-    const m = line.match(/^\s+(.+?)\s+\(in ([^)]+)\)\s+(\d+)$/);
+    const match = line.match(/^\s+(.+?)\s+\(in ([^)]+)\)\s+(\d+)$/);
 
-    if (m && !IDLE_FN.test(m[1])) rows.push({ fn: shortFn(m[1]), lib: m[2], n: +m[3] });
+    if (match && !IDLE_FN.test(match[1])) rows.push({ fn: shortFn(match[1]), lib: match[2], n: +match[3] });
   }
 
-  const total = rows.reduce((a, r) => a + r.n, 0) || 1;
+  const total = rows.reduce((sum, row) => sum + row.n, 0) || 1;
 
-  return rows.slice(0, n).map(r => ({ pct: Math.round((r.n / total) * 100), fn: r.fn, lib: r.lib }));
+  return rows.slice(0, count).map(row => ({ pct: Math.round((row.n / total) * 100), fn: row.fn, lib: row.lib }));
 }
 
-const stackLines = top => top.map(r => `    ${String(r.pct).padStart(3)} %  ${r.fn}  (${r.lib})`).join('\n');
+const stackLines = top => top.map(row => `    ${String(row.pct).padStart(3)} %  ${row.fn}  (${row.lib})`).join('\n');
 
 // ---- --app: the board as it runs ----
 if (APP) {
@@ -204,9 +206,9 @@ if (APP) {
       .stdout.trim()
       .split('\n')
       .filter(Boolean)
-      .map(p => [+p, Date.parse(`${ps('lstart', p)} UTC`)])
-      .filter(([, t]) => t >= since)
-      .sort((a, b) => a[1] - b[1]);
+      .map(webPid => [+webPid, Date.parse(`${ps('lstart', webPid)} UTC`)])
+      .filter(([, started]) => started >= since)
+      .sort((left, right) => left[1] - right[1]);
 
     if (!webs.length) {
       console.error('no web process started after the app');
@@ -217,12 +219,12 @@ if (APP) {
     how = 'the first web process the app started (a build from 2026-10-13 on names it in its log)';
   }
 
-  const a = cpuTime(pid);
+  const cpuBefore = cpuTime(pid);
   const t0 = Date.now();
 
   await sleep(APP * 1000);
 
-  const cpu = ((cpuTime(pid) - a) / ((Date.now() - t0) / 1000)) * 100;
+  const cpu = ((cpuTime(pid) - cpuBefore) / ((Date.now() - t0) / 1000)) * 100;
   const mb = footprintMb(pid);
 
   const file = join(tmpDir('pxperf-'), 'app.sample.txt');
@@ -285,15 +287,17 @@ const colors = [
 ];
 
 // each project's colour in the setup, and as Peacock's for a board from before 2026-10-15 (--against)
-const cwds = names.map((n, i) => {
-  const d = join(base, 'r', n);
+const cwds = names.map((name, index) => {
+  const dir = join(base, 'r', name);
 
-  mkdirSync(join(d, '.vscode'), { recursive: true });
-  writeFileSync(join(d, '.vscode', 'settings.json'), JSON.stringify({ 'peacock.color': colors[i] }));
-  return d;
+  mkdirSync(join(dir, '.vscode'), { recursive: true });
+  writeFileSync(join(dir, '.vscode', 'settings.json'), JSON.stringify({ 'peacock.color': colors[index] }));
+  return dir;
 });
 
-const setup = JSON.stringify({ projects: Object.fromEntries(names.map((n, i) => [n, { color: colors[i] }])) });
+const setup = JSON.stringify({
+  projects: Object.fromEntries(names.map((name, index) => [name, { color: colors[index] }])),
+});
 
 const face = (login, fill) => ({
   login,
@@ -303,11 +307,14 @@ const face = (login, fill) => ({
   )}`,
 });
 
-const people = ['ana', 'rui', 'eva', 'joao', 'marta', 'tiago', 'ines', 'pedro'].map((l, i) => face(l, colors[i]));
+const people = ['ana', 'rui', 'eva', 'joao', 'marta', 'tiago', 'ines', 'pedro'].map((login, index) =>
+  face(login, colors[index]),
+);
+
 const me = face('me', '#888');
 
 const ago = min => new Date(Date.now() - min * 60_000);
-const iso = d => d.toISOString().replace(/\.\d+Z$/, 'Z');
+const iso = date => date.toISOString().replace(/\.\d+Z$/, 'Z');
 
 const prs = {};
 const sleeps = [];
@@ -315,56 +322,56 @@ const chats = [];
 
 let prn = 100;
 
-for (let i = 0; i < N; i++) {
-  const k = i % names.length;
-  const cwd = cwds[k];
-  const repo = names[k];
-  const working = i < WORK;
-  const alive = i < WORK + IDLE;
-  const done = i >= N - DONE;
+for (let index = 0; index < CHAT_COUNT; index++) {
+  const projectIndex = index % names.length;
+  const cwd = cwds[projectIndex];
+  const repo = names[projectIndex];
+  const working = index < WORK;
+  const alive = index < WORK + IDLE;
+  const done = index >= CHAT_COUNT - DONE;
 
-  const at = alive ? ago(5 + i * 7) : done ? ago(2880 + (i - (N - DONE)) * 130) : ago(30 + i * 40);
+  const at = alive ? ago(5 + index * 7) : done ? ago(2880 + (index - (CHAT_COUNT - DONE)) * 130) : ago(30 + index * 40);
   const urls = [];
 
-  for (let j = 0; j < (done ? 1 : 1 + (i % 3)); j++) {
-    const n = prn++;
-    const a = people[(i + j) % people.length];
-    const r = people[(i + j + 3) % people.length];
+  for (let prIndex = 0; prIndex < (done ? 1 : 1 + (index % 3)); prIndex++) {
+    const prNumber = prn++;
+    const author = people[(index + prIndex) % people.length];
+    const reviewer = people[(index + prIndex + 3) % people.length];
 
-    prs[`acme/${repo}#${n}`] = {
-      state: done ? (j % 2 ? 'CLOSED' : 'MERGED') : j === 2 ? 'MERGED' : 'OPEN',
-      title: `Change ${n} in ${repo}, a title of a few words`,
+    prs[`acme/${repo}#${prNumber}`] = {
+      state: done ? (prIndex % 2 ? 'CLOSED' : 'MERGED') : prIndex === 2 ? 'MERGED' : 'OPEN',
+      title: `Change ${prNumber} in ${repo}, a title of a few words`,
       createdAt: iso(ago(3000)),
-      headRefOid: `H${n}`,
-      author: j % 2 ? me : a,
+      headRefOid: `H${prNumber}`,
+      author: prIndex % 2 ? me : author,
       reviews: {
         nodes: [
-          { author: r, state: 'COMMENTED', submittedAt: iso(ago(60)) },
+          { author: reviewer, state: 'COMMENTED', submittedAt: iso(ago(60)) },
           { author: me, state: 'APPROVED', submittedAt: iso(ago(120)) },
         ],
       },
-      comments: { nodes: [{ author: r, createdAt: iso(ago(20)) }] },
+      comments: { nodes: [{ author: reviewer, createdAt: iso(ago(20)) }] },
       pushes: { nodes: [] },
       asks: { nodes: [] },
       reviewRequests: { nodes: [] },
     };
 
-    urls.push(`https://github.com/acme/${repo}/pull/${n}`);
+    urls.push(`https://github.com/acme/${repo}/pull/${prNumber}`);
   }
 
   let live;
 
   if (alive) {
-    const s = spawn('sleep', ['900'], { stdio: 'ignore' });
+    const child = spawn('sleep', ['900'], { stdio: 'ignore' });
 
-    sleeps.push(s);
-    live = { pid: s.pid, status: working ? 'busy' : 'idle' };
+    sleeps.push(child);
+    live = { pid: child.pid, status: working ? 'busy' : 'idle' };
   }
 
   chats.push({
     cwd,
     at,
-    title: `Chat ${i} about ${repo}, long enough to wrap`,
+    title: `Chat ${index} about ${repo}, long enough to wrap`,
     prompt: `Look at ${urls.join(' and ')} — what changed?`,
     reply: 'Reviewed; one nit on naming.',
     live,
@@ -380,7 +387,9 @@ const fx = makeFixture(claude, chats);
 writeFileSync(join(base, 'prs.json'), JSON.stringify(prs));
 
 const doneMarks = JSON.stringify({
-  done: Object.fromEntries(fx.chats.filter((c, i) => chats[i].done).map(c => [c.id, new Date().toISOString()])),
+  done: Object.fromEntries(
+    fx.chats.filter((chat, index) => chats[index].done).map(chat => [chat.id, new Date().toISOString()]),
+  ),
 });
 
 // One server per tree, each over the same made-up ~/.claude with a state dir of its own; the other tree's from a
@@ -410,20 +419,23 @@ async function startBoard(root, label) {
     },
   });
 
-  const open = (await server.api('api/sessions')).body.sessions.find(s => s.status === 'stale' && !s.done)?.id;
-  const b = { label, server, open };
+  const open = (await server.api('api/sessions')).body.sessions.find(
+    session => session.status === 'stale' && !session.done,
+  )?.id;
 
-  boards.push(b);
-  return b;
+  const board = { label, server, open };
+
+  boards.push(board);
+  return board;
 }
 
 let stopping = null;
 
 const stop = () =>
   (stopping ||= (async () => {
-    for (const s of sleeps) s.kill();
-    for (const h of harnesses) h.kill();
-    for (const b of boards) await b.server.stop().catch(() => {});
+    for (const child of sleeps) child.kill();
+    for (const harness of harnesses) harness.kill();
+    for (const board of boards) await board.server.stop().catch(() => {});
 
     for (const wt of worktrees) {
       spawnSync('git', ['-C', ROOT, 'worktree', 'remove', '--force', wt], { stdio: 'ignore' });
@@ -447,8 +459,8 @@ for (const [sig, code] of [
 }
 
 for (const ev of ['uncaughtException', 'unhandledRejection']) {
-  process.on(ev, e => {
-    console.error(`${ev}: ${e?.stack || e}`);
+  process.on(ev, error => {
+    console.error(`${ev}: ${error?.stack || error}`);
     finish(1);
   });
 }
@@ -500,12 +512,16 @@ const body = `await sleep(3000);
   return { ...out, rules, cards: list.querySelectorAll(':scope > .card').length };`;
 
 const median = xs => {
-  const s = xs.filter(x => Number.isFinite(x)).sort((a, b) => a - b);
+  const sorted = xs.filter(number => Number.isFinite(number)).sort((left, right) => left - right);
 
-  return s.length ? (s.length % 2 ? s[s.length >> 1] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : NaN;
+  return sorted.length
+    ? sorted.length % 2
+      ? sorted[sorted.length >> 1]
+      : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+    : NaN;
 };
 
-async function measure(b, tag) {
+async function measure(board, tag) {
   const pidFile = join(base, `pid-${tag}`);
   const samples = [];
   const sampling = [];
@@ -516,20 +532,20 @@ async function measure(b, tag) {
     if (!existsSync(pidFile)) return;
     const file = join(base, `${tag}-${name}.sample.txt`);
 
-    const p = spawn(
+    const child = spawn(
       'sample',
       [readFileSync(pidFile, 'utf8').trim(), String(Math.max(1, Math.floor(secs) - 1)), '-file', file],
       { stdio: 'ignore' },
     );
 
-    sampling.push(new Promise(res => p.on('close', () => res([name, file]))));
+    sampling.push(new Promise(res => child.on('close', () => res([name, file]))));
   };
 
-  const harness = spawn(process.execPath, [join(ROOT, 'scripts', 'webkit.mjs'), '--hash', b.open, body], {
+  const harness = spawn(process.execPath, [join(ROOT, 'scripts', 'webkit.mjs'), '--hash', board.open, body], {
     env: {
       ...env,
-      URL: b.server.url,
-      KEY: b.server.key || '',
+      URL: board.server.url,
+      KEY: board.server.key || '',
       SIZE: '1728x1117',
       PREFS: JSON.stringify(prefs),
       TIMEOUT: '120',
@@ -541,31 +557,31 @@ async function measure(b, tag) {
   let output = '';
   let err = '';
 
-  harness.stdout.on('data', d => {
-    output += d;
+  harness.stdout.on('data', chunk => {
+    output += chunk;
   });
 
-  harness.stderr.on('data', d => {
+  harness.stderr.on('data', chunk => {
     // the body's `say('phase …')` lines start a sample; the rest is the harness's to say
-    err += d;
-    let k;
+    err += chunk;
+    let newline;
 
-    while ((k = err.indexOf('\n')) >= 0) {
-      const line = err.slice(0, k);
-      const m = line.match(/^phase (\w+) ([\d.]+)$/);
+    while ((newline = err.indexOf('\n')) >= 0) {
+      const line = err.slice(0, newline);
+      const match = line.match(/^phase (\w+) ([\d.]+)$/);
 
-      err = err.slice(k + 1);
-      if (!m) process.stderr.write(`${line}\n`);
-      else if (SAMPLE) startSample(m[1], +m[2]);
+      err = err.slice(newline + 1);
+      if (!match) process.stderr.write(`${line}\n`);
+      else if (SAMPLE) startSample(match[1], +match[2]);
     }
   });
 
   harnesses.add(harness);
 
   const exited = new Promise(res =>
-    harness.on('close', c => {
+    harness.on('close', exitCode => {
       harnesses.delete(harness);
-      res(c);
+      res(exitCode);
     }),
   );
 
@@ -578,9 +594,9 @@ async function measure(b, tag) {
   (async () => {
     while (running) {
       if (existsSync(pidFile)) {
-        const t = cpuTime(+readFileSync(pidFile, 'utf8'));
+        const cpu = cpuTime(+readFileSync(pidFile, 'utf8'));
 
-        if (t !== null) samples.push([Date.now(), t]);
+        if (cpu !== null) samples.push([Date.now(), cpu]);
       }
 
       await sleep(250);
@@ -589,26 +605,29 @@ async function measure(b, tag) {
 
   const code = await exited;
 
-  if (code !== 0) throw new Error(`the WebKit harness failed on ${b.label} (exit ${code})`);
+  if (code !== 0) throw new Error(`the WebKit harness failed on ${board.label} (exit ${code})`);
   const res = JSON.parse(output.trim().split('\n').pop());
 
   const at = ms => {
     let best = null;
 
-    for (const s of samples) if (!best || Math.abs(s[0] - ms) < Math.abs(best[0] - ms)) best = s;
+    for (const sample of samples) if (!best || Math.abs(sample[0] - ms) < Math.abs(best[0] - ms)) best = sample;
     return best;
   };
 
   const phases = {};
 
-  for (const p of res.phases) {
-    const a = at(p.t0);
-    const z = at(p.t1);
+  for (const phase of res.phases) {
+    const atStart = at(phase.t0);
+    const atEnd = at(phase.t1);
 
-    phases[p.name] = {
-      cpu: a && z && z[0] > a[0] ? ((z[1] - a[1]) / ((z[0] - a[0]) / 1000)) * 100 : NaN,
-      dropped: p.dropped,
-      frames: p.frames,
+    phases[phase.name] = {
+      cpu:
+        atStart && atEnd && atEnd[0] > atStart[0]
+          ? ((atEnd[1] - atStart[1]) / ((atEnd[0] - atStart[0]) / 1000)) * 100
+          : NaN,
+      dropped: phase.dropped,
+      frames: phase.frames,
     };
   }
 
@@ -650,16 +669,16 @@ try {
     await startBoard(wt, `${sha} (${AGAINST})`);
   }
 
-  for (const b of boards) results.set(b, []);
+  for (const board of boards) results.set(board, []);
 
-  for (let r = 0; r < RUNS; r++) {
-    for (const b of r % 2 ? [...boards].reverse() : boards) {
-      if (RUNS > 1 || boards.length > 1) console.error(`› run ${r + 1} of ${RUNS}: ${b.label}`);
-      results.get(b).push(await measure(b, `r${r}-${boards.indexOf(b)}`));
+  for (let run = 0; run < RUNS; run++) {
+    for (const board of run % 2 ? [...boards].reverse() : boards) {
+      if (RUNS > 1 || boards.length > 1) console.error(`› run ${run + 1} of ${RUNS}: ${board.label}`);
+      results.get(board).push(await measure(board, `r${run}-${boards.indexOf(board)}`));
     }
   }
-} catch (e) {
-  console.error(e.message);
+} catch (error) {
+  console.error(error.message);
   await finish(1);
 }
 
@@ -667,51 +686,55 @@ await stop();
 
 // ---- what came out: the medians, side by side; the ceilings and the rules held against this tree ----
 const sum = runs => {
-  const m = f => median(runs.map(f));
+  const medianOf = pick => median(runs.map(pick));
 
   return {
-    cards: m(r => r.cards),
-    layers: m(r => r.layers),
-    memory: m(r => r.memory?.now),
-    peak: m(r => r.memory?.peak),
-    open: m(r => r.open),
+    cards: medianOf(run => run.cards),
+    layers: medianOf(run => run.layers),
+    memory: medianOf(run => run.memory?.now),
+    peak: medianOf(run => run.memory?.peak),
+    open: medianOf(run => run.open),
     phases: Object.fromEntries(
-      PHASES.map(p => [
-        p,
-        { cpu: m(r => r.phases[p]?.cpu), dropped: m(r => r.phases[p]?.dropped), frames: m(r => r.phases[p]?.frames) },
+      PHASES.map(phase => [
+        phase,
+        {
+          cpu: medianOf(run => run.phases[phase]?.cpu),
+          dropped: medianOf(run => run.phases[phase]?.dropped),
+          frames: medianOf(run => run.phases[phase]?.frames),
+        },
       ]),
     ),
-    rules: [...new Set(runs.flatMap(r => r.rules))],
+    rules: [...new Set(runs.flatMap(run => run.rules))],
     stacks: runs.at(-1).stacks,
   };
 };
 
-const sums = boards.map(b => ({ label: b.label, ...sum(results.get(b)) }));
+const sums = boards.map(board => ({ label: board.label, ...sum(results.get(board)) }));
 const mine = sums[0];
 
-const fmt = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : '—');
-const col = (s, w = 22) => String(s).padEnd(w);
+const fmt = (number, digits = 1) => (Number.isFinite(number) ? number.toFixed(digits) : '—');
+const col = (text, width = 22) => String(text).padEnd(width);
 const over = [];
 
-console.log(`a made-up board of ${N} chats in WebKit; ${RUNS > 1 ? `the median of ${RUNS} runs` : 'one run'}`);
-console.log(`${col('') + sums.map(s => col(s.label)).join('')}ceiling`);
-console.log(col('cards in the list') + sums.map(s => col(fmt(s.cards, 0))).join(''));
+console.log(`a made-up board of ${CHAT_COUNT} chats in WebKit; ${RUNS > 1 ? `the median of ${RUNS} runs` : 'one run'}`);
+console.log(`${col('') + sums.map(result => col(result.label)).join('')}ceiling`);
+console.log(col('cards in the list') + sums.map(result => col(fmt(result.cards, 0))).join(''));
 
-for (const p of PHASES) {
-  if (!sums.some(s => Number.isFinite(s.phases[p].cpu))) continue;
-  if (!(mine.phases[p].cpu <= CEIL[p])) over.push(p);
+for (const phase of PHASES) {
+  if (!sums.some(result => Number.isFinite(result.phases[phase].cpu))) continue;
+  if (!(mine.phases[phase].cpu <= CEIL[phase])) over.push(phase);
 
   console.log(
-    col(`${p} (% of a core)`) +
+    col(`${phase} (% of a core)`) +
       sums
-        .map(s =>
+        .map(result =>
           col(
-            `${fmt(s.phases[p].cpu)}${Number.isFinite(s.phases[p].frames) ? `  ${fmt(s.phases[p].dropped, 0)}/${fmt(s.phases[p].frames, 0)} slow` : ''}`,
+            `${fmt(result.phases[phase].cpu)}${Number.isFinite(result.phases[phase].frames) ? `  ${fmt(result.phases[phase].dropped, 0)}/${fmt(result.phases[phase].frames, 0)} slow` : ''}`,
           ),
         )
         .join('') +
-      CEIL[p] +
-      (over.at(-1) === p ? '  ← over' : ''),
+      CEIL[phase] +
+      (over.at(-1) === phase ? '  ← over' : ''),
   );
 }
 
@@ -719,7 +742,7 @@ if (!(mine.open <= CEIL.open)) over.push('open');
 
 console.log(
   col('a chat opened (ms)') +
-    sums.map(s => col(fmt(s.open, 0))).join('') +
+    sums.map(result => col(fmt(result.open, 0))).join('') +
     CEIL.open +
     (over.at(-1) === 'open' ? '  ← over' : ''),
 );
@@ -728,24 +751,29 @@ if (!(mine.layers <= CEIL.layers)) over.push('layers');
 
 console.log(
   col('layers') +
-    sums.map(s => col(fmt(s.layers, 0))).join('') +
+    sums.map(result => col(fmt(result.layers, 0))).join('') +
     CEIL.layers +
     (over.at(-1) === 'layers' ? '  ← over' : ''),
 );
 
-console.log(col('memory (MB, peak)') + sums.map(s => col(`${fmt(s.memory, 0)} (${fmt(s.peak, 0)})`)).join(''));
+console.log(
+  col('memory (MB, peak)') + sums.map(result => col(`${fmt(result.memory, 0)} (${fmt(result.peak, 0)})`)).join(''),
+);
 
 console.log(
   '(slow: frames over 20 ms of all drawn in the phase, where it moves something each frame; rest and home sleep)',
 );
 
-for (const s of sums) if (s.rules.length) console.log(`rules broken on ${s.label}:\n  ${s.rules.join('\n  ')}`);
+for (const result of sums) {
+  if (result.rules.length) console.log(`rules broken on ${result.label}:\n  ${result.rules.join('\n  ')}`);
+}
+
 if (!mine.rules.length) console.log('rules: none broken on this tree (lib/animcheck.mjs)');
 
 if (SAMPLE) {
-  for (const s of sums) {
-    for (const [p, top] of Object.entries(s.stacks)) {
-      console.log(`where ${s.label}'s time went, ${p}:\n${stackLines(top) || '    nothing but waiting'}`);
+  for (const result of sums) {
+    for (const [phase, top] of Object.entries(result.stacks)) {
+      console.log(`where ${result.label}'s time went, ${phase}:\n${stackLines(top) || '    nothing but waiting'}`);
     }
   }
 }
@@ -753,7 +781,9 @@ if (SAMPLE) {
 if (JSON_OUT) {
   console.log(
     JSON.stringify(
-      Object.fromEntries(sums.map((s, i) => [i ? 'against' : 'tree', { ...s, runs: results.get(boards[i]) }])),
+      Object.fromEntries(
+        sums.map((result, index) => [index ? 'against' : 'tree', { ...result, runs: results.get(boards[index]) }]),
+      ),
     ),
   );
 }

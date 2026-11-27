@@ -11,7 +11,7 @@ import { makeFixture } from '../fixture.mjs';
 export const meta = { server: true, fixture: 'auto', prefs: { cards: 'compact', cardsEven: true } };
 
 export default async function (ctx) {
-  const a = ctx.assert;
+  const assert = ctx.assert;
   const out = {};
   const cwd = join(tmpdir(), 'peix-card-raised', 'raised-repo');
 
@@ -45,13 +45,13 @@ export default async function (ctx) {
     await ctx.openChat(openId);
     await ctx.settle();
 
-    const card = t =>
-      `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title').textContent === '${t}')`;
+    const card = title =>
+      `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title').textContent === '${title}')`;
 
-    const look = t =>
+    const look = title =>
       ctx
         .evaluate(
-          `JSON.stringify((c => { const s = getComputedStyle(c), n = document.querySelector('#sessions'), frame = getComputedStyle(n).backgroundColor; return { bg: s.backgroundColor, frame, shadow: s.boxShadow, h: +c.getBoundingClientRect().height.toFixed(2), kept: c.__mark === 1, tr: s.translate }; })(${card(t)}))`,
+          `JSON.stringify((c => { const s = getComputedStyle(c), n = document.querySelector('#sessions'), frame = getComputedStyle(n).backgroundColor; return { bg: s.backgroundColor, frame, shadow: s.boxShadow, h: +c.getBoundingClientRect().height.toFixed(2), kept: c.__mark === 1, tr: s.translate }; })(${card(title)}))`,
         )
         .then(JSON.parse);
 
@@ -70,16 +70,16 @@ export default async function (ctx) {
       await ctx.settle();
       const on = await look('A ready one');
 
-      a.notEqual(on.bg, none, 'a ground');
+      assert.notEqual(on.bg, none, 'a ground');
 
-      a.equal(
+      assert.equal(
         (await lum(on.bg)) > (await lum(on.frame)),
         true,
         `${dark ? 'dark' : 'light'}: lighter than the frame (${on.bg} on ${on.frame})`,
       );
 
       if (!dark) {
-        a.equal(
+        assert.equal(
           (await lum(on.bg)) <
             (await lum(await ctx.evaluate(`getComputedStyle(document.querySelector('#chat')).backgroundColor`))),
           true,
@@ -87,7 +87,7 @@ export default async function (ctx) {
         );
       }
 
-      a.match(on.shadow, /0px 0px 0px 1px/, 'the hairline');
+      assert.match(on.shadow, /0px 0px 0px 1px/, 'the hairline');
       await ctx.shot(`raised-${dark ? 'dark' : 'light'}`, { x: 0, y: 0, width: 420, height: 520 });
     }
 
@@ -101,24 +101,24 @@ export default async function (ctx) {
     const open = await look('The open one');
     const asks = await look('Asking you');
 
-    a.equal(open.shadow, 'none', 'the open row: its solid colour alone');
-    a.notEqual(open.bg, (await look('A ready one')).bg, 'solid, not the ground');
-    a.match(asks.shadow, /inset/, 'a question: its red hairline');
+    assert.equal(open.shadow, 'none', 'the open row: its solid colour alone');
+    assert.notEqual(open.bg, (await look('A ready one')).bg, 'solid, not the ground');
+    assert.match(asks.shadow, /inset/, 'a question: its red hairline');
 
     // the PR chips tint against the card's ground
-    a.notEqual(
+    assert.notEqual(
       await ctx.evaluate(`getComputedStyle(${card('A ready one')}).getPropertyValue('--side').trim()`),
       await ctx.evaluate(`getComputedStyle(document.querySelector('#sessions')).getPropertyValue('--side').trim()`),
       "the card's --side is its ground",
     );
 
     // under the pointer
-    const hover = async t => {
-      const p = await ctx.evaluate(
-        `(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(${card(t)}.getBoundingClientRect())`,
+    const hover = async title => {
+      const point = await ctx.evaluate(
+        `(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(${card(title)}.getBoundingClientRect())`,
       );
 
-      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y });
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y });
       await ctx.sleep(450);
     };
 
@@ -127,25 +127,25 @@ export default async function (ctx) {
     await hover('A ready one');
     const up = await look('A ready one');
 
-    a.equal(up.tr, '0px -1px', 'it rises 1 px');
-    a.notEqual(up.shadow, rest.shadow, 'its shadow deepens');
+    assert.equal(up.tr, '0px -1px', 'it rises 1 px');
+    assert.notEqual(up.shadow, rest.shadow, 'its shadow deepens');
 
     out.lip = await ctx.evaluate(
       `(c => { const b = getComputedStyle(c, '::before'); return { content: b.content, bottom: b.bottom }; })(${card('A ready one')})`,
     );
 
-    a.deepEqual(out.lip, { content: '""', bottom: '-2px' }, 'its hit area reaches 2 px lower');
+    assert.deepEqual(out.lip, { content: '""', bottom: '-2px' }, 'its hit area reaches 2 px lower');
     await hover('Asking you');
-    a.equal((await look('Asking you')).tr, 'none', 'a question keeps still');
+    assert.equal((await look('Asking you')).tr, 'none', 'a question keeps still');
     await hover('The open one');
-    a.notEqual((await look('The open one')).shadow, 'none', 'the open row comes up too');
+    assert.notEqual((await look('The open one')).shadow, 'none', 'the open row comes up too');
     await ctx.shot('raised-hover', { x: 0, y: 0, width: 420, height: 520 });
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 900, y: 500 });
 
     // reduced motion: the shadow says it, nothing moves
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     await hover('A ready one');
-    a.equal((await look('A ready one')).tr, 'none', 'no rise under reduced motion');
+    assert.equal((await look('A ready one')).tr, 'none', 'no rise under reduced motion');
     await ctx.send('Emulation.setEmulatedMedia', { features: [] });
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 900, y: 500 });
 

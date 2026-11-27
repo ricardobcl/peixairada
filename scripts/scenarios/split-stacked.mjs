@@ -7,7 +7,7 @@
 // — the keys turn the rest — and the zsh's × is the ··· menu's (or ⌥⌘W).
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
-const halves = ctx => ctx.peix('state().halves').then(h => h.map(k => k && k.split(':')[0])); // a zsh's tab is shell:<its id>
+const halves = ctx => ctx.peix('state().halves').then(keys => keys.map(key => key && key.split(':')[0])); // a zsh's tab is shell:<its id>
 
 const rects = ctx =>
   ctx
@@ -23,18 +23,18 @@ const layout = ctx =>
     )
     .then(JSON.parse);
 
-const ids = ctx => Promise.all([0, 1].map(g => ctx.peix(`term(${g}).id`)));
+const ids = ctx => Promise.all([0, 1].map(half => ctx.peix(`term(${half}).id`)));
 
 // settled first: a claude's grid waits for its repaint (2026-11-05)
 const fits = async ctx => {
   await ctx.settle();
 
-  for (const g of [0, 1]) {
-    const d = await ctx.peix(`term(${g})`);
+  for (const half of [0, 1]) {
+    const term = await ctx.peix(`term(${half})`);
 
     ctx.assert.ok(
-      d.screen.w <= d.body.w + 0.5 && d.screen.h <= d.body.h + 0.5,
-      `half ${g}: the screen (${d.screen.w}×${d.screen.h}) fits the body (${d.body.w}×${d.body.h})`,
+      term.screen.w <= term.body.w + 0.5 && term.screen.h <= term.body.h + 0.5,
+      `half ${half}: the screen (${term.screen.w}×${term.screen.h}) fits the body (${term.body.w}×${term.body.h})`,
     );
   }
 };
@@ -55,33 +55,33 @@ export default async function (ctx) {
 
   ctx.assert.equal(await ctx.peix('state().focusG'), 1, '⌥⌘2 put the keys in the bottom half');
 
-  let l = await layout(ctx);
-  let r = await rects(ctx);
+  let shape = await layout(ctx);
+  let boxes = await rects(ctx);
 
   ctx.assert.deepEqual(
-    { stack: l.stack, dir: l.dir, cursor: l.cursor },
+    { stack: shape.stack, dir: shape.dir, cursor: shape.cursor },
     { stack: true, dir: 'column', cursor: 'row-resize' },
     'the column stands, the divider resizes up and down',
   );
 
   ctx.assert.ok(
-    r.grpB.y >= r.grp.y + r.grp.h,
-    `the second half (y ${r.grpB.y}) is under the first (ends ${r.grp.y + r.grp.h})`,
+    boxes.grpB.y >= boxes.grp.y + boxes.grp.h,
+    `the second half (y ${boxes.grpB.y}) is under the first (ends ${boxes.grp.y + boxes.grp.h})`,
   );
 
-  const inner = r.groups.w; // the halves meet the column's edges (the tiles' 8 px round them until 2026-11-01)
+  const inner = boxes.groups.w; // the halves meet the column's edges (the tiles' 8 px round them until 2026-11-01)
 
   ctx.assert.ok(
-    Math.abs(r.grp.w - inner) <= 1 && Math.abs(r.grpB.w - inner) <= 1,
+    Math.abs(boxes.grp.w - inner) <= 1 && Math.abs(boxes.grpB.w - inner) <= 1,
     'both halves are as wide as the column',
   );
 
   ctx.assert.ok(
-    r.gsplit.h === 5 && Math.abs(r.gsplit.w - inner) <= 1,
-    `the divider is a 5 px rule across the column (${r.gsplit.w}×${r.gsplit.h})`,
+    boxes.gsplit.h === 5 && Math.abs(boxes.gsplit.w - inner) <= 1,
+    `the divider is a 5 px rule across the column (${boxes.gsplit.w}×${boxes.gsplit.h})`,
   );
 
-  ctx.assert.equal(l.turn, 'side', "the empty half's strip offers the side-by-side layout (◫)");
+  ctx.assert.equal(shape.turn, 'side', "the empty half's strip offers the side-by-side layout (◫)");
   await ctx.shot('stacked-empty');
   // …and turns it: side by side, then stacked again
   await ctx.evaluate(`document.querySelector('#ptabsB .gturn').click()`);
@@ -132,18 +132,18 @@ export default async function (ctx) {
   });
 
   ctx.assert.equal(await ctx.peix('state().focusG'), 1, '⌘2 kept the keys in pane 2');
-  l = await layout(ctx);
-  r = await rects(ctx);
+  shape = await layout(ctx);
+  boxes = await rects(ctx);
 
   ctx.assert.deepEqual(
-    { dir: l.dir, cursor: l.cursor, turn: l.turn },
+    { dir: shape.dir, cursor: shape.cursor, turn: shape.turn },
     { dir: 'row', cursor: 'col-resize', turn: null },
     'a row again, the divider upright — and no ⊟, neither half having a strip',
   );
 
   ctx.assert.ok(
-    r.grpB.x >= r.grp.x + r.grp.w,
-    `the second half (x ${r.grpB.x}) is right of the first (ends ${r.grp.x + r.grp.w})`,
+    boxes.grpB.x >= boxes.grp.x + boxes.grp.w,
+    `the second half (x ${boxes.grpB.x}) is right of the first (ends ${boxes.grp.x + boxes.grp.w})`,
   );
 
   ctx.assert.deepEqual(await halves(ctx), ['chat', 'shell'], 'the tabs stayed where they were');
@@ -158,22 +158,22 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await ids(ctx), before, 'and re-attached nothing');
 
   // the divider drags up and down, into its own pref: side by side keeps its place
-  r = await rects(ctx);
+  boxes = await rects(ctx);
 
   await ctx.drag('#gsplit', {
-    x: r.groups.x + Math.round(r.groups.w / 2),
-    y: r.groups.y + Math.round(r.groups.h * 0.3),
+    x: boxes.groups.x + Math.round(boxes.groups.w / 2),
+    y: boxes.groups.y + Math.round(boxes.groups.h * 0.3),
   });
 
-  const p = await ctx.peix('prefs()');
+  const prefs = await ctx.peix('prefs()');
 
-  ctx.assert.ok(Math.abs(p.stackAt - 0.3) < 0.02, `the stacked divider is at ${p.stackAt}`);
-  ctx.assert.equal(p.splitAt, 0.5, 'the side-by-side divider did not move');
-  r = await rects(ctx);
+  ctx.assert.ok(Math.abs(prefs.stackAt - 0.3) < 0.02, `the stacked divider is at ${prefs.stackAt}`);
+  ctx.assert.equal(prefs.splitAt, 0.5, 'the side-by-side divider did not move');
+  boxes = await rects(ctx);
 
   ctx.assert.ok(
-    Math.abs(r.grp.h - (r.grp.h + r.grpB.h) * 0.3) <= 3,
-    `the top half is 30 % of the column (${r.grp.h} of ${r.groups.h})`,
+    Math.abs(boxes.grp.h - (boxes.grp.h + boxes.grpB.h) * 0.3) <= 3,
+    `the top half is 30 % of the column (${boxes.grp.h} of ${boxes.groups.h})`,
   );
 
   await fits(ctx);
@@ -281,5 +281,5 @@ export default async function (ctx) {
 
   await ctx.evaluate(`document.querySelector('#hmenu').close()`);
 
-  return { stackAt: p.stackAt, splitAt: p.splitAt };
+  return { stackAt: prefs.stackAt, splitAt: prefs.splitAt };
 }

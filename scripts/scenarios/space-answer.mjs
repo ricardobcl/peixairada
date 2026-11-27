@@ -52,13 +52,13 @@ export default async function (ctx) {
 
   const sleeps = [0, 1].map(() => spawn('sleep', ['300'], { stdio: 'ignore' }));
 
-  const asked = (i, title) => ({
+  const asked = (index, title) => ({
     cwd,
     title,
     prompt: 'pick one',
     reply: 'One question.',
-    at: new Date(now - 300_000 - i * 1000),
-    live: { pid: sleeps[i].pid, startedAt: now - 3_600_000 },
+    at: new Date(now - 300_000 - index * 1000),
+    live: { pid: sleeps[index].pid, startedAt: now - 3_600_000 },
     lines: id =>
       toolLines({
         id,
@@ -75,17 +75,24 @@ export default async function (ctx) {
 
   const press = async sel => {
     // a hand's click, hit-testing and all
-    const r = await ctx.evaluate(
+    const point = await ctx.evaluate(
       `(() => { const b = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; })()`,
     );
 
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.x, y: r.y });
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: r.x, y: r.y, button: 'left', clickCount: 1 });
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y });
+
+    await ctx.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      x: point.x,
+      y: point.y,
+      button: 'left',
+      clickCount: 1,
+    });
 
     await ctx.send('Input.dispatchMouseEvent', {
       type: 'mouseReleased',
-      x: r.x,
-      y: r.y,
+      x: point.x,
+      y: point.y,
       button: 'left',
       clickCount: 1,
     });
@@ -102,19 +109,19 @@ export default async function (ctx) {
     );
 
   /** The stand-in drawer's screen, drawn anew; its socket a recorder of what was typed. */
-  /** The select with its ring on answer k, as Claude Code redraws it on a number. */
-  const ringOn = (lines, k) =>
-    lines.map(l => {
-      const m = /^(\s*│?\s?)(?:❯ | {2})(\d+)\. (.*)$/.exec(l.replace(/\x1b\[[0-9;]*m/g, ''));
+  /** The select with its ring on `answer`, as Claude Code redraws it on a number. */
+  const ringOn = (lines, answer) =>
+    lines.map(line => {
+      const match = /^(\s*│?\s?)(?:❯ | {2})(\d+)\. (.*)$/.exec(line.replace(/\x1b\[[0-9;]*m/g, ''));
 
-      return m ? `${m[1]}${+m[2] === k ? '❯ ' : '  '}${m[2]}. ${m[3]}` : l;
+      return match ? `${match[1]}${+match[2] === answer ? '❯ ' : '  '}${match[2]}. ${match[3]}` : line;
     });
 
   /** The stand-in drawer's screen, drawn anew; its socket a recorder of what was typed. A number redraws it — the ring on
    *  that answer, or (`took`) the select gone, as when the number alone takes the answer. */
   const draw = (lines, took = false) => {
     const after = Object.fromEntries(
-      [1, 2, 3, 4, 5, 6, 7, 8, 9].map(k => [k, (took ? ['Done.'] : ringOn(lines, k)).join('\r\n')]),
+      [1, 2, 3, 4, 5, 6, 7, 8, 9].map(answer => [answer, (took ? ['Done.'] : ringOn(lines, answer)).join('\r\n')]),
     );
 
     return ctx.evaluate(`((m, first, after) => { m.ws.onmessage = null; try { m.ws.close(); } catch {} const paint = s => { m.xt.reset(); m.xt.write(s); };
@@ -320,6 +327,6 @@ export default async function (ctx) {
     ctx.assert.equal(await ctx.evaluate(`peix.prefs().spAnswer`), false);
     return out;
   } finally {
-    for (const s of sleeps) s.kill();
+    for (const child of sleeps) child.kill();
   }
 }

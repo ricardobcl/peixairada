@@ -30,18 +30,18 @@ const JIRA_ITEM = 'peixAIrada Jira'; // the keychain item: service, with your Ji
  *  fenced code are not counted (a log, a stack trace); in inline code they are — Claude writes `KEY-12` so. */
 export function ticketsIn(text) {
   const out = [];
-  const t = String(text || '').replace(FENCED, c => ' '.repeat(c.length));
+  const prose = String(text || '').replace(FENCED, fence => ' '.repeat(fence.length));
 
-  const links = [...t.matchAll(TICKET_URL_RE)];
+  const links = [...prose.matchAll(TICKET_URL_RE)];
 
-  for (const m of links) out.push({ at: m.index, key: m[1], url: m[0] });
-  const inLink = i => links.some(m => i >= m.index && i < m.index + m[0].length);
+  for (const match of links) out.push({ at: match.index, key: match[1], url: match[0] });
+  const inLink = index => links.some(link => index >= link.index && index < link.index + link[0].length);
 
-  for (const m of t.matchAll(TICKET_RE)) {
-    if (!inLink(m.index)) out.push({ at: m.index, key: `${m[1]}-${m[2]}`, url: null });
+  for (const match of prose.matchAll(TICKET_RE)) {
+    if (!inLink(match.index)) out.push({ at: match.index, key: `${match[1]}-${match[2]}`, url: null });
   }
 
-  return out.sort((a, b) => a.at - b.at);
+  return out.sort((left, right) => left.at - right.at);
 }
 
 const ticketStatus = new Map(); // key -> { found, summary, status, cat, type, assignee: {name, avatar, me}, checkedAt }
@@ -52,68 +52,70 @@ let jiraProjects = null; // the site's project keys, once asked (null: not yet �
  *  unknown asked about every key, UTF-8 and SHA-256 with them, after a reset or a failed project search). */
 export const ticketWanted = key => !!setup.jira && !noTicket.has(key) && !!jiraProjects?.has(key.split('-')[0]);
 
-function noteTicket(s, key, ts, by, url = null) {
-  const at = s.tickets.findIndex(t => t.key === key);
-  const t = at >= 0 ? s.tickets.splice(at, 1)[0] : { key, url: null, count: 0, by: null, firstAt: ts, lastAt: ts };
+function noteTicket(session, key, ts, by, url = null) {
+  const at = session.tickets.findIndex(noted => noted.key === key);
 
-  if (url && !t.url) t.url = url;
+  const ticket =
+    at >= 0 ? session.tickets.splice(at, 1)[0] : { key, url: null, count: 0, by: null, firstAt: ts, lastAt: ts };
 
-  if (by === 'branch') t.branch = true;
+  if (url && !ticket.url) ticket.url = url;
+
+  if (by === 'branch') ticket.branch = true;
   else {
-    t.count++;
-    t.by = by;
+    ticket.count++;
+    ticket.by = by;
   }
 
-  t.lastAt = ts || t.lastAt || null;
-  s.tickets.unshift(t);
-  if (s.tickets.length > MAX_TICKETS) s.tickets.length = MAX_TICKETS;
+  ticket.lastAt = ts || ticket.lastAt || null;
+  session.tickets.unshift(ticket);
+  if (session.tickets.length > MAX_TICKETS) session.tickets.length = MAX_TICKETS;
   if (!indexing && ticketWanted(key)) queueTicket(key);
 }
 
-export function noteTickets(s, text, ts, by) {
+export function noteTickets(session, text, ts, by) {
   if (!text || !/[A-Z]-[1-9]/.test(text)) return;
   const said = new Map();
 
-  for (const r of ticketsIn(text)) {
-    const f = said.get(r.key);
+  for (const mention of ticketsIn(text)) {
+    const first = said.get(mention.key);
 
-    if (!f) said.set(r.key, r);
-    else if (r.url && !f.url) f.url = r.url;
+    if (!first) said.set(mention.key, mention);
+    else if (mention.url && !first.url) first.url = mention.url;
   }
 
-  for (const r of [...said.values()].reverse()) noteTicket(s, r.key, ts, by, r.url); // the first said ends up first
+  for (const mention of [...said.values()].reverse()) noteTicket(session, mention.key, ts, by, mention.url); // the first said ends up first
 }
 
-export function noteBranchTicket(s, branch, ts) {
-  s.ticketBranch = branch;
-  const m = BRANCH_TICKET_RE.exec(branch);
+export function noteBranchTicket(session, branch, ts) {
+  session.ticketBranch = branch;
+  const match = BRANCH_TICKET_RE.exec(branch);
 
-  if (!m) return;
-  noteTicket(s, m[1].toUpperCase(), ts, 'branch');
+  if (!match) return;
+  noteTicket(session, match[1].toUpperCase(), ts, 'branch');
 }
 
 /** The chat's tickets as the page draws them — those Jira answered for: the branch's first, then the latest said. */
-export function shownTickets(s) {
+export function shownTickets(session) {
   if (!setup.jira) return [];
   const site = setup.jira.site;
 
-  return s.tickets
-    .filter(t => ticketStatus.get(t.key)?.found)
-    .sort((a, b) => (b.branch ? 1 : 0) - (a.branch ? 1 : 0))
-    .map(t => {
-      const i = ticketStatus.get(t.key);
+  return session.tickets
+    .filter(ticket => ticketStatus.get(ticket.key)?.found)
+    .sort((left, right) => (right.branch ? 1 : 0) - (left.branch ? 1 : 0))
+    .map(ticket => {
+      const info = ticketStatus.get(ticket.key);
 
       return {
-        key: t.key,
-        url: `${site}/browse/${t.key}`,
-        summary: i.summary,
-        status: i.status,
-        cat: i.cat,
-        type: i.type,
-        assignee: i.assignee,
-        branch: !!t.branch,
-        count: t.count,
-        lastAt: t.lastAt,
+        key: ticket.key,
+        url: `${site}/browse/${ticket.key}`,
+        summary: info.summary,
+        status: info.status,
+        cat: info.cat,
+        type: info.type,
+        assignee: info.assignee,
+        branch: !!ticket.branch,
+        count: ticket.count,
+        lastAt: ticket.lastAt,
       };
     });
 }
@@ -133,19 +135,21 @@ export let jiraProjectsAt = 0;
 let jiraGen = 0; // one per jiraReset (2026-10-14): an answer asked for before one is the old site's or login's, and dropped
 
 function ticketFresh(key, ttl = TICKET_TTL_MS, now = Date.now()) {
-  const e = ticketStatus.get(key);
+  const entry = ticketStatus.get(key);
 
-  if (!e) return false;
-  return now - e.checkedAt < Math.max(ttl, e.cat === 'done' ? 60 * 60_000 : 0);
+  if (!entry) return false;
+  return now - entry.checkedAt < Math.max(ttl, entry.cat === 'done' ? 60 * 60_000 : 0);
 }
 
 function dueTickets(list, now = Date.now()) {
   const every = new Map();
 
-  for (const s of list) {
-    const ms = prEvery(s, now);
+  for (const session of list) {
+    const ms = prEvery(session, now);
 
-    for (const t of s.tickets) if (ticketWanted(t.key) && !(every.get(t.key) <= ms)) every.set(t.key, ms);
+    for (const ticket of session.tickets) {
+      if (ticketWanted(ticket.key) && !(every.get(ticket.key) <= ms)) every.set(ticket.key, ms);
+    }
   }
 
   return [...every].filter(([key, ms]) => !ticketFresh(key, ms, now)).map(([key]) => key);
@@ -174,10 +178,10 @@ export async function sweepTickets() {
 
       if (gen !== jiraGen) return;
       jiraProjects = keys;
-    } catch (e) {
+    } catch (error) {
       if (gen !== jiraGen) return;
       jiraProjectsAt = Date.now() - 55 * 60_000;
-      return jiraFailed(e);
+      return jiraFailed(error);
     } // again in five minutes
   }
 
@@ -191,10 +195,10 @@ export async function sweepTickets() {
 async function jiraToken() {
   if (process.env.JIRA_API_TOKEN) return { token: process.env.JIRA_API_TOKEN, from: 'env' };
 
-  const t = await jiraKept();
+  const kept = await jiraKept();
   const site = setup.jira?.site || null;
 
-  if (!t.token || !site) return t;
+  if (!kept.token || !site) return kept;
 
   if (!jiraTokenSite) {
     setJiraTokenSite(site);
@@ -202,8 +206,8 @@ async function jiraToken() {
   }
 
   return jiraTokenSite === site
-    ? t
-    : { token: null, from: null, why: `the token kept is for ${jiraTokenSite} — paste one for ${site}`, at: t.at };
+    ? kept
+    : { token: null, from: null, why: `the token kept is for ${jiraTokenSite} — paste one for ${site}`, at: kept.at };
 }
 
 async function jiraKept() {
@@ -228,8 +232,8 @@ async function jiraKept() {
             timeout: 60_000,
           })
         ).stdout.trim() || null;
-    } catch (e) {
-      if (!/could not be found/i.test(String(e.stderr || e.message))) {
+    } catch (error) {
+      if (!/could not be found/i.test(String(error.stderr || error.message))) {
         why = 'keychain access refused (allow `security` when asked)';
       }
     }
@@ -253,18 +257,18 @@ export async function saveJiraToken(token) {
     if (token) writeFileSync(process.env.JIRA_TOKEN_FILE, token, { mode: 0o600 });
     else rmSync(process.env.JIRA_TOKEN_FILE, { force: true });
   } else {
-    const q = t => `"${t.replace(/[\\"]/g, '\\$&')}"`;
+    const quote = text => `"${text.replace(/[\\"]/g, '\\$&')}"`;
 
     const cmd = token
-      ? `add-generic-password -U -s ${q(JIRA_ITEM)} -a ${q(email)} -l ${q(JIRA_ITEM)} -w ${q(token)}\n`
-      : `delete-generic-password -s ${q(JIRA_ITEM)} -a ${q(email)}\n`;
+      ? `add-generic-password -U -s ${quote(JIRA_ITEM)} -a ${quote(email)} -l ${quote(JIRA_ITEM)} -w ${quote(token)}\n`
+      : `delete-generic-password -s ${quote(JIRA_ITEM)} -a ${quote(email)}\n`;
 
     const out = await new Promise((res, rej) => {
-      const p = execFile('/usr/bin/security', ['-i'], { timeout: 30_000 }, (err, so, se) =>
+      const child = execFile('/usr/bin/security', ['-i'], { timeout: 30_000 }, (err, so, se) =>
         err ? rej(new Error(String(se || err.message).trim())) : res(String(se || '') + String(so || '')),
       );
 
-      p.stdin.end(cmd);
+      child.stdin.end(cmd);
     });
 
     if (token && /error|could not/i.test(out)) throw new Error(out.trim().split('\n')[0]);
@@ -277,59 +281,59 @@ export async function saveJiraToken(token) {
 
 /** One request to the site, as you: JSON in, JSON out, a throw with Jira's own words. */
 async function jiraAsk(path, body) {
-  const j = setup.jira;
+  const jira = setup.jira;
 
-  if (!j) throw new Error('no Jira site in the setup');
+  if (!jira) throw new Error('no Jira site in the setup');
   const { token, why } = await jiraToken();
 
   if (!token) throw Object.assign(new Error(why), { quiet: true });
 
-  const r = await fetch(new URL(path, j.site), {
+  const response = await fetch(new URL(path, jira.site), {
     method: body ? 'POST' : 'GET',
     body: body ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(20_000),
     headers: {
-      authorization: `Basic ${Buffer.from(`${j.email}:${token}`).toString('base64')}`,
+      authorization: `Basic ${Buffer.from(`${jira.email}:${token}`).toString('base64')}`,
       accept: 'application/json',
       ...(body && { 'content-type': 'application/json' }),
     },
   });
 
-  const d = await r.json().catch(() => null);
+  const data = await response.json().catch(() => null);
 
-  if (!r.ok) {
+  if (!response.ok) {
     throw Object.assign(
       new Error(
-        d?.errorMessages?.[0] ||
-          d?.message ||
-          (r.status === 401 ? 'Jira refused the email and token' : `Jira: HTTP ${r.status}`),
+        data?.errorMessages?.[0] ||
+          data?.message ||
+          (response.status === 401 ? 'Jira refused the email and token' : `Jira: HTTP ${response.status}`),
       ),
-      { status: r.status },
+      { status: response.status },
     );
   }
 
-  return d;
+  return data;
 }
 
 async function jiraProjectKeys() {
   const keys = new Set();
 
-  for (let at = 0, i = 0; i < 20; i++) {
-    const d = await jiraAsk(`/rest/api/3/project/search?maxResults=100&startAt=${at}`);
+  for (let at = 0, page = 0; page < 20; page++) {
+    const data = await jiraAsk(`/rest/api/3/project/search?maxResults=100&startAt=${at}`);
 
-    for (const p of d?.values || []) if (p?.key) keys.add(String(p.key));
-    if (d?.isLast !== false || !(d?.values || []).length) break;
-    at += d.values.length;
+    for (const project of data?.values || []) if (project?.key) keys.add(String(project.key));
+    if (data?.isLast !== false || !(data?.values || []).length) break;
+    at += data.values.length;
   }
 
   return keys;
 }
 
-function jiraFailed(e) {
+function jiraFailed(error) {
   const was = jiraError;
 
-  jiraError = e.message;
-  if (!e.quiet && was !== jiraError) console.error('[peixairada] jira:', e.message);
+  jiraError = error.message;
+  if (!error.quiet && was !== jiraError) console.error('[peixairada] jira:', error.message);
   jiraPause = Math.min(jiraPause ? jiraPause * 2 : 60_000, 30 * 60_000);
   jiraPauseUntil = Date.now() + jiraPause;
   ticketQueue.clear();
@@ -341,18 +345,18 @@ async function drainTickets() {
   if (ticketBusy || !ticketQueue.size) return;
   const batch = [...ticketQueue].slice(0, 100);
 
-  for (const k of batch) ticketQueue.delete(k);
+  for (const key of batch) ticketQueue.delete(key);
   ticketBusy = true;
   const gen = jiraGen;
 
   try {
     if (!jiraMe) {
-      const m = await jiraAsk('/rest/api/3/myself');
+      const myself = await jiraAsk('/rest/api/3/myself');
 
-      if (gen === jiraGen) jiraMe ??= { id: m?.accountId || null, name: m?.displayName || null };
+      if (gen === jiraGen) jiraMe ??= { id: myself?.accountId || null, name: myself?.displayName || null };
     }
 
-    const d = await jiraAsk('/rest/api/3/issue/bulkfetch', {
+    const data = await jiraAsk('/rest/api/3/issue/bulkfetch', {
       issueIdsOrKeys: batch,
       fields: ['summary', 'status', 'issuetype', 'assignee'],
     });
@@ -363,20 +367,20 @@ async function drainTickets() {
     jiraPauseUntil = 0;
 
     const now = Date.now();
-    const got = new Map((d?.issues || []).map(i => [String(i.key), i]));
+    const got = new Map((data?.issues || []).map(issue => [String(issue.key), issue]));
 
     for (const key of batch) {
-      const i = got.get(key);
-      const f = i?.fields || {};
-      const who = f.assignee;
+      const issue = got.get(key);
+      const fields = issue?.fields || {};
+      const who = fields.assignee;
 
-      const info = i
+      const info = issue
         ? {
             found: true,
-            summary: f.summary || '',
-            status: f.status?.name || '',
-            cat: TICKET_CAT[f.status?.statusCategory?.key] || 'todo',
-            type: f.issuetype?.name || '',
+            summary: fields.summary || '',
+            status: fields.status?.name || '',
+            cat: TICKET_CAT[fields.status?.statusCategory?.key] || 'todo',
+            type: fields.issuetype?.name || '',
             assignee: who
               ? {
                   name: who.displayName || '',
@@ -387,11 +391,11 @@ async function drainTickets() {
           }
         : { found: false };
 
-      if (!i) noTicket.add(key);
+      if (!issue) noTicket.add(key);
       setTicketInfo(key, { ...info, checkedAt: now });
     }
-  } catch (e) {
-    if (gen === jiraGen) jiraFailed(e);
+  } catch (error) {
+    if (gen === jiraGen) jiraFailed(error);
   } finally {
     ticketBusy = false;
     if (ticketQueue.size) drainTickets();
@@ -404,7 +408,9 @@ function setTicketInfo(key, info) {
   ticketStatus.set(key, info);
 
   if (JSON.stringify({ ...info, checkedAt: 0 }) !== before) {
-    for (const s of sessions.values()) if (s.tickets.some(t => t.key === key)) schedulePush(s);
+    for (const session of sessions.values()) {
+      if (session.tickets.some(ticket => ticket.key === key)) schedulePush(session);
+    }
   }
 }
 
@@ -421,35 +427,35 @@ export function jiraReset() {
   ticketStatus.clear();
   noTicket.clear();
   ticketQueue.clear();
-  for (const s of sessions.values()) if (s.tickets.length) schedulePush(s);
+  for (const session of sessions.values()) if (session.tickets.length) schedulePush(session);
   if (!indexing) sweepTickets();
 }
 
 /** What the settings' Setup says of it: the site, where the token is, who you are there, what went wrong. */
 export async function jiraInfo() {
-  const j = setup.jira;
-  const tok = j ? await jiraToken() : null;
+  const jira = setup.jira;
+  const tok = jira ? await jiraToken() : null;
 
   const gen = jiraGen;
 
-  if (j && tok?.token && !jiraMe && !jiraError) {
+  if (jira && tok?.token && !jiraMe && !jiraError) {
     try {
-      const m = await jiraAsk('/rest/api/3/myself');
+      const myself = await jiraAsk('/rest/api/3/myself');
 
-      if (gen === jiraGen) jiraMe = { id: m?.accountId || null, name: m?.displayName || null };
-    } catch (e) {
-      if (gen === jiraGen) jiraError = e.message;
+      if (gen === jiraGen) jiraMe = { id: myself?.accountId || null, name: myself?.displayName || null };
+    } catch (error) {
+      if (gen === jiraGen) jiraError = error.message;
     }
   }
 
   return {
-    site: j?.site || null,
-    email: j?.email || null,
+    site: jira?.site || null,
+    email: jira?.email || null,
     token: tok?.from || null,
     me: jiraMe?.name || null,
-    error: j ? (tok && !tok.token ? tok.why : jiraError) : null,
-    tickets: [...ticketStatus.values()].filter(t => t.found).length,
-    suggest: j ? null : jiraCliConfig(),
+    error: jira ? (tok && !tok.token ? tok.why : jiraError) : null,
+    tickets: [...ticketStatus.values()].filter(info => info.found).length,
+    suggest: jira ? null : jiraCliConfig(),
   };
 }
 
@@ -458,11 +464,11 @@ function jiraCliConfig() {
   const file = process.env.JIRA_CONFIG_FILE || join(homedir(), '.config', '.jira', '.config.yml');
 
   try {
-    const t = readFileSync(file, 'utf8');
-    const v = k => new RegExp(`^${k}:\\s*"?([^"\\n]+?)"?\\s*$`, 'm').exec(t)?.[1] || null;
-    const site = jiraSite(v('server'));
+    const text = readFileSync(file, 'utf8');
+    const setting = key => new RegExp(`^${key}:\\s*"?([^"\\n]+?)"?\\s*$`, 'm').exec(text)?.[1] || null;
+    const site = jiraSite(setting('server'));
 
-    return site ? { site, email: v('login') } : null;
+    return site ? { site, email: setting('login') } : null;
   } catch {
     return null;
   }

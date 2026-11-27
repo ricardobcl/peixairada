@@ -43,8 +43,8 @@ export const prReview = pr =>
   pr
     ? {
         decision: DECISIONS[pr.reviewDecision] ?? null,
-        open: (pr.reviewThreads?.nodes || []).filter(t => t && !t.isResolved).length,
-        asked: (pr.reviewRequests?.nodes || []).filter(n => n?.requestedReviewer).length,
+        open: (pr.reviewThreads?.nodes || []).filter(thread => thread && !thread.isResolved).length,
+        asked: (pr.reviewRequests?.nodes || []).filter(request => request?.requestedReviewer).length,
       }
     : null;
 /** A PR's branches as the changes tab and the editor want them (2026-10-13): its head's name and commit, its base's,
@@ -62,13 +62,13 @@ export const prRefs = pr =>
     : null;
 export let turnsDirty = false;
 
-export function setTurnsDirty(v) {
-  turnsDirty = v;
+export function setTurnsDirty(value) {
+  turnsDirty = value;
 } // for the modules that write it: an import is read-only
 
-export const isBot = a => !a?.login || a.__typename === 'Bot' || /\[bot\]$/.test(a.login);
-const newest = times => times.reduce((a, t) => (t && t > a ? t : a), '');
-const names = ws => [...new Set(ws.map(w => w.by.login))].join(', ');
+export const isBot = actor => !actor?.login || actor.__typename === 'Bot' || /\[bot\]$/.test(actor.login);
+const newest = times => times.reduce((latest, time) => (time && time > latest ? time : latest), '');
+const names = ws => [...new Set(ws.map(word => word.by.login))].join(', ');
 
 /**
  * Whose move a PR is at, from what PR_FIELDS brings back and who `me` is; null when nobody waits on you — merged or
@@ -88,43 +88,47 @@ export function prTurn(pr, me, before = '') {
 
   const words = [
     ...(pr.reviews?.nodes || [])
-      .filter(r => r?.submittedAt && r.state !== 'PENDING')
-      .map(r => ({ at: r.submittedAt, by: r.author, state: r.state })),
-    ...(pr.comments?.nodes || []).filter(c => c?.createdAt).map(c => ({ at: c.createdAt, by: c.author })),
+      .filter(reviewNode => reviewNode?.submittedAt && reviewNode.state !== 'PENDING')
+      .map(reviewNode => ({ at: reviewNode.submittedAt, by: reviewNode.author, state: reviewNode.state })),
+    ...(pr.comments?.nodes || [])
+      .filter(comment => comment?.createdAt)
+      .map(comment => ({ at: comment.createdAt, by: comment.author })),
   ];
 
   // a commit GitHub cannot tie to an account (an unlinked email, a bot) is the PR's author's
   // and a force-push by a bot is nobody's (its actor's __typename says so; it was a move on your own PR)
   const pushes = (pr.pushes?.nodes || [])
-    .map(n =>
-      n?.__typename === 'HeadRefForcePushedEvent'
-        ? { at: n.createdAt, by: n.actor?.login, bot: isBot(n.actor) }
-        : { at: n?.commit?.committedDate, by: n?.commit?.author?.user?.login },
+    .map(node =>
+      node?.__typename === 'HeadRefForcePushedEvent'
+        ? { at: node.createdAt, by: node.actor?.login, bot: isBot(node.actor) }
+        : { at: node?.commit?.committedDate, by: node?.commit?.author?.user?.login },
     )
-    .filter(p => p.at && !p.bot)
-    .map(p => ({ at: p.at, by: p.by || pr.author?.login }));
+    .filter(entry => entry.at && !entry.bot)
+    .map(entry => ({ at: entry.at, by: entry.by || pr.author?.login }));
 
-  const push = pushes.reduce((a, p) => (!a || p.at > a.at ? p : a), null);
+  const push = pushes.reduce((latest, entry) => (!latest || entry.at > latest.at ? entry : latest), null);
   const review = pr.viewerLatestReview?.submittedAt ? pr.viewerLatestReview : null;
 
   const said = newest([
     before,
     review?.submittedAt,
-    ...words.filter(w => w.by?.login === me).map(w => w.at),
-    ...pushes.filter(p => p.by === me).map(p => p.at),
+    ...words.filter(word => word.by?.login === me).map(word => word.at),
+    ...pushes.filter(entry => entry.by === me).map(entry => entry.at),
     mine && pr.createdAt,
   ]);
 
-  const asks = (pr.asks?.nodes || []).filter(a => a?.requestedReviewer?.login === me).map(a => a.createdAt);
-  const last = newest([said, pr.createdAt, ...words.map(w => w.at), ...pushes.map(p => p.at), ...asks]) || null;
+  const asks = (pr.asks?.nodes || []).filter(ask => ask?.requestedReviewer?.login === me).map(ask => ask.createdAt);
+
+  const last =
+    newest([said, pr.createdAt, ...words.map(word => word.at), ...pushes.map(entry => entry.at), ...asks]) || null;
 
   if (!said) return null;
-  const theirs = words.filter(w => !isBot(w.by) && w.by.login !== me && w.at > said);
+  const theirs = words.filter(word => !isBot(word.by) && word.by.login !== me && word.at > said);
 
   // a push after you approved is the author getting on with it — unless GitHub dismissed the approval for it
   const verdict = words
-    .filter(w => w.by?.login === me && /^(APPROVED|CHANGES_REQUESTED|DISMISSED)$/.test(w.state))
-    .reduce((a, w) => (!a || w.at > a.at ? w : a), null);
+    .filter(word => word.by?.login === me && /^(APPROVED|CHANGES_REQUESTED|DISMISSED)$/.test(word.state))
+    .reduce((latest, word) => (!latest || word.at > latest.at ? word : latest), null);
 
   // Any word of yours answers everything before it (the same night): a comment after your review is past a push
   // committed before it, and past a re-request.
@@ -144,7 +148,7 @@ export function prTurn(pr, me, before = '') {
   const again =
     !mine &&
     !!review &&
-    (pr.reviewRequests?.nodes || []).some(n => n?.requestedReviewer?.login === me) &&
+    (pr.reviewRequests?.nodes || []).some(request => request?.requestedReviewer?.login === me) &&
     !(askedAt && said > askedAt);
 
   const you = pushed || theirs.length > 0 || again;
@@ -165,16 +169,16 @@ export function prTurn(pr, me, before = '') {
 
   if (pushed) why.push(mine ? `${push.by} pushed` : 'pushed since your review');
 
-  const approved = theirs.filter(w => w.state === 'APPROVED');
-  const asked = theirs.filter(w => w.state === 'CHANGES_REQUESTED');
+  const approved = theirs.filter(word => word.state === 'APPROVED');
+  const asked = theirs.filter(word => word.state === 'CHANGES_REQUESTED');
 
-  const talk = theirs.filter(w => w.state !== 'APPROVED' && w.state !== 'CHANGES_REQUESTED');
+  const talk = theirs.filter(word => word.state !== 'APPROVED' && word.state !== 'CHANGES_REQUESTED');
 
   if (approved.length) why.push(`approved by ${names(approved)}`);
   if (asked.length) why.push(`changes asked by ${names(asked)}`);
   if (talk.length) why.push(`${talk.length} comment${talk.length === 1 ? '' : 's'} from ${names(talk)}`);
   if (again) why.push('your review asked for again');
-  const heard = newest(theirs.map(w => w.at));
+  const heard = newest(theirs.map(word => word.at));
 
   return {
     you,
@@ -198,40 +202,44 @@ export function prPeople(pr, me) {
   if (!pr) return [];
   const by = new Map();
 
-  const add = (a, at, did) => {
-    if (!a?.login || isBot(a) || a.login === me) return;
-    const p = by.get(a.login) || { login: a.login, avatar: null, at: '', did: [] };
+  const add = (actor, at, did) => {
+    if (!actor?.login || isBot(actor) || actor.login === me) return;
+    const person = by.get(actor.login) || { login: actor.login, avatar: null, at: '', did: [] };
 
-    p.avatar ||= a.avatarUrl || null;
-    if (at && at > p.at) p.at = at;
-    if (!p.did.includes(did)) p.did.push(did);
-    by.set(a.login, p);
+    person.avatar ||= actor.avatarUrl || null;
+    if (at && at > person.at) person.at = at;
+    if (!person.did.includes(did)) person.did.push(did);
+    by.set(actor.login, person);
   };
 
   add(pr.author, pr.createdAt, 'opened it');
 
-  for (const r of pr.reviews?.nodes || []) {
-    if (r?.submittedAt && r.state !== 'PENDING') {
+  for (const review of pr.reviews?.nodes || []) {
+    if (review?.submittedAt && review.state !== 'PENDING') {
       add(
-        r.author,
-        r.submittedAt,
-        r.state === 'APPROVED' ? 'approved' : r.state === 'CHANGES_REQUESTED' ? 'asked for changes' : 'reviewed',
+        review.author,
+        review.submittedAt,
+        review.state === 'APPROVED'
+          ? 'approved'
+          : review.state === 'CHANGES_REQUESTED'
+            ? 'asked for changes'
+            : 'reviewed',
       );
     }
   }
 
-  for (const c of pr.comments?.nodes || []) add(c?.author, c?.createdAt, 'commented');
+  for (const comment of pr.comments?.nodes || []) add(comment?.author, comment?.createdAt, 'commented');
 
-  for (const n of pr.pushes?.nodes || []) {
-    if (n?.__typename === 'HeadRefForcePushedEvent') add(n.actor, n.createdAt, 'pushed');
-    else add(n?.commit?.author?.user, n?.commit?.committedDate, 'pushed');
+  for (const node of pr.pushes?.nodes || []) {
+    if (node?.__typename === 'HeadRefForcePushedEvent') add(node.actor, node.createdAt, 'pushed');
+    else add(node?.commit?.author?.user, node?.commit?.committedDate, 'pushed');
   }
 
-  return [...by.values()].sort((a, b) => b.at.localeCompare(a.at)).slice(0, PEOPLE_MAX);
+  return [...by.values()].sort((left, right) => right.at.localeCompare(left.at)).slice(0, PEOPLE_MAX);
 }
 
 /**
- * Note the turn GitHub gave (`t`: prTurn's answer; undefined, a PR we could not see — what the board knew stands) and
+ * Note the turn GitHub gave (`found`: prTurn's answer; undefined, a PR we could not see — what the board knew stands) and
  * hand back the one to show. `movedAt` is when the move became news: GitHub's time for it the first time the board
  * sees the PR, the board's own clock for every change after — a push committed before you ticked and pushed after
  * is news all the same, and so is one the board only learnt of after the tick. Only something that *came* is a move:
@@ -240,7 +248,7 @@ export function prPeople(pr, me) {
  * look that missed the reason (a timeline GitHub answered as it stood hours before, see PR_BATCH) read as not at your
  * move, and the next brought the same reason back as a move — an alert, the chat un-ticked, a round let go undone.
  */
-const keyParts = k => (!k || k === 'them' ? ['', '', ''] : k.split('|'));
+const keyParts = key => (!key || key === 'them' ? ['', '', ''] : key.split('|'));
 
 const newsIn = (was, now) => {
   const [h0, w0, a0] = keyParts(was);
@@ -267,10 +275,10 @@ export function pruneTurns(now = Date.now()) {
   if (indexing) return;
   const named = new Set();
 
-  for (const s of sessions.values()) for (const p of s.prs) named.add(p.url);
+  for (const session of sessions.values()) for (const pr of session.prs) named.add(pr.url);
 
-  for (const [url, t] of Object.entries(prTurns)) {
-    if (!named.has(url) && now - (Date.parse(t.at) || 0) > TURN_KEEP_MS) delete prTurns[url];
+  for (const [url, turn] of Object.entries(prTurns)) {
+    if (!named.has(url) && now - (Date.parse(turn.at) || 0) > TURN_KEEP_MS) delete prTurns[url];
   }
 
   pruneLogs(now);
@@ -283,7 +291,7 @@ export function pruneLogs(now = Date.now()) {
   const day = isoS(now).slice(0, 10);
   const live = new Set();
 
-  for (const s of sessions.values()) if (!forgotten(s)) for (const p of s.prs) live.add(p.url);
+  for (const session of sessions.values()) if (!forgotten(session)) for (const pr of session.prs) live.add(pr.url);
 
   for (const [url, log] of Object.entries(prLogs)) {
     if (live.has(url) || prTurns[url]) {
@@ -292,12 +300,12 @@ export function pruneLogs(now = Date.now()) {
   }
 }
 
-export function moveTurn(url, t, now = Date.now()) {
+export function moveTurn(url, found, now = Date.now()) {
   const prev = prTurns[url];
 
-  if (t === undefined) return { turn: null, moved: false, from: prev?.key };
+  if (found === undefined) return { turn: null, moved: false, from: prev?.key };
 
-  if (!t) {
+  if (!found) {
     if (prev) {
       delete prTurns[url];
       turnsDirty = true;
@@ -307,40 +315,40 @@ export function moveTurn(url, t, now = Date.now()) {
   }
 
   const came = prev ? (prev.came ?? (prev.key === 'them' ? '' : prev.key)) : ''; // a record from before 2026-10-14 has its last look alone
-  const moved = !!prev && t.you && newsIn(came, t.key);
+  const moved = !!prev && found.you && newsIn(came, found.key);
 
   if (!prev || moved) {
     prTurns[url] = {
-      key: t.key,
-      at: new Date(prev ? now : Date.parse(t.at) || now).toISOString(),
+      key: found.key,
+      at: new Date(prev ? now : Date.parse(found.at) || now).toISOString(),
       ...(prev?.said && { said: prev.said }),
     };
 
     turnsDirty = true;
   } // a move ends a round let go
-  else if (prev.key !== t.key) {
-    prTurns[url] = { ...prev, key: t.key };
+  else if (prev.key !== found.key) {
+    prTurns[url] = { ...prev, key: found.key };
     turnsDirty = true;
   }
 
   const rec = prTurns[url];
-  const all = t.you ? cameIn(came, t.key) : came;
+  const all = found.you ? cameIn(came, found.key) : came;
 
   if (all && rec.came !== all) {
     rec.came = all;
     turnsDirty = true;
   }
 
-  if (t.said && t.said > (rec.said || '')) {
-    rec.said = t.said;
+  if (found.said && found.said > (rec.said || '')) {
+    rec.said = found.said;
     turnsDirty = true;
   } // your last word, for prTurn's next look
 
-  const { key, said, ...turn } = t;
+  const { key, said, ...turn } = found;
   const shown = { ...turn, movedAt: rec.at };
 
   return {
-    turn: rec.waived && t.you ? waivedTurn(shown) : shown,
+    turn: rec.waived && found.you ? waivedTurn(shown) : shown,
     moved,
     from: prev?.key,
     released: moved && !!prev?.waived,
@@ -370,14 +378,14 @@ export function waiveTurn(url) {
   if (open) open.let = isoS(Date.now());
   logBoard(url, 'let go');
 
-  for (const s of sessions.values()) {
-    const pr = s.prs.find(p => p.url === url);
+  for (const session of sessions.values()) {
+    const pr = session.prs.find(entry => entry.url === url);
 
     if (pr) {
       pr.turn = turn;
       pr.rounds = roundsOf(url);
       pr.logged = loggedOf(url);
-      schedulePush(s);
+      schedulePush(session);
     }
   }
 
@@ -402,14 +410,14 @@ export function unwaiveTurn(url) {
   if (open) delete open.let;
   logBoard(url, 'back');
 
-  for (const s of sessions.values()) {
-    const pr = s.prs.find(p => p.url === url);
+  for (const session of sessions.values()) {
+    const pr = session.prs.find(entry => entry.url === url);
 
     if (pr) {
       pr.turn = turn;
       pr.rounds = roundsOf(url);
       pr.logged = loggedOf(url);
-      schedulePush(s);
+      schedulePush(session);
     }
   }
 

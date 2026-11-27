@@ -29,7 +29,7 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir });
 
     const state = () => JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8'));
-    const chat = async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+    const chat = async () => (await srv.api('api/sessions')).body.sessions.find(session => session.id === id);
 
     try {
       // a named project
@@ -49,22 +49,22 @@ test(
 
       assert.equal(made.status, 201);
 
-      const p = made.body.project;
-      const key = p.id;
+      const project = made.body.project;
+      const key = project.id;
 
       assert.match(key, /^p\w+$/);
 
       assert.deepEqual(
-        [p.name, p.cwds],
+        [project.name, project.cwds],
         ['Work and play', ['/a', '/b']],
         'one line, each folder once, no trailing slash',
       );
 
-      assert.deepEqual(state().projects, { [key]: p });
+      assert.deepEqual(state().projects, { [key]: project });
       const renamed = await call(srv, 'PUT', `api/projects/${key}`, { name: 'Work' });
 
-      assert.deepEqual(renamed.body.project, { ...p, name: 'Work' }, 'what is not given stands');
-      assert.deepEqual(state().projects[key], { ...p, name: 'Work' });
+      assert.deepEqual(renamed.body.project, { ...project, name: 'Work' }, 'what is not given stands');
+      assert.deepEqual(state().projects[key], { ...project, name: 'Work' });
       assert.equal((await call(srv, 'PUT', 'api/projects/nope', { name: 'x' })).status, 404);
 
       // the pins and the hidden, whole lists
@@ -80,9 +80,9 @@ test(
       assert.equal((await call(srv, 'PUT', 'api/hidden', {})).status, 400);
 
       // a title typed on the board
-      const t = await call(srv, 'PUT', `api/sessions/${id}/title`, { title: '  My\n  own   title ' });
+      const titled = await call(srv, 'PUT', `api/sessions/${id}/title`, { title: '  My\n  own   title ' });
 
-      assert.deepEqual(t.body, { ok: true, title: 'My own title', boardTitle: 'My own title' });
+      assert.deepEqual(titled.body, { ok: true, title: 'My own title', boardTitle: 'My own title' });
       assert.deepEqual(state().titles, { [id]: 'My own title' });
       assert.equal((await chat()).title, 'My own title', "it beats the transcript's");
 
@@ -100,7 +100,7 @@ test(
 
       assert.deepEqual(
         [snap.pins, snap.hidden, snap.projects],
-        [['/a', `c:${key}`], ['/old', 'c:gone'], [{ ...p, name: 'Work' }]],
+        [['/a', `c:${key}`], ['/old', 'c:gone'], [{ ...project, name: 'Work' }]],
       );
 
       assert.equal((await chat()).title, 'Kept');

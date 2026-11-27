@@ -16,27 +16,27 @@ const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.
 const face = login => ({ login, __typename: 'User' });
 const ci = state => ({ commits: { nodes: [{ commit: { statusCheckRollup: { state } } }] } });
 
-const pr = o => ({
+const pr = fields => ({
   isDraft: false,
   isCrossRepository: false,
   author: face('me'),
   reviewRequests: { nodes: [] },
   reviews: { nodes: [] },
   comments: { nodes: [] },
-  ...o,
+  ...fields,
 });
 
-const part = (n, updated = 1000) =>
+const part = (number, updated = 1000) =>
   pr({
-    state: n % 7 ? 'OPEN' : 'MERGED',
-    title: `Part ${n}`,
+    state: number % 7 ? 'OPEN' : 'MERGED',
+    title: `Part ${number}`,
     baseRefName: 'main',
-    headRefName: `part-${n}`,
+    headRefName: `part-${number}`,
     createdAt: ago(2000),
     updatedAt: ago(updated),
   });
 
-const range = (a, n) => Array.from({ length: n }, (_, i) => a + i);
+const range = (start, count) => Array.from({ length: count }, (_, index) => start + index);
 
 writeFileSync(
   file,
@@ -87,9 +87,11 @@ writeFileSync(
       createdAt: ago(400),
       updatedAt: ago(1),
     }),
-    ...Object.fromEntries(range(101, 7).map(n => [`acme/app#${n}`, part(n)])),
-    ...Object.fromEntries(range(201, 14).map(n => [`acme/app#${n}`, part(n)])),
-    ...Object.fromEntries(range(301, 30).map(n => [`acme/app#${n}`, part(n, n === 330 ? 2 : 1000 - n)])),
+    ...Object.fromEntries(range(101, 7).map(number => [`acme/app#${number}`, part(number)])),
+    ...Object.fromEntries(range(201, 14).map(number => [`acme/app#${number}`, part(number)])),
+    ...Object.fromEntries(
+      range(301, 30).map(number => [`acme/app#${number}`, part(number, number === 330 ? 2 : 1000 - number)]),
+    ),
   }),
 );
 
@@ -104,17 +106,17 @@ export const meta = {
   },
 };
 
-const pull = (repo, n) => `https://github.com/acme/${repo}/pull/${n}`;
+const pull = (repo, number) => `https://github.com/acme/${repo}/pull/${number}`;
 
 export default async function (ctx) {
   const out = {};
-  const a = ctx.assert;
+  const assert = ctx.assert;
   const cwd = join(dir, 'hmx-repo');
   const now = Date.now();
 
-  const urls = (from, n) =>
-    range(from, n)
-      .map(x => pull('app', x))
+  const urls = (from, total) =>
+    range(from, total)
+      .map(number => pull('app', number))
       .join(' ');
 
   const {
@@ -135,13 +137,13 @@ export default async function (ctx) {
 
   await ctx.evaluate(`window.open = url => { (window.__opened ||= []).push(url); return null; }`);
 
-  const opened = async (s, count) => {
-    await ctx.waitFor(`!!window.peix.session(${JSON.stringify(s.id)})`, {
+  const opened = async (session, count) => {
+    await ctx.waitFor(`!!window.peix.session(${JSON.stringify(session.id)})`, {
       timeout: 15_000,
       what: 'the chat on the board',
     });
 
-    await ctx.openChat(s.id);
+    await ctx.openChat(session.id);
 
     await ctx.waitFor(
       `document.querySelectorAll('#shead > .tmx .mxs[data-state="open"], #shead > .tmx .mxs[data-state="merged"], #shead > .tmx .mxs[data-state="draft"]').length === ${count}`,
@@ -165,18 +167,18 @@ export default async function (ctx) {
       .then(JSON.parse);
 
   const count = () => ctx.evaluate(`document.querySelector('#prToggle .rn')?.textContent`);
-  const crop = async (name, w = 1320) => ctx.shot(name, { x: 380, y: 0, width: w, height: 70 });
+  const crop = async (name, pixels = 1320) => ctx.shot(name, { x: 380, y: 0, width: pixels, height: 70 });
 
   await opened(one, 1);
   out.one = await look();
 
-  a.deepEqual(
+  assert.deepEqual(
     [out.one.rows, out.one.size, out.one.num, out.one.head, out.one.toggleNext, out.one.chips],
     [1, 9, '#21', 43, 'prToggle', 0],
     `one PR: a square and its number, the mark beside them, no chip: ${JSON.stringify(out.one)}`,
   );
 
-  a.equal(await count(), '1', 'the mark says how many');
+  assert.equal(await count(), '1', 'the mark says how many');
   await crop('1-one');
 
   await opened(stack, 4);
@@ -186,7 +188,7 @@ export default async function (ctx) {
     .catch(() => {});
 
   out.stack = await look();
-  a.equal(out.stack.rows, 1, 'four: one row');
+  assert.equal(out.stack.rows, 1, 'four: one row');
 
   out.ci = await ctx
     .evaluate(
@@ -194,7 +196,7 @@ export default async function (ctx) {
     )
     .then(JSON.parse);
 
-  a.deepEqual(
+  assert.deepEqual(
     out.ci,
     [
       ['11', 'fail', 'solid', 'none', false],
@@ -209,13 +211,13 @@ export default async function (ctx) {
 
   await opened(seven, 7);
   out.seven = await look();
-  a.equal(out.seven.rows, 1, 'seven: one row');
+  assert.equal(out.seven.rows, 1, 'seven: one row');
   await crop('3-seven');
 
   await opened(fourteen, 14);
   out.fourteen = await look();
 
-  a.deepEqual(
+  assert.deepEqual(
     [out.fourteen.rows, out.fourteen.cols, out.fourteen.head, out.fourteen.inHead, out.fourteen.oneLine],
     [2, 7, 43, true, true],
     `fourteen: two rows, the toolbar no taller: ${JSON.stringify(out.fourteen)}`,
@@ -226,19 +228,19 @@ export default async function (ctx) {
   await opened(thirty, 30);
   out.thirty = await look();
 
-  a.deepEqual(
+  assert.deepEqual(
     [out.thirty.rows, out.thirty.cols, out.thirty.head, out.thirty.inHead, out.thirty.num, out.thirty.scrolls],
     [3, 10, 43, true, '#330', false],
     `thirty: three rows, the toolbar no taller: ${JSON.stringify(out.thirty)}`,
   );
 
-  a.equal(await count(), '30', 'and of thirty');
+  assert.equal(await count(), '30', 'and of thirty');
   await crop('5-thirty');
 
   // the number's square is in sight; a wide row asks no more rows than the count does, and a narrow one more
-  const width = w =>
+  const width = pixels =>
     ctx
-      .send('Emulation.setDeviceMetricsOverride', { width: w, height: 900, deviceScaleFactor: 1, mobile: false })
+      .send('Emulation.setDeviceMetricsOverride', { width: pixels, height: 900, deviceScaleFactor: 1, mobile: false })
       .then(() => ctx.sleep(300))
       .then(() => ctx.settle());
 
@@ -246,28 +248,28 @@ export default async function (ctx) {
   await width(806); // a column of some 420 px
   out.sevenNarrow = await look();
 
-  a.deepEqual(
+  assert.deepEqual(
     [out.sevenNarrow.oneLine, out.sevenNarrow.head, out.sevenNarrow.scrolls],
     [true, 43, false],
     `seven, narrow: one line: ${JSON.stringify(out.sevenNarrow)}`,
   );
 
-  a.ok(out.sevenNarrow.rows > 1, 'more rows than the wide row asks');
+  assert.ok(out.sevenNarrow.rows > 1, 'more rows than the wide row asks');
   await opened(thirty, 30);
   out.narrow = await look();
 
-  a.deepEqual(
+  assert.deepEqual(
     [out.narrow.rows, out.narrow.oneLine, out.narrow.head, out.narrow.inHead],
     [3, true, 43, true],
     `thirty, narrow: three rows, one line: ${JSON.stringify(out.narrow)}`,
   );
 
-  a.ok(out.narrow.title >= 100, `the title keeps its room: ${JSON.stringify(out.narrow)}`);
+  assert.ok(out.narrow.title >= 100, `the title keeps its room: ${JSON.stringify(out.narrow)}`);
   await ctx.shot('6-narrow', { x: 380, y: 0, width: 426, height: 70 });
   await width(760); // narrower than three rows' room: the box scrolls, the number put
   out.scroll = await look();
 
-  a.deepEqual(
+  assert.deepEqual(
     [out.scroll.rows, out.scroll.oneLine, out.scroll.scrolls, out.scroll.head],
     [3, true, true, 43],
     `narrower: it scrolls: ${JSON.stringify(out.scroll)}`,
@@ -279,7 +281,7 @@ export default async function (ctx) {
     )
     .then(JSON.parse);
 
-  a.deepEqual(out.lead, { inside: true, edge: true }, 'the numbered square in sight, an end faded');
+  assert.deepEqual(out.lead, { inside: true, edge: true }, 'the numbered square in sight, an end faded');
 
   const before = await ctx.evaluate(`document.querySelector('#shead > .tmx .mxg').scrollLeft`);
 
@@ -292,7 +294,7 @@ export default async function (ctx) {
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: at.x, y: at.y, deltaX: 0, deltaY: -40 });
   await ctx.sleep(200);
 
-  a.notEqual(
+  assert.notEqual(
     await ctx.evaluate(`document.querySelector('#shead > .tmx .mxg').scrollLeft`),
     before,
     'a wheel moves the squares',
@@ -300,14 +302,14 @@ export default async function (ctx) {
 
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 500 });
   await width(1700);
-  a.equal((await look()).rows, 3, 'and wide again');
+  assert.equal((await look()).rows, 3, 'and wide again');
 
   // a stack's line breaks at a row's start: the fourth of a stack in three columns has none
   await ctx.evaluate(
     `(m => { m.style.setProperty('--cols', 3); [...m.querySelectorAll('.mxs')].forEach((e, i) => e.classList.toggle('jw', i % 3 === 0)); })(document.querySelector('#shead > .tmx'))`,
   );
 
-  a.equal(
+  assert.equal(
     await ctx.evaluate(`getComputedStyle(document.querySelector('#shead > .tmx .mxs.jw'), '::before').content`),
     'none',
     "none at a row's start",
@@ -333,7 +335,7 @@ export default async function (ctx) {
     )
     .then(JSON.parse);
 
-  a.deepEqual(
+  assert.deepEqual(
     out.tip,
     { title: '#11The client', below: true, inside: true, ck: 'checks failing', tips: 0, hot: true },
     `its card under the header: ${JSON.stringify(out.tip)}`,
@@ -355,7 +357,7 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.state().pr === '${pull('app', 11)}'`, { what: "the square's PR opened" });
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 500 });
   await ctx.waitFor(`!document.querySelector('#mxtip.on')`, { what: 'the card gone' });
-  a.equal(await ctx.evaluate(`window.peix.prefs().prsOpen`), false, 'the rows left folded');
+  assert.equal(await ctx.evaluate(`window.peix.prefs().prsOpen`), false, 'the rows left folded');
 
   // the mark lists them, and says it
   out.mark = await ctx
@@ -364,12 +366,12 @@ export default async function (ctx) {
     )
     .then(JSON.parse);
 
-  a.deepEqual([out.mark.expanded, out.mark.controls], ['false', 'prlist']);
-  a.match(out.mark.tip, /^4 PRs in this chat: click to list them/);
+  assert.deepEqual([out.mark.expanded, out.mark.controls], ['false', 'prlist']);
+  assert.match(out.mark.tip, /^4 PRs in this chat: click to list them/);
   await ctx.evaluate(`document.querySelector('#prToggle').click()`);
   await ctx.waitFor(`!document.querySelector('#prlist').hidden`, { what: 'the rows' });
 
-  a.equal(
+  assert.equal(
     await ctx.evaluate(
       `document.querySelector('#prToggle').classList.contains('on') && document.querySelector('#prToggle').getAttribute('aria-expanded')`,
     ),
@@ -377,7 +379,7 @@ export default async function (ctx) {
     'lit while they show',
   );
 
-  a.equal(await ctx.evaluate(`document.querySelectorAll('#prlist .prrow').length`), 4, 'one row each');
+  assert.equal(await ctx.evaluate(`document.querySelectorAll('#prlist .prrow').length`), 4, 'one row each');
   await ctx.settle();
   await ctx.shot('8-listed', { x: 380, y: 0, width: 1320, height: 190 });
   await ctx.evaluate(`document.querySelector('#prToggle').click()`);
@@ -418,7 +420,7 @@ export default async function (ctx) {
     )
     .then(JSON.parse);
 
-  a.deepEqual(
+  assert.deepEqual(
     out.far,
     { far: true, panes: 1, left: true, beside: true, clear: true, arrow: 'none' },
     `over the list, clear of the page: ${JSON.stringify(out.far)}`,

@@ -56,59 +56,61 @@ export const meta = {
 
 /** The largest spread between a colour's channels, over every colour in a computed value — 0 to 255, -1 for none.
  *  A grey is a few units of spread (--nocolor's warm grey is 6); the folder's blue mixed into a card is far more. */
-function chroma(v) {
-  const hex = h =>
-    (h.length < 6 ? [...h].map(c => c + c).join('') : h)
+function chroma(value) {
+  const hex = digits =>
+    (digits.length < 6 ? [...digits].map(digit => digit + digit).join('') : digits)
       .match(/../g)
       .slice(0, 3)
-      .map(x => parseInt(x, 16));
+      .map(pair => parseInt(pair, 16));
 
   // oklch() as Chrome computes a relative colour (the open row's, 2026-11-01), to sRGB's 0–255
-  const ok = t => {
-    const [L, C, H] = t
+  const ok = text => {
+    const [lightness, chromaAmount, hueDegrees] = text
       .split(/[\s/]+/)
       .filter(Boolean)
       .slice(0, 3)
       .map(parseFloat);
 
-    const h = (H * Math.PI) / 180;
-    const a = C * Math.cos(h);
-    const b = C * Math.sin(h);
+    const hueRadians = (hueDegrees * Math.PI) / 180;
+    const labA = chromaAmount * Math.cos(hueRadians);
+    const labB = chromaAmount * Math.sin(hueRadians);
 
-    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
-    const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
-    const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+    const coneLong = (lightness + 0.3963377774 * labA + 0.2158037573 * labB) ** 3;
+    const coneMedium = (lightness - 0.1055613458 * labA - 0.0638541728 * labB) ** 3;
+    const coneShort = (lightness - 0.0894841775 * labA - 1.291485548 * labB) ** 3;
 
     return [
-      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-      -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
-    ].map(x => 255 * (x <= 0.0031308 ? 12.92 * x : 1.055 * Math.min(1, x) ** (1 / 2.4) - 0.055));
+      4.0767416621 * coneLong - 3.3077115913 * coneMedium + 0.2309699292 * coneShort,
+      -1.2684380046 * coneLong + 2.6097574011 * coneMedium - 0.3413193965 * coneShort,
+      -0.0041960863 * coneLong - 0.7034186147 * coneMedium + 1.707614701 * coneShort,
+    ].map(
+      channel => 255 * (channel <= 0.0031308 ? 12.92 * channel : 1.055 * Math.min(1, channel) ** (1 / 2.4) - 0.055),
+    );
   };
 
   const cs = [
-    ...String(v).matchAll(
+    ...String(value).matchAll(
       /rgba?\(([^)]*)\)|color\(srgb ([^)]*)\)|#([0-9a-f]{3,8})\b|oklch\(([\d.]+\s+[\d.]+\s+[\d.]+)[^)]*\)/gi,
     ),
-  ].map(m =>
-    m[1]
-      ? m[1]
+  ].map(match =>
+    match[1]
+      ? match[1]
           .split(/[\s,/]+/)
           .filter(Boolean)
           .slice(0, 3)
           .map(Number)
-      : m[2]
-        ? m[2]
+      : match[2]
+        ? match[2]
             .split(/[\s/]+/)
             .filter(Boolean)
             .slice(0, 3)
-            .map(x => Number(x) * 255)
-        : m[4]
-          ? ok(m[4])
-          : hex(m[3]),
+            .map(channel => Number(channel) * 255)
+        : match[4]
+          ? ok(match[4])
+          : hex(match[3]),
   );
 
-  return cs.length ? Math.round(Math.max(...cs.map(c => Math.max(...c) - Math.min(...c)))) : -1;
+  return cs.length ? Math.round(Math.max(...cs.map(color => Math.max(...color) - Math.min(...color)))) : -1;
 }
 
 export default async function (ctx) {
@@ -116,7 +118,7 @@ export default async function (ctx) {
   const now = Date.now();
 
   const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));
-  const live = i => ({ pid: sleeps[i].pid, startedAt: now - 3600_000 });
+  const live = index => ({ pid: sleeps[index].pid, startedAt: now - 3600_000 });
 
   const paint = projects =>
     ctx.server.api('api/config', {
@@ -227,12 +229,12 @@ export default async function (ctx) {
     ctx.assert.equal(out.full.list, '#000000', 'ALL is black');
     ctx.assert.equal(out.full.tinted, true, 'the chat header is tinted');
 
-    for (const k of ['card', 'open', 'head', 'lit', 'hpr']) {
-      ctx.assert.ok(out.full[k] > 40, `${k} in a colour: ${JSON.stringify(out.full)}`);
+    for (const part of ['card', 'open', 'head', 'lit', 'hpr']) {
+      ctx.assert.ok(out.full[part] > 40, `${part} in a colour: ${JSON.stringify(out.full)}`);
     }
 
     ctx.assert.ok(
-      out.full.dots.some(c => c > 40) && out.full.code.every(c => c > 40),
+      out.full.dots.some(spread => spread > 40) && out.full.code.every(spread => spread > 40),
       `the lanes' marks and the code in colour: ${JSON.stringify(out.full)}`,
     );
 
@@ -378,7 +380,7 @@ export default async function (ctx) {
     ctx.assert.equal(out.none, '', 'the cards wear no colour of their own');
     return out;
   } finally {
-    for (const p of sleeps) p.kill();
+    for (const child of sleeps) child.kill();
     rmSync(dir, { recursive: true, force: true });
   }
 }

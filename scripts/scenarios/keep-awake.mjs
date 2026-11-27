@@ -25,15 +25,15 @@ export default async function (ctx) {
   const power = join(ctx.server.dir, 'pmset-power'); // the fake's power: its source and the idle minutes on it
 
   const barShot = async label => {
-    const r = await ctx
+    const rect = await ctx
       .evaluate(`JSON.stringify(document.querySelector('#sbRight').getBoundingClientRect())`)
       .then(JSON.parse);
 
     await ctx.shot(label, {
-      x: Math.round(r.x) - 8,
-      y: Math.round(r.y) - 8,
-      width: Math.round(r.width) + 16,
-      height: Math.round(r.height) + 16,
+      x: Math.round(rect.x) - 8,
+      y: Math.round(rect.y) - 8,
+      width: Math.round(rect.width) + 16,
+      height: Math.round(rect.height) + 16,
     });
   };
 

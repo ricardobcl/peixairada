@@ -39,22 +39,22 @@ function watch() {
     let files;
 
     try {
-      files = readdirSync(DIR).filter(f => /^\d+\.json$/.test(f));
+      files = readdirSync(DIR).filter(file => /^\d+\.json$/.test(file));
     } catch {
       return;
     }
 
-    for (const f of files) {
-      let d;
+    for (const file of files) {
+      let entry;
 
       try {
-        d = JSON.parse(readFileSync(join(DIR, f), 'utf8'));
+        entry = JSON.parse(readFileSync(join(DIR, file), 'utf8'));
       } catch {
         continue;
       }
 
-      const key = String(d.pid);
-      const now = `${d.status}|${d.waitingFor || ''}`;
+      const key = String(entry.pid);
+      const now = `${entry.status}|${entry.waitingFor || ''}`;
 
       seen.add(key);
 
@@ -65,17 +65,17 @@ function watch() {
           OUT,
           `${JSON.stringify({
             at: Date.now(),
-            pid: d.pid,
-            sid: String(d.sessionId || '').slice(0, 8),
-            status: d.status,
-            waitingFor: d.waitingFor || null,
-            kind: d.kind,
+            pid: entry.pid,
+            sid: String(entry.sessionId || '').slice(0, 8),
+            status: entry.status,
+            waitingFor: entry.waitingFor || null,
+            kind: entry.kind,
           })}\n`,
         );
       }
     }
 
-    for (const k of last.keys()) if (!seen.has(k)) last.delete(k);
+    for (const pid of last.keys()) if (!seen.has(pid)) last.delete(pid);
   };
 
   look();
@@ -86,21 +86,21 @@ function report() {
   const flips = readFileSync(OUT, 'utf8')
     .trim()
     .split('\n')
-    .map(l => JSON.parse(l));
+    .map(line => JSON.parse(line));
 
-  const asks = flips.filter(f => f.status === 'waiting' && !NOT_ASKING.has(f.waitingFor));
+  const asks = flips.filter(flip => flip.status === 'waiting' && !NOT_ASKING.has(flip.waitingFor));
 
   const alerts = readFileSync(APP, 'utf8')
     .split('\n')
-    .map(l => /^(\S+) alert: kind=needs-input/.exec(l))
+    .map(line => /^(\S+) alert: kind=needs-input/.exec(line))
     .filter(Boolean)
-    .map(m => Date.parse(m[1]))
-    .filter(t => t >= flips[0].at - NEAR_MS);
+    .map(match => Date.parse(match[1]))
+    .filter(time => time >= flips[0].at - NEAR_MS);
 
-  const missed = asks.filter(a => !alerts.some(t => Math.abs(t - a.at) <= NEAR_MS));
+  const missed = asks.filter(ask => !alerts.some(time => Math.abs(time - ask.at) <= NEAR_MS));
   const by = {};
 
-  for (const a of asks) by[a.waitingFor || '(none)'] = (by[a.waitingFor || '(none)'] || 0) + 1;
+  for (const ask of asks) by[ask.waitingFor || '(none)'] = (by[ask.waitingFor || '(none)'] || 0) + 1;
   const days = ((flips.at(-1).at - flips[0].at) / 86400e3).toFixed(1);
 
   console.log(
@@ -108,5 +108,8 @@ function report() {
   );
 
   console.log('what they waited for:', by);
-  for (const m of missed.slice(0, 30)) console.log('  no alert:', new Date(m.at).toISOString(), m.sid, m.waitingFor);
+
+  for (const ask of missed.slice(0, 30)) {
+    console.log('  no alert:', new Date(ask.at).toISOString(), ask.sid, ask.waitingFor);
+  }
 }

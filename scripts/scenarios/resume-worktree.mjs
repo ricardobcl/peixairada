@@ -29,8 +29,8 @@ export default async function (ctx) {
     GIT_CONFIG_NOSYSTEM: '1',
   };
 
-  const git = (cwd, ...a) =>
-    execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env })
+  const git = (cwd, ...args) =>
+    execFileSync('git', ['-C', cwd, ...args], { stdio: 'pipe', env })
       .toString()
       .trim();
 
@@ -57,7 +57,7 @@ export default async function (ctx) {
       reply: 'Done — on lunch, landed on main.',
       at: new Date(Date.now() - 600_000),
     })
-      .map(l => JSON.stringify(l))
+      .map(line => JSON.stringify(line))
       .join('\n')}\n`,
   );
 

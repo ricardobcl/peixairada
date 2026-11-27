@@ -15,8 +15,8 @@ export default async function (ctx) {
   const cwd = ctx.fixture.chats[0]?.cwd || process.cwd();
 
   const sleeps = [0, 1, 2].map(() => spawn('sleep', ['300'], { stdio: 'ignore' }));
-  const live = i => ({ pid: sleeps[i].pid, startedAt: now - 3600_000 });
-  const ago = s => new Date(now - s * 1000);
+  const live = index => ({ pid: sleeps[index].pid, startedAt: now - 3600_000 });
+  const ago = seconds => new Date(now - seconds * 1000);
 
   try {
     const { chats } = makeFixture(ctx.fixture.dir, [
@@ -200,11 +200,11 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('#ov').open`, { what: 'the overview once more' });
     await ctx.settle();
 
-    const mouse = async (type, x, y) =>
+    const mouse = async (type, pointerX, pointerY) =>
       ctx.send('Input.dispatchMouseEvent', {
         type,
-        x,
-        y,
+        x: pointerX,
+        y: pointerY,
         button: 'left',
         buttons: type === 'mousePressed' ? 1 : 0,
         clickCount: 1,
@@ -254,9 +254,9 @@ export default async function (ctx) {
     ctx.assert.equal(out.kept, out.nodes, 'every tile kept its node through the tails asked again');
     return out;
   } finally {
-    for (const s of sleeps) {
+    for (const child of sleeps) {
       try {
-        s.kill();
+        child.kill();
       } catch {}
     }
   }

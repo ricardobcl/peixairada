@@ -16,7 +16,7 @@ const ENTER_MS = 180;
 const LEAVE_MS = 200;
 
 // The motion tokens, read once from :root (2026-10-11) — the CSS is where a curve is written.
-const cssToken = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const cssToken = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 const EASE_OUT = cssToken('--ease-out') || 'ease-out';
 const SPRING = cssToken('--spring') || 'ease-out';
@@ -38,18 +38,18 @@ const slide = (el, kind, frames, opts, dy = 0) => {
 // seconds later. While anything in the list moves the frame is drawn every frame, and once more after.
 const sliding = new Set();
 
-const follow = a => {
-  sliding.add(a);
+const follow = animation => {
+  sliding.add(animation);
 
   const end = () => {
-    sliding.delete(a);
+    sliding.delete(animation);
     listChanged();
   };
 
-  a.addEventListener('finish', end);
-  a.addEventListener('cancel', end);
+  animation.addEventListener('finish', end);
+  animation.addEventListener('cancel', end);
   listChanged();
-  return a;
+  return animation;
 };
 
 // The reply landed: a chat that goes from clauding to ready flares its card's edge once (the `landed` animation,
@@ -63,11 +63,11 @@ const HEARD_MS = 500;
 const heardAt = new Map();
 
 function flareLanded() {
-  const t = performance.now();
+  const now = performance.now();
 
   for (const [id, at] of heardAt) {
     const el = cardNodes.get(id)?.el;
-    const gone = t - at;
+    const gone = now - at;
 
     if (gone >= HEARD_MS || !el || REDUCED.matches) {
       heardAt.delete(id);
@@ -80,8 +80,8 @@ function flareLanded() {
 
     el.addEventListener(
       'animationend',
-      e => {
-        if (e.animationName === 'heard') {
+      event => {
+        if (event.animationName === 'heard') {
           el.classList.remove('heard');
           el.style.removeProperty('--heard-delay');
         }
@@ -92,7 +92,7 @@ function flareLanded() {
 
   for (const [id, at] of landedAt) {
     const el = cardNodes.get(id)?.el;
-    const gone = t - at;
+    const gone = now - at;
 
     if (gone >= LANDED_MS || !el || REDUCED.matches) {
       landedAt.delete(id);
@@ -105,8 +105,8 @@ function flareLanded() {
 
     el.addEventListener(
       'animationend',
-      e => {
-        if (e.animationName === 'landed') {
+      event => {
+        if (event.animationName === 'landed') {
           el.classList.remove('landed');
           el.style.animationDelay = '';
         }
@@ -120,10 +120,10 @@ const cardNodes = new Map(); // chat id → { html, el }: the card as it stands 
 let lineNodes = new Map(); // a line's html and its count in the list ("…#2") → its node, kept like the cards'
 
 const html2el = html => {
-  const t = document.createElement('template');
+  const template = document.createElement('template');
 
-  t.innerHTML = html;
-  return t.content.firstElementChild;
+  template.innerHTML = html;
+  return template.content.firstElementChild;
 };
 
 /** innerHTML, only when it is new (2026-10-03): the project cue, the chips, the hidden list, the tab strips and the
@@ -140,16 +140,16 @@ const setHtml = (el, html) => {
 function setKids(el, htmls) {
   const tpl = document.createElement('template');
 
-  htmls.forEach((h, i) => {
-    const c = el.children[i];
+  htmls.forEach((html, index) => {
+    const child = el.children[index];
 
-    if (c?._drawn === h) return;
-    tpl.innerHTML = h;
-    const n = tpl.content.firstElementChild;
+    if (child?._drawn === html) return;
+    tpl.innerHTML = html;
+    const node = tpl.content.firstElementChild;
 
-    n._drawn = h;
-    if (c) c.replaceWith(n);
-    else el.append(n);
+    node._drawn = html;
+    if (child) child.replaceWith(node);
+    else el.append(node);
   });
 
   while (el.children.length > htmls.length) el.lastElementChild.remove();
@@ -157,64 +157,65 @@ function setKids(el, htmls) {
 
 const OTHERS_SQUARES = 8;
 const CUE_CHEV = '<svg class="ch" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3.5 5 7l3.5-3.5" /></svg>';
-const notDone = s => visible(s) && bucket(s) !== 'done';
+const notDone = session => visible(session) && bucket(session) !== 'done';
 
 // The list's end says what the project in view hides (2026-11-04, round XXV): where the eye lands on a short list, a square
 // for each of the other projects, the fullest first, and Show all; nothing when there is nothing else.
-function othersHtml(p) {
+function othersHtml(project) {
   const by = new Map();
-  const rest = [...state.sessions.values()].filter(s => notDone(s) && !inProject(s, p));
+  const rest = [...state.sessions.values()].filter(session => notDone(session) && !inProject(session, project));
 
   if (!rest.length) return '';
 
-  for (const s of rest) {
-    const b = by.get(s.project) || { n: 0, cwd: s.cwd };
+  for (const session of rest) {
+    const group = by.get(session.project) || { n: 0, cwd: session.cwd };
 
-    b.n++;
-    by.set(s.project, b);
+    group.n++;
+    by.set(session.project, group);
   }
 
   const squares = [...by.values()]
-    .sort((a, b) => b.n - a.n)
+    .sort((left, right) => right.n - left.n)
     .slice(0, OTHERS_SQUARES)
-    .map(b => `<i style="${repoStyle(repoColor(b.cwd))}"></i>`)
+    .map(group => `<i style="${repoStyle(repoColor(group.cwd))}"></i>`)
     .join('');
 
   return `<div class="gsep others" data-others role="button" tabindex="0" title="Every project again (ALL)"><span class="sqs" aria-hidden="true">${squares}</span><span class="ln">${rest.length} more in ${by.size === 1 ? 'another project' : 'other projects'}</span><b>Show all</b></div>`;
 }
 
 // …and in focus (2026-11-24, round XXX's F2), a question from a chat not pinned
-const askingElsewhere = p =>
+const askingElsewhere = project =>
   [...state.sessions.values()].filter(
-    s => visible(s) && askingLoud(s) && (!inProject(s, p) || (prioFocus() && !inPrio(s))),
+    session =>
+      visible(session) && askingLoud(session) && (!inProject(session, project) || (prioFocus() && !inPrio(session))),
   );
 
 /** The tab atop the list: the project in view, or the pinned alone (F2) — what is hidden, and the way back. */
-function cueDraw(p, here, focus = false) {
+function cueDraw(project, here, focus = false) {
   const box = $('#stitle');
-  const on = p.key !== ALL || focus;
+  const on = project.key !== ALL || focus;
 
   box.hidden = !on;
   $('#sessions').classList.toggle('scoped', on);
   box.classList.toggle('focus', focus);
-  if (focus && p.key === ALL) $('#sessions').style.setProperty('--repo', 'var(--accent)');
+  if (focus && project.key === ALL) $('#sessions').style.setProperty('--repo', 'var(--accent)');
 
   if (!on) {
     setHtml(box, '');
     return;
   }
 
-  const n = here.filter(notDone).length;
+  const count = here.filter(notDone).length;
   const all = [...state.sessions.values()].filter(notDone).length;
-  const ask = askingElsewhere(p).length;
+  const ask = askingElsewhere(project).length;
 
   const tip = focus
-    ? `Only the pinned chats, in your order${p.key !== ALL ? `, in ${p.name}` : ''} — the rest is quiet but for its questions · ⌥⌘U for every chat`
-    : `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — a click or ⌥⌘P for another`;
+    ? `Only the pinned chats, in your order${project.key !== ALL ? `, in ${project.name}` : ''} — the rest is quiet but for its questions · ⌥⌘U for every chat`
+    : `${project.custom ? `${project.name}: ${project.cwds.join(', ') || 'no folders yet'}` : project.key} — a click or ⌥⌘P for another`;
 
   const name = focus
-    ? `${ICON.prio}Pinned${p.key !== ALL ? ` · ${esc(p.name)}` : ''}`
-    : `${projIcon(p.name)}${esc(p.name)}`;
+    ? `${ICON.prio}Pinned${project.key !== ALL ? ` · ${esc(project.name)}` : ''}`
+    : `${projIcon(project.name)}${esc(project.name)}`;
 
   setHtml(
     box,
@@ -222,19 +223,20 @@ function cueDraw(p, here, focus = false) {
       focus
         ? `<span class="t" title="${esc(tip)}"><span class="n">${name}</span></span>`
         : `<button type="button" class="t" title="${esc(tip)}"><span class="n">${name}</span>${CUE_CHEV}</button>`
-    }<span class="cn" role="status" title="${n} of the ${all} chats not done">${rn('cue:n', n)} of ${rn('cue:all', all)}</span>` +
+    }<span class="cn" role="status" title="${count} of the ${all} chats not done">${rn('cue:n', count)} of ${rn('cue:all', all)}</span>` +
       `<span class="out">${ask ? `<button type="button" class="ask" title="Go to the one waiting longest"><i></i>${rn('cue:ask', ask)} asking</button>·` : ''}<button type="button" class="sx" title="${focus ? 'Every chat again (⌥⌘U)' : 'Every project again (ALL)'}">Show all</button></span>`,
   );
 }
 
-const nearList = (r, l) => r.bottom > l.top - l.height && r.top < l.bottom + l.height; // within a screen of the list's window
+const nearList = (rect, listRect) =>
+  rect.bottom > listRect.top - listRect.height && rect.top < listRect.bottom + listRect.height; // within a screen of the list's window
 
 // The cue's row comes or goes after drawCards has read where the cards stood, so they slide by its height too
 const cueNow = () => {
-  const f = drawCards.cue;
+  const draw = drawCards.cue;
 
   drawCards.cue = null;
-  f?.();
+  draw?.();
 };
 
 function drawCards(items, empty) {
@@ -256,34 +258,34 @@ function drawCards(items, empty) {
     if (!it.id) {
       // a line: the node it had, by its key (else its html) and how many of the same came before it
       const base = it.key || it.html;
-      const n = (seen.get(base) || 0) + 1;
+      const count = (seen.get(base) || 0) + 1;
 
-      seen.set(base, n);
+      seen.set(base, count);
 
-      const k = `${base}#${n}`;
-      const was = lineNodes.get(k);
+      const key = `${base}#${count}`;
+      const was = lineNodes.get(key);
       const el = !was ? lineEl(it.html) : was._html === it.html ? was : lineMorph(was, it.html);
 
-      lines.set(k, el);
+      lines.set(key, el);
       nodes.push(el);
       continue;
     }
 
-    let c = cardNodes.get(it.id);
+    let card = cardNodes.get(it.id);
 
-    if (!c) fresh.add(it.id);
+    if (!card) fresh.add(it.id);
 
-    if (!c || c.html !== it.html) {
+    if (!card || card.html !== it.html) {
       const el = html2el(it.html);
       const sess = state.sessions.get(it.id);
 
       if (sess) agFresh(el, sess);
-      if (c) redrawn.push([c.el, el]); // the card redrawn: it starts where its old node stood
-      c = { html: it.html, el };
-      cardNodes.set(it.id, c);
+      if (card) redrawn.push([card.el, el]); // the card redrawn: it starts where its old node stood
+      card = { html: it.html, el };
+      cardNodes.set(it.id, card);
     }
 
-    nodes.push(c.el);
+    nodes.push(card.el);
     want.add(it.id);
   }
 
@@ -298,19 +300,19 @@ function drawCards(items, empty) {
 
   // Nothing moved, nothing new, nothing gone — most updates (2026-10-03: every one measured every card twice and
   // made every line anew): the list is left as it is, and nothing is read.
-  let i = 0;
+  let index = 0;
   let same = true;
 
-  for (const c of list.children) {
-    if (c.classList.contains('leaving')) continue;
+  for (const child of list.children) {
+    if (child.classList.contains('leaving')) continue;
 
-    if (c !== nodes[i++]) {
+    if (child !== nodes[index++]) {
       same = false;
       break;
     }
   }
 
-  if (same && i === nodes.length) {
+  if (same && index === nodes.length) {
     cueNow();
     flareLanded();
     followCard();
@@ -321,7 +323,10 @@ function drawCards(items, empty) {
   const before = new Map();
 
   if (move) {
-    for (const c of cardNodes.values()) if (c.el.isConnected) before.set(c.el, c.el.getBoundingClientRect());
+    for (const card of cardNodes.values()) {
+      if (card.el.isConnected) before.set(card.el, card.el.getBoundingClientRect());
+    }
+
     for (const [was, el] of redrawn) if (was.isConnected) before.set(el, was.getBoundingClientRect());
   }
 
@@ -337,7 +342,9 @@ function drawCards(items, empty) {
       lane.g,
       lr,
       gap,
-      n => n.classList.contains('leaving') || (n.classList.contains('card') ? !want.has(n.dataset.id) : !keep.has(n)),
+      node =>
+        node.classList.contains('leaving') ||
+        (node.classList.contains('card') ? !want.has(node.dataset.id) : !keep.has(node)),
     );
   }
 
@@ -347,16 +354,16 @@ function drawCards(items, empty) {
   // list is kept in place to fold (leaveCard); a wrapper already folding is stepped over
   const skip = () => {
     while (cur && !keep.has(cur)) {
-      const n = cur.nextElementSibling;
+      const next = cur.nextElementSibling;
 
       if (cur.classList.contains('leaving')) {
-        cur = n;
+        cur = next;
         continue;
       }
 
       if (!cur.classList.contains('card') || want.has(cur.dataset.id)) cur.remove();
       else gone.push(cur);
-      cur = n;
+      cur = next;
     }
   };
 
@@ -380,7 +387,7 @@ function drawCards(items, empty) {
     return true;
   }
 
-  for (const a of [...sliding]) if (a.id === 'flip') a.cancel(); // the true place, not where a slide had got to
+  for (const animation of [...sliding]) if (animation.id === 'flip') animation.cancel(); // the true place, not where a slide had got to
   const far = followCard() ? lr.height : Infinity; // gone to the card: the card rises from where it stood, the rest come in from a screen away at most, not from a long way up the list
 
   // a lane opened is uncovered once its cards are filled in (openRun, from renderSessionList: a card's age and live line
@@ -395,13 +402,13 @@ function drawCards(items, empty) {
   // every read first, then every animation: a read after an animate() is a style flush each
   const moves = [];
 
-  for (const [id, c] of cardNodes) {
-    const el = c.el;
+  for (const [id, card] of cardNodes) {
+    const el = card.el;
 
     if (under(el)) continue;
-    const r = el.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
 
-    if (!nearList(r, lr)) continue;
+    if (!nearList(rect, lr)) continue;
     const was = before.get(el);
 
     if (!was) {
@@ -409,19 +416,19 @@ function drawCards(items, empty) {
       continue;
     } // to its own opacity: a done card is dimmed
 
-    const dy = Math.max(-far, Math.min(far, was.top - r.top));
+    const dy = Math.max(-far, Math.min(far, was.top - rect.top));
 
     if (Math.abs(dy) > 1) moves.push([el, 'flip', dy]);
   }
 
-  for (const [el, kind, v] of moves) {
+  for (const [el, kind, value] of moves) {
     if (kind === 'enter') {
       slide(
         el,
         'enter',
         [
           { opacity: 0, transform: 'translateY(-6px)' },
-          { opacity: v, transform: 'none' },
+          { opacity: value, transform: 'none' },
         ],
         { duration: ENTER_MS, easing: 'ease-out' },
       );
@@ -429,9 +436,9 @@ function drawCards(items, empty) {
       slide(
         el,
         'flip',
-        [{ transform: `translateY(${v}px)` }, { transform: 'none' }],
+        [{ transform: `translateY(${value}px)` }, { transform: 'none' }],
         { duration: FLIP_MS, easing: EASE_OUT },
-        Math.round(v),
+        Math.round(value),
       );
     }
   }
@@ -466,14 +473,14 @@ function followCard() {
 // they dropped back as the fold ended): the card itself keeps its look, loses its data-id, and — no longer a child of
 // the list — is out of `#slist > .card`, which is how everything on the page and in the harness counts and walks the cards.
 function leaveCard(el, lr, gap) {
-  const r = lr && el.getBoundingClientRect();
+  const rect = lr && el.getBoundingClientRect();
 
-  if (!r || !nearList(r, lr)) {
+  if (!rect || !nearList(rect, lr)) {
     el.remove();
     return;
   }
 
-  const h = el.offsetHeight;
+  const height = el.offsetHeight;
   const wrap = document.createElement('div');
 
   wrap.className = 'leaving';
@@ -482,17 +489,17 @@ function leaveCard(el, lr, gap) {
   wrap.append(el);
   el.removeAttribute('data-id');
 
-  const a = follow(
+  const animation = follow(
     wrap.animate(
       [
-        { height: `${h}px`, opacity: 1, marginBottom: '0px' },
+        { height: `${height}px`, opacity: 1, marginBottom: '0px' },
         { height: '0px', opacity: 0, marginBottom: `${-gap}px` },
       ],
       { duration: LEAVE_MS, easing: 'ease-in', fill: 'forwards', id: 'leave' },
     ),
   );
 
-  a.onfinish = a.oncancel = () => {
+  animation.onfinish = animation.oncancel = () => {
     wrap.remove();
     listChanged();
   }; // the cards below moved up under the fold: the ends' counts and the timeline read the list again
@@ -505,27 +512,33 @@ function lineEl(html) {
   const el = html2el(html);
 
   el._html = html;
-  for (const c of el.children) c._drawn = c.outerHTML;
+  for (const child of el.children) child._drawn = child.outerHTML;
   return el;
 }
 
 function lineMorph(el, html) {
-  const n = lineEl(html);
+  const fresh = lineEl(html);
 
-  if (n.tagName !== el.tagName || n.childNodes.length !== n.children.length) return n;
-  const edge = ['covered', 'stuck', 'pushed'].filter(c => el.classList.contains(c));
+  if (fresh.tagName !== el.tagName || fresh.childNodes.length !== fresh.children.length) return fresh;
+  const edge = ['covered', 'stuck', 'pushed'].filter(className => el.classList.contains(className));
 
-  for (const a of [...el.attributes]) if (!n.hasAttribute(a.name)) el.removeAttribute(a.name);
-  for (const a of n.attributes) if (el.getAttribute(a.name) !== a.value) el.setAttribute(a.name, a.value);
+  for (const attribute of [...el.attributes]) {
+    if (!fresh.hasAttribute(attribute.name)) el.removeAttribute(attribute.name);
+  }
+
+  for (const attribute of fresh.attributes) {
+    if (el.getAttribute(attribute.name) !== attribute.value) el.setAttribute(attribute.name, attribute.value);
+  }
+
   el.classList.add(...edge);
-  const kids = [...n.children];
+  const kids = [...fresh.children];
 
-  kids.forEach((k, i) => {
-    const c = el.children[i];
+  kids.forEach((kid, index) => {
+    const child = el.children[index];
 
-    if (c?._drawn !== k._drawn) {
-      if (c) c.replaceWith(k);
-      else el.append(k);
+    if (child?._drawn !== kid._drawn) {
+      if (child) child.replaceWith(kid);
+      else el.append(kid);
     }
   });
 
@@ -548,49 +561,52 @@ function lineMorph(el, html) {
 const laneRun = head => {
   const run = [];
 
-  for (let n = head.nextElementSibling; n && !n.matches('.gsep.lane'); n = n.nextElementSibling) run.push(n);
+  for (let node = head.nextElementSibling; node && !node.matches('.gsep.lane'); node = node.nextElementSibling) {
+    run.push(node);
+  }
+
   return run;
 };
 
-const cssPx = (el, p) => parseFloat(getComputedStyle(el)[p]) || 0;
+const cssPx = (el, property) => parseFloat(getComputedStyle(el)[property]) || 0;
 const rectOf = el => el.getBoundingClientRect(); // to the fraction: offsetTop and offsetHeight are whole pixels
 
-function foldRun(list, g, lr, gap, going) {
-  const head = lineNodes.get(`lane:${g}#1`);
+function foldRun(list, lane, lr, gap, going) {
+  const head = lineNodes.get(`lane:${lane}#1`);
 
   if (!head?.isConnected || !nearList(head.getBoundingClientRect(), lr)) return;
   const run = laneRun(head).filter(going);
 
   if (!run.length) return;
 
-  const out = n => {
-    if (n.classList.contains('card')) {
-      noteMotion(n.dataset.id || null, 'leave');
-      n.removeAttribute('data-id');
+  const out = node => {
+    if (node.classList.contains('card')) {
+      noteMotion(node.dataset.id || null, 'leave');
+      node.removeAttribute('data-id');
     }
   };
 
-  for (const n of run) for (const a of n.getAnimations()) if (a.id === 'flip') a.cancel(); // measured where it lies
+  for (const node of run) for (const animation of node.getAnimations()) if (animation.id === 'flip') animation.cancel(); // measured where it lies
 
   // the head stuck over its own lane: what is under it or above the window goes at once and the scroll comes back as
   // far — nothing in sight moves, and the fold starts where the lane does
   const st = list.scrollTop;
   const hb = rectOf(head).bottom;
 
-  let i = 0;
+  let covered = 0;
 
-  if (st > 0) while (i < run.length - 1 && rectOf(run[i]).bottom <= hb) i++;
-  const at = n => rectOf(n).top - rectOf(list).top + list.scrollTop; // in the list, whatever the scroll: Chrome's anchoring may move it as they go
+  if (st > 0) while (covered < run.length - 1 && rectOf(run[covered]).bottom <= hb) covered++;
+  const at = node => rectOf(node).top - rectOf(list).top + list.scrollTop; // in the list, whatever the scroll: Chrome's anchoring may move it as they go
 
-  if (i) {
-    const y = at(run[i]);
+  if (covered) {
+    const keptAt = at(run[covered]);
 
-    for (const n of run.splice(0, i)) {
-      out(n);
-      n.remove();
+    for (const node of run.splice(0, covered)) {
+      out(node);
+      node.remove();
     }
 
-    list.scrollTop = st - (y - at(run[0]));
+    list.scrollTop = st - (keptAt - at(run[0]));
   }
 
   const first = run[0];
@@ -600,54 +616,59 @@ function foldRun(list, g, lr, gap, going) {
   const top = rectOf(first).top - cssPx(first, 'marginTop');
   const room = rectOf(last).bottom + cssPx(last, 'marginBottom') - top; // with an opening's margin, if one was under way
 
-  const h = Math.min(room, Math.max(0, foot - top)); // past the window's foot: folded at once
+  const height = Math.min(room, Math.max(0, foot - top)); // past the window's foot: folded at once
 
-  for (const n of run) for (const a of n.getAnimations()) if (a.id === 'enter' || a.id === 'open') a.cancel();
+  for (const node of run) {
+    for (const animation of node.getAnimations()) {
+      if (animation.id === 'enter' || animation.id === 'open') animation.cancel();
+    }
+  }
+
   const wrap = document.createElement('div');
 
   wrap.className = 'leaving';
   first.before(wrap);
 
-  for (const n of run) {
-    out(n);
-    wrap.append(n);
+  for (const node of run) {
+    out(node);
+    wrap.append(node);
   }
 
-  const a = follow(
+  const fold = follow(
     wrap.animate(
       [
-        { height: `${Math.max(0, h)}px`, marginBottom: `${Math.min(0, h)}px`, opacity: 1 },
+        { height: `${Math.max(0, height)}px`, marginBottom: `${Math.min(0, height)}px`, opacity: 1 },
         { height: '0px', marginBottom: `${-gap}px`, opacity: 0 },
       ],
       { duration: FLIP_MS, easing: EASE_OUT, fill: 'forwards', id: 'fold' },
     ),
   );
 
-  a.onfinish = a.oncancel = () => {
+  fold.onfinish = fold.oncancel = () => {
     wrap.remove();
     listChanged();
   };
 }
 
-function openRun(list, g, lr, gap) {
-  const head = lineNodes.get(`lane:${g}#1`);
+function openRun(list, lane, lr, gap) {
+  const head = lineNodes.get(`lane:${lane}#1`);
 
   if (!head?.isConnected || !nearList(head.getBoundingClientRect(), lr)) return;
 
   const all = laneRun(head);
-  const held = all.filter(n => n.classList.contains('leaving'));
-  const run = all.filter(n => !held.includes(n));
+  const held = all.filter(node => node.classList.contains('leaving'));
+  const run = all.filter(node => !held.includes(node));
 
   if (!run.length) return;
   // a fold of the lane still under way: the room it holds now is where the opening starts
-  const from = held.reduce((x, w) => x + rectOf(w).height + cssPx(w, 'marginBottom') + gap, 0);
+  const from = held.reduce((sum, wrap) => sum + rectOf(wrap).height + cssPx(wrap, 'marginBottom') + gap, 0);
 
-  for (const w of held) {
-    for (const a of w.getAnimations()) a.cancel();
-    w.remove();
+  for (const wrap of held) {
+    for (const animation of wrap.getAnimations()) animation.cancel();
+    wrap.remove();
   } // at once: a cancel's event comes a frame on
 
-  // the room under the head, from the gap below it: at `x` of it uncovered, the list under the lane starts at x + gap
+  // the room under the head, from the gap below it: with `uncovered` of it uncovered, the list under the lane starts at uncovered + gap
   const first = run[0];
   const last = run[run.length - 1];
   const mb = cssPx(last, 'marginBottom');
@@ -658,36 +679,38 @@ function openRun(list, g, lr, gap) {
 
   if (to <= from) return;
 
-  const at = x => Math.min(1, Math.max(0, (x - from) / (to - from)));
-  const r2 = v => Math.round(v * 100) / 100;
+  const at = uncovered => Math.min(1, Math.max(0, (uncovered - from) / (to - from)));
+  const r2 = value => Math.round(value * 100) / 100;
 
-  const plans = run.map(n => {
+  const plans = run.map(node => {
     // every read first
-    const r = rectOf(n);
-    const t = r.top - top;
-    const h = r.height;
-    const o = +getComputedStyle(n).opacity;
+    const rect = rectOf(node);
+    const nodeTop = rect.top - top;
+    const height = rect.height;
+    const opacity = +getComputedStyle(node).opacity;
 
-    const marks = [...new Set([0, at(t - gap), at(t + h - gap), 1])].sort((a, b) => a - b);
+    const marks = [...new Set([0, at(nodeTop - gap), at(nodeTop + height - gap), 1])].sort(
+      (left, right) => left - right,
+    );
 
     return [
-      n,
-      marks.map(p => {
-        const x = from + p * (to - from);
-        const shown = Math.min(h, Math.max(0, x + gap - t));
+      node,
+      marks.map(progress => {
+        const uncovered = from + progress * (to - from);
+        const shown = Math.min(height, Math.max(0, uncovered + gap - nodeTop));
 
         return {
-          offset: p,
-          clipPath: `inset(0px -40px ${shown < h ? `calc(100% - ${r2(shown)}px)` : '0px'} -40px)`,
-          opacity: r2(o * p),
+          offset: progress,
+          clipPath: `inset(0px -40px ${shown < height ? `calc(100% - ${r2(shown)}px)` : '0px'} -40px)`,
+          opacity: r2(opacity * progress),
         };
       }),
     ]; // from its top: a card that grows as its live line is filled shows no more
   });
 
-  for (const [n, frames] of plans) {
-    if (n.dataset.id) noteMotion(n.dataset.id, 'enter');
-    follow(n.animate(frames, { duration: FLIP_MS, easing: EASE_OUT, id: 'enter' }));
+  for (const [node, frames] of plans) {
+    if (node.dataset.id) noteMotion(node.dataset.id, 'enter');
+    follow(node.animate(frames, { duration: FLIP_MS, easing: EASE_OUT, id: 'enter' }));
   }
 
   follow(
@@ -727,11 +750,11 @@ function phaseAnims(now = false) {
     phaseAnims.queued = false;
     const at = document.timeline.currentTime;
 
-    for (const a of document.getAnimations()) {
-      if (PHASED.has(a.animationName)) {
-        if (a.startTime === 0 && !a.pending) continue;
-        a.currentTime = at;
-        if (a.startTime !== 0) a.startTime = 0;
+    for (const animation of document.getAnimations()) {
+      if (PHASED.has(animation.animationName)) {
+        if (animation.startTime === 0 && !animation.pending) continue;
+        animation.currentTime = at;
+        if (animation.startTime !== 0) animation.startTime = 0;
       }
     }
   };

@@ -1,8 +1,8 @@
 // ESLint (2026-11-25): the recommended rules over the code. The page's script is one function across public/js/, a
 // part using what another declares, so it is linted whole, put together as served (scripts/lint-page.mjs, as
 // `public/page.js`), never a part alone.
-// The house rules (2026-11-27): a blank line round a block, one declaration a line, the imports first — `npm run
-// format` makes them (scripts/format.mjs).
+// The house rules (2026-11-27): names that say what they hold, a blank line round a block, one declaration a line, the
+// imports first — `npm run format` makes all but the names (scripts/format.mjs).
 import js from '@eslint/js';
 import stylistic from '@stylistic/eslint-plugin';
 import importLite from 'eslint-plugin-import-lite';
@@ -39,6 +39,9 @@ export default [
       'no-empty': ['error', { allowEmptyCatch: true }], // a catch that lets go on purpose
       'no-unused-vars': ['error', { ignoreRestSiblings: true }], // `const { key, ...rest }` leaves key out on purpose
       'no-control-regex': 'off', // a terminal's bytes are matched on purpose
+      // a name says what it holds: none of one letter but `_` (unused) and `$` (the page's querySelector); an object's
+      // keys are left be, being the wire's and the state file's
+      'id-length': ['error', { min: 2, properties: 'never', exceptions: ['_', '$'] }],
       // one declaration a statement, the declarations together and a blank line after them
       'one-var': ['error', 'never'],
       'prefer-const': ['error', { destructuring: 'all' }],

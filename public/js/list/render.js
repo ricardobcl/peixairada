@@ -1,7 +1,7 @@
 // ---- render: both lists ------------------------------------------------------------
 // A lane folds (2026-10-11, later; three state chips filtered the list before): its head is a toggle, its cards hidden
 // and its count kept — prefs.lanesShut, Done and Idle shut to begin with.
-const laneShut = g => (prefs.lanesShut || []).includes(g);
+const laneShut = lane => (prefs.lanesShut || []).includes(lane);
 
 /** What the stream says, drawn once a frame (2026-10-03): a gh batch is a burst of `session` events in one task, and
  *  each drew the whole list. A frame, or 100 ms where there are no frames (a hidden window: the badge still follows). */
@@ -30,15 +30,15 @@ function renderBoard() {
 
   const every = projectList();
 
-  if (!every.some(p => p.key === prefs.project)) prefs.project = ALL;
-  const cur = every.find(p => p.key === prefs.project);
+  if (!every.some(project => project.key === prefs.project)) prefs.project = ALL;
+  const cur = every.find(project => project.key === prefs.project);
 
   renderSessionList(cur);
   renderHidden();
   spSoon(); // Space (⌥⌘X) draws what the list draws, the project in view's
 
-  const w = wanting();
-  const total = w.needs.length + w.replied.length; // what wants you, as the Dock counts it (2026-10-12; the alerts this page saw before)
+  const wants = wanting();
+  const total = wants.needs.length + wants.replied.length; // what wants you, as the Dock counts it (2026-10-12; the alerts this page saw before)
 
   document.title = `${total ? `(${total}) ` : ''}peixAIrada`;
   if (inApp) postState();
@@ -60,15 +60,21 @@ function renderBoard() {
 // header is drawn anew, and nothing when the column is empty — the window's title (⌘Tab, Mission Control, the
 // Window menu) and its represented folder (the title bar's proxy icon and ⌘-click path) follow.
 // only what changed (2026-10-10): a header drawn anew for another reason — the +n −n coming in — names the same window
-const postChat = s => {
+const postChat = session => {
   if (!inApp) return;
 
-  const m = { type: 'chat', project: s?.project || '', title: s?.title || '', cwd: s?.cwd || '' };
-  const sig = JSON.stringify(m);
+  const message = {
+    type: 'chat',
+    project: session?.project || '',
+    title: session?.title || '',
+    cwd: session?.cwd || '',
+  };
+
+  const sig = JSON.stringify(message);
 
   if (sig === postChat.last) return;
   postChat.last = sig;
-  post(m);
+  post(message);
 };
 
 // …and what wants you, one meaning for the Dock's badge (2026-10-12; it counted the alerts that came while the app was in
@@ -77,39 +83,49 @@ const postChat = s => {
 // what asks is what the list and the bar call asking (2026-10-14; any live claude waiting before, a chat ticked done too)
 // How long a chat has been asking: the registry's moment, else the status's. Questions are served longest wait first
 // (2026-11-01, round XIX's S4; newest first before, which favours whoever pinged last), and the bar says the longest.
-const askedAt = s =>
-  (s.live?.status === 'waiting' && s.live.statusAt) || Date.parse(s.statusSince || wordAt(s) || '') || Date.now();
+const askedAt = session =>
+  (session.live?.status === 'waiting' && session.live.statusAt) ||
+  Date.parse(session.statusSince || wordAt(session) || '') ||
+  Date.now();
 
-const byWait = (a, b) => askedAt(a) - askedAt(b);
+const byWait = (left, right) => askedAt(left) - askedAt(right);
 
 const waitWord = ms => {
-  const m = Math.floor(ms / 60_000);
+  const minutes = Math.floor(ms / 60_000);
 
-  return m < 1 ? '' : m < 60 ? `${m}m` : `${Math.floor(m / 60)}h`;
+  return minutes < 1 ? '' : minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h`;
 };
 
 // Neither a snoozed chat (2026-11-24, round XXX's W4) nor, in focus, a chat out of Top priority but for its question (F3).
-const quietNow = s => asleep(s) || (prioFocus() && !inPrio(s));
+const quietNow = session => asleep(session) || (prioFocus() && !inPrio(session));
 
 const wanting = () => {
   const all = [...state.sessions.values()];
 
   return {
-    needs: all.filter(s => visible(s) && askingLoud(s)),
+    needs: all.filter(session => visible(session) && askingLoud(session)),
     replied: all
-      .filter(s => visible(s) && !s.done && !s.muted && !asking(s) && !quietNow(s) && replied(s))
+      .filter(
+        session =>
+          visible(session) &&
+          !session.done &&
+          !session.muted &&
+          !asking(session) &&
+          !quietNow(session) &&
+          replied(session),
+      )
       .sort(byWord),
   };
 };
 
 function postState() {
-  const w = wanting();
-  const brief = s => ({ id: s.id, project: s.project, title: s.title });
+  const wants = wanting();
+  const brief = session => ({ id: session.id, project: session.project, title: session.title });
 
-  const needs = [...w.needs].sort(byWait).map(s => ({ ...brief(s), since: String(askedAt(s)) }));
-  const replies = w.replied.map(brief);
+  const needs = [...wants.needs].sort(byWait).map(session => ({ ...brief(session), since: String(askedAt(session)) }));
+  const replies = wants.replied.map(brief);
 
-  const mutes = [...state.sessions.values()].filter(s => s.muted).map(s => s.id); // the app takes back what it still holds for one (a snooze)
+  const mutes = [...state.sessions.values()].filter(session => session.muted).map(session => session.id); // the app takes back what it still holds for one (a snooze)
   const sig = JSON.stringify([needs, replies, mutes]);
 
   if (sig === postState.last) return;

@@ -12,46 +12,47 @@ const root = join(CLAUDE_DIR, 'projects');
 
 const since = Date.now() - Number(process.argv[2] || 60) * 60_000;
 
-const ls = d => {
+const ls = dir => {
   try {
-    return readdirSync(d);
+    return readdirSync(dir);
   } catch {
     return [];
   }
 };
 
-const short = v => (typeof v === 'string' ? v.slice(0, 60) : v === undefined ? undefined : typeof v);
+const short = value =>
+  typeof value === 'string' ? value.slice(0, 60) : value === undefined ? undefined : typeof value;
 
 for (const slug of ls(root)) {
-  for (const f of ls(join(root, slug)).filter(f => f.endsWith('.jsonl'))) {
-    const file = join(root, slug, f);
+  for (const fileName of ls(join(root, slug)).filter(fileName => fileName.endsWith('.jsonl'))) {
+    const file = join(root, slug, fileName);
 
     if (statSync(file).mtimeMs < since) continue;
 
-    const id = f.slice(0, -6);
+    const id = fileName.slice(0, -6);
     const spawns = [];
 
     for (const raw of readFileSync(file, 'utf8').split('\n')) {
       if (!raw.includes('"tool_use"')) continue;
-      let l;
+      let entry;
 
       try {
-        l = JSON.parse(raw);
+        entry = JSON.parse(raw);
       } catch {
         continue;
       }
 
-      for (const b of Array.isArray(l.message?.content) ? l.message.content : []) {
-        const i = b?.type === 'tool_use' && b.input;
+      for (const block of Array.isArray(entry.message?.content) ? entry.message.content : []) {
+        const input = block?.type === 'tool_use' && block.input;
 
-        if (!i || !(i.name || i.team_name || i.subagent_type)) continue;
+        if (!input || !(input.name || input.team_name || input.subagent_type)) continue;
 
         spawns.push({
-          tool: b.name,
-          name: short(i.name),
-          subagent_type: short(i.subagent_type),
-          team_name: short(i.team_name),
-          keys: Object.keys(i),
+          tool: block.name,
+          name: short(input.name),
+          subagent_type: short(input.subagent_type),
+          team_name: short(input.team_name),
+          keys: Object.keys(input),
         });
       }
     }
@@ -59,28 +60,28 @@ for (const slug of ls(root)) {
     const sub = join(root, slug, id, 'subagents');
 
     const metas = ls(sub)
-      .filter(n => n.endsWith('.meta.json'))
-      .map(n => {
-        let m = {};
+      .filter(metaFile => metaFile.endsWith('.meta.json'))
+      .map(metaFile => {
+        let meta = {};
 
         try {
-          m = JSON.parse(readFileSync(join(sub, n), 'utf8'));
+          meta = JSON.parse(readFileSync(join(sub, metaFile), 'utf8'));
         } catch {}
 
         return {
-          file: n,
-          name: short(m.name),
-          agentType: short(m.agentType),
-          spawnedAgentType: short(m.spawnedAgentType),
-          customAgentType: short(m.customAgentType),
-          taskKind: short(m.taskKind),
-          keys: Object.keys(m),
+          file: metaFile,
+          name: short(meta.name),
+          agentType: short(meta.agentType),
+          spawnedAgentType: short(meta.spawnedAgentType),
+          customAgentType: short(meta.customAgentType),
+          taskKind: short(meta.taskKind),
+          keys: Object.keys(meta),
         };
       });
 
     if (!spawns.length && !metas.length) continue;
     console.log(`\n== chat ${id} (${slug})`);
-    for (const s of spawns) console.log('  spawn', JSON.stringify(s));
-    for (const m of metas) console.log('  meta ', JSON.stringify(m));
+    for (const spawn of spawns) console.log('  spawn', JSON.stringify(spawn));
+    for (const meta of metas) console.log('  meta ', JSON.stringify(meta));
   }
 }

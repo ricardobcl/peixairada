@@ -14,9 +14,9 @@ import { CLAUDE_DIR, execFileP } from './env.mjs';
 async function oauthToken() {
   const parse = raw => {
     try {
-      const t = JSON.parse(raw)?.claudeAiOauth?.accessToken;
+      const token = JSON.parse(raw)?.claudeAiOauth?.accessToken;
 
-      return typeof t === 'string' && t ? t : null;
+      return typeof token === 'string' && token ? token : null;
     } catch {
       return null;
     }
@@ -29,8 +29,8 @@ async function oauthToken() {
       const token = parse(readFileSync(file, 'utf8'));
 
       return token ? { token } : { why: 'no OAuth token in .credentials.json' };
-    } catch (e) {
-      return { why: String(e.message || e) };
+    } catch (error) {
+      return { why: String(error.message || error) };
     }
   }
 
@@ -73,20 +73,20 @@ async function oauthToken() {
 // units) and `currency`.
 const SPEND_PERIOD = { daily: 'today', weekly: 'this week', monthly: 'this month' }; // the CLI's own words
 
-export function usageWindows(d) {
+export function usageWindows(usage) {
   const windows = [];
   const other = [];
 
   const add = (key, label, percent, resetsAt, more) => {
-    if (typeof percent === 'number' && !windows.some(x => x.key === key)) {
+    if (typeof percent === 'number' && !windows.some(existing => existing.key === key)) {
       windows.push({ key, label, percent: Math.round(percent), resetsAt: resetsAt || null, ...more });
     }
   };
 
   const named = { seven_day: 'week · all models', seven_day_opus: 'week · Opus', seven_day_sonnet: 'week · Sonnet' };
   const buckets = { cinder_cove: 'Claude Code & Cowork credit' };
-  const ex = d.extra_usage && typeof d.extra_usage === 'object' ? d.extra_usage : null;
-  const cents = n => (typeof n === 'number' && Number.isFinite(n) ? n / 100 : null);
+  const ex = usage.extra_usage && typeof usage.extra_usage === 'object' ? usage.extra_usage : null;
+  const cents = amount => (typeof amount === 'number' && Number.isFinite(amount) ? amount / 100 : null);
 
   const money =
     ex && typeof ex.monthly_limit === 'number'
@@ -99,16 +99,16 @@ export function usageWindows(d) {
 
   let spent = false; // the dollars are on a spend row already
 
-  for (const [k, label] of Object.entries(named)) {
-    if (d[k] && typeof d[k] === 'object') add(k, label, d[k].utilization, d[k].resets_at);
+  for (const [key, label] of Object.entries(named)) {
+    if (usage[key] && typeof usage[key] === 'object') add(key, label, usage[key].utilization, usage[key].resets_at);
   }
 
-  for (const row of Array.isArray(d.limits) ? d.limits : []) {
+  for (const row of Array.isArray(usage.limits) ? usage.limits : []) {
     if (!row || typeof row !== 'object' || typeof row.percent !== 'number') continue;
 
     if (row.kind === 'spend') {
       const group = String(row.group || 'monthly');
-      const mine = money && (row.is_active || d.limits.filter(r => r?.kind === 'spend').length === 1);
+      const mine = money && (row.is_active || usage.limits.filter(limitRow => limitRow?.kind === 'spend').length === 1);
 
       add(`spend:${group}`, `spend · ${SPEND_PERIOD[group] || group.replace(/_/g, ' ')}`, row.percent, row.resets_at, {
         period: group,
@@ -143,7 +143,7 @@ export function usageWindows(d) {
     );
   }
 
-  const we = d.wattle_ember;
+  const we = usage.wattle_ember;
 
   if (
     we &&
@@ -166,22 +166,22 @@ export function usageWindows(d) {
     );
   }
 
-  for (const [k, w] of Object.entries(d)) {
+  for (const [key, bucket] of Object.entries(usage)) {
     if (
-      k in named ||
-      k === 'five_hour' ||
-      k === 'limits' ||
-      k === 'extra_usage' ||
-      k === 'wattle_ember' ||
-      !w ||
-      typeof w !== 'object' ||
-      typeof w.utilization !== 'number'
+      key in named ||
+      key === 'five_hour' ||
+      key === 'limits' ||
+      key === 'extra_usage' ||
+      key === 'wattle_ember' ||
+      !bucket ||
+      typeof bucket !== 'object' ||
+      typeof bucket.utilization !== 'number'
     ) {
       continue;
     }
 
-    if (w.utilization > 0) add(k, buckets[k] || k.replace(/_/g, ' '), w.utilization, w.resets_at);
-    else other.push(k);
+    if (bucket.utilization > 0) add(key, buckets[key] || key.replace(/_/g, ' '), bucket.utilization, bucket.resets_at);
+    else other.push(key);
   }
 
   return { windows, other };
@@ -203,7 +203,7 @@ export function planUsage() {
   }
 
   return (usageAsk ??= askUsage()
-    .then(r => Object.assign(usageCache, r, { at: Date.now() }))
+    .then(answer => Object.assign(usageCache, answer, { at: Date.now() }))
     .finally(() => {
       usageAsk = null;
     }));
@@ -215,22 +215,22 @@ async function askUsage() {
   if (!token) return { code: 503, body: { error: why } };
 
   try {
-    const r = await fetch('https://api.anthropic.com/api/oauth/usage', {
+    const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
       headers: { authorization: `Bearer ${token}`, 'anthropic-beta': 'oauth-2025-04-20', accept: 'application/json' },
       signal: AbortSignal.timeout(15000),
     });
 
-    const d = await r.json().catch(() => ({}));
+    const usage = await response.json().catch(() => ({}));
 
-    if (!r.ok) {
+    if (!response.ok) {
       return {
-        code: r.status === 401 ? 503 : 502,
-        body: { error: d?.error?.message || `usage API: HTTP ${r.status}` },
+        code: response.status === 401 ? 503 : 502,
+        body: { error: usage?.error?.message || `usage API: HTTP ${response.status}` },
       };
     }
 
-    return { code: 200, body: { ...usageWindows(d), fetchedAt: new Date().toISOString() } };
-  } catch (e) {
-    return { code: 502, body: { error: `usage API: ${e.message || e}` } };
+    return { code: 200, body: { ...usageWindows(usage), fetchedAt: new Date().toISOString() } };
+  } catch (error) {
+    return { code: 502, body: { error: `usage API: ${error.message || error}` } };
   }
 }

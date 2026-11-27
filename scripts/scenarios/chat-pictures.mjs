@@ -24,44 +24,44 @@ const GIF = Buffer.from(
 
 // and a screenshot's size, 3456 × 2234 in two colours: the large view must fit it in the window, whole
 const BIG = (() => {
-  const w = 3456;
-  const h = 2234;
+  const width = 3456;
+  const height = 2234;
 
   const row = Buffer.concat([
     Buffer.from([0]),
-    Buffer.from(new Array(w).fill(0).flatMap((_, x) => (x < w / 2 ? [40, 120, 200] : [230, 180, 40]))),
+    Buffer.from(new Array(width).fill(0).flatMap((_, col) => (col < width / 2 ? [40, 120, 200] : [230, 180, 40]))),
   ]);
 
-  const crc = b => {
-    let c = ~0;
+  const crc = bytes => {
+    let checksum = ~0;
 
-    for (const x of b) {
-      c ^= x;
-      for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+    for (const byte of bytes) {
+      checksum ^= byte;
+      for (let bit = 0; bit < 8; bit++) checksum = (checksum >>> 1) ^ (0xedb88320 & -(checksum & 1));
     }
 
-    return ~c >>> 0;
+    return ~checksum >>> 0;
   };
 
-  const chunk = (t, d) => {
-    const l = Buffer.alloc(4);
-    const c = Buffer.alloc(4);
-    const td = Buffer.concat([Buffer.from(t), d]);
+  const chunk = (type, data) => {
+    const length = Buffer.alloc(4);
+    const checksum = Buffer.alloc(4);
+    const td = Buffer.concat([Buffer.from(type), data]);
 
-    l.writeUInt32BE(d.length);
-    c.writeUInt32BE(crc(td));
-    return Buffer.concat([l, td, c]);
+    length.writeUInt32BE(data.length);
+    checksum.writeUInt32BE(crc(td));
+    return Buffer.concat([length, td, checksum]);
   };
 
   const ihdr = Buffer.alloc(13);
 
-  ihdr.writeUInt32BE(w, 0);
-  ihdr.writeUInt32BE(h, 4);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
   ihdr.set([8, 2, 0, 0, 0], 8);
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk('IHDR', ihdr),
-    chunk('IDAT', deflateSync(Buffer.concat(new Array(h).fill(row)))),
+    chunk('IDAT', deflateSync(Buffer.concat(new Array(height).fill(row)))),
     chunk('IEND', Buffer.alloc(0)),
   ]);
 })();
@@ -110,11 +110,11 @@ export default async function (ctx) {
   const out = {};
 
   try {
-    const q = sel => `document.querySelector(${JSON.stringify(sel)})`;
+    const query = sel => `document.querySelector(${JSON.stringify(sel)})`;
 
     const rect = sel =>
       ctx.evaluate(
-        `(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${q(sel)}.getBoundingClientRect())`,
+        `(r => ({ x: Math.max(0, r.left - 8), y: Math.max(0, r.top - 8), width: r.width + 16, height: r.height + 16 }))(${query(sel)}.getBoundingClientRect())`,
       );
 
     const pics = () =>
@@ -131,11 +131,11 @@ export default async function (ctx) {
       body: JSON.stringify({ chat: { repo: 'acme-chat/room' } }),
     });
 
-    await ctx.waitFor(`!!${q('#sbChat')} && !/still being read/.test(${q('#sbChat')}.title)`, {
+    await ctx.waitFor(`!!${query('#sbChat')} && !/still being read/.test(${query('#sbChat')}.title)`, {
       what: 'the chat in the status bar',
     });
 
-    await ctx.evaluate(`${q('#sbChat')}.click()`);
+    await ctx.evaluate(`${query('#sbChat')}.click()`);
     await ctx.waitFor(`document.querySelectorAll('#rmlog .rmmsg').length === 5`, { what: "the chat's messages" });
 
     // the pictures drawn from the board's bytes, at their size; the other host's a word, the raw tag its text
@@ -146,7 +146,7 @@ export default async function (ctx) {
     out.pics = await pics();
 
     ctx.assert.deepEqual(
-      out.pics.map(p => [p.url, p.on, p.bad, p.src, p.w, p.h]),
+      out.pics.map(pic => [pic.url, pic.on, pic.bad, pic.src, pic.w, pic.h]),
       [
         [shot, true, false, 'blob:', 40, 24],
         [party, true, false, 'blob:', 30, 30],
@@ -177,17 +177,20 @@ export default async function (ctx) {
     await ctx.shot('1-room', await rect('#room'));
 
     // one large, and back; the one nobody shared opens in the browser instead
-    await ctx.evaluate(`${q('#rmlog .rmpic.on:not(.bad)')}.click()`);
+    await ctx.evaluate(`${query('#rmlog .rmpic.on:not(.bad)')}.click()`);
 
-    await ctx.waitFor(`${q('#rmview')}.open && ${q('#rmviewImg')}.complete && ${q('#rmviewImg')}.naturalWidth === 40`, {
-      what: 'the picture large',
-    });
+    await ctx.waitFor(
+      `${query('#rmview')}.open && ${query('#rmviewImg')}.complete && ${query('#rmviewImg')}.naturalWidth === 40`,
+      {
+        what: 'the picture large',
+      },
+    );
 
-    ctx.assert.equal(await ctx.evaluate(`${q('#rmviewAlt')}.textContent`), 'the error');
+    ctx.assert.equal(await ctx.evaluate(`${query('#rmviewAlt')}.textContent`), 'the error');
     await ctx.settle();
     await ctx.shot('2-large');
-    await ctx.evaluate(`${q('#rmviewImg')}.click()`);
-    await ctx.waitFor(`!${q('#rmview')}.open`, { what: 'the large picture let go' });
+    await ctx.evaluate(`${query('#rmviewImg')}.click()`);
+    await ctx.waitFor(`!${query('#rmview')}.open`, { what: 'the large picture let go' });
 
     // a screenshot's size: fitted to the window, whole — its box as wide as it, never the dialogs' 600 px cropping it
     await ctx.evaluate(
@@ -195,7 +198,7 @@ export default async function (ctx) {
     );
 
     await ctx.waitFor(
-      `${q('#rmview')}.open && ${q('#rmviewImg')}.complete && ${q('#rmviewImg')}.naturalWidth === 3456`,
+      `${query('#rmview')}.open && ${query('#rmviewImg')}.complete && ${query('#rmviewImg')}.naturalWidth === 3456`,
       { what: 'the big picture large' },
     );
 
@@ -228,27 +231,27 @@ export default async function (ctx) {
     );
 
     await ctx.shot('2-large-big');
-    await ctx.evaluate(`${q('#rmviewImg')}.click()`);
-    await ctx.waitFor(`!${q('#rmview')}.open`, { what: 'the big picture let go' });
+    await ctx.evaluate(`${query('#rmviewImg')}.click()`);
+    await ctx.waitFor(`!${query('#rmview')}.open`, { what: 'the big picture let go' });
 
     // a picture pasted: into the tray, up at once; ⏎ sends it with the words, as markdown on GitHub
-    const file = (name, b, type) =>
-      `new File([Uint8Array.from(atob(${JSON.stringify(b.toString('base64'))}), c => c.charCodeAt(0))], ${JSON.stringify(name)}, { type: ${JSON.stringify(type)} })`;
+    const file = (name, bytes, type) =>
+      `new File([Uint8Array.from(atob(${JSON.stringify(bytes.toString('base64'))}), c => c.charCodeAt(0))], ${JSON.stringify(name)}, { type: ${JSON.stringify(type)} })`;
 
     await ctx.evaluate(
-      `(() => { const dt = new DataTransfer(); dt.items.add(${file('Screenshot 2026-11-25.png', PNG, 'image/png')}); ${q('#rmbox')}.focus(); ${q('#rmbox')}.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); })()`,
+      `(() => { const dt = new DataTransfer(); dt.items.add(${file('Screenshot 2026-11-25.png', PNG, 'image/png')}); ${query('#rmbox')}.focus(); ${query('#rmbox')}.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); })()`,
     );
 
     await ctx.waitFor(
-      `document.querySelectorAll('#rmpics .rmtp').length === 1 && !${q('#rmpics .rmtp')}.classList.contains('up')`,
+      `document.querySelectorAll('#rmpics .rmtp').length === 1 && !${query('#rmpics .rmtp')}.classList.contains('up')`,
       { what: 'the pasted picture up' },
     );
 
-    ctx.assert.equal(await ctx.evaluate(`${q('#rmpics')}.hidden`), false);
+    ctx.assert.equal(await ctx.evaluate(`${query('#rmpics')}.hidden`), false);
 
     // one dropped on the panel joins it; × takes it back
     await ctx.evaluate(
-      `(() => { const dt = new DataTransfer(); dt.items.add(${file('party.gif', GIF, 'image/gif')}); ${q('#rmlog')}.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); })()`,
+      `(() => { const dt = new DataTransfer(); dt.items.add(${file('party.gif', GIF, 'image/gif')}); ${query('#rmlog')}.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); })()`,
     );
 
     await ctx.waitFor(`document.querySelectorAll('#rmpics .rmtp').length === 2`, {
@@ -256,7 +259,7 @@ export default async function (ctx) {
     });
 
     ctx.assert.equal(
-      await ctx.evaluate(`${q('#chat')}.classList.contains('dropping')`),
+      await ctx.evaluate(`${query('#chat')}.classList.contains('dropping')`),
       false,
       "not the drawer's drop",
     );
@@ -268,16 +271,16 @@ export default async function (ctx) {
     await ctx.fill('#rmbox', 'the same error here');
 
     await ctx.evaluate(
-      `${q('#rmbox')}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }))`,
+      `${query('#rmbox')}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }))`,
     );
 
-    ctx.assert.equal(await ctx.evaluate(`${q('#rmpics')}.hidden`), true, 'the tray empty once sent');
+    ctx.assert.equal(await ctx.evaluate(`${query('#rmpics')}.hidden`), true, 'the tray empty once sent');
 
     const sent = await waitFor(
       async () => {
-        const c = gh.repo('acme-chat/room').issues[0].comments.at(-1);
+        const comment = gh.repo('acme-chat/room').issues[0].comments.at(-1);
 
-        return c.user.login === 'me' && c.body;
+        return comment.user.login === 'me' && comment.body;
       },
       { what: 'the message on GitHub' },
     );
@@ -303,7 +306,7 @@ export default async function (ctx) {
     ctx.assert.deepEqual(out.mine, { src: 'blob:', w: 40 });
 
     ctx.assert.equal(
-      gh.calls.filter(c => c.startsWith('POST /markdown')).length,
+      gh.calls.filter(call => call.startsWith('POST /markdown')).length,
       1,
       'yours drawn from what was pasted: GitHub asked once, for the four at first',
     );

@@ -47,7 +47,7 @@ export default async function (ctx) {
   out.head = await chips();
 
   ctx.assert.deepEqual(
-    out.head.map(c => c.slice(0, 2)).sort(),
+    out.head.map(chip => chip.slice(0, 2)).sort(),
     [
       ['#12', 'pass'],
       ['#13', 'fail'],
@@ -56,7 +56,7 @@ export default async function (ctx) {
   );
 
   ctx.assert.deepEqual(
-    out.head.filter(c => c[2]).map(c => c[0]),
+    out.head.filter(chip => chip[2]).map(chip => chip[0]),
     ['#13'],
     'the failing one ringed in red',
   );
@@ -80,7 +80,7 @@ export default async function (ctx) {
     .then(JSON.parse);
 
   ctx.assert.deepEqual(
-    out.rows.map(r => r[1]).sort(),
+    out.rows.map(row => row[1]).sort(),
     ['failing', 'passed'],
     `a word on each row: ${JSON.stringify(out.rows)}`,
   );

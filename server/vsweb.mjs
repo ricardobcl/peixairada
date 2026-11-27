@@ -59,9 +59,9 @@ const vswebAnswers = (path = '', bare = false) =>
     headers: bare ? {} : { cookie: `vscode-tkn=${vswebToken()}` },
     signal: AbortSignal.timeout(1500),
   }).then(
-    r => {
-      r.body?.cancel();
-      return r.status;
+    response => {
+      response.body?.cancel();
+      return response.status;
     },
     () => 0,
   );
@@ -102,14 +102,14 @@ async function vswebWhyNot(status) {
     return `something on port ${VSWEB_PORT} serves VS Code Web with no token — not this board's; stop it (lsof -iTCP:${VSWEB_PORT} -sTCP:LISTEN), or set VSWEB_PORT`;
   }
 
-  const l = await portListener(VSWEB_PORT);
+  const listener = await portListener(VSWEB_PORT);
 
-  if (!l || l.uid !== process.getuid()) {
+  if (!listener || listener.uid !== process.getuid()) {
     return `something on port ${VSWEB_PORT} that is not yours answers — not this board's VS Code Web; set VSWEB_PORT`;
   }
 
-  if (!(vsweb && l.pgid === vsweb.pid) && !/^code(-tunnel)?$/.test(basename(l.comm))) {
-    return `${l.comm} (pid ${l.pid}) listens on port ${VSWEB_PORT}, not VS Code Web — stop it, or set VSWEB_PORT`;
+  if (!(vsweb && listener.pgid === vsweb.pid) && !/^code(-tunnel)?$/.test(basename(listener.comm))) {
+    return `${listener.comm} (pid ${listener.pid}) listens on port ${VSWEB_PORT}, not VS Code Web — stop it, or set VSWEB_PORT`;
   }
 
   return null;
@@ -120,8 +120,8 @@ export async function ensureVsWeb(path = '') {
 
   try {
     token = vswebToken();
-  } catch (e) {
-    return { code: 500, error: `could not keep VS Code Web's token in ${VSWEB_TOKEN_FILE}: ${e.message}` };
+  } catch (error) {
+    return { code: 500, error: `could not keep VS Code Web's token in ${VSWEB_TOKEN_FILE}: ${error.message}` };
   }
 
   const bare = await vswebAnswers(path, true);
@@ -169,20 +169,20 @@ export async function ensureVsWeb(path = '') {
         { stdio: 'ignore', env: drawerEnv(), detached: true },
       );
 
-      vsweb.on('exit', c => {
-        console.log(`[peixairada] code serve-web exited (${c})`);
+      vsweb.on('exit', exitCode => {
+        console.log(`[peixairada] code serve-web exited (${exitCode})`);
         vsweb = null;
       });
 
       // a spawn that fails is an 'error' and no 'exit' — and an 'error' nobody listens for ends the server
-      vsweb.on('error', e => {
-        console.error(`[peixairada] code serve-web: ${e.message}`);
+      vsweb.on('error', error => {
+        console.error(`[peixairada] code serve-web: ${error.message}`);
         vsweb = null;
         binCache.delete('code');
       });
-    } catch (e) {
+    } catch (error) {
       vsweb = null;
-      return { code: 500, error: `could not start code serve-web: ${e.message}` };
+      return { code: 500, error: `could not start code serve-web: ${error.message}` };
     }
   }
 
@@ -190,7 +190,7 @@ export async function ensureVsWeb(path = '') {
 
   while (Date.now() - t0 < 60_000) {
     // the first run downloads the server build
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(resolve => setTimeout(resolve, 500));
     const first = await vswebAnswers(path, true);
 
     if (first) {
@@ -243,12 +243,12 @@ export async function freshenVsWeb() {
     const quality = vswebQuality(code);
     const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
 
-    const r = await fetch(`${VSWEB_UPDATE_URL}/server-darwin-${arch}-web/${quality}`, {
+    const response = await fetch(`${VSWEB_UPDATE_URL}/server-darwin-${arch}-web/${quality}`, {
       signal: AbortSignal.timeout(15_000),
     });
 
-    if (!r.ok) throw new Error(`the update service said ${r.status}`);
-    const { version: commit, name } = await r.json();
+    if (!response.ok) throw new Error(`the update service said ${response.status}`);
+    const { version: commit, name } = await response.json();
 
     if (!/^[0-9a-f]{40}$/.test(commit || '')) throw new Error('the update service named no build');
 
@@ -264,8 +264,8 @@ export async function freshenVsWeb() {
     console.log(
       `[peixairada] VS Code Web: ${name || commit.slice(0, 8)} is out — serve-web fetching it in the background${up.started ? ', started for it' : ''}`,
     );
-  } catch (e) {
-    console.error(`[peixairada] VS Code Web: could not keep it on the newest build — ${e.message}`);
+  } catch (error) {
+    console.error(`[peixairada] VS Code Web: could not keep it on the newest build — ${error.message}`);
   } finally {
     vswebFreshing = false;
   }

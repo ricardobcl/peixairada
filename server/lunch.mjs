@@ -52,81 +52,81 @@ const IG_HANDLE = /^[A-Za-z0-9._]{1,30}$/;
 
 /** The setup's lunch, shaped: {on, at 'HH:MM', days [0–6], places [{name, instagram?, color?}], slack '#name'?, model?}
  *  — or why not. */
-export function cleanLunch(v) {
-  if (!v || typeof v !== 'object' || Array.isArray(v)) return { error: 'expected {at, days, places}' };
+export function cleanLunch(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'expected {at, days, places}' };
 
-  const at = typeof v.at === 'string' ? v.at.trim() : '12:00';
+  const at = typeof input.at === 'string' ? input.at.trim() : '12:00';
   const hm = at.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
 
   if (!hm) return { error: `"${at}" is not a time — 12:30` };
 
-  const days = Array.isArray(v.days)
-    ? [...new Set(v.days.filter(d => Number.isInteger(d) && d >= 0 && d <= 6))].sort()
+  const days = Array.isArray(input.days)
+    ? [...new Set(input.days.filter(day => Number.isInteger(day) && day >= 0 && day <= 6))].sort()
     : [1, 2, 3, 4, 5];
 
   const places = [];
 
-  for (const p of Array.isArray(v.places) ? v.places.slice(0, 20) : []) {
-    const name = typeof p?.name === 'string' ? p.name.trim() : '';
+  for (const place of Array.isArray(input.places) ? input.places.slice(0, 20) : []) {
+    const name = typeof place?.name === 'string' ? place.name.trim() : '';
 
     const ig =
-      typeof p?.instagram === 'string'
-        ? p.instagram
+      typeof place?.instagram === 'string'
+        ? place.instagram
             .trim()
             .replace(/^(https?:\/\/)?(www\.)?instagram\.com\//i, '')
             .replace(/^@/, '')
             .replace(/[/?#].*$/, '')
         : '';
 
-    const color = typeof p?.color === 'string' ? p.color.trim().toLowerCase() : '';
+    const color = typeof place?.color === 'string' ? place.color.trim().toLowerCase() : '';
 
     if (!name || name.length > 60) return { error: 'a place needs a name, 60 letters at most' };
 
     if (ig && !IG_HANDLE.test(ig)) {
-      return { error: `"${p.instagram}" is not an Instagram account — its name, as in instagram.com/name` };
+      return { error: `"${place.instagram}" is not an Instagram account — its name, as in instagram.com/name` };
     }
 
     if (color && !/^#[0-9a-f]{6}$/.test(color)) return { error: `${name}: a colour is #rrggbb` };
-    if (places.some(x => x.name.toLowerCase() === name.toLowerCase())) continue;
+    if (places.some(other => other.name.toLowerCase() === name.toLowerCase())) continue;
     places.push({ name, ...(ig && { instagram: ig }), ...(color && { color }) });
   }
 
-  const slack = typeof v.slack === 'string' && v.slack.trim() ? v.slack.trim().replace(/^#?/, '#') : null;
+  const slack = typeof input.slack === 'string' && input.slack.trim() ? input.slack.trim().replace(/^#?/, '#') : null;
 
-  if (slack && !/^#[\w.-]{1,80}$/.test(slack)) return { error: `"${v.slack}" is not a Slack channel — #lunch` };
-  const model = typeof v.model === 'string' && v.model.trim() ? v.model.trim() : null;
+  if (slack && !/^#[\w.-]{1,80}$/.test(slack)) return { error: `"${input.slack}" is not a Slack channel — #lunch` };
+  const model = typeof input.model === 'string' && input.model.trim() ? input.model.trim() : null;
 
   if (model && !/^[\w.[\]-]{1,60}$/.test(model)) return { error: `"${model}" is not a model — haiku, sonnet` };
-  return { lunch: { on: v.on !== false, at: `${hm[1].padStart(2, '0')}:${hm[2]}`, days, places, slack, model } };
+  return { lunch: { on: input.on !== false, at: `${hm[1].padStart(2, '0')}:${hm[2]}`, days, places, slack, model } };
 }
 
 const lunchCfg = () => setup.lunch || null;
 
-export const dayKey = t => {
-  const d = new Date(t);
+export const dayKey = time => {
+  const date = new Date(time);
 
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
-const lunchAt = (cfg, t) => {
-  const [h, m] = cfg.at.split(':').map(Number);
+const lunchAt = (cfg, time) => {
+  const [hours, minutes] = cfg.at.split(':').map(Number);
 
-  return new Date(t).setHours(h, m, 0, 0);
+  return new Date(time).setHours(hours, minutes, 0, 0);
 };
 
 /** Where the day stands: off (no lunch today), before, lunch (from `at` for LUNCH_SPAN_MS), snoozed (In 15 min), went
  *  (Going), back (from lunch, or from a lock that spanned it), over. Pure. */
-export function lunchPhase(cfg, st, t = Date.now()) {
-  if (!cfg?.on || !cfg.days.includes(new Date(t).getDay())) return 'off';
-  const at = lunchAt(cfg, t);
+export function lunchPhase(cfg, st, now = Date.now()) {
+  if (!cfg?.on || !cfg.days.includes(new Date(now).getDay())) return 'off';
+  const at = lunchAt(cfg, now);
 
-  if (t < at) return 'before';
-  if (t >= at + LUNCH_SPAN_MS) return 'over';
+  if (now < at) return 'before';
+  if (now >= at + LUNCH_SPAN_MS) return 'over';
 
-  if (st?.day === dayKey(t)) {
+  if (st?.day === dayKey(now)) {
     if (st.back) return 'back';
     if (st.went) return 'went';
-    if (st.snooze > t) return 'snoozed';
+    if (st.snooze > now) return 'snoozed';
   }
 
   return 'lunch';
@@ -137,20 +137,20 @@ export function lunchPhase(cfg, st, t = Date.now()) {
 export function dishesOn(read, today, at, now = Date.now()) {
   if (!read?.isMenu) return null;
 
-  const days = Array.isArray(read.days) ? read.days.filter(d => Array.isArray(d?.dishes) && d.dishes.length) : [];
+  const days = Array.isArray(read.days) ? read.days.filter(day => Array.isArray(day?.dishes) && day.dishes.length) : [];
   const wd = WEEKDAYS[new Date(`${today}T12:00`).getDay()];
 
   const hit =
-    days.find(d => d.date === today) ||
+    days.find(day => day.date === today) ||
     (read.kind === 'day' && dayKey(at) === today && days.length === 1 && !days[0].date ? days[0] : null) ||
-    (read.kind === 'week' && !days.some(d => d.date) && now - at < 7 * 86_400_000
-      ? days.find(d => d.weekday === wd)
+    (read.kind === 'week' && !days.some(day => day.date) && now - at < 7 * 86_400_000
+      ? days.find(day => day.weekday === wd)
       : null);
 
   if (hit) return { dishes: hit.dishes.map(String), price: read.price || null };
 
-  if (read.kind === 'month' && now - at < LUNCH_RECENT_MS && !days.some(d => d.date)) {
-    const all = [...new Set(days.flatMap(d => d.dishes.map(String)))];
+  if (read.kind === 'month' && now - at < LUNCH_RECENT_MS && !days.some(day => day.date)) {
+    const all = [...new Set(days.flatMap(day => day.dishes.map(String)))];
 
     if (all.length) return { dishes: all, price: read.price || null, month: true };
   }
@@ -163,8 +163,8 @@ export const closedOn = (read, today) =>
   read?.closed?.from && read.closed.from <= today && today <= (read.closed.to || read.closed.from) ? read.closed : null;
 
 /** The day's record, a new one at midnight. */
-function lunchToday(t = Date.now()) {
-  const day = dayKey(t);
+function lunchToday(now = Date.now()) {
+  const day = dayKey(now);
 
   if (lunchDay.day !== day) {
     setLunchDay({ day, menus: {}, went: 0, snooze: 0, back: 0, alerted: 0, looked: [], slacked: [], readAt: 0 });
@@ -174,40 +174,40 @@ function lunchToday(t = Date.now()) {
   return lunchDay;
 }
 
-const menuOf = p => (lunchToday().menus[p.name] ||= {});
+const menuOf = place => (lunchToday().menus[place.name] ||= {});
 
 /** A place a round need not look for any more: today's dishes, or closed. A month's dishes, with no day to each, are
  *  not — a story, a post or the channel may still say which is today's (2026-10-20). */
-const settled = p => {
-  const m = lunchToday().menus[p.name];
+const settled = place => {
+  const menu = lunchToday().menus[place.name];
 
-  return !!(m?.closed || (m?.dishes?.length && !m.month));
+  return !!(menu?.closed || (menu?.dishes?.length && !menu.month));
 };
 
 /** A place's menu for today, in place of what it had (its story's time kept) — but a month's never takes a day's. */
-function setMenu(p, m) {
-  if (m.month && settled(p)) return;
+function setMenu(place, menu) {
+  if (menu.month && settled(place)) return;
   const day = lunchToday();
 
-  day.menus[p.name] = { storyAt: day.menus[p.name]?.storyAt, ...m, error: null };
+  day.menus[place.name] = { storyAt: day.menus[place.name]?.storyAt, ...menu, error: null };
   saveState();
   lunchSay();
 }
 
 /** What every page knows: the setup, where the day stands, and each place's menu — its dishes, where and when they came
  *  from, or why there are none yet. In the snapshot and every `lunch` event. */
-export function lunchSummary(t = Date.now()) {
+export function lunchSummary(now = Date.now()) {
   const cfg = lunchCfg();
 
   if (!cfg) return { on: false, set: false };
-  const st = lunchToday(t);
+  const st = lunchToday(now);
 
   return {
     on: cfg.on,
     set: true,
     at: cfg.at,
     days: cfg.days,
-    phase: lunchPhase(cfg, st, t),
+    phase: lunchPhase(cfg, st, now),
     day: st.day,
     went: st.went || null,
     snooze: st.snooze || null,
@@ -217,44 +217,44 @@ export function lunchSummary(t = Date.now()) {
     error: lunch.error,
     slack: cfg.slack,
     model: cfg.model || 'haiku',
-    places: cfg.places.map(p => {
-      const m = st.menus[p.name] || {};
+    places: cfg.places.map(place => {
+      const menu = st.menus[place.name] || {};
 
-      const state = m.dishes?.length
+      const state = menu.dishes?.length
         ? 'menu'
-        : m.closed
+        : menu.closed
           ? 'closed'
-          : m.storyAt
+          : menu.storyAt
             ? 'story'
-            : !p.instagram && !cfg.slack
+            : !place.instagram && !cfg.slack
               ? 'none'
               : 'waiting';
 
       return {
-        name: p.name,
-        instagram: p.instagram || null,
-        color: p.color || null,
+        name: place.name,
+        instagram: place.instagram || null,
+        color: place.color || null,
         state,
-        dishes: m.dishes || [],
-        price: m.price || null,
-        month: !!m.month,
-        src: m.src || null,
-        at: m.at || null,
-        url: m.url || (p.instagram ? `https://www.instagram.com/${p.instagram}/` : null),
-        storyAt: m.storyAt || null,
-        closed: m.closed || null,
-        error: m.error || null,
+        dishes: menu.dishes || [],
+        price: menu.price || null,
+        month: !!menu.month,
+        src: menu.src || null,
+        at: menu.at || null,
+        url: menu.url || (place.instagram ? `https://www.instagram.com/${place.instagram}/` : null),
+        storyAt: menu.storyAt || null,
+        closed: menu.closed || null,
+        error: menu.error || null,
       };
     }),
   };
 }
 
 function lunchSay() {
-  const s = JSON.stringify(lunchSummary());
+  const text = JSON.stringify(lunchSummary());
 
-  if (s !== lunch.said) {
-    lunch.said = s;
-    broadcast('lunch', JSON.parse(s));
+  if (text !== lunch.said) {
+    lunch.said = text;
+    broadcast('lunch', JSON.parse(text));
   }
 }
 
@@ -313,10 +313,10 @@ const SLACK_READ = [
   'slack_read_file',
   'slack_search_public_and_private',
   'slack_list_user_channels',
-].map(t => `mcp__claude_ai_Slack__${t}`);
+].map(tool => `mcp__claude_ai_Slack__${tool}`);
 
-const whenSaid = (t, time = true) =>
-  new Date(t).toLocaleString('en-GB', {
+const whenSaid = (at, time = true) =>
+  new Date(at).toLocaleString('en-GB', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -345,7 +345,7 @@ const SLACK_WRITES = [
   'slack_update_list_record',
   'slack_get_file_upload_url',
   'slack_complete_file_upload',
-].map(t => `mcp__claude_ai_Slack__${t}`);
+].map(tool => `mcp__claude_ai_Slack__${tool}`);
 
 /** A reader's argv. Whatever a reader reads is somebody else's words — a story's caption, a coworker's post in the
  *  channel —, so it may do nothing but read (2026-11-06): `--tools ''` drops only the built-in tools, and the Slack
@@ -386,9 +386,9 @@ const MANAGED_SETTINGS = '/Library/Application Support/ClaudeCode';
 
 const allowRules = file => {
   try {
-    const a = JSON.parse(readFileSync(file, 'utf8'))?.permissions?.allow;
+    const allow = JSON.parse(readFileSync(file, 'utf8'))?.permissions?.allow;
 
-    return Array.isArray(a) ? a.filter(r => typeof r === 'string') : [];
+    return Array.isArray(allow) ? allow.filter(rule => typeof rule === 'string') : [];
   } catch {
     return [];
   } // none, or none to read
@@ -403,8 +403,8 @@ export function readerDenies({
 
   try {
     dropIns = readdirSync(join(managed, 'managed-settings.d'))
-      .filter(f => f.endsWith('.json'))
-      .map(f => join(managed, 'managed-settings.d', f));
+      .filter(file => file.endsWith('.json'))
+      .map(file => join(managed, 'managed-settings.d', file));
   } catch {}
 
   const files = [
@@ -418,18 +418,18 @@ export function readerDenies({
 
   const deny = new Set();
 
-  for (const r of files.flatMap(allowRules)) {
-    const rule = r.trim();
-    const m = /^mcp__(.+?)(?:__(.*))?$/.exec(rule);
+  for (const raw of files.flatMap(allowRules)) {
+    const rule = raw.trim();
+    const match = /^mcp__(.+?)(?:__(.*))?$/.exec(rule);
 
-    if (rule === '*' || m?.[1].includes('*')) {
+    if (rule === '*' || match?.[1].includes('*')) {
       throw new Error(
         `an allow rule of yours names MCP servers by a pattern (${rule}) — the Slack reader would have them all`,
       );
     }
 
-    if (!m) continue; // a built-in's: --tools '' has none
-    const [, server, tool] = m;
+    if (!match) continue; // a built-in's: --tools '' has none
+    const [, server, tool] = match;
 
     if (server !== 'claude_ai_Slack') deny.add(`mcp__${server}`);
     else if (tool && !tool.includes('*') && !SLACK_READ.includes(rule)) deny.add(rule);
@@ -450,24 +450,24 @@ function runReader({ content, schema, tools = null, timeout = 120_000 }) {
     try {
       mkdirSync(LUNCH_WORK, { recursive: true });
       lunch.workReal ||= realpathSync(LUNCH_WORK);
-    } catch (e) {
-      return reject(e);
+    } catch (error) {
+      return reject(error);
     }
 
     let args;
 
     try {
       args = readerArgs({ schema, tools, model: lunchCfg()?.model || 'haiku', deny: tools ? readerDenies() : [] });
-    } catch (e) {
-      return reject(e);
+    } catch (error) {
+      return reject(error);
     }
 
     let child;
 
     try {
       child = spawn(bin, args, { cwd: LUNCH_WORK, env: drawerEnv(), stdio: ['pipe', 'pipe', 'pipe'] });
-    } catch (e) {
-      return reject(e);
+    } catch (error) {
+      return reject(error);
     }
 
     lunch.readers.add(child.pid);
@@ -476,12 +476,12 @@ function runReader({ content, schema, tools = null, timeout = 120_000 }) {
     let err = '';
     let done = false;
 
-    const end = (e, v) => {
+    const end = (error, answer) => {
       if (done) return;
       done = true;
       clearTimeout(timer);
       lunch.readers.delete(child.pid);
-      e ? reject(e) : resolve(v);
+      error ? reject(error) : resolve(answer);
     };
 
     const timer = setTimeout(() => {
@@ -492,14 +492,14 @@ function runReader({ content, schema, tools = null, timeout = 120_000 }) {
       end(new Error(`claude gave no answer in ${Math.round(timeout / 1000)} s`));
     }, timeout);
 
-    child.on('error', e => end(e));
+    child.on('error', error => end(error));
 
-    child.stdout.on('data', d => {
-      out += d;
+    child.stdout.on('data', chunk => {
+      out += chunk;
     });
 
-    child.stderr.on('data', d => {
-      err += d;
+    child.stderr.on('data', chunk => {
+      err += chunk;
     });
 
     child.stdin.on('error', () => {});
@@ -508,14 +508,14 @@ function runReader({ content, schema, tools = null, timeout = 120_000 }) {
     child.on('close', code => {
       const res = out
         .split('\n')
-        .map(l => {
+        .map(line => {
           try {
-            return JSON.parse(l);
+            return JSON.parse(line);
           } catch {
             return null;
           }
         })
-        .find(l => l?.type === 'result');
+        .find(message => message?.type === 'result');
 
       if (res && !res.is_error && res.structured_output) return end(null, res.structured_output);
 
@@ -537,8 +537,8 @@ function lunchReads() {
   lunch.reads = new Map();
 
   try {
-    for (const [k, v] of Object.entries(JSON.parse(readFileSync(LUNCH_READS, 'utf8')))) {
-      if (Date.now() - (v?.at || 0) < 40 * 86_400_000) lunch.reads.set(k, v);
+    for (const [id, read] of Object.entries(JSON.parse(readFileSync(LUNCH_READS, 'utf8')))) {
+      if (Date.now() - (read?.at || 0) < 40 * 86_400_000) lunch.reads.set(id, read);
     }
   } catch {}
 
@@ -552,19 +552,19 @@ function saveReads() {
 
     writeFileSync(tmp, JSON.stringify(Object.fromEntries(lunchReads())));
     renameSync(tmp, LUNCH_READS);
-  } catch (e) {
-    console.error('[peixairada] lunch: could not keep the reads', e.message);
+  } catch (error) {
+    console.error('[peixairada] lunch: could not keep the reads', error.message);
   }
 }
 
 /** A picture, as a reader takes it: base64 and its type. Instagram's are on its CDN, signed for a while. */
 async function pictureOf(url) {
-  const r = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+  const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
 
-  if (!r.ok) throw new Error(`the picture: HTTP ${r.status}`);
+  if (!response.ok) throw new Error(`the picture: HTTP ${response.status}`);
 
-  const type = (r.headers.get('content-type') || '').split(';')[0].trim();
-  const buf = Buffer.from(await r.arrayBuffer());
+  const type = (response.headers.get('content-type') || '').split(';')[0].trim();
+  const buf = Buffer.from(await response.arrayBuffer());
 
   if (!/^image\/(jpeg|png|gif|webp)$/.test(type)) throw new Error(`the picture is ${type || 'of no type'}`);
   if (buf.length > 8 << 20) throw new Error('the picture is too large');
@@ -579,28 +579,28 @@ async function readPicture({ id, image, caption = '', place, at, kind, url }) {
 
   if (hit && (hit.r || Date.now() - hit.at < LUNCH_AGAIN_MS)) return hit.r;
 
-  let r = null;
+  let read = null;
   let err = null;
 
   try {
     const pic = await pictureOf(image);
     const text = `${place.name}${place.instagram ? ` (Instagram @${place.instagram})` : ''}, a restaurant, put this ${kind} on Instagram on ${whenSaid(at)}${caption ? `, captioned:\n«${caption.slice(0, 1500)}»` : '.'}\nToday is ${whenSaid(Date.now(), false)}.\n${READ_ASK}`;
 
-    r = await runReader({
+    read = await runReader({
       content: [
         { type: 'image', source: { type: 'base64', media_type: pic.type, data: pic.data } },
         { type: 'text', text },
       ],
       schema: READ_SCHEMA,
     });
-  } catch (e) {
-    err = e.message;
+  } catch (error) {
+    err = error.message;
     console.error(`[peixairada] lunch: ${place.name}'s ${kind} ${id} not read — ${err}`);
   }
 
   reads.set(id, {
     at: Date.now(),
-    r,
+    r: read,
     ...(err && { err }),
     place: (place.instagram || place.name).toLowerCase(),
     kind,
@@ -610,7 +610,7 @@ async function readPicture({ id, image, caption = '', place, at, kind, url }) {
 
   saveReads();
   if (err) throw new Error(err);
-  return r;
+  return read;
 }
 
 /** lib/instagram.mjs, or the tests' stand-in (INSTAGRAM_BIN): one command, its JSON. */
@@ -625,8 +625,8 @@ function igRun(args, timeout) {
 
     try {
       child = spawn(cmd, argv, { env: cleanEnv(), stdio: ['ignore', 'pipe', 'ignore'] });
-    } catch (e) {
-      return resolve({ error: e.message });
+    } catch (error) {
+      return resolve({ error: error.message });
     }
 
     const timer = setTimeout(() => {
@@ -635,13 +635,13 @@ function igRun(args, timeout) {
       } catch {}
     }, timeout);
 
-    child.on('error', e => {
+    child.on('error', error => {
       clearTimeout(timer);
-      resolve({ error: e.message });
+      resolve({ error: error.message });
     });
 
-    child.stdout.on('data', d => {
-      out += d;
+    child.stdout.on('data', chunk => {
+      out += chunk;
     });
 
     child.on('close', () => {
@@ -656,13 +656,13 @@ function igRun(args, timeout) {
   });
 }
 
-/** Each item through `fn`, `n` at a time. */
-async function pool(items, n, fn) {
-  const q = [...items];
+/** Each item through `fn`, `concurrency` at a time. */
+async function pool(items, concurrency, fn) {
+  const queue = [...items];
 
   await Promise.all(
-    Array.from({ length: Math.min(n, q.length) }, async () => {
-      while (q.length) await fn(q.shift());
+    Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+      while (queue.length) await fn(queue.shift());
     }),
   );
 }
@@ -670,65 +670,67 @@ async function pool(items, n, fn) {
 /** The profiles (logged out): a post that is today's menu, a week's or a month's — read newest first, a few at most —, a
  *  closure, and when the newest story went up. */
 async function lunchLook(places, today) {
-  const want = places.filter(p => p.instagram);
+  const want = places.filter(place => place.instagram);
 
   if (!want.length) return;
   lunch.busy = 'Instagram';
   lunchSay();
-  const r = await igRun(['look', ...want.map(p => p.instagram)], 4 * 60_000);
+  const answer = await igRun(['look', ...want.map(place => place.instagram)], 4 * 60_000);
 
   lunch.busy = 'reading';
   lunchSay();
 
-  await pool(want, 3, async p => {
-    const got = Object.entries(r.places || {}).find(([h]) => h.toLowerCase() === p.instagram.toLowerCase())?.[1];
+  await pool(want, 3, async place => {
+    const got = Object.entries(answer.places || {}).find(
+      ([handle]) => handle.toLowerCase() === place.instagram.toLowerCase(),
+    )?.[1];
 
     if (!got || got.error) {
-      menuOf(p).error = got?.error || r.error || 'Instagram did not answer';
+      menuOf(place).error = got?.error || answer.error || 'Instagram did not answer';
       return;
     }
 
-    const m = menuOf(p);
+    const menu = menuOf(place);
 
-    m.error = null;
-    if (got.storyAt && dayKey(got.storyAt) === today) m.storyAt = got.storyAt;
+    menu.error = null;
+    if (got.storyAt && dayKey(got.storyAt) === today) menu.storyAt = got.storyAt;
 
     const posts = (got.posts || []).filter(
-      x =>
-        x.image &&
-        Date.now() - x.at < LUNCH_RECENT_MS &&
-        (dayKey(x.at) === today || MENU_WORDS.test(x.caption) || /image of text|imagem de texto/i.test(x.alt)),
+      post =>
+        post.image &&
+        Date.now() - post.at < LUNCH_RECENT_MS &&
+        (dayKey(post.at) === today || MENU_WORDS.test(post.caption) || /image of text|imagem de texto/i.test(post.alt)),
     );
 
-    for (const x of posts.slice(0, LUNCH_READ_MAX)) {
+    for (const post of posts.slice(0, LUNCH_READ_MAX)) {
       let read;
 
       try {
         read = await readPicture({
-          id: `p${x.pk}`,
-          image: x.image,
-          caption: x.caption,
-          place: p,
-          at: x.at,
+          id: `p${post.pk}`,
+          image: post.image,
+          caption: post.caption,
+          place,
+          at: post.at,
           kind: 'post',
-          url: x.url,
+          url: post.url,
         });
-      } catch (e) {
-        m.error = e.message;
+      } catch (error) {
+        menu.error = error.message;
         continue;
       }
 
       const closed = closedOn(read, today);
 
       if (closed) {
-        setMenu(p, { closed, src: 'post', at: x.at, url: x.url, dishes: [] });
+        setMenu(place, { closed, src: 'post', at: post.at, url: post.url, dishes: [] });
         return;
       }
 
-      const d = dishesOn(read, today, x.at);
+      const found = dishesOn(read, today, post.at);
 
-      if (d) {
-        setMenu(p, { ...d, src: 'post', at: x.at, url: x.url });
+      if (found) {
+        setMenu(place, { ...found, src: 'post', at: post.at, url: post.url });
         return;
       }
     }
@@ -741,7 +743,7 @@ async function lunchLook(places, today) {
 /** The setup's Slack channel: the day's screenshots, read for the places still without a menu. */
 async function lunchSlack(places, today) {
   const ch = lunchCfg()?.slack;
-  const want = places.filter(p => !settled(p));
+  const want = places.filter(place => !settled(place));
 
   if (!ch || !want.length) return;
   lunch.busy = 'Slack';
@@ -750,41 +752,43 @@ async function lunchSlack(places, today) {
   const text = `You collect restaurants' lunch menus for a dashboard. Read only: never post, react, upload or change anything in Slack.
 In Slack, find the channel ${ch} and read the messages posted on ${today} (the Mac's own time zone), threads included. People post screenshots of the restaurants' Instagram stories or posts with that day's lunch menu, often several images in one message. Open every image in those messages with slack_read_file and read it.
 For each of these restaurants, give the lunch menu for ${today} when an image shows it:
-${places.map(p => `- ${p.name}${p.instagram ? ` (Instagram @${p.instagram})` : ''}`).join('\n')}
+${places.map(place => `- ${place.name}${place.instagram ? ` (Instagram @${place.instagram})` : ''}`).join('\n')}
 Copy each dish as written, one item per dish, in the order shown — starters, soups and desserts too. From a card covering a whole week, only ${today}'s row. price as written, or null. postedAt: the time the Slack message was posted, HH:MM. Leave out the restaurants no image shows a menu for.`;
 
-  let r;
+  let answer;
 
   try {
-    r = await runReader({
+    answer = await runReader({
       content: [{ type: 'text', text }],
       schema: SLACK_SCHEMA,
       tools: SLACK_READ,
       timeout: 6 * 60_000,
     });
-  } catch (e) {
-    lunch.error = `${ch}: ${e.message}`;
+  } catch (error) {
+    lunch.error = `${ch}: ${error.message}`;
     return;
   }
 
-  const norm = s =>
-    String(s)
+  const norm = name =>
+    String(name)
       .normalize('NFD')
       .replace(/[̀-ͯ]/g, '')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '');
 
-  for (const x of r.places || []) {
-    const p =
-      want.find(q => norm(q.name) === norm(x.name)) ||
-      want.find(q => norm(x.name).includes(norm(q.name)) || norm(q.name).includes(norm(x.name)));
+  for (const entry of answer.places || []) {
+    const place =
+      want.find(candidate => norm(candidate.name) === norm(entry.name)) ||
+      want.find(
+        candidate => norm(entry.name).includes(norm(candidate.name)) || norm(candidate.name).includes(norm(entry.name)),
+      );
 
-    const hm = String(x.postedAt || '').match(/^(\d{1,2}):(\d{2})/);
+    const hm = String(entry.postedAt || '').match(/^(\d{1,2}):(\d{2})/);
 
-    if (p && Array.isArray(x.dishes) && x.dishes.length) {
-      setMenu(p, {
-        dishes: x.dishes.map(String),
-        price: x.price || null,
+    if (place && Array.isArray(entry.dishes) && entry.dishes.length) {
+      setMenu(place, {
+        dishes: entry.dishes.map(String),
+        price: entry.price || null,
         src: 'slack',
         at: hm ? new Date().setHours(+hm[1], +hm[2], 0, 0) : Date.now(),
         url: null,
@@ -806,13 +810,13 @@ async function lunchRun({ slack = false, all = false } = {}) {
   }
 
   const today = lunchToday().day;
-  const places = all ? cfg.places : cfg.places.filter(p => !settled(p));
+  const places = all ? cfg.places : cfg.places.filter(place => !settled(place));
 
   if (all) {
-    for (const p of places) {
-      const m = menuOf(p);
+    for (const place of places) {
+      const menu = menuOf(place);
 
-      if (!m.dishes?.length) delete m.error;
+      if (!menu.dishes?.length) delete menu.error;
     }
   }
 
@@ -823,9 +827,9 @@ async function lunchRun({ slack = false, all = false } = {}) {
   try {
     await lunchLook(places, today);
     if (slack) await lunchSlack(places, today);
-  } catch (e) {
-    lunch.error = e.message;
-    console.error('[peixairada] lunch:', e);
+  } catch (error) {
+    lunch.error = error.message;
+    console.error('[peixairada] lunch:', error);
   } finally {
     lunch.busy = null;
     lunchToday().readAt = Date.now();
@@ -834,26 +838,26 @@ async function lunchRun({ slack = false, all = false } = {}) {
   }
 
   if (lunch.again) {
-    const a = lunch.again;
+    const again = lunch.again;
 
     lunch.again = null;
-    return lunchRun(a);
+    return lunchRun(again);
   }
 }
 
 /** The setup's lunch changed: every page told, and a place new to it looked at — on a lunch day, before lunch is over. */
 export function lunchSetupChanged(was) {
   const cfg = lunchCfg();
-  const old = new Set((JSON.parse(was || 'null')?.places || []).map(p => `${p.name}@${p.instagram || ''}`));
-  const t = Date.now();
+  const old = new Set((JSON.parse(was || 'null')?.places || []).map(place => `${place.name}@${place.instagram || ''}`));
+  const now = Date.now();
 
   lunchSay();
 
   if (
     cfg?.on &&
-    cfg.days.includes(new Date(t).getDay()) &&
-    t < lunchAt(cfg, t) + LUNCH_SPAN_MS &&
-    cfg.places.some(p => !old.has(`${p.name}@${p.instagram || ''}`))
+    cfg.days.includes(new Date(now).getDay()) &&
+    now < lunchAt(cfg, now) + LUNCH_SPAN_MS &&
+    cfg.places.some(place => !old.has(`${place.name}@${place.instagram || ''}`))
   ) {
     lunchRun();
   }
@@ -861,20 +865,20 @@ export function lunchSetupChanged(was) {
 
 /** The clock, every LUNCH_TICK_MS: the looks of the morning, the channel's, the reminder at `at` (again at the end of
  *  an In 15 min), and every page told when the day moves on. */
-export function lunchTick(t = Date.now()) {
+export function lunchTick(now = Date.now()) {
   const cfg = lunchCfg();
 
-  if (cfg?.on && cfg.days.includes(new Date(t).getDay())) {
-    const st = lunchToday(t);
-    const at = lunchAt(cfg, t);
-    const span = t < at + LUNCH_SPAN_MS;
+  if (cfg?.on && cfg.days.includes(new Date(now).getDay())) {
+    const st = lunchToday(now);
+    const at = lunchAt(cfg, now);
+    const span = now < at + LUNCH_SPAN_MS;
 
     const due = (offs, done) => {
       let any = false;
 
-      offs.forEach((m, i) => {
-        if (t >= at + m * 60_000 && !done.includes(i)) {
-          done.push(i);
+      offs.forEach((offset, index) => {
+        if (now >= at + offset * 60_000 && !done.includes(index)) {
+          done.push(index);
           any = span;
         }
       });
@@ -890,8 +894,8 @@ export function lunchTick(t = Date.now()) {
       lunchRun({ slack });
     }
 
-    if (lunchPhase(cfg, st, t) === 'lunch' && st.alerted < (st.snooze || at)) {
-      st.alerted = t;
+    if (lunchPhase(cfg, st, now) === 'lunch' && st.alerted < (st.snooze || at)) {
+      st.alerted = now;
       saveState();
       lunchAlert(cfg);
     }
@@ -902,16 +906,18 @@ export function lunchTick(t = Date.now()) {
 
 /** Lunch time: an alert — the app's carries Menus · Going · In 15 minutes, a click opens the chalkboard. */
 function lunchAlert(cfg) {
-  const s = lunchSummary();
-  const have = s.places.filter(p => p.dishes.length);
+  const summary = lunchSummary();
+  const have = summary.places.filter(place => place.dishes.length);
 
-  const main = p => p.dishes.find(d => !/^(sopa|creme|caldo|entrada|p[aã]o\b)/i.test(d)) || p.dishes[0];
+  const main = place =>
+    place.dishes.find(dish => !/^(sopa|creme|caldo|entrada|p[aã]o\b)/i.test(dish)) || place.dishes[0];
+
   const title = have.length ? `${have.length} menu${have.length === 1 ? '' : 's'} in` : 'No menu read yet';
 
   const snippet =
     have
       .slice(0, 3)
-      .map(p => `${p.name}: ${main(p)}`)
+      .map(place => `${place.name}: ${main(place)}`)
       .join(' · ') || 'The places you go, on ⌥⌘M';
 
   const evt = {
@@ -935,19 +941,19 @@ export async function lunchRoute(req, res) {
   const body = await jsonBody(req);
   const cfg = lunchCfg();
   const act = body.act;
-  const t = Date.now();
+  const now = Date.now();
 
   if (!cfg) return json(res, 409, { error: 'lunch is not set up — Settings › Lunch' });
-  const st = lunchToday(t);
+  const st = lunchToday(now);
 
   if (act === 'going') {
-    st.went = t;
+    st.went = now;
     st.snooze = 0;
   } else if (act === 'snooze') {
-    st.snooze = t + LUNCH_SNOOZE_MS;
+    st.snooze = now + LUNCH_SNOOZE_MS;
     st.went = 0;
   } else if (act === 'back') {
-    st.back = t;
+    st.back = now;
   } else if (act === 'read') lunchRun({ slack: !!cfg.slack, all: true });
   else return json(res, 400, { error: 'expected {act: going | snooze | back | read}' });
   saveState();

@@ -29,11 +29,11 @@ export default async function (ctx) {
   const out = {};
 
   const cwd = join(tmpdir(), 'peix-k-done', 'done-repo');
-  const m = n => new Date(Date.now() - n * 60_000);
+  const minutesAgo = minutes => new Date(Date.now() - minutes * 60_000);
   const filler = 'filler '.repeat(2000);
 
   // a long chat: this PR's link in the middle, then what the boot does read
-  const long = (title, n, at) => ({
+  const long = (title, number, at) => ({
     cwd,
     title,
     prompt: 'go',
@@ -41,7 +41,7 @@ export default async function (ctx) {
     at,
     lines: id => [
       ...replyLines({ id, cwd, text: filler, at }),
-      ...replyLines({ id, cwd, text: `Opened https://github.com/acme/widgets/pull/${n} for it.`, at }),
+      ...replyLines({ id, cwd, text: `Opened https://github.com/acme/widgets/pull/${number} for it.`, at }),
       ...replyLines({ id, cwd, text: filler, at }),
       { type: 'ai-title', sessionId: id, aiTitle: title },
       ...replyLines({ id, cwd, text: 'all done', at }),
@@ -49,35 +49,35 @@ export default async function (ctx) {
   });
 
   const [, done, docs, , bump, , , longDone, old, paste] = makeFixture(ctx.fixture.dir, [
-    { cwd, title: 'Tidy the wallet resolvers', prompt: 'tidy', reply: 'tidied', at: m(10) },
-    { cwd, title: 'Wallet dataloader', prompt: 'load', reply: 'loaded', at: m(20) },
-    { cwd, title: 'Serve the docs from Cloudflare', prompt: 'serve', reply: 'served', at: m(30) },
-    { cwd, title: 'Scatter', prompt: 'can lots of useful days fill a real end', reply: 'ok', at: m(40) },
+    { cwd, title: 'Tidy the wallet resolvers', prompt: 'tidy', reply: 'tidied', at: minutesAgo(10) },
+    { cwd, title: 'Wallet dataloader', prompt: 'load', reply: 'loaded', at: minutesAgo(20) },
+    { cwd, title: 'Serve the docs from Cloudflare', prompt: 'serve', reply: 'served', at: minutesAgo(30) },
+    { cwd, title: 'Scatter', prompt: 'can lots of useful days fill a real end', reply: 'ok', at: minutesAgo(40) },
     {
       cwd,
       title: 'Bump the ledger',
       prompt: 'bump',
       reply: 'Opened https://github.com/acme/widgets/pull/650 for it.',
-      at: m(50),
+      at: minutesAgo(50),
     },
     {
       cwd,
       title: 'A longer number',
       prompt: 'more',
       reply: 'Opened https://github.com/acme/widgets/pull/16501 for it.',
-      at: m(60),
+      at: minutesAgo(60),
     },
-    long('Long and open', 777, m(70)),
-    long('Long and done', 777, m(80)),
-    long('Long and old', 777, m(40 * 24 * 60)),
-    long('Pasted', 888, m(90)),
+    long('Long and open', 777, minutesAgo(70)),
+    long('Long and done', 777, minutesAgo(80)),
+    long('Long and old', 777, minutesAgo(40 * 24 * 60)),
+    long('Pasted', 888, minutesAgo(90)),
   ]).chats;
 
   await ctx.waitFor(`window.peix.session(${JSON.stringify(paste.id)})`, { what: 'the fixture on the board' });
 
-  for (const c of [done, docs, bump, longDone, paste]) {
-    await ctx.server.post(`/api/sessions/${c.id}/done`, {});
-    await ctx.waitFor(`window.peix.session(${JSON.stringify(c.id)}).done`, { what: `${c.title} ticked` });
+  for (const chat of [done, docs, bump, longDone, paste]) {
+    await ctx.server.post(`/api/sessions/${chat.id}/done`, {});
+    await ctx.waitFor(`window.peix.session(${JSON.stringify(chat.id)}).done`, { what: `${chat.title} ticked` });
   }
 
   ctx.assert.deepEqual(
@@ -93,7 +93,7 @@ export default async function (ctx) {
   ctx.assert.ok(out.empty.length >= 5, JSON.stringify(out.empty));
 
   ctx.assert.ok(
-    !out.empty.some(r => r.st === 'done'),
+    !out.empty.some(row => row.st === 'done'),
     `no done chat with nothing typed — ${JSON.stringify(out.empty)}`,
   );
 
@@ -106,7 +106,7 @@ export default async function (ctx) {
   out.wallet = await rows(ctx);
 
   ctx.assert.deepEqual(
-    out.wallet.map(r => [r.title, r.st]),
+    out.wallet.map(row => [row.title, row.st]),
     [
       ['Tidy the wallet resolvers', 'ready'],
       ['Wallet dataloader', 'done'],
@@ -121,7 +121,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.cloud[0]?.title, 'Serve the docs from Cloudflare', JSON.stringify(out.cloud));
 
   ctx.assert.ok(
-    out.cloud.some(r => r.title === 'Scatter'),
+    out.cloud.some(row => row.title === 'Scatter'),
     `the open chat matches too — ${JSON.stringify(out.cloud)}`,
   );
 
@@ -130,7 +130,7 @@ export default async function (ctx) {
   out.number = await rows(ctx);
 
   ctx.assert.deepEqual(
-    out.number.slice(0, 2).map(r => [r.title, r.st, r.why]),
+    out.number.slice(0, 2).map(row => [row.title, row.st, row.why]),
     [
       ['Bump the ledger', 'done', 'widgets#650'],
       ['A longer number', 'ready', 'widgets#16501'],
@@ -218,7 +218,7 @@ export default async function (ctx) {
   await ctx.key('KeyK');
   await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the picker again' });
   out.again = await rows(ctx);
-  ctx.assert.ok(!out.again.some(r => r.st === 'done' || r.why), JSON.stringify(out.again));
+  ctx.assert.ok(!out.again.some(row => row.st === 'done' || row.why), JSON.stringify(out.again));
   ctx.assert.equal(await said(ctx), null);
   await ctx.evaluate(`document.querySelector('#pick').close()`);
   return out;

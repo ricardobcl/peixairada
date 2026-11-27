@@ -34,7 +34,7 @@ import { cut } from './transcript/text.mjs';
 import { nextWake } from './wakes.mjs';
 
 export const projectList = () =>
-  Object.values(projects).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+  Object.values(projects).sort((left, right) => String(left.createdAt).localeCompare(String(right.createdAt)));
 
 // name: non-empty, one line; cwds: absolute paths, deduplicated. Nothing checks they exist — a project
 // can name a folder before its first chat runs there.
@@ -48,16 +48,16 @@ export function projectInput(body, prev = {}) {
     body.cwds === undefined
       ? null
       : Array.isArray(body.cwds)
-        ? body.cwds.filter(c => typeof c === 'string' && c.trim()).map(expandHome)
+        ? body.cwds.filter(cwd => typeof cwd === 'string' && cwd.trim()).map(expandHome)
         : false;
 
-  if (list === false || list?.some(c => !c.startsWith('/'))) {
+  if (list === false || list?.some(cwd => !cwd.startsWith('/'))) {
     return {
-      error: `cwds must be a list of absolute paths${list ? ` — not ${list.find(c => !c.startsWith('/'))}` : ''}`,
+      error: `cwds must be a list of absolute paths${list ? ` — not ${list.find(cwd => !cwd.startsWith('/'))}` : ''}`,
     };
   }
 
-  const cwds = list ? [...new Set(list.map(c => c.replace(/\/+$/, '') || '/'))] : prev.cwds;
+  const cwds = list ? [...new Set(list.map(cwd => cwd.replace(/\/+$/, '') || '/'))] : prev.cwds;
 
   return { name, cwds };
 }
@@ -154,38 +154,38 @@ export function newSession(id, file) {
 // slash command's dialog you opened yourself (/model, /config), at that terminal already (2026-09-23).
 const NOT_ASKING = new Set(['dialog open']);
 
-export function waitingOn(s) {
-  if (!s.alive) return undefined;
-  const procs = [s.live, ...s.rivals].filter(p => p?.status);
+export function waitingOn(session) {
+  if (!session.alive) return undefined;
+  const procs = [session.live, ...session.rivals].filter(entry => entry?.status);
 
   if (!procs.length) return undefined;
-  const w = procs.find(p => p.status === 'waiting' && !NOT_ASKING.has(p.waitingFor));
+  const waiting = procs.find(entry => entry.status === 'waiting' && !NOT_ASKING.has(entry.waitingFor));
 
-  return w ? w.waitingFor || 'a prompt' : null;
+  return waiting ? waiting.waitingFor || 'a prompt' : null;
 }
 
-export function statusOf(s) {
-  if (!s.alive) return s.status === 'unknown' ? 'unknown' : 'stale';
-  const waiting = waitingOn(s);
+export function statusOf(session) {
+  if (!session.alive) return session.status === 'unknown' ? 'unknown' : 'stale';
+  const waiting = waitingOn(session);
 
-  if (waiting || (waiting === undefined && s.status === 'needs-input')) return 'needs-input'; // a question beats the agents' work
-  if (s.agentsRunning) return 'working';
-  if (s.status === 'unknown' && !s.lastActivity) return 'idle'; // live and empty — a new chat, or a cleared one (whose file holds only the /clear)
-  if (s.status === 'needs-input') return s.live?.status === 'busy' ? 'working' : 'idle'; // the registry has it answered already
+  if (waiting || (waiting === undefined && session.status === 'needs-input')) return 'needs-input'; // a question beats the agents' work
+  if (session.agentsRunning) return 'working';
+  if (session.status === 'unknown' && !session.lastActivity) return 'idle'; // live and empty — a new chat, or a cleared one (whose file holds only the /clear)
+  if (session.status === 'needs-input') return session.live?.status === 'busy' ? 'working' : 'idle'; // the registry has it answered already
 
   // A turn the transcript never closes (2026-09-29): Claude Code writes the typed /compact as a plain prompt line and,
   // compacted, no assistant line — no end_turn. A process that went idle after your last word is not clauding, whatever
   // the last line reads. Only after: a prompt lands in the transcript a beat before the registry says busy, and the
   // idle before it is the last turn's.
   if (
-    s.status === 'working' &&
-    s.live?.status === 'idle' &&
-    s.live.statusAt >= Date.parse(s.lastUserAt || s.statusSince)
+    session.status === 'working' &&
+    session.live?.status === 'idle' &&
+    session.live.statusAt >= Date.parse(session.lastUserAt || session.statusSince)
   ) {
     return 'idle';
   }
 
-  return s.status;
+  return session.status;
 }
 // A VS Code chat can be taken over like a CLI one (2026-09-20 — refused from 2026-09-19 on a misread of the
 // extension). Measured on 2.1.278: the extension launches a claude when a *tab mounts* a chat — the sessions
@@ -205,145 +205,155 @@ export function statusOf(s) {
 export const WT_IN = /\/\.claude\/worktrees\/([^/]+)(?:\/.*)?$/;
 export const projectDir = cwd => (cwd ? cwd.replace(WT_IN, '') : cwd);
 
-function worktreeOf(s, cwd) {
-  const m = WT_IN.exec(cwd || '');
+function worktreeOf(session, cwd) {
+  const match = WT_IN.exec(cwd || '');
 
-  if (!m) return null;
+  if (!match) return null;
   let made = null;
 
   try {
-    made = worktreesMade[realpathSync(`${cwd.slice(0, m.index)}/.claude/worktrees/${m[1]}`)];
+    made = worktreesMade[realpathSync(`${cwd.slice(0, match.index)}/.claude/worktrees/${match[1]}`)];
   } catch {}
 
-  const now = s.alive && s.headNow !== 'HEAD' ? s.headNow : null;
+  const now = session.alive && session.headNow !== 'HEAD' ? session.headNow : null;
 
-  return { name: m[1], branch: now || s.gitBranch || made?.branch || null };
+  return { name: match[1], branch: now || session.gitBranch || made?.branch || null };
 }
 
-export function summary(s, ti = null) {
+export function summary(session, ti = null) {
   // `ti`: termIndex(), when the whole board is summarized at once
-  const prT = prTitle(s);
-  const status = statusOf(s);
-  const mine = ti ? ti.get(s.id) || NO_TERMS : { term: termOf(s), shell: shellOf(s), shells: shellsOf(s) };
+  const prT = prTitle(session);
+  const status = statusOf(session);
 
-  const cwd = s.live?.cwd || s.cwd;
+  const mine = ti
+    ? ti.get(session.id) || NO_TERMS
+    : { term: termOf(session), shell: shellOf(session), shells: shellsOf(session) };
+
+  const cwd = session.live?.cwd || session.cwd;
 
   return {
     // Prefer the registry cwd: transcript lines record the shell's *current* directory, which moves with `cd`.
-    id: s.id,
-    slug: s.slug,
+    id: session.id,
+    slug: session.slug,
     cwd,
-    project: basename(projectDir(cwd) || '') || s.slug,
-    worktree: worktreeOf(s, cwd),
-    gitBranch: s.gitBranch,
-    model: s.model,
+    project: basename(projectDir(cwd) || '') || session.slug,
+    worktree: worktreeOf(session, cwd),
+    gitBranch: session.gitBranch,
+    model: session.model,
     // the agent it runs as (2026-11-06): its transcript's word, else its claude's flag while it runs; and its colour
-    ...(a => a && { agent: a, agentColor: agentColor(cwd, a) })(s.agent || s.live?.agent),
+    ...(agent => agent && { agent, agentColor: agentColor(cwd, agent) })(session.agent || session.live?.agent),
     // The PR title beats Claude's own: it is what the work is called everywhere else — the PR page, the
     // branch, standup. A title the user typed still wins over both.
     title:
-      titles[s.id] ||
-      s.customTitle ||
+      titles[session.id] ||
+      session.customTitle ||
       prT ||
-      s.title ||
-      s.lastPrompt ||
-      forkTitle(s) ||
-      (!s.lastActivity && s.alive ? '(no messages yet)' : '(untitled)'),
-    aiTitle: s.title,
-    customTitle: s.customTitle,
+      session.title ||
+      session.lastPrompt ||
+      forkTitle(session) ||
+      (!session.lastActivity && session.alive ? '(no messages yet)' : '(untitled)'),
+    aiTitle: session.title,
+    customTitle: session.customTitle,
     prTitle: prT,
-    boardTitle: titles[s.id] || null,
-    lastPrompt: s.lastPrompt,
-    lastReply: s.lastReply,
-    prs: s.prs.filter(shownPr),
-    tickets: shownTickets(s),
+    boardTitle: titles[session.id] || null,
+    lastPrompt: session.lastPrompt,
+    lastReply: session.lastReply,
+    prs: session.prs.filter(shownPr),
+    tickets: shownTickets(session),
     // A live process with no transcript yet is an empty, idle panel (e.g. restored by VS Code, never prompted).
     // Not alive = the Claude process is gone: 'stale'. Resuming the chat registers a new pid and it comes back.
     status,
-    agents: s.agentsRunning || 0, // sub-agents at work — what keeps the status 'working' past the main turn's end
-    tasks: runningTasks(s), // monitors and background commands still running behind the turn
-    peerIn: peerInOf(s),
-    peerQueue: peerQueueOf(s), // another chat's newest message to it, and those waiting for its turn's end (2026-10-31)
-    agentRows: s.alive ? s.agentRows || null : null, // a row per sub-agent of its last round, while its claude runs (noteAgents, 2026-11-02)
+    agents: session.agentsRunning || 0, // sub-agents at work — what keeps the status 'working' past the main turn's end
+    tasks: runningTasks(session), // monitors and background commands still running behind the turn
+    peerIn: peerInOf(session),
+    peerQueue: peerQueueOf(session), // another chat's newest message to it, and those waiting for its turn's end (2026-10-31)
+    agentRows: session.alive ? session.agentRows || null : null, // a row per sub-agent of its last round, while its claude runs (noteAgents, 2026-11-02)
     // every agent of its claude's when the rows are its last round only, a resume's past too (Space's pods, 2026-11-18);
     // a chat with no claude, its past alone (pastAgents, 2026-11-24)
-    agentAll: s.agentAll || null,
+    agentAll: session.agentAll || null,
     // the Watching lane's (2026-10-31): the turn at work was woken by the chat's own task notice, not by you; the next
     // wake-up it set itself; and how its last turn stopped short, while nothing runs
-    woken: status === 'working' && !!s.woke,
-    wake: nextWake(s),
-    stopped: status === 'working' || status === 'needs-input' ? null : s.stopped,
-    doing: status === 'working' ? doingOf(s) : null, // the turn's newest tool call: the card's live line (2026-10-11)
+    woken: status === 'working' && !!session.woke,
+    wake: nextWake(session),
+    stopped: status === 'working' || status === 'needs-input' ? null : session.stopped,
+    doing: status === 'working' ? doingOf(session) : null, // the turn's newest tool call: the card's live line (2026-10-11)
     // the question it is waiting on and which tool asked, when the transcript has it; else only what the registry
     // says it is waiting for — the question itself is written with its answer (see waitingOn)
     ask:
       status !== 'needs-input'
         ? null
-        : s.status === 'needs-input' && s.ask
-          ? s.ask
-          : { tool: null, text: null, options: 0, waitingFor: waitingOn(s) || null },
-    rawStatus: s.status,
-    statusSince: s.statusSince,
-    lastActivity: s.lastActivity,
-    startedAt: s.startedAt,
-    lastUserAt: s.lastUserAt,
-    lastReplyAt: s.lastReplyAt,
+        : session.status === 'needs-input' && session.ask
+          ? session.ask
+          : { tool: null, text: null, options: 0, waitingFor: waitingOn(session) || null },
+    rawStatus: session.status,
+    statusSince: session.statusSince,
+    lastActivity: session.lastActivity,
+    startedAt: session.startedAt,
+    lastUserAt: session.lastUserAt,
+    lastReplyAt: session.lastReplyAt,
     // where it lives (the page's inVsCode): the registry's entry point while it runs, else the last its transcript
     // recorded — every line carries it, so a chat continued in VS Code says so at its tail, and one resumed elsewhere stops
-    alive: s.alive,
-    live: s.live,
-    entrypoint: s.live?.entrypoint || s.entrypoint,
+    alive: session.alive,
+    live: session.live,
+    entrypoint: session.live?.entrypoint || session.entrypoint,
     terminal: termSummary(mine.term),
     shell: termSummary(mine.shell),
     shells: mine.shells.map(termSummary),
-    entryCount: s.entryCount,
-    loaded: s.loaded,
-    file: s.file,
-    env: envs[s.id] || mine.term?.task || null, // the launcher it was started with (⌥⌘O groups oracle's chats by it)
+    entryCount: session.entryCount,
+    loaded: session.loaded,
+    file: session.file,
+    env: envs[session.id] || mine.term?.task || null, // the launcher it was started with (⌥⌘O groups oracle's chats by it)
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
-    rivals: s.rivals,
-    tailEntrypoint: s.entrypoint,
-    tailEntrypointAt: s.entrypointAt,
-    done: isDone(s),
-    doneAt: doneMarks[s.id] || null,
-    forGood: forgotten(s),
-    removed: isRemoved(s),
-    muted: !!mutedChats[s.id], // no banner, sound or count from it, till you unmute it (2026-11-02)
-    fav: !!favChats[s.id], // starred in Space (2026-11-18, v11)
+    rivals: session.rivals,
+    tailEntrypoint: session.entrypoint,
+    tailEntrypointAt: session.entrypointAt,
+    done: isDone(session),
+    doneAt: doneMarks[session.id] || null,
+    forGood: forgotten(session),
+    removed: isRemoved(session),
+    muted: !!mutedChats[session.id], // no banner, sound or count from it, till you unmute it (2026-11-02)
+    fav: !!favChats[session.id], // starred in Space (2026-11-18, v11)
     // put away till a time or an event (2026-11-24, round XXX), and the last time a snooze ended by itself, and why
-    snooze: snoozed[s.id] || null,
-    wokeAt: woke[s.id]?.at || null,
-    wokeWhy: woke[s.id]?.why || null,
-    seenAt: seen[s.id] || seenSince, // the board last showed it: a reply after is a new one (2026-10-12)
-    ...(linksShown(s.id) && { links: linksShown(s.id) }), // merged, folded, branched — by your hand (2026-10-31)
+    snooze: snoozed[session.id] || null,
+    wokeAt: woke[session.id]?.at || null,
+    wokeWhy: woke[session.id]?.why || null,
+    seenAt: seen[session.id] || seenSince, // the board last showed it: a reply after is a new one (2026-10-12)
+    ...(linksShown(session.id) && { links: linksShown(session.id) }), // merged, folded, branched — by your hand (2026-10-31)
     // the branch moved under it (2026-10-13): what its checkout is on now and what the chat was on, and who else runs in
     // that checkout — while its claude runs, and not once you said you know
-    drift: (d => d && { from: d.from, to: d.to, at: d.at, peers: s.peers || [] })(driftOf(s)),
-    headNow: s.alive ? s.headNow : null,
+    drift: (drift => drift && { from: drift.from, to: drift.to, at: drift.at, peers: session.peers || [] })(
+      driftOf(session),
+    ),
+    headNow: session.alive ? session.headNow : null,
     // its folder not there, and the repo a clone would bring it back from (2026-10-09; the resume bar says so before
     // the resume clones it), or the worktree a resume makes again, the folder it starts in (2026-10-19, `back`) — asked
     // of a chat with no claude only: one running has its folder
-    ...(!s.alive && s.cwd && !existsSync(s.cwd)
-      ? { folderMissing: true, cloneRef: cloneFor(s.cwd)?.ref || null, back: folderBack(s.cwd) }
+    ...(!session.alive && session.cwd && !existsSync(session.cwd)
+      ? { folderMissing: true, cloneRef: cloneFor(session.cwd)?.ref || null, back: folderBack(session.cwd) }
       : {}),
   };
 }
 
 /** Newest first by the chat's last word — yours or Claude's reply, whichever came later, or a PR come round to you (its
  *  turn's movedAt; not on a chat done for good) — the board's own order (`byWord` in index.html). Over summaries. */
-const wordAt = s => {
-  const u = String(s.lastUserAt || '');
-  const r = String(s.lastReplyAt || '');
-  const m = s.forGood ? '' : s.prs.reduce((a, p) => (p.turn?.you && p.turn.movedAt > a ? p.turn.movedAt : a), '');
+const wordAt = chat => {
+  const userAt = String(chat.lastUserAt || '');
+  const replyAt = String(chat.lastReplyAt || '');
 
-  const w = (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); // an empty chat: its start (the page's copy agrees)
-  const k = String(s.wokeAt || ''); // a snooze that ended by itself is a word too: back at the top of its lane (2026-11-24, round XXX)
+  const movedAt = chat.forGood
+    ? ''
+    : chat.prs.reduce((latest, pr) => (pr.turn?.you && pr.turn.movedAt > latest ? pr.turn.movedAt : latest), '');
 
-  return [m, k].reduce((a, b) => (b > a ? b : a), w);
+  const said = (userAt > replyAt ? userAt : replyAt) || String(chat.lastActivity || '') || String(chat.startedAt || ''); // an empty chat: its start (the page's copy agrees)
+  const wokeAt = String(chat.wokeAt || ''); // a snooze that ended by itself is a word too: back at the top of its lane (2026-11-24, round XXX)
+
+  return [movedAt, wokeAt].reduce((latest, time) => (time > latest ? time : latest), said);
 };
 
 export function sortedSummaries() {
   const ti = termIndex();
 
-  return [...sessions.values()].map(s => summary(s, ti)).sort((a, b) => wordAt(b).localeCompare(wordAt(a)));
+  return [...sessions.values()]
+    .map(session => summary(session, ti))
+    .sort((left, right) => wordAt(right).localeCompare(wordAt(left)));
 }

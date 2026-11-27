@@ -1,90 +1,104 @@
-/** Zé, his feet at (g.x, g.y), in pixels (zeBuild): his pose — standing, running, kicking, in the air, seated in a car
+/** Zé, his feet at (game.x, game.y), in pixels (zeBuild): his pose — standing, running, kicking, in the air, seated in a car
  *  and pitching with it —, as big as his bulk and the dragon make him; blinking while a green's hit lasts; at the K.O.
  *  his bones, flat on his back, seeing stars. */
-function zeHero(cx, g) {
-  const air = g.y < g.gy - 0.5;
-  const over = g.phase === 'over' && g.koT >= ZE_KO_T;
-  const moving = Math.abs(g.vx) > 30 && !air && g.phase === 'play' && !g.ride;
+function zeHero(cx, game) {
+  const air = game.y < game.gy - 0.5;
+  const over = game.phase === 'over' && game.koT >= ZE_KO_T;
+  const moving = Math.abs(game.vx) > 30 && !air && game.phase === 'play' && !game.ride;
 
-  const k = zeSz(g) * (1 + g.pump * 0.25);
-  const p = ZE_PX * k;
-  const flip = g.f < 0 && !over;
+  const scale = zeSz(game) * (1 + game.pump * 0.25);
+  const pixel = ZE_PX * scale;
+  const flip = game.f < 0 && !over;
 
   const pose = over
     ? 'bones'
-    : g.ride
+    : game.ride
       ? 'sit'
-      : g.kick > 0.04
+      : game.kick > 0.04
         ? 'kick'
         : air
           ? 'jump'
-          : g.flex > 0
+          : game.flex > 0
             ? 'flex'
             : moving
-              ? Math.floor(g.run) % 2
+              ? Math.floor(game.run) % 2
                 ? 'run1'
                 : 'run2'
               : 'stand';
 
-  const open = g.chomp > 0 ? Math.floor(g.chomp * 20) % 2 === 0 : g.gape;
+  const open = game.chomp > 0 ? Math.floor(game.chomp * 20) % 2 === 0 : game.gape;
 
-  const spr = zeBuild(Math.max(0, g.mass), pose, {
+  const spr = zeBuild(Math.max(0, game.mass), pose, {
     open,
-    agent: g.agent,
+    agent: game.agent,
     shades: ze.mossad,
-    sick: g.hurt > 0.9 || g.phase === 'over',
+    sick: game.hurt > 0.9 || game.phase === 'over',
     flip,
   });
 
-  const bob = over || g.ride ? 0 : moving ? -Math.abs(Math.cos(g.run)) * 3 : Math.sin(g.t * 3) * 1.2;
-  const tw = zeTw(g);
+  const bob = over || game.ride ? 0 : moving ? -Math.abs(Math.cos(game.run)) * 3 : Math.sin(game.t * 3) * 1.2;
+  const tw = zeTw(game);
 
-  const under = zePlatform(g.x, g.y); // his shadow, on whatever is under him
+  const under = zePlatform(game.x, game.y); // his shadow, on whatever is under him
 
   if (!cx.zg) {
     cx.fillStyle = 'rgba(20, 8, 30, .35)';
     cx.beginPath();
-    cx.ellipse(g.x, under + 3, Math.max(10, tw + 10 - (under - g.y) * 0.05) * k, 5 * k, 0, 0, Math.PI * 2);
+
+    cx.ellipse(
+      game.x,
+      under + 3,
+      Math.max(10, tw + 10 - (under - game.y) * 0.05) * scale,
+      5 * scale,
+      0,
+      0,
+      Math.PI * 2,
+    );
+
     cx.fill();
   }
 
   cx.save();
-  cx.translate(g.x + (g.mass === 1 && g.phase === 'play' && !zeCalm() ? Math.sin(g.t * 70) * 1.6 : 0), g.y); // on his last bit of bulk he shivers
 
-  if (g.ride) {
-    const pv = g.ride.kind === 'focus' ? -58 : -46;
+  cx.translate(
+    game.x + (game.mass === 1 && game.phase === 'play' && !zeCalm() ? Math.sin(game.t * 70) * 1.6 : 0),
+    game.y,
+  ); // on his last bit of bulk he shivers
 
-    cx.scale(g.f, 1);
+  if (game.ride) {
+    const pv = game.ride.kind === 'focus' ? -58 : -46;
+
+    cx.scale(game.f, 1);
     cx.translate(pv, 0);
-    cx.rotate(g.ride.tilt);
+    cx.rotate(game.ride.tilt);
     cx.translate(-pv, 0);
-    cx.scale(g.f, 1);
-    cx.translate(-14 * g.f, 16);
+    cx.scale(game.f, 1);
+    cx.translate(-14 * game.f, 16);
   } // in the driver's seat, pitching with his car
 
-  if (g.hurt > 0 && !over) cx.globalAlpha = zeCalm() ? 0.65 : Math.floor(g.hurt * 12) % 2 ? 0.4 : 1;
+  if (game.hurt > 0 && !over) cx.globalAlpha = zeCalm() ? 0.65 : Math.floor(game.hurt * 12) % 2 ? 0.4 : 1;
 
   if (over) {
     // K.O.: flat on his back, his feet where they stood — and seeing stars
-    cx.translate(0, -14 * p);
-    cx.scale(g.f, 1);
+    cx.translate(0, -14 * pixel);
+    cx.scale(game.f, 1);
     cx.rotate(-Math.PI / 2);
-    zeBlit(cx, spr, 0, 0, p, false);
+    zeBlit(cx, spr, 0, 0, pixel, false);
     cx.restore();
 
-    for (let i = 0; i < 3; i++) {
-      const a = g.t * 3 + (i * Math.PI * 2) / 3;
-      const sx = g.x - g.f * 50 * p + Math.cos(a) * 30;
-      const sy = g.y - 30 * p + Math.sin(a) * 8;
+    for (let star = 0; star < 3; star++) {
+      const angle = game.t * 3 + (star * Math.PI * 2) / 3;
+      const sx = game.x - game.f * 50 * pixel + Math.cos(angle) * 30;
+      const sy = game.y - 30 * pixel + Math.sin(angle) * 8;
 
       cx.fillStyle = '#ffd23f';
       cx.beginPath();
 
-      for (let j = 0; j < 10; j++) {
-        const r = j % 2 ? 2.5 : 6;
-        const b = (j * Math.PI) / 5 - Math.PI / 2;
+      for (let point = 0; point < 10; point++) {
+        const radius = point % 2 ? 2.5 : 6;
+        const pointAngle = (point * Math.PI) / 5 - Math.PI / 2;
 
-        cx.lineTo(sx + Math.cos(b) * r, sy + Math.sin(b) * r);
+        cx.lineTo(sx + Math.cos(pointAngle) * radius, sy + Math.sin(pointAngle) * radius);
       }
 
       cx.fill();
@@ -93,28 +107,28 @@ function zeHero(cx, g) {
     return;
   }
 
-  const q = g.sq;
-  const a = q ? q.t / q.d : 0; // squashed or stretched about his feet
+  const squash = game.sq;
+  const amount = squash ? squash.t / squash.d : 0; // squashed or stretched about his feet
 
-  const [sx, sy] = !q
+  const [sx, sy] = !squash
     ? [1, 1]
-    : q.k === 'land'
-      ? [1 + 0.2 * a, 1 - 0.17 * a]
-      : q.k === 'jump'
-        ? [1 - 0.12 * a, 1 + 0.15 * a]
-        : [1 + 0.1 * a, 1 - 0.08 * a];
+    : squash.k === 'land'
+      ? [1 + 0.2 * amount, 1 - 0.17 * amount]
+      : squash.k === 'jump'
+        ? [1 - 0.12 * amount, 1 + 0.15 * amount]
+        : [1 + 0.1 * amount, 1 - 0.08 * amount];
 
-  zeBlit(cx, spr, 0, bob * k, p, flip, sx, sy);
+  zeBlit(cx, spr, 0, bob * scale, pixel, flip, sx, sy);
 
-  if (g.dragon) {
+  if (game.dragon) {
     // the dragon's aura round his head
     cx.save();
     cx.shadowColor = '#ff7a2a';
     cx.shadowBlur = 16;
     cx.lineWidth = 3;
-    cx.strokeStyle = zeBlink(g, 9) ? '#ff7a2a' : '#ffd23f';
+    cx.strokeStyle = zeBlink(game, 9) ? '#ff7a2a' : '#ffd23f';
     cx.beginPath();
-    cx.ellipse(0, (bob - 48 * ZE_PX) * k, 12 * p, 13.5 * p, 0, 0, Math.PI * 2);
+    cx.ellipse(0, (bob - 48 * ZE_PX) * scale, 12 * pixel, 13.5 * pixel, 0, 0, Math.PI * 2);
     cx.stroke();
     cx.restore();
   }
@@ -122,27 +136,27 @@ function zeHero(cx, g) {
   cx.restore();
 }
 
-/** The cars, side on, their wheels on the floor at x, their front towards f: the Focus — Ford blue, the tall tail light
+/** The cars, side on, their wheels on the floor at atX, their front towards facing: the Focus — Ford blue, the tall tail light
  *  up its back pillar, the oval on its nose —, the A-Class — silver, short and tall, the star on its nose —, each its
  *  name along its doors (zeCarName), read the right way whichever way it faces. He sits in it, seen above its doors:
  *  part 'back' is the whole car, drawn before him, 'front' its doors and wheels again over his lap, a beltline along
  *  their top. tilt pitches it on its rear wheel; flip turns it over its middle onto its roof, with a hop. */
-function zeCar(cx, kind, x, y, f, wheel, tilt, flip, part = 'all') {
-  if (cx.zg) return zgCar(cx, kind, x, y, f, wheel, tilt, flip, part);
+function zeCar(cx, kind, atX, atY, facing, wheel, tilt, flip, part = 'all') {
+  if (cx.zg) return zgCar(cx, kind, atX, atY, facing, wheel, tilt, flip, part);
 
-  const K = '#1b0b2e';
+  const OUTLINE = '#1b0b2e';
   const focus = kind === 'focus';
 
   const shape = pts => {
     cx.beginPath();
     cx.moveTo(...pts[0]);
-    for (const p of pts.slice(1)) cx.lineTo(...p);
+    for (const point of pts.slice(1)) cx.lineTo(...point);
     cx.closePath();
   };
 
   cx.save();
-  cx.translate(x, y);
-  cx.scale(f, 1);
+  cx.translate(atX, atY);
+  cx.scale(facing, 1);
 
   if (flip) {
     cx.translate(0, -50 - Math.sin(flip) * 60);
@@ -202,7 +216,7 @@ function zeCar(cx, kind, x, y, f, wheel, tilt, flip, part = 'all') {
 
   cx.lineJoin = 'round';
   cx.lineWidth = 5;
-  cx.strokeStyle = K;
+  cx.strokeStyle = OUTLINE;
   shape(body);
   cx.stroke();
   cx.fillStyle = focus ? '#2457b8' : '#c8ccd2';
@@ -218,7 +232,7 @@ function zeCar(cx, kind, x, y, f, wheel, tilt, flip, part = 'all') {
   cx.fill();
   cx.lineWidth = 2.5;
   cx.stroke();
-  cx.strokeStyle = K;
+  cx.strokeStyle = OUTLINE;
   cx.lineWidth = 3;
   cx.beginPath();
   cx.moveTo(-24, focus ? -86 : -94);
@@ -253,7 +267,7 @@ function zeCar(cx, kind, x, y, f, wheel, tilt, flip, part = 'all') {
     cx.ellipse(80, -34, 8, 4.5, 0, 0, Math.PI * 2);
     cx.fill();
     cx.stroke();
-    zeCarName(cx, 'FORD FOCUS', -8, f, 13, '#ffffff', '#0f2a66');
+    zeCarName(cx, 'FORD FOCUS', -8, facing, 13, '#ffffff', '#0f2a66');
   } else {
     cx.fillStyle = '#e43b44';
     cx.fillRect(-75, -68, 5, 18);
@@ -273,40 +287,40 @@ function zeCar(cx, kind, x, y, f, wheel, tilt, flip, part = 'all') {
     cx.arc(70, -31, 7, 0, Math.PI * 2);
     cx.stroke(); // the star
 
-    for (const a of [-Math.PI / 2, Math.PI / 6, (Math.PI * 5) / 6]) {
+    for (const angle of [-Math.PI / 2, Math.PI / 6, (Math.PI * 5) / 6]) {
       cx.beginPath();
       cx.moveTo(70, -31);
-      cx.lineTo(70 + Math.cos(a) * 7, -31 + Math.sin(a) * 7);
+      cx.lineTo(70 + Math.cos(angle) * 7, -31 + Math.sin(angle) * 7);
       cx.stroke();
     }
 
-    zeCarName(cx, 'MERCEDES CLASS A', -2, f, 10.5, '#1b0b2e', '#eef0f3');
+    zeCarName(cx, 'MERCEDES CLASS A', -2, facing, 10.5, '#1b0b2e', '#eef0f3');
   }
 
   for (const wx of focus ? [-58, 62] : [-46, 46]) {
-    const r = focus ? 17 : 15;
+    const radius = focus ? 17 : 15;
 
-    cx.fillStyle = K;
+    cx.fillStyle = OUTLINE;
     cx.beginPath();
-    cx.arc(wx, -r, r + 3, 0, Math.PI * 2);
+    cx.arc(wx, -radius, radius + 3, 0, Math.PI * 2);
     cx.fill();
     cx.fillStyle = '#2a2a33';
     cx.beginPath();
-    cx.arc(wx, -r, r, 0, Math.PI * 2);
+    cx.arc(wx, -radius, radius, 0, Math.PI * 2);
     cx.fill();
     cx.fillStyle = '#b8bcc4';
     cx.beginPath();
-    cx.arc(wx, -r, r * 0.55, 0, Math.PI * 2);
+    cx.arc(wx, -radius, radius * 0.55, 0, Math.PI * 2);
     cx.fill();
     cx.strokeStyle = '#6b6f78';
     cx.lineWidth = 2;
 
-    for (let i = 0; i < 5; i++) {
-      const a = wheel + (i * Math.PI * 2) / 5;
+    for (let spoke = 0; spoke < 5; spoke++) {
+      const angle = wheel + (spoke * Math.PI * 2) / 5;
 
       cx.beginPath();
-      cx.moveTo(wx, -r);
-      cx.lineTo(wx + Math.cos(a) * r * 0.5, -r + Math.sin(a) * r * 0.5);
+      cx.moveTo(wx, -radius);
+      cx.lineTo(wx + Math.cos(angle) * radius * 0.5, -radius + Math.sin(angle) * radius * 0.5);
       cx.stroke();
     }
   }
@@ -315,7 +329,7 @@ function zeCar(cx, kind, x, y, f, wheel, tilt, flip, part = 'all') {
     cx.save();
     shape(body);
     cx.clip();
-    cx.fillStyle = K;
+    cx.fillStyle = OUTLINE;
     cx.fillRect(-140, belt, 280, 3);
     cx.restore();
   } // the doors' top edge, over his lap
@@ -323,20 +337,20 @@ function zeCar(cx, kind, x, y, f, wheel, tilt, flip, part = 'all') {
   cx.restore();
 }
 
-/** A car's name along its doors, between the glass and the sills, at x along it: unmirrored (the car is drawn mirrored
- *  for f), outlined in the body's own dark or light so it reads on the paint. */
-function zeCarName(cx, s, x, f, size, ink, edge) {
+/** A car's name along its doors, between the glass and the sills, at offset along it: unmirrored (the car is drawn mirrored
+ *  for facing), outlined in the body's own dark or light so it reads on the paint. */
+function zeCarName(cx, text, offset, facing, size, ink, edge) {
   cx.save();
-  cx.scale(f, 1);
+  cx.scale(facing, 1);
   cx.font = `italic 900 ${size}px Futura, "Avenir Next Condensed", system-ui, sans-serif`;
   cx.textAlign = 'center';
   cx.textBaseline = 'middle';
   cx.lineJoin = 'round';
   cx.lineWidth = 3;
   cx.strokeStyle = edge;
-  cx.strokeText(s, x * f, -46);
+  cx.strokeText(text, offset * facing, -46);
   cx.fillStyle = ink;
-  cx.fillText(s, x * f, -46);
+  cx.fillText(text, offset * facing, -46);
   cx.restore();
 }
 
@@ -416,146 +430,152 @@ const ZE_CLOUDS = [
 ];
 
 const ZE_SKY_LEVELS = 3; // a sky lasts three levels (2026-11-01): the bots' levels came every 17 s, too quick for a whole rig of light
-const zeSkyOf = g => (g.phase === 'title' ? 0 : Math.floor((g.level - 1) / ZE_SKY_LEVELS) % ZE_SKIES.length);
+const zeSkyOf = game => (game.phase === 'title' ? 0 : Math.floor((game.level - 1) / ZE_SKY_LEVELS) % ZE_SKIES.length);
 
-function zeScene(c, i) {
-  if (ze.scene?.w === c.width && ze.scene.i === i) return ze.scene;
-  if (ze.scene?.w === c.width) ze.was = { scene: ze.scene, a: 1 }; // the last sky, fading out over the new
+function zeScene(canvas, skyIndex) {
+  if (ze.scene?.w === canvas.width && ze.scene.i === skyIndex) return ze.scene;
+  if (ze.scene?.w === canvas.width) ze.was = { scene: ze.scene, a: 1 }; // the last sky, fading out over the new
 
-  const P = ZE_SKIES[i];
+  const look = ZE_SKIES[skyIndex];
 
-  const layer = (top, h) => {
-    const b = document.createElement('canvas');
-    const k = c.width / ZE_W;
+  const layer = (top, height) => {
+    const layerCanvas = document.createElement('canvas');
+    const scale = canvas.width / ZE_W;
 
-    b.width = c.width;
-    b.height = Math.ceil(h * k);
-    const x = b.getContext('2d');
+    layerCanvas.width = canvas.width;
+    layerCanvas.height = Math.ceil(height * scale);
+    const cx = layerCanvas.getContext('2d');
 
-    x.scale(k, k);
-    x.translate(0, -top);
-    return [b, x];
+    cx.scale(scale, scale);
+    cx.translate(0, -top);
+    return [layerCanvas, cx];
   };
 
-  const [skyC, x] = layer(0, ZE_FLOOR);
-  const sky = x.createLinearGradient(0, 0, 0, ZE_FLOOR);
+  const [skyC, skyCx] = layer(0, ZE_FLOOR);
+  const sky = skyCx.createLinearGradient(0, 0, 0, ZE_FLOOR);
 
-  P.stops.forEach((col, i) => sky.addColorStop([0, 0.32, 0.7, 1][i], col));
-  x.fillStyle = sky;
-  x.fillRect(0, 0, ZE_W, ZE_FLOOR);
+  look.stops.forEach((col, index) => sky.addColorStop([0, 0.32, 0.7, 1][index], col));
+  skyCx.fillStyle = sky;
+  skyCx.fillRect(0, 0, ZE_W, ZE_FLOOR);
 
-  if (P.glow) {
-    const r = x.createRadialGradient(360, 820, 20, 360, 820, 480);
+  if (look.glow) {
+    const gradient = skyCx.createRadialGradient(360, 820, 20, 360, 820, 480);
 
-    r.addColorStop(0, `${P.glow}99`);
-    r.addColorStop(1, `${P.glow}00`);
-    x.fillStyle = r;
-    x.fillRect(0, 0, ZE_W, ZE_FLOOR);
+    gradient.addColorStop(0, `${look.glow}99`);
+    gradient.addColorStop(1, `${look.glow}00`);
+    skyCx.fillStyle = gradient;
+    skyCx.fillRect(0, 0, ZE_W, ZE_FLOOR);
   } // the storm's fire on the hills
 
   let seed = 7;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647; // the same stars every time
 
-  for (let i = 0; i < P.stars; i++) {
+  for (let star = 0; star < look.stars; star++) {
     const sy = rnd() ** 1.6 * 420;
 
-    x.globalAlpha = 0.25 + 0.75 * (1 - sy / 420) * rnd();
-    x.fillStyle = '#fff6e0';
-    x.fillRect(rnd() * ZE_W, sy, rnd() < 0.15 ? 2 : 1.2, rnd() < 0.15 ? 2 : 1.2);
+    skyCx.globalAlpha = 0.25 + 0.75 * (1 - sy / 420) * rnd();
+    skyCx.fillStyle = '#fff6e0';
+    skyCx.fillRect(rnd() * ZE_W, sy, rnd() < 0.15 ? 2 : 1.2, rnd() < 0.15 ? 2 : 1.2);
   }
 
-  x.globalAlpha = 1;
+  skyCx.globalAlpha = 1;
 
-  if (P.moon === 'crescent' || P.moon === 'faint') {
+  if (look.moon === 'crescent' || look.moon === 'faint') {
     // a new moon's crescent, the sky cut out of it — faint at dawn
-    x.globalAlpha = P.moon === 'faint' ? 0.45 : 1;
-    x.fillStyle = '#fff3c4';
-    x.beginPath();
-    x.arc(118, 132, 26, 0, Math.PI * 2);
-    x.fill();
-    x.globalAlpha = 1;
-    x.fillStyle = sky;
-    x.beginPath();
-    x.arc(130, 124, 24, 0, Math.PI * 2);
-    x.fill();
+    skyCx.globalAlpha = look.moon === 'faint' ? 0.45 : 1;
+    skyCx.fillStyle = '#fff3c4';
+    skyCx.beginPath();
+    skyCx.arc(118, 132, 26, 0, Math.PI * 2);
+    skyCx.fill();
+    skyCx.globalAlpha = 1;
+    skyCx.fillStyle = sky;
+    skyCx.beginPath();
+    skyCx.arc(130, 124, 24, 0, Math.PI * 2);
+    skyCx.fill();
   }
 
-  if (P.moon === 'full') {
+  if (look.moon === 'full') {
     // the blue hour's full moon, its halo and its seas
-    const r = x.createRadialGradient(590, 150, 10, 590, 150, 90);
+    const halo = skyCx.createRadialGradient(590, 150, 10, 590, 150, 90);
 
-    r.addColorStop(0, 'rgba(220, 230, 255, .35)');
-    r.addColorStop(1, 'rgba(220, 230, 255, 0)');
-    x.fillStyle = r;
-    x.fillRect(490, 50, 200, 200);
-    x.fillStyle = '#e8eeff';
-    x.beginPath();
-    x.arc(590, 150, 24, 0, Math.PI * 2);
-    x.fill();
-    x.fillStyle = '#c9d2ee';
+    halo.addColorStop(0, 'rgba(220, 230, 255, .35)');
+    halo.addColorStop(1, 'rgba(220, 230, 255, 0)');
+    skyCx.fillStyle = halo;
+    skyCx.fillRect(490, 50, 200, 200);
+    skyCx.fillStyle = '#e8eeff';
+    skyCx.beginPath();
+    skyCx.arc(590, 150, 24, 0, Math.PI * 2);
+    skyCx.fill();
+    skyCx.fillStyle = '#c9d2ee';
 
     for (const [mx, my, mr] of [
       [583, 145, 5],
       [597, 158, 3.5],
       [594, 141, 2.5],
     ]) {
-      x.beginPath();
-      x.arc(mx, my, mr, 0, Math.PI * 2);
-      x.fill();
+      skyCx.beginPath();
+      skyCx.arc(mx, my, mr, 0, Math.PI * 2);
+      skyCx.fill();
     }
   }
 
-  if (P.sun) {
-    const S = P.sun;
-    const sun = x.createLinearGradient(0, S.y - S.r, 0, S.y + S.r);
+  if (look.sun) {
+    const sunLook = look.sun;
+    const sun = skyCx.createLinearGradient(0, sunLook.y - sunLook.r, 0, sunLook.y + sunLook.r);
 
-    sun.addColorStop(0, S.a);
-    sun.addColorStop(1, S.b);
-    x.save();
-    x.beginPath();
-    x.arc(S.x, S.y, S.r, 0, Math.PI * 2);
-    x.clip();
-    x.fillStyle = sun;
-    x.fillRect(S.x - S.r, S.y - S.r, S.r * 2, S.r * 2);
+    sun.addColorStop(0, sunLook.a);
+    sun.addColorStop(1, sunLook.b);
+    skyCx.save();
+    skyCx.beginPath();
+    skyCx.arc(sunLook.x, sunLook.y, sunLook.r, 0, Math.PI * 2);
+    skyCx.clip();
+    skyCx.fillStyle = sun;
+    skyCx.fillRect(sunLook.x - sunLook.r, sunLook.y - sunLook.r, sunLook.r * 2, sunLook.r * 2);
 
-    if (S.bands) {
-      x.fillStyle = sky;
-      for (let i = 0; i < 6; i++) x.fillRect(S.x - S.r, S.y - 60 + i * 18, S.r * 2, 2 + i * 2);
+    if (sunLook.bands) {
+      skyCx.fillStyle = sky;
+
+      for (let band = 0; band < 6; band++) {
+        skyCx.fillRect(sunLook.x - sunLook.r, sunLook.y - 60 + band * 18, sunLook.r * 2, 2 + band * 2);
+      }
     }
 
-    x.restore();
+    skyCx.restore();
   }
 
-  if (P.clouds) {
+  if (look.clouds) {
     for (const [cx2, cy2, rx, ry, col] of ZE_CLOUDS) {
-      x.fillStyle = col;
-      x.beginPath();
-      x.ellipse(cx2, cy2, rx, ry, 0, 0, Math.PI * 2);
-      x.fill();
+      skyCx.fillStyle = col;
+      skyCx.beginPath();
+      skyCx.ellipse(cx2, cy2, rx, ry, 0, 0, Math.PI * 2);
+      skyCx.fill();
     }
   }
 
-  const [front, y] = layer(ZE_FRONT, ZE_H - ZE_FRONT);
+  const [front, frontCx] = layer(ZE_FRONT, ZE_H - ZE_FRONT);
 
   const hills = (col, base, amp, step, ph) => {
-    y.fillStyle = col;
-    y.beginPath();
-    y.moveTo(0, ZE_FLOOR);
+    frontCx.fillStyle = col;
+    frontCx.beginPath();
+    frontCx.moveTo(0, ZE_FLOOR);
 
-    for (let i = 0; i <= ZE_W; i += 10) {
-      y.lineTo(i, base - amp * (Math.sin(i / step + ph) * 0.6 + Math.sin(i / (step * 0.37) + ph * 2) * 0.4));
+    for (let atX = 0; atX <= ZE_W; atX += 10) {
+      frontCx.lineTo(
+        atX,
+        base - amp * (Math.sin(atX / step + ph) * 0.6 + Math.sin(atX / (step * 0.37) + ph * 2) * 0.4),
+      );
     }
 
-    y.lineTo(ZE_W, ZE_FLOOR);
-    y.fill();
+    frontCx.lineTo(ZE_W, ZE_FLOOR);
+    frontCx.fill();
   };
 
-  hills(P.hills[0], 776, 30, 90, 1);
-  hills(P.hills[1], 810, 20, 60, 4);
-  zeRestaurant(y);
-  zeGaloArt(y, 110, ZE_FLOOR, 1.35);
-  y.fillStyle = '#1b0b2e';
-  y.fillRect(0, ZE_FLOOR, ZE_W, 3);
+  hills(look.hills[0], 776, 30, 90, 1);
+  hills(look.hills[1], 810, 20, 60, 4);
+  zeRestaurant(frontCx);
+  zeGaloArt(frontCx, 110, ZE_FLOOR, 1.35);
+  frontCx.fillStyle = '#1b0b2e';
+  frontCx.fillRect(0, ZE_FLOOR, ZE_W, 3);
 
   for (let row = 0; row < 2; row++) {
     for (let col = 0; col * 29 < ZE_W; col++) {
@@ -563,9 +583,9 @@ function zeScene(c, i) {
       const tx = col * 29;
       const ty = ZE_FLOOR + 3 + row * 29;
 
-      y.fillStyle = row ? '#d9d2e6' : '#ece6f4';
-      y.fillRect(tx, ty, 29, 29);
-      y.fillStyle = '#2b4fa8';
+      frontCx.fillStyle = row ? '#d9d2e6' : '#ece6f4';
+      frontCx.fillRect(tx, ty, 29, 29);
+      frontCx.fillStyle = '#2b4fa8';
 
       for (const [cx2, cy2] of [
         [0, 0],
@@ -573,34 +593,34 @@ function zeScene(c, i) {
         [0, 29],
         [29, 29],
       ]) {
-        y.beginPath();
-        y.arc(tx + cx2, ty + cy2, 8, 0, Math.PI * 2);
-        y.fill();
+        frontCx.beginPath();
+        frontCx.arc(tx + cx2, ty + cy2, 8, 0, Math.PI * 2);
+        frontCx.fill();
       }
 
-      y.beginPath();
-      y.moveTo(tx + 14.5, ty + 8);
-      y.lineTo(tx + 21, ty + 14.5);
-      y.lineTo(tx + 14.5, ty + 21);
-      y.lineTo(tx + 8, ty + 14.5);
-      y.fill();
+      frontCx.beginPath();
+      frontCx.moveTo(tx + 14.5, ty + 8);
+      frontCx.lineTo(tx + 21, ty + 14.5);
+      frontCx.lineTo(tx + 14.5, ty + 21);
+      frontCx.lineTo(tx + 8, ty + 14.5);
+      frontCx.fill();
     }
   }
 
-  const dusk = y.createLinearGradient(0, ZE_FLOOR, 0, ZE_H);
+  const dusk = frontCx.createLinearGradient(0, ZE_FLOOR, 0, ZE_H);
 
   dusk.addColorStop(0, 'rgba(60, 20, 80, .25)');
   dusk.addColorStop(1, 'rgba(30, 8, 45, .6)');
-  y.fillStyle = dusk;
-  y.fillRect(0, ZE_FLOOR + 3, ZE_W, ZE_H - ZE_FLOOR);
+  frontCx.fillStyle = dusk;
+  frontCx.fillRect(0, ZE_FLOOR + 3, ZE_W, ZE_H - ZE_FLOOR);
 
-  if (P.tint) {
-    y.globalCompositeOperation = 'source-atop';
-    y.fillStyle = P.tint;
-    y.fillRect(0, 0, ZE_W, ZE_H);
+  if (look.tint) {
+    frontCx.globalCompositeOperation = 'source-atop';
+    frontCx.fillStyle = look.tint;
+    frontCx.fillRect(0, 0, ZE_W, ZE_H);
   }
 
-  return (ze.scene = { w: c.width, i, sky: skyC, front, P });
+  return (ze.scene = { w: canvas.width, i: skyIndex, sky: skyC, front, P: look });
 }
 
 /** Barcelos across the Cávado, one silhouette between the sun and the hills (2026-10-30, the next round): houses, the
@@ -632,39 +652,39 @@ const ZE_LIT = [
   [560, 760, 4, 4],
 ];
 
-function zeTown(x, P, ox) {
-  x.save();
-  x.translate(ox, 0);
-  x.fillStyle = P.town;
+function zeTown(cx, look, ox) {
+  cx.save();
+  cx.translate(ox, 0);
+  cx.fillStyle = look.town;
   const base = 792;
 
-  for (const [hx, w, h, r] of ZE_HOUSES) {
-    x.fillRect(hx, base - h, w, h);
-    x.beginPath();
-    x.moveTo(hx - 2, base - h);
-    x.lineTo(hx + w / 2, base - h - r);
-    x.lineTo(hx + w + 2, base - h);
-    x.fill();
+  for (const [hx, width, height, roof] of ZE_HOUSES) {
+    cx.fillRect(hx, base - height, width, height);
+    cx.beginPath();
+    cx.moveTo(hx - 2, base - height);
+    cx.lineTo(hx + width / 2, base - height - roof);
+    cx.lineTo(hx + width + 2, base - height);
+    cx.fill();
   }
 
-  x.fillRect(206, 642, 36, 150);
-  x.fillRect(202, 636, 44, 7);
-  for (let i = 0; i < 4; i++) x.fillRect(202 + i * 12.3, 626, 7, 11); // the Torre da Porta Nova
-  x.fillRect(262, 712, 58, 80);
-  x.beginPath();
-  x.moveTo(258, 713);
-  x.lineTo(291, 688);
-  x.lineTo(324, 713);
-  x.fill(); // the Igreja Matriz…
-  x.fillRect(322, 662, 22, 130);
-  x.beginPath();
-  x.moveTo(319, 663);
-  x.lineTo(333, 644);
-  x.lineTo(347, 663);
-  x.fill(); // …and its tower
-  x.beginPath();
+  cx.fillRect(206, 642, 36, 150);
+  cx.fillRect(202, 636, 44, 7);
+  for (let merlon = 0; merlon < 4; merlon++) cx.fillRect(202 + merlon * 12.3, 626, 7, 11); // the Torre da Porta Nova
+  cx.fillRect(262, 712, 58, 80);
+  cx.beginPath();
+  cx.moveTo(258, 713);
+  cx.lineTo(291, 688);
+  cx.lineTo(324, 713);
+  cx.fill(); // the Igreja Matriz…
+  cx.fillRect(322, 662, 22, 130);
+  cx.beginPath();
+  cx.moveTo(319, 663);
+  cx.lineTo(333, 644);
+  cx.lineTo(347, 663);
+  cx.fill(); // …and its tower
+  cx.beginPath();
 
-  for (const [a, b] of [
+  for (const [pointX, pointY] of [
     [352, 792],
     [352, 718],
     [361, 718],
@@ -678,36 +698,36 @@ function zeTown(x, P, ox) {
     [410, 720],
     [410, 792],
   ]) {
-    x.lineTo(a, b);
+    cx.lineTo(pointX, pointY);
   }
 
-  x.fill(); // the Paço dos Condes
-  x.fillRect(364, 674, 7, 36);
-  x.fillRect(362, 670, 11, 5);
-  x.fillRect(391, 668, 7, 38);
-  x.fillRect(389, 664, 11, 5); // its chimneys
-  x.fillRect(422, 702, 46, 90);
-  x.beginPath();
-  x.arc(445, 703, 23, Math.PI, 0);
-  x.fill(); // Bom Jesus da Cruz
-  x.fillRect(441, 670, 8, 14);
-  x.beginPath();
-  x.arc(445, 671, 5, Math.PI, 0);
-  x.fill();
-  x.fillRect(444, 654, 2, 12);
-  x.fillRect(441, 658, 8, 2);
+  cx.fill(); // the Paço dos Condes
+  cx.fillRect(364, 674, 7, 36);
+  cx.fillRect(362, 670, 11, 5);
+  cx.fillRect(391, 668, 7, 38);
+  cx.fillRect(389, 664, 11, 5); // its chimneys
+  cx.fillRect(422, 702, 46, 90);
+  cx.beginPath();
+  cx.arc(445, 703, 23, Math.PI, 0);
+  cx.fill(); // Bom Jesus da Cruz
+  cx.fillRect(441, 670, 8, 14);
+  cx.beginPath();
+  cx.arc(445, 671, 5, Math.PI, 0);
+  cx.fill();
+  cx.fillRect(444, 654, 2, 12);
+  cx.fillRect(441, 658, 8, 2);
 
-  if (P.lit) {
-    x.fillStyle = P.litc || '#ffd77a';
-    x.globalAlpha = P.lit;
-    for (const [wx, wy, w, h] of ZE_LIT) x.fillRect(wx, wy, w, h);
-    x.beginPath();
-    x.arc(291, 728, 4, 0, Math.PI * 2);
-    x.fill();
-    x.globalAlpha = 1;
+  if (look.lit) {
+    cx.fillStyle = look.litc || '#ffd77a';
+    cx.globalAlpha = look.lit;
+    for (const [wx, wy, width, height] of ZE_LIT) cx.fillRect(wx, wy, width, height);
+    cx.beginPath();
+    cx.arc(291, 728, 4, 0, Math.PI * 2);
+    cx.fill();
+    cx.globalAlpha = 1;
   }
 
-  x.restore();
+  cx.restore();
 }
 
 /** Trota's (2026-10-30, later): the restaurant of the 8-bit game this one learnt from, behind him at the right — a
@@ -717,12 +737,12 @@ const ZE_REST = { x: 470, w: 200, top: ZE_FLOOR - 130 };
 const ZE_SIGN = { x: 490, y: ZE_FLOOR - 194, w: 160, h: 42 };
 
 const ZE_BULBS = (() => {
-  const b = [];
-  const { x, y, w, h } = ZE_SIGN;
+  const bulbs = [];
+  const { x: signX, y: signY, w: signWidth, h: signHeight } = ZE_SIGN;
 
-  for (let bx = x + 4; bx <= x + w - 4; bx += 8) b.push([bx, y], [bx, y + h]);
-  for (let by = y + 8; by <= y + h - 8; by += 8) b.push([x, by], [x + w, by]);
-  return b;
+  for (let bx = signX + 4; bx <= signX + signWidth - 4; bx += 8) bulbs.push([bx, signY], [bx, signY + signHeight]);
+  for (let by = signY + 8; by <= signY + signHeight - 8; by += 8) bulbs.push([signX, by], [signX + signWidth, by]);
+  return bulbs;
 })();
 
 // what stands up to be stood on (G4, 2026-10-30, the next round): the awning's top and the sign's, and what falls
@@ -732,207 +752,211 @@ const ZE_PLATS = [
   { l: ZE_SIGN.x - 3, r: ZE_SIGN.x + ZE_SIGN.w + 3, y: ZE_SIGN.y - 3, name: 'sign' },
 ];
 
-/** The ground under a point at x whose feet are at y: the highest of the awning, the sign or the floor at or below it. */
-const zePlatform = (x, y) =>
-  ZE_PLATS.reduce((gy, p) => (x >= p.l && x <= p.r && y <= p.y + 0.5 && p.y < gy ? p.y : gy), ZE_FLOOR);
+/** The ground under a point at atX whose feet are at feetY: the highest of the awning, the sign or the floor at or below it. */
+const zePlatform = (atX, feetY) =>
+  ZE_PLATS.reduce(
+    (gy, platform) =>
+      atX >= platform.l && atX <= platform.r && feetY <= platform.y + 0.5 && platform.y < gy ? platform.y : gy,
+    ZE_FLOOR,
+  );
 
-function zeRestaurant(x) {
+function zeRestaurant(cx) {
   const { x: RX, w: RW, top: RT } = ZE_REST;
-  const K = '#1b0b2e';
-  const F = ZE_FLOOR;
+  const OUTLINE = '#1b0b2e';
+  const FLOOR = ZE_FLOOR;
   const AY = RT + 18;
 
-  x.fillStyle = K;
-  x.fillRect(RX - 5, RT - 8, RW + 10, F - RT + 8);
-  x.fillStyle = '#7a4630';
-  x.fillRect(RX - 4, RT - 7, RW + 8, 6);
-  x.fillStyle = '#c47a4a';
-  x.fillRect(RX - 4, RT - 7, RW + 8, 2);
-  x.fillStyle = '#d9bd9e';
-  x.fillRect(RX, RT, RW, F - RT);
+  cx.fillStyle = OUTLINE;
+  cx.fillRect(RX - 5, RT - 8, RW + 10, FLOOR - RT + 8);
+  cx.fillStyle = '#7a4630';
+  cx.fillRect(RX - 4, RT - 7, RW + 8, 6);
+  cx.fillStyle = '#c47a4a';
+  cx.fillRect(RX - 4, RT - 7, RW + 8, 2);
+  cx.fillStyle = '#d9bd9e';
+  cx.fillRect(RX, RT, RW, FLOOR - RT);
 
   for (const lx of [RX + 28, RX + RW - 36]) {
-    x.fillStyle = K;
-    x.fillRect(lx - 2, RT + 3, 12, 12);
-    x.fillStyle = '#fee761';
-    x.fillRect(lx, RT + 5, 8, 8);
+    cx.fillStyle = OUTLINE;
+    cx.fillRect(lx - 2, RT + 3, 12, 12);
+    cx.fillStyle = '#fee761';
+    cx.fillRect(lx, RT + 5, 8, 8);
   }
 
-  for (let i = 0, sx = RX - 5; sx < RX + RW + 5; i++, sx += 8) {
+  for (let stripe = 0, sx = RX - 5; sx < RX + RW + 5; stripe++, sx += 8) {
     // the awning, a scallop a stripe
-    x.fillStyle = i % 2 ? '#fff6e0' : '#e43b44';
-    x.fillRect(sx, AY, 8, 12);
-    x.beginPath();
-    x.arc(sx + 4, AY + 12, 4, 0, Math.PI);
-    x.fill();
+    cx.fillStyle = stripe % 2 ? '#fff6e0' : '#e43b44';
+    cx.fillRect(sx, AY, 8, 12);
+    cx.beginPath();
+    cx.arc(sx + 4, AY + 12, 4, 0, Math.PI);
+    cx.fill();
   }
 
-  x.fillStyle = K;
-  x.fillRect(RX - 5, AY - 2, RW + 10, 2);
+  cx.fillStyle = OUTLINE;
+  cx.fillRect(RX - 5, AY - 2, RW + 10, 2);
 
   for (const wx of [RX + 12, RX + RW - 72]) {
     // warm windows, two tables each, a plate on each
-    x.fillStyle = K;
-    x.fillRect(wx - 3, AY + 26, 66, 52);
-    x.fillStyle = '#24643a';
-    x.fillRect(wx - 1.5, AY + 27.5, 63, 49);
-    x.fillStyle = '#fee761';
-    x.fillRect(wx + 2, AY + 31, 56, 42);
-    x.fillStyle = '#feae34';
-    x.fillRect(wx + 2, AY + 56, 56, 17);
+    cx.fillStyle = OUTLINE;
+    cx.fillRect(wx - 3, AY + 26, 66, 52);
+    cx.fillStyle = '#24643a';
+    cx.fillRect(wx - 1.5, AY + 27.5, 63, 49);
+    cx.fillStyle = '#fee761';
+    cx.fillRect(wx + 2, AY + 31, 56, 42);
+    cx.fillStyle = '#feae34';
+    cx.fillRect(wx + 2, AY + 56, 56, 17);
 
     for (const tx of [wx + 8, wx + 36]) {
-      x.fillStyle = '#7a4630';
-      x.fillRect(tx - 2, AY + 54, 18, 3);
-      x.fillRect(tx + 6, AY + 57, 3, 16);
-      x.fillStyle = '#fff6e0';
-      x.fillRect(tx + 3, AY + 51, 8, 3);
+      cx.fillStyle = '#7a4630';
+      cx.fillRect(tx - 2, AY + 54, 18, 3);
+      cx.fillRect(tx + 6, AY + 57, 3, 16);
+      cx.fillStyle = '#fff6e0';
+      cx.fillRect(tx + 3, AY + 51, 8, 3);
     }
 
-    x.fillStyle = '#24643a';
-    x.fillRect(wx + 28.5, AY + 31, 3, 42);
+    cx.fillStyle = '#24643a';
+    cx.fillRect(wx + 28.5, AY + 31, 3, 42);
   }
 
   const DX = RX + RW / 2 - 18;
   const DY = AY + 22;
 
-  x.fillStyle = K;
-  x.fillRect(DX - 2, DY - 2, 40, F - DY + 2);
-  x.fillStyle = '#2f8f4e';
-  x.fillRect(DX, DY, 36, F - DY);
-  x.fillStyle = '#24643a';
-  x.fillRect(DX + 17, DY, 2, F - DY);
-  x.fillStyle = '#fee761';
-  x.fillRect(DX + 5, DY + 6, 8, 16);
-  x.fillRect(DX + 23, DY + 6, 8, 16);
-  x.strokeStyle = '#3f8fe0';
-  x.lineWidth = 1.2;
+  cx.fillStyle = OUTLINE;
+  cx.fillRect(DX - 2, DY - 2, 40, FLOOR - DY + 2);
+  cx.fillStyle = '#2f8f4e';
+  cx.fillRect(DX, DY, 36, FLOOR - DY);
+  cx.fillStyle = '#24643a';
+  cx.fillRect(DX + 17, DY, 2, FLOOR - DY);
+  cx.fillStyle = '#fee761';
+  cx.fillRect(DX + 5, DY + 6, 8, 16);
+  cx.fillRect(DX + 23, DY + 6, 8, 16);
+  cx.strokeStyle = '#3f8fe0';
+  cx.lineWidth = 1.2;
 
   for (let tx = RX; tx + 10 <= RX + RW; tx += 10) {
     if (tx + 10 <= DX - 2 || tx >= DX + 38) {
-      x.fillStyle = '#eaf2fb';
-      x.fillRect(tx, F - 20, 10, 20);
-      x.strokeRect(tx + 0.6, F - 19.4, 8.8, 8.8);
-      x.strokeRect(tx + 0.6, F - 9.4, 8.8, 8.8);
+      cx.fillStyle = '#eaf2fb';
+      cx.fillRect(tx, FLOOR - 20, 10, 20);
+      cx.strokeRect(tx + 0.6, FLOOR - 19.4, 8.8, 8.8);
+      cx.strokeRect(tx + 0.6, FLOOR - 9.4, 8.8, 8.8);
     }
   }
 
   const { x: SX, y: SY, w: SW, h: SH } = ZE_SIGN;
 
   for (const px of [SX + 26, SX + SW - 32]) {
-    x.fillStyle = K;
-    x.fillRect(px - 1.5, SY + SH, 9, RT - 7 - SY - SH);
-    x.fillStyle = '#566c86';
-    x.fillRect(px, SY + SH, 6, RT - 7 - SY - SH);
+    cx.fillStyle = OUTLINE;
+    cx.fillRect(px - 1.5, SY + SH, 9, RT - 7 - SY - SH);
+    cx.fillStyle = '#566c86';
+    cx.fillRect(px, SY + SH, 6, RT - 7 - SY - SH);
   }
 
-  x.fillStyle = K;
-  x.fillRect(SX - 3, SY - 3, SW + 6, SH + 6);
-  x.fillStyle = '#7a2a3a';
-  x.fillRect(SX, SY, SW, SH);
-  x.fillStyle = '#b13e53';
-  x.fillRect(SX + 4, SY + 4, SW - 8, SH - 8);
-  x.textAlign = 'center';
-  x.textBaseline = 'middle';
-  x.font = 'italic 900 22px Futura, "Avenir Next Condensed", system-ui, sans-serif';
-  x.fillStyle = '#4a1426';
-  x.fillText("TROTA'S", SX + SW / 2 + 2, SY + 18 + 2);
-  x.fillStyle = '#fee761';
-  x.fillText("TROTA'S", SX + SW / 2, SY + 18);
-  x.font = '700 7px Futura, system-ui, sans-serif';
-  x.fillStyle = '#ffcd75';
-  x.fillText('R E S T A U R A N T E', SX + SW / 2, SY + 33);
+  cx.fillStyle = OUTLINE;
+  cx.fillRect(SX - 3, SY - 3, SW + 6, SH + 6);
+  cx.fillStyle = '#7a2a3a';
+  cx.fillRect(SX, SY, SW, SH);
+  cx.fillStyle = '#b13e53';
+  cx.fillRect(SX + 4, SY + 4, SW - 8, SH - 8);
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.font = 'italic 900 22px Futura, "Avenir Next Condensed", system-ui, sans-serif';
+  cx.fillStyle = '#4a1426';
+  cx.fillText("TROTA'S", SX + SW / 2 + 2, SY + 18 + 2);
+  cx.fillStyle = '#fee761';
+  cx.fillText("TROTA'S", SX + SW / 2, SY + 18);
+  cx.font = '700 7px Futura, system-ui, sans-serif';
+  cx.fillStyle = '#ffcd75';
+  cx.fillText('R E S T A U R A N T E', SX + SW / 2, SY + 33);
 }
 
-function zeBulbs(cx, g) {
-  const phase = zeCalm() ? 0 : Math.floor(g.t * (g.dragon ? 16 : 6));
+function zeBulbs(cx, game) {
+  const phase = zeCalm() ? 0 : Math.floor(game.t * (game.dragon ? 16 : 6));
 
-  ZE_BULBS.forEach(([x, y], i) => {
-    cx.fillStyle = (i + phase) % 3 ? (g.dragon ? '#ff5a64' : '#fff6c8') : '#7a4630';
-    cx.fillRect(x - 2, y - 2, 4, 4);
+  ZE_BULBS.forEach(([bulbX, bulbY], index) => {
+    cx.fillStyle = (index + phase) % 3 ? (game.dragon ? '#ff5a64' : '#fff6c8') : '#7a4630';
+    cx.fillRect(bulbX - 2, bulbY - 2, 4, 4);
   });
 }
 
 /** The rooster of Barcelos: black, his comb red, his body painted with hearts and dots — standing on a plinth. */
-function zeGaloArt(x, at, floor, s) {
-  x.save();
-  x.translate(at, floor);
-  x.scale(s, s);
-  x.fillStyle = '#241433';
-  x.fillRect(-36, -22, 72, 22);
-  x.fillRect(-30, -28, 60, 6);
-  x.strokeStyle = '#151018';
-  x.lineWidth = 5;
-  x.lineCap = 'round';
-  x.beginPath();
-  x.moveTo(-6, -28);
-  x.lineTo(-6, -52);
-  x.moveTo(8, -28);
-  x.lineTo(8, -52);
-  x.stroke();
-  x.fillStyle = '#151018';
-  x.beginPath();
-  x.moveTo(-24, -86);
-  x.bezierCurveTo(-40, -150, -88, -132, -72, -92);
-  x.bezierCurveTo(-62, -72, -46, -62, -24, -58);
-  x.fill();
-  x.beginPath();
-  x.moveTo(-22, -78);
-  x.bezierCurveTo(-60, -118, -96, -90, -64, -62);
-  x.lineTo(-24, -58);
-  x.fill();
-  x.beginPath();
-  x.ellipse(0, -72, 36, 24, -0.15, 0, Math.PI * 2);
-  x.fill();
-  x.beginPath();
-  x.moveTo(14, -90);
-  x.lineTo(28, -128);
-  x.lineTo(44, -122);
-  x.lineTo(32, -78);
-  x.fill();
-  x.beginPath();
-  x.arc(36, -124, 12, 0, Math.PI * 2);
-  x.fill();
-  x.fillStyle = '#e8322f';
+function zeGaloArt(cx, at, floor, scale) {
+  cx.save();
+  cx.translate(at, floor);
+  cx.scale(scale, scale);
+  cx.fillStyle = '#241433';
+  cx.fillRect(-36, -22, 72, 22);
+  cx.fillRect(-30, -28, 60, 6);
+  cx.strokeStyle = '#151018';
+  cx.lineWidth = 5;
+  cx.lineCap = 'round';
+  cx.beginPath();
+  cx.moveTo(-6, -28);
+  cx.lineTo(-6, -52);
+  cx.moveTo(8, -28);
+  cx.lineTo(8, -52);
+  cx.stroke();
+  cx.fillStyle = '#151018';
+  cx.beginPath();
+  cx.moveTo(-24, -86);
+  cx.bezierCurveTo(-40, -150, -88, -132, -72, -92);
+  cx.bezierCurveTo(-62, -72, -46, -62, -24, -58);
+  cx.fill();
+  cx.beginPath();
+  cx.moveTo(-22, -78);
+  cx.bezierCurveTo(-60, -118, -96, -90, -64, -62);
+  cx.lineTo(-24, -58);
+  cx.fill();
+  cx.beginPath();
+  cx.ellipse(0, -72, 36, 24, -0.15, 0, Math.PI * 2);
+  cx.fill();
+  cx.beginPath();
+  cx.moveTo(14, -90);
+  cx.lineTo(28, -128);
+  cx.lineTo(44, -122);
+  cx.lineTo(32, -78);
+  cx.fill();
+  cx.beginPath();
+  cx.arc(36, -124, 12, 0, Math.PI * 2);
+  cx.fill();
+  cx.fillStyle = '#e8322f';
 
   for (const [cx2, cy2] of [
     [28, -137],
     [35, -140],
     [42, -137],
   ]) {
-    x.beginPath();
-    x.arc(cx2, cy2, 5.5, 0, Math.PI * 2);
-    x.fill();
+    cx.beginPath();
+    cx.arc(cx2, cy2, 5.5, 0, Math.PI * 2);
+    cx.fill();
   }
 
-  x.beginPath();
-  x.ellipse(45, -110, 4, 6, 0, 0, Math.PI * 2);
-  x.fill();
-  x.fillStyle = '#ffcc33';
-  x.beginPath();
-  x.moveTo(46, -128);
-  x.lineTo(58, -122);
-  x.lineTo(46, -117);
-  x.fill();
-  x.fillStyle = '#fff';
-  x.beginPath();
-  x.arc(39, -126, 2.4, 0, Math.PI * 2);
-  x.fill();
+  cx.beginPath();
+  cx.ellipse(45, -110, 4, 6, 0, 0, Math.PI * 2);
+  cx.fill();
+  cx.fillStyle = '#ffcc33';
+  cx.beginPath();
+  cx.moveTo(46, -128);
+  cx.lineTo(58, -122);
+  cx.lineTo(46, -117);
+  cx.fill();
+  cx.fillStyle = '#fff';
+  cx.beginPath();
+  cx.arc(39, -126, 2.4, 0, Math.PI * 2);
+  cx.fill();
 
-  const heart = (hx, hy, r, c) => {
-    x.fillStyle = c;
-    x.beginPath();
-    x.moveTo(hx, hy + r);
-    x.bezierCurveTo(hx - r * 1.8, hy - r * 0.2, hx - r, hy - r * 1.6, hx, hy - r * 0.7);
-    x.bezierCurveTo(hx + r, hy - r * 1.6, hx + r * 1.8, hy - r * 0.2, hx, hy + r);
-    x.fill();
+  const heart = (hx, hy, radius, color) => {
+    cx.fillStyle = color;
+    cx.beginPath();
+    cx.moveTo(hx, hy + radius);
+    cx.bezierCurveTo(hx - radius * 1.8, hy - radius * 0.2, hx - radius, hy - radius * 1.6, hx, hy - radius * 0.7);
+    cx.bezierCurveTo(hx + radius, hy - radius * 1.6, hx + radius * 1.8, hy - radius * 0.2, hx, hy + radius);
+    cx.fill();
   };
 
   heart(0, -74, 9, '#e8322f');
   heart(-22, -70, 5, '#ffcc33');
   heart(18, -66, 5, '#3f8fe0');
 
-  for (const [dx, dy, c] of [
+  for (const [dx, dy, color] of [
     [-52, -112, '#ffcc33'],
     [-60, -96, '#e8322f'],
     [-44, -94, '#3f8fe0'],
@@ -941,11 +965,11 @@ function zeGaloArt(x, at, floor, s) {
     [-10, -58, '#5cbf4a'],
     [8, -86, '#ffcc33'],
   ]) {
-    x.fillStyle = c;
-    x.beginPath();
-    x.arc(dx, dy, 2.6, 0, Math.PI * 2);
-    x.fill();
+    cx.fillStyle = color;
+    cx.beginPath();
+    cx.arc(dx, dy, 2.6, 0, Math.PI * 2);
+    cx.fill();
   }
 
-  x.restore();
+  cx.restore();
 }

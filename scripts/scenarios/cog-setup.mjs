@@ -10,7 +10,7 @@ import { tmpDir, waitFor as until } from '../../lib/testserver.mjs';
 
 const ROOT = realpathSync(tmpDir('peix-repos-'));
 
-for (const f of ['alpha', 'beta']) mkdirSync(join(ROOT, f), { recursive: true });
+for (const folder of ['alpha', 'beta']) mkdirSync(join(ROOT, folder), { recursive: true });
 export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
@@ -21,7 +21,7 @@ export default async function (ctx) {
   const repo = basename(two.cwd.replace(/\/\.claude\/worktrees\/[^/]+(?:\/.*)?$/, ''));
   const tmp = basename(plain.cwd);
 
-  const cfg = () => ctx.server.api('api/config').then(r => r.body);
+  const cfg = () => ctx.server.api('api/config').then(response => response.body);
 
   /** A box in the setup, set and changed as typing and leaving it would. */
   const set = (sel, value) =>
@@ -207,7 +207,8 @@ export default async function (ctx) {
   out.days = await ctx.evaluate(`[...document.querySelectorAll('#slist .gsep.day b')].map(b => b.textContent)`);
 
   ctx.assert.ok(
-    out.days.length && out.days.every(d => d !== 'Today' && /^(Yesterday|[A-Z][a-z]+day|\d\d-\d\d-\d{4})$/.test(d)),
+    out.days.length &&
+      out.days.every(day => day !== 'Today' && /^(Yesterday|[A-Z][a-z]+day|\d\d-\d\d-\d{4})$/.test(day)),
     `the day labels by name, else day first: ${out.days}`,
   );
 
@@ -221,7 +222,7 @@ export default async function (ctx) {
 
   out.prefs = await ctx
     .peix('prefs()')
-    .then(p => ({ foldCode: p.foldCode, foldBy: p.foldBy, optMeta: p.optMeta, dates: p.dates }));
+    .then(prefs => ({ foldCode: prefs.foldCode, foldBy: prefs.foldBy, optMeta: prefs.optMeta, dates: prefs.dates }));
 
   ctx.assert.deepEqual(out.prefs, { foldCode: undefined, foldBy: undefined, optMeta: false, dates: undefined });
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#foldCode')`), false, "no switch for the code's fold");

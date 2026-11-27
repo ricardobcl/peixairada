@@ -63,7 +63,7 @@ export default async function (ctx) {
   const root = realpathSync(tmpDir('peix-agl-'));
   const sleeps = [0, 1, 2, 3].map(() => spawn('sleep', ['300'], { stdio: 'ignore' }));
 
-  const live = i => ({ pid: sleeps[i].pid, startedAt: now - 60 * MIN });
+  const live = index => ({ pid: sleeps[index].pid, startedAt: now - 60 * MIN });
   const card = id => `#slist > .card[data-id="${id}"]`;
 
   const rows = id =>
@@ -83,9 +83,9 @@ export default async function (ctx) {
       `(e => !!e && getComputedStyle(e).display !== 'none' && e.getClientRects().length > 0)(document.querySelector('${card(id)} ${sel}'))`,
     );
 
-  const report = (f, text) =>
+  const report = (agentFile, text) =>
     appendFileSync(
-      f,
+      agentFile,
       `${JSON.stringify({
         isSidechain: true,
         type: 'assistant',
@@ -94,9 +94,9 @@ export default async function (ctx) {
       })}\n`,
     );
 
-  const finish = (f, meta) =>
+  const finish = (agentFile, meta) =>
     writeFileSync(
-      f.replace(/\.jsonl$/, '.meta.json'),
+      agentFile.replace(/\.jsonl$/, '.meta.json'),
       JSON.stringify({ agentType: 'general-purpose', finished: true, ...meta }),
     );
 
@@ -235,7 +235,7 @@ export default async function (ctx) {
     );
 
     ctx.assert.deepEqual(
-      (await rows(three.id)).map(r => r.k),
+      (await rows(three.id)).map(row => row.k),
       ['sec', 'cost', 'blast'],
       'a row each',
     );
@@ -307,12 +307,12 @@ export default async function (ctx) {
     ctx.assert.equal(await height(three.id), grown.three, 'and open again');
 
     // ended: one height at once, a summary in the place held; its click still lists them, and back
-    for (const [id, t] of [
+    for (const [id, text] of [
       ['sec', 'One'],
       ['cost', 'Two'],
       ['blast', 'Three'],
     ]) {
-      report(many.files[id], t);
+      report(many.files[id], text);
       finish(many.files[id], { description: id, toolUseId: `toolu_${id}` });
     }
 
@@ -328,7 +328,7 @@ export default async function (ctx) {
     await ctx.settle();
 
     ctx.assert.deepEqual(
-      (await rows(three.id)).map(r => r.k),
+      (await rows(three.id)).map(row => row.k),
       ['_sum', 'sec_d', 'cost_d', 'blast_d'],
       'its list, in place',
     );
@@ -375,7 +375,7 @@ export default async function (ctx) {
     ctx.assert.equal(await height(one.id), base, 'one height');
     return { base, grown };
   } finally {
-    for (const p of sleeps) p.kill();
+    for (const child of sleeps) child.kill();
     rmSync(dir, { recursive: true, force: true });
   }
 }

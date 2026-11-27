@@ -21,9 +21,9 @@ function readBy(path) {
   try {
     closeSync(openSync(path, fsc.O_WRONLY | fsc.O_NONBLOCK));
     return true;
-  } catch (e) {
-    if (e.code === 'ENXIO') return false;
-    throw e;
+  } catch (error) {
+    if (error.code === 'ENXIO') return false;
+    throw error;
   }
 }
 
@@ -31,7 +31,7 @@ test(
   'the peer keys, the shell snapshots, the prompt history and the team mailboxes are never opened',
   { timeout: 40_000 },
   async () => {
-    const p = spawn('sleep', ['120'], { stdio: 'ignore' });
+    const sleeper = spawn('sleep', ['120'], { stdio: 'ignore' });
     const dir = tmpDir('peix-fx-');
 
     const fx = makeFixture(dir, [
@@ -41,7 +41,7 @@ test(
         prompt: 'hello',
         reply: 'hi',
         at: yesterday(),
-        live: { pid: p.pid, name: 'storefront-1' },
+        live: { pid: sleeper.pid, name: 'storefront-1' },
       },
     ]);
 
@@ -57,7 +57,7 @@ test(
     mkdirSync(join(dir, 'teams', team, 'inboxes'));
 
     const wires = [
-      fifo(join(dir, 'sessions', `${p.pid}.${'ab'.repeat(32)}.key`)),
+      fifo(join(dir, 'sessions', `${sleeper.pid}.${'ab'.repeat(32)}.key`)),
       fifo(join(dir, 'shell-snapshots', 'snapshot-zsh-1761900000000-abcdef.sh')),
       fifo(join(dir, 'history.jsonl')),
       fifo(join(dir, 'teams', team, 'inboxes', 'team-lead.json')),
@@ -66,7 +66,7 @@ test(
     const srv = await startTestServer({ claudeDir: fx.dir });
 
     try {
-      const sum = async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+      const sum = async () => (await srv.api('api/sessions')).body.sessions.find(session => session.id === chat.id);
 
       await waitFor(async () => (await sum())?.alive && (await sum())?.agentRows, {
         what: 'the chat alive, read from the .json beside the key, and its team',
@@ -85,10 +85,10 @@ test(
         'the server answers: nothing of it is stuck opening a FIFO',
       );
 
-      for (const w of wires) assert.equal(readBy(w), false, `never opened: ${w.slice(dir.length)}`);
+      for (const wire of wires) assert.equal(readBy(wire), false, `never opened: ${wire.slice(dir.length)}`);
     } finally {
       await srv.stop();
-      p.kill();
+      sleeper.kill();
     }
   },
 );

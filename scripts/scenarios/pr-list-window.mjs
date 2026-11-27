@@ -14,15 +14,15 @@ import { randomUUID } from 'node:crypto';
 import { replyLines } from '../fixture.mjs';
 
 const file = join(tmpDir('peix-prwin-'), 'prs.json');
-const MORE = Array.from({ length: 14 }, (_, i) => 20 + i);
+const MORE = Array.from({ length: 14 }, (_, index) => 20 + index);
 
 writeFileSync(
   file,
   JSON.stringify(
     Object.fromEntries(
-      [12, 13, ...MORE].map(n => [
-        `acme/repo-a#${n}`,
-        { state: n % 5 ? 'OPEN' : 'MERGED', title: `Change number ${n}` },
+      [12, 13, ...MORE].map(number => [
+        `acme/repo-a#${number}`,
+        { state: number % 5 ? 'OPEN' : 'MERGED', title: `Change number ${number}` },
       ]),
     ),
   ),
@@ -38,7 +38,7 @@ export const meta = {
 export default async function (ctx) {
   const [two] = ctx.fixture.chats;
   const out = {};
-  const a = ctx.assert;
+  const assert = ctx.assert;
 
   const yours = {
     type: 'user',
@@ -50,14 +50,17 @@ export default async function (ctx) {
     message: {
       role: 'user',
       content: [
-        { type: 'text', text: `And the rest: ${MORE.map(n => `https://github.com/acme/repo-a/pull/${n}`).join(' ')}` },
+        {
+          type: 'text',
+          text: `And the rest: ${MORE.map(number => `https://github.com/acme/repo-a/pull/${number}`).join(' ')}`,
+        },
       ],
     },
   };
 
   appendFileSync(
     two.file,
-    `${[yours, ...replyLines({ id: two.id, cwd: two.cwd, text: 'Noted.' })].map(l => JSON.stringify(l)).join('\n')}\n`,
+    `${[yours, ...replyLines({ id: two.id, cwd: two.cwd, text: 'Noted.' })].map(line => JSON.stringify(line)).join('\n')}\n`,
   );
 
   await ctx.openChat(two.id);
@@ -84,24 +87,24 @@ export default async function (ctx) {
   // the button up top, centred; the window shorter than its rows; the lower end counting what is past it
   out.first = await look();
 
-  a.deepEqual(
+  assert.deepEqual(
     [out.first.btn.text, out.first.btn.above, out.first.more],
     ['Timeline⌥⌘J', true, false],
     `the timeline up top, no "more": ${JSON.stringify(out.first)}`,
   );
 
-  a.ok(Math.abs(out.first.btn.centre) <= 1, `…centred (${out.first.btn.centre} px off)`);
+  assert.ok(Math.abs(out.first.btn.centre) <= 1, `…centred (${out.first.btn.centre} px off)`);
 
-  a.ok(
+  assert.ok(
     out.first.sh > out.first.ch + 40 && out.first.rows === 16,
     `every row there, the window shorter: ${out.first.ch} of ${out.first.sh}`,
   );
 
-  a.equal(out.first.up, null, 'nothing above at the top');
-  a.match(out.first.down, /^↓ \d+ more$/, 'the rest counted below');
+  assert.equal(out.first.up, null, 'nothing above at the top');
+  assert.match(out.first.down, /^↓ \d+ more$/, 'the rest counted below');
   const below = +out.first.down.match(/\d+/)[0];
 
-  a.ok(below >= 3 && below < 16, `${below} below`);
+  assert.ok(below >= 3 && below < 16, `${below} below`);
 
   await ctx.shot(
     '1-window',
@@ -129,11 +132,11 @@ export default async function (ctx) {
       clickCount: 1,
     });
 
-    for (let i = 1; i <= 5; i++) {
+    for (let step = 1; step <= 5; step++) {
       await ctx.send('Input.dispatchMouseEvent', {
         type: 'mouseMoved',
         x: grip.x,
-        y: grip.y + (dy * i) / 5,
+        y: grip.y + (dy * step) / 5,
         button: 'left',
         buttons: 1,
       });
@@ -152,7 +155,7 @@ export default async function (ctx) {
 
   out.h0 = await sh();
 
-  a.equal(
+  assert.equal(
     await ctx.evaluate(`getComputedStyle(document.querySelector('#prlist .pfoot')).cursor`),
     'ns-resize',
     'the foot says it resizes',
@@ -160,18 +163,18 @@ export default async function (ctx) {
 
   await drag(-80);
   out.h1 = await sh();
-  a.ok(Math.abs(out.h1 - (out.h0 - 80)) <= 2, `dragged up 80 px: ${out.h0} → ${out.h1}`);
-  a.equal(await ctx.evaluate(`window.peix.prefs().prsHeight`), out.h1, 'kept as a pref');
-  a.match((await look()).down, /^↓ \d+ more$/, 'more below, counted again');
+  assert.ok(Math.abs(out.h1 - (out.h0 - 80)) <= 2, `dragged up 80 px: ${out.h0} → ${out.h1}`);
+  assert.equal(await ctx.evaluate(`window.peix.prefs().prsHeight`), out.h1, 'kept as a pref');
+  assert.match((await look()).down, /^↓ \d+ more$/, 'more below, counted again');
   await drag(400);
   out.h2 = await sh();
 
-  a.ok(
+  assert.ok(
     out.h2 > out.h0 && out.h2 <= out.first.sh + 1,
     `dragged down past the rows: ${out.h2}, as tall as they are (${out.first.sh})`,
   );
 
-  a.equal((await look()).down, null, 'nothing below');
+  assert.equal((await look()).down, null, 'nothing below');
 
   await ctx.evaluate(
     `document.querySelector('#prlist .pfoot').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))`,
@@ -179,7 +182,7 @@ export default async function (ctx) {
 
   await ctx.settle();
 
-  a.deepEqual(
+  assert.deepEqual(
     [await sh(), await ctx.evaluate(`window.peix.prefs().prsHeight`)],
     [out.h0, null],
     'a double-click: its own height again',
@@ -190,7 +193,7 @@ export default async function (ctx) {
   await ctx.openChat(two.id);
   await ctx.waitFor(`document.querySelectorAll('#prScroll .prrow').length === 16`, { what: 'the rows again' });
   await ctx.settle();
-  a.equal(await sh(), out.h1, 'the height outlives a reload');
+  assert.equal(await sh(), out.h1, 'the height outlives a reload');
 
   await ctx.evaluate(
     `document.querySelector('#prlist .pfoot').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))`,
@@ -199,17 +202,17 @@ export default async function (ctx) {
   await ctx.settle();
 
   // the lower pill: a window's worth down, the upper one on
-  const pill = q =>
+  const pill = side =>
     ctx.evaluate(
-      `(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector('#prlist .pedge.${q} button').getBoundingClientRect())`,
+      `(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector('#prlist .pedge.${side} button').getBoundingClientRect())`,
     );
 
-  const click = async p => {
+  const click = async point => {
     for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
       await ctx.send('Input.dispatchMouseEvent', {
         type,
-        x: p.x,
-        y: p.y,
+        x: point.x,
+        y: point.y,
         ...(type === 'mouseMoved' ? {} : { button: 'left', clickCount: 1 }),
       });
     }
@@ -223,8 +226,8 @@ export default async function (ctx) {
 
   await ctx.sleep(500);
   out.down = await look();
-  a.ok(out.down.top > 0, 'scrolled down');
-  a.match(out.down.up, /^↑ \d+ more$/, 'what scrolled away counted above');
+  assert.ok(out.down.top > 0, 'scrolled down');
+  assert.match(out.down.up, /^↑ \d+ more$/, 'what scrolled away counted above');
 
   // to the bottom: nothing below; one up there at your move wears the dot
   await ctx.evaluate(`(sc => sc.scrollTop = sc.scrollHeight)(document.querySelector('#prScroll'))`);
@@ -243,7 +246,7 @@ export default async function (ctx) {
 
   await ctx.settle();
   out.bottom = await look();
-  a.match(out.bottom.up, /^↑ \d+ more •$/);
+  assert.match(out.bottom.up, /^↑ \d+ more •$/);
 
   // the copy mark next to an open PR's name is the mark's grey, not the state's green (its sheets are an .ic.st, as the
   // state's word is a .st)
@@ -251,8 +254,8 @@ export default async function (ctx) {
     `(c => [getComputedStyle(c.querySelector('.cp')).stroke, getComputedStyle(c).color, getComputedStyle(c.closest('.prrow').querySelector(':scope > .st')).color])(document.querySelector('#prScroll .prrow[data-state="open"] .prcopy'))`,
   );
 
-  a.equal(out.mark[0], out.mark[1], `the sheets in the mark's colour: ${out.mark}`);
-  a.notEqual(out.mark[0], out.mark[2], "not the state's");
+  assert.equal(out.mark[0], out.mark[1], `the sheets in the mark's colour: ${out.mark}`);
+  assert.notEqual(out.mark[0], out.mark[2], "not the state's");
 
   await ctx.shot(
     '2-bottom',
@@ -271,7 +274,7 @@ export default async function (ctx) {
   });
 
   out.redrawn = await look();
-  a.equal(out.redrawn.top, 60, 'the window kept its place');
+  assert.equal(out.redrawn.top, 60, 'the window kept its place');
 
   // the button: the timeline on its tab
   await ctx.evaluate(`document.querySelector('#prTl').click()`);

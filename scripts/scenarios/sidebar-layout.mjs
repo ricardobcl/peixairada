@@ -19,16 +19,25 @@ export const meta = { server: true, fixture: 'auto' };
 const GREEN = '#2e9e6a';
 
 // a colour's hue: oklch() as Chrome computes a relative colour, else rgb() or a color-mix()'s color(srgb …)
-const hueOf = c => {
-  const n = c.match(/[\d.]+/g).map(Number);
+const hueOf = color => {
+  const numbers = color.match(/[\d.]+/g).map(Number);
 
-  if (c.startsWith('oklch')) return n[2];
+  if (color.startsWith('oklch')) return numbers[2];
 
-  const [r, g, b] = n.map(v => v / 255);
-  const M = Math.max(r, g, b);
-  const d = M - Math.min(r, g, b);
+  const [red, green, blue] = numbers.map(channel => channel / 255);
+  const max = Math.max(red, green, blue);
+  const delta = max - Math.min(red, green, blue);
 
-  return d ? (60 * (M === r ? ((g - b) / d) % 6 : M === g ? (b - r) / d + 2 : (r - g) / d + 4) + 360) % 360 : 0;
+  return delta
+    ? (60 *
+        (max === red
+          ? ((green - blue) / delta) % 6
+          : max === green
+            ? (blue - red) / delta + 2
+            : (red - green) / delta + 4) +
+        360) %
+        360
+    : 0;
 };
 
 const read = ctx =>
@@ -55,8 +64,8 @@ export default async function (ctx) {
   const cwd = realpathSync(tmpDir('peix-sidebar-'));
 
   const sleeps = [0, 1].map(() => spawn('sleep', ['300'], { stdio: 'ignore' }));
-  const live = (i, extra = {}) => ({ pid: sleeps[i].pid, startedAt: now - 3600_000, ...extra });
-  const ago = s => new Date(now - s * 1000);
+  const live = (index, extra = {}) => ({ pid: sleeps[index].pid, startedAt: now - 3600_000, ...extra });
+  const ago = seconds => new Date(now - seconds * 1000);
 
   try {
     await ctx.server.api('api/config', {
@@ -167,9 +176,9 @@ export default async function (ctx) {
 
     // at the notch: the panels cut round the housing, nothing bordering the cut; the chat the board's own lay in a frame
     // (2026-11-01, square at the screen's corner before), its corner there concentric with the screen's
-    const N = await ctx.evaluate(`(w => ({ top: 32, left: w / 2 - 92.5, right: w / 2 + 92.5 }))(innerWidth)`);
+    const notch = await ctx.evaluate(`(w => ({ top: 32, left: w / 2 - 92.5, right: w / 2 + 92.5 }))(innerWidth)`);
 
-    await ctx.evaluate(`window.peixFill(true, ${JSON.stringify(N)})`);
+    await ctx.evaluate(`window.peixFill(true, ${JSON.stringify(notch)})`);
     await ctx.waitFor(`!!document.querySelector('#chat.ncutp > .ncut')`, { what: 'the chat cut round the housing' });
     await ctx.settle();
 
@@ -186,7 +195,7 @@ export default async function (ctx) {
     );
 
     await ctx.evaluate(
-      `document.body.insertAdjacentHTML('beforeend', '<i id="housing" style="position:fixed;z-index:99;top:0;left:${N.left}px;width:${N.right - N.left}px;height:${N.top}px;background:#000;border-radius:0 0 9px 9px"></i>')`,
+      `document.body.insertAdjacentHTML('beforeend', '<i id="housing" style="position:fixed;z-index:99;top:0;left:${notch.left}px;width:${notch.right - notch.left}px;height:${notch.top}px;background:#000;border-radius:0 0 9px 9px"></i>')`,
     );
 
     await ctx.shot('sidebar-notch');
@@ -205,14 +214,14 @@ export default async function (ctx) {
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] });
 
     // the open row and the tags
-    const W = '#slist > .card.working';
-    const R = '#slist > .card:not(.working, .asking)';
+    const WORKING_CARD = '#slist > .card.working';
+    const READY_CARD = '#slist > .card:not(.working, .asking)';
 
     out.rows =
       await ctx.evaluate(`(() => { const cs = (sel, pseudo) => getComputedStyle(document.querySelector(sel), pseudo);
-      return { readyRg: cs('${R} > .rg').display, workRing: cs('${W} > .rg', '::before').animationName,
-        dot: cs('${R} .top .repo', '::before').content, tag: [cs('${R} .top .repo').backgroundColor, cs('${R} .top .repo').paddingLeft], openTag: cs('${W} .top .repo').backgroundColor,
-        sel: cs('${W}').backgroundColor, selInk: cs('${W} .title').color, pix: cs('.gsep.lane.working > i').backgroundImage.includes('conic-gradient') }; })()`);
+      return { readyRg: cs('${READY_CARD} > .rg').display, workRing: cs('${WORKING_CARD} > .rg', '::before').animationName,
+        dot: cs('${READY_CARD} .top .repo', '::before').content, tag: [cs('${READY_CARD} .top .repo').backgroundColor, cs('${READY_CARD} .top .repo').paddingLeft], openTag: cs('${WORKING_CARD} .top .repo').backgroundColor,
+        sel: cs('${WORKING_CARD}').backgroundColor, selInk: cs('${WORKING_CARD} .title').color, pix: cs('.gsep.lane.working > i').backgroundImage.includes('conic-gradient') }; })()`);
 
     ctx.assert.deepEqual([out.rows.workRing, out.rows.readyRg], ['ring', 'none'], 'the ring, none on a ready row');
 
@@ -274,9 +283,9 @@ export default async function (ctx) {
 
     return out;
   } finally {
-    for (const s of sleeps) {
+    for (const child of sleeps) {
       try {
-        s.kill();
+        child.kill();
       } catch {}
     }
   }

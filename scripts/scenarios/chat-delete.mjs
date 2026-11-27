@@ -23,12 +23,12 @@ export default async function (ctx) {
 
   const made = makeFixture(
     ctx.fixture.dir,
-    ['Idle one', 'Asking one', 'Done one', 'By the menu', 'By three dots'].map((title, i) => ({
+    ['Idle one', 'Asking one', 'Done one', 'By the menu', 'By three dots'].map((title, index) => ({
       cwd,
       title,
       prompt: `words of ${title}`,
       reply: 'a reply',
-      at: new Date(at.getTime() - i * 60_000),
+      at: new Date(at.getTime() - index * 60_000),
     })),
   );
 
@@ -41,11 +41,11 @@ export default async function (ctx) {
   const session = id => ctx.peix(`session(${sid(id)})`);
 
   const move = async (id, modifiers = 0) => {
-    const c = await ctx.evaluate(
+    const point = await ctx.evaluate(
       `(r => ({ x: r.left + r.width / 2, y: r.bottom - 3 }))(${card(id)}.getBoundingClientRect())`,
     );
 
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: c.x, y: c.y, modifiers });
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: point.y, modifiers });
     await ctx.sleep(120);
     return ctx.evaluate(
       `(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(${card(id)}.querySelector('.act').getBoundingClientRect())`,
@@ -59,9 +59,16 @@ export default async function (ctx) {
       )
       .then(JSON.parse);
 
-  const altClick = async (x, y) => {
+  const altClick = async (pointerX, pointerY) => {
     for (const type of ['mousePressed', 'mouseReleased']) {
-      await ctx.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1, modifiers: 1 });
+      await ctx.send('Input.dispatchMouseEvent', {
+        type,
+        x: pointerX,
+        y: pointerY,
+        button: 'left',
+        clickCount: 1,
+        modifiers: 1,
+      });
     }
   };
 

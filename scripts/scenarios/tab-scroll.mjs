@@ -32,9 +32,13 @@ export default async function (ctx) {
   });
 
   const first = await ctx.evaluate(`window.peix.state().tab`);
-  const urls = Array.from({ length: 14 }, (_, i) => `https://github.com/acme/widgets-service-${i}/pull/${100 + i}`);
 
-  for (const u of urls) await ctx.evaluate(`window.peixPaneOpen(${JSON.stringify(first)}, ${JSON.stringify(u)})`);
+  const urls = Array.from(
+    { length: 14 },
+    (_, index) => `https://github.com/acme/widgets-service-${index}/pull/${100 + index}`,
+  );
+
+  for (const url of urls) await ctx.evaluate(`window.peixPaneOpen(${JSON.stringify(first)}, ${JSON.stringify(url)})`);
 
   // the box, and the tab in front: its width, where it is in the box, whether it is in sight whole
   const look = () =>
@@ -143,7 +147,7 @@ export default async function (ctx) {
   appendFileSync(
     two.file,
     replyLines({ id: two.id, cwd: two.cwd, text: 'the strip drawn again' })
-      .map(l => `${JSON.stringify(l)}\n`)
+      .map(line => `${JSON.stringify(line)}\n`)
       .join(''),
   );
 

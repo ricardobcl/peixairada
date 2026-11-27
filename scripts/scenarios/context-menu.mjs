@@ -126,7 +126,7 @@ export default async function (ctx) {
   );
 
   ctx.assert.ok(
-    out.launcher.some(t => /Rename it/.test(t)),
+    out.launcher.some(row => /Rename it/.test(row)),
     JSON.stringify(out.launcher),
   );
 

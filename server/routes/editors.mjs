@@ -4,24 +4,26 @@ import { ensureVsWeb } from '../vsweb.mjs';
 import { editorState, installZed } from '../zed.mjs';
 
 /** The editors: Zed installed, VS Code Web for the pane. */
-export async function editorRoutes(req, res, url, p) {
-  if (req.method === 'GET' && p === '/api/editors') return json(res, 200, editorState()); // whether Zed is on this Mac, and its install (2026-10-13)
+export async function editorRoutes(req, res, url, path) {
+  if (req.method === 'GET' && path === '/api/editors') return json(res, 200, editorState()); // whether Zed is on this Mac, and its install (2026-10-13)
 
-  if (req.method === 'POST' && p === '/api/editors/zed/install') {
+  if (req.method === 'POST' && path === '/api/editors/zed/install') {
     // Zed picked and not here: brew installs it
-    const r = installZed();
+    const result = installZed();
 
-    return r.error ? json(res, r.code, { error: r.error }) : json(res, r.zed.installing ? 202 : 200, r);
+    return result.error
+      ? json(res, result.code, { error: result.error })
+      : json(res, result.zed.installing ? 202 : 200, result);
   }
 
-  if (req.method === 'POST' && p === '/api/vscode-web') {
+  if (req.method === 'POST' && path === '/api/vscode-web') {
     // VS Code Web for the pane: start it if need be, say where it is and its token
-    const r = await ensureVsWeb();
+    const result = await ensureVsWeb();
 
     return json(
       res,
-      r.ok ? 200 : r.code,
-      r.ok ? { url: r.url, token: r.token, started: r.started } : { error: r.error },
+      result.ok ? 200 : result.code,
+      result.ok ? { url: result.url, token: result.token, started: result.started } : { error: result.error },
     );
   }
 

@@ -11,7 +11,10 @@ import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 
 const bare = (srv, path, opts = {}) =>
-  fetch(srv.url + path, opts).then(async r => ({ status: r.status, body: await r.json().catch(() => null) }));
+  fetch(srv.url + path, opts).then(async response => ({
+    status: response.status,
+    body: await response.json().catch(() => null),
+  }));
 
 const as = key => ({ headers: { 'x-peix-key': key } });
 
@@ -117,9 +120,9 @@ test(
         '…or a wrong one',
       );
 
-      const t = await srv.post('api/sessions/none/shell', {}); // no chat: a 404, past the key
+      const shell = await srv.post('api/sessions/none/shell', {}); // no chat: a 404, past the key
 
-      assert.equal(t.status, 404);
+      assert.equal(shell.status, 404);
     } finally {
       await srv.stop();
     }
@@ -134,12 +137,12 @@ test(
 
     try {
       const nonce = randomBytes(16).toString('hex');
-      const r = await fetch(`${srv.url}api/alive`, { headers: { 'x-peix-nonce': nonce } });
+      const response = await fetch(`${srv.url}api/alive`, { headers: { 'x-peix-nonce': nonce } });
 
-      assert.equal(r.status, 204, 'open, as the probe always was');
+      assert.equal(response.status, 204, 'open, as the probe always was');
 
       assert.equal(
-        r.headers.get('x-peix-proof'),
+        response.headers.get('x-peix-proof'),
         createHmac('sha256', srv.key).update(`peix-alive:${nonce}`).digest('hex'),
         "the proof only the key's holder can write",
       );
@@ -173,10 +176,10 @@ test(
       const opened = () =>
         existsSync(join(srv.dir, 'opened')) ? readFileSync(join(srv.dir, 'opened'), 'utf8').trim().split('\n') : [];
 
-      const r = await bare(srv, 'api/key/open', { method: 'POST' });
+      const response = await bare(srv, 'api/key/open', { method: 'POST' });
 
-      assert.equal(r.status, 202, "open to anyone: the key goes to this Mac's screen, not to whoever asked");
-      assert.equal(r.body.key, undefined);
+      assert.equal(response.status, 202, "open to anyone: the key goes to this Mac's screen, not to whoever asked");
+      assert.equal(response.body.key, undefined);
       await waitFor(() => opened().length === 1, { what: 'the tab "opened"' });
       const [, ticket] = opened()[0].match(new RegExp(`^${srv.url.replace(/[.]/g, '\\.')}#ticket=([\\w-]+)$`)) || [];
 
@@ -190,11 +193,11 @@ test(
 
       assert.equal((await bare(srv, 'api/key/open', { method: 'POST' })).status, 429, 'a second tab only after 10 s');
 
-      const claim = t =>
+      const claim = claimed =>
         bare(srv, 'api/key/claim', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ ticket: t }),
+          body: JSON.stringify({ ticket: claimed }),
         });
 
       assert.equal((await claim('made-up')).status, 403);
@@ -216,11 +219,11 @@ test(
       const old = srv.key;
       const held = await stream(`${srv.url}events?key=${old}`);
 
-      const r = await srv.post('api/key/new', {});
+      const response = await srv.post('api/key/new', {});
 
-      assert.equal(r.status, 200);
-      assert.notEqual(r.body.key, old);
-      assert.equal(r.body.key, srv.key, 'written to the file');
+      assert.equal(response.status, 200);
+      assert.notEqual(response.body.key, old);
+      assert.equal(response.body.key, srv.key, 'written to the file');
       assert.equal((await bare(srv, 'api/sessions', as(old))).body.key, 'wrong');
       await waitFor(() => held.over(), { what: 'the stream with the old key ended' });
     } finally {

@@ -54,8 +54,8 @@ const toggleRows = () => [
 
 /** What ⏎ does with the dialog: `stay` re-fills it (another picker), else it closes first and the action runs. */
 const actionRows = () => {
-  const s = state.sessions.get(state.current);
-  const of = s ? ` — ${s.title}` : '';
+  const session = state.sessions.get(state.current);
+  const of = session ? ` — ${session.title}` : '';
 
   return [
     fishing.until
@@ -71,8 +71,12 @@ const actionRows = () => {
     },
     { name: 'Search the chat list', hint: '⌥⌘F', fn: hotFind },
     ...filterList()
-      .filter(([k]) => prefs.listFilter !== k)
-      .map(([k, f]) => ({ name: `Show only: ${f.name.toLowerCase()}`, sub: ` — ${f.tip}`, fn: () => setFilter(k) })),
+      .filter(([key]) => prefs.listFilter !== key)
+      .map(([key, filter]) => ({
+        name: `Show only: ${filter.name.toLowerCase()}`,
+        sub: ` — ${filter.tip}`,
+        fn: () => setFilter(key),
+      })),
     ...(prefs.listFilter
       ? [
           {
@@ -95,107 +99,111 @@ const actionRows = () => {
     { name: 'About peixAIrada', fn: aboutOpen },
     { name: 'Zé, the Bruce Lee of Barcelos — a game', hint: '⌥⌘Z', fn: zeOpen },
     ...(state.chat.on ? [{ name: 'The chat', sub: ` — ${state.chat.repo}`, fn: () => chatOpen() }] : []),
-    ...(!s
+    ...(!session
       ? []
       : [
           { name: 'Its Claude, in its drawer', sub: of, hint: '⌥⌘C', fn: hotClaude },
           { name: `A ${shName()} in its folder`, sub: of, hint: '⌥⌘T', fn: hotShell },
-          ...(shellLive(s)
-            ? [{ name: `Another ${shName()} beside it`, sub: of, hint: '⌘T', fn: () => startShell(s, true) }]
+          ...(shellLive(session)
+            ? [{ name: `Another ${shName()} beside it`, sub: of, hint: '⌘T', fn: () => startShell(session, true) }]
             : []),
-          ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
-          ...(prefs.autoTile && isSplit(s)
+          ...(session.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
+          ...(prefs.autoTile && isSplit(session)
             ? [{ name: 'Tidy the tiles', sub: ' — Claude’s on the left, the bigger ones left and up', fn: hotTidy }]
             : []),
           { name: 'Its timeline — the chat and its PRs in one order', sub: of, hint: '⌥⌘J', fn: hotTimeline },
           ...(inApp || onVim() ? [{ name: `Its folder in ${inEdName()}`, sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
-          ...(s.cwd
+          ...(session.cwd
             ? [{ name: `Its folder in ${editor().name} — its own window`, sub: of, hint: '⌥⌘V', fn: hotEditorApp }]
             : []),
-          ...(canTick(s)
+          ...(canTick(session)
             ? [
                 {
-                  name: watchEnds(s) ? `Tick it done — ends its watch: ${watchEnds(s)}` : 'Tick it done',
+                  name: watchEnds(session) ? `Tick it done — ends its watch: ${watchEnds(session)}` : 'Tick it done',
                   sub: of,
-                  fn: () => tickDone(s.id, true, $('#shead')),
+                  fn: () => tickDone(session.id, true, $('#shead')),
                 },
               ]
             : []),
-          ...(canTick(s) && s.prs?.length && !s.forGood
+          ...(canTick(session) && session.prs?.length && !session.forGood
             ? [
                 {
                   name: 'Done for good — its PRs forgotten',
                   sub: of,
-                  fn: () => tickDone(s.id, true, $('#shead'), null, true),
+                  fn: () => tickDone(session.id, true, $('#shead'), null, true),
                 },
               ]
             : []),
-          s.removed
-            ? { name: 'Put it back on the board', sub: of, fn: () => restoreChat(s.id) }
+          session.removed
+            ? { name: 'Put it back on the board', sub: of, fn: () => restoreChat(session.id) }
             : {
                 name: 'Delete it from the board — its claude ends, the transcript stays',
                 sub: of,
-                fn: () => removeChat(s.id, $('#shead')),
+                fn: () => removeChat(session.id, $('#shead')),
               },
           {
-            name: s.muted ? 'Unmute it' : 'Mute it — no banner, sound or count, questions too',
+            name: session.muted ? 'Unmute it' : 'Mute it — no banner, sound or count, questions too',
             sub: of,
-            fn: () => setMuted(s.id, !s.muted),
+            fn: () => setMuted(session.id, !session.muted),
           },
           ...(prioOn()
             ? [
                 {
-                  name: inPrio(s) ? 'Unpin it' : 'Pin it — the section up top, in your order',
+                  name: inPrio(session) ? 'Unpin it' : 'Pin it — the section up top, in your order',
                   sub: of,
                   hint: '⌥⌘I',
-                  fn: () => prioPut(s, !inPrio(s), null, $('#shead')),
+                  fn: () => prioPut(session, !inPrio(session), null, $('#shead')),
                 },
               ]
             : []), // 2026-11-24, round XXX's A4
-          ...(asking(s)
+          ...(asking(session)
             ? []
             : [
-                asleep(s)
+                asleep(session)
                   ? {
                       name: 'Wake it now',
-                      sub: ` — snoozed ${snoozeSay(s.snooze)}`,
-                      fn: () => snoozeIt(s, { undo: true }, $('#shead')),
+                      sub: ` — snoozed ${snoozeSay(session.snooze)}`,
+                      fn: () => snoozeIt(session, { undo: true }, $('#shead')),
                     }
                   : {
                       name: 'Snooze it…',
                       sub: ' — till a time, or till something happens',
                       hint: '⌥⌘S',
-                      fn: () => setTimeout(() => snoozeMenu(s), 0),
+                      fn: () => setTimeout(() => snoozeMenu(session), 0),
                     },
               ]),
           // what was the pointer's alone (2026-10-12): a rename, a PR taken off, a tab moved across, a colour let go
-          { name: 'Rename it', sub: of, fn: () => editTitle(s) },
-          ...(!foldFromWhy(s)
-            ? [{ name: 'Fold it into another chat…', sub: of, fn: () => foldPick(s, 'launch'), stay: true }]
+          { name: 'Rename it', sub: of, fn: () => editTitle(session) },
+          ...(!foldFromWhy(session)
+            ? [{ name: 'Fold it into another chat…', sub: of, fn: () => foldPick(session, 'launch'), stay: true }]
             : []), // 2026-10-31
-          ...(s.file ? [{ name: 'Branch it — a copy in a drawer of its own', sub: of, fn: () => branchChat(s) }] : []),
-          ...(s.prs || []).filter(shownHere).map(pr => ({
+          ...(session.file
+            ? [{ name: 'Branch it — a copy in a drawer of its own', sub: of, fn: () => branchChat(session) }]
+            : []),
+          ...(session.prs || []).filter(shownHere).map(pr => ({
             name: `Take ${pr.label.replace(/^.*?#/, '#')} off it`,
             sub: ` — ${pr.title || pr.label}`,
-            fn: () => unlinkUrl(s, pr.url),
+            fn: () => unlinkUrl(session, pr.url),
           })),
-          ...(isSplit(s) ? [{ name: 'Move this tab to the other half', sub: of, fn: () => moveFocused(s) }] : []),
-          ...(s.cwd && ownColor(s.cwd)
+          ...(isSplit(session)
+            ? [{ name: 'Move this tab to the other half', sub: of, fn: () => moveFocused(session) }]
+            : []),
+          ...(session.cwd && ownColor(session.cwd)
             ? [
                 {
                   name: 'Let go of its project’s colour',
-                  sub: ` — ${s.project}`,
-                  fn: () => clearColor(colorKey(s.cwd)),
+                  sub: ` — ${session.project}`,
+                  fn: () => clearColor(colorKey(session.cwd)),
                 },
               ]
             : []),
-          ...(s.cwd
+          ...(session.cwd
             ? [
                 {
                   name: 'Copy its folder’s path',
-                  sub: ` — ${homePath(s.cwd)}`,
+                  sub: ` — ${homePath(session.cwd)}`,
                   fn: () =>
-                    navigator.clipboard?.writeText(s.cwd).then(
+                    navigator.clipboard?.writeText(session.cwd).then(
                       () => note($('#shead'), 'Path copied'),
                       () => {},
                     ),
@@ -203,7 +211,7 @@ const actionRows = () => {
               ]
             : []),
         ]),
-  ].map(a => ({ kind: 'action', id: `ac:${a.name}`, ...a }));
+  ].map(action => ({ kind: 'action', id: `ac:${action.name}`, ...action }));
 };
 
 const LAUNCH_MENU = () => {
@@ -230,15 +238,17 @@ const LAUNCH_MENU = () => {
     { name: 'Overview', hint: '⌥⌘A', icon: '▦', go: ovOpen, leaf: true },
     { name: 'Space', hint: '⌥⌘X', icon: '◎', go: spToggle, leaf: true },
     { name: 'About peixAIrada', icon: '·', go: aboutOpen, leaf: true },
-  ].map(m => ({ kind: 'menu', id: `mn:${m.name}`, ...m }));
+  ].map(item => ({ kind: 'menu', id: `mn:${item.name}`, ...item }));
 };
 
 /** Every chat's PRs, one row each — the most recent chat to mention it is where it opens. */
 function allPrs() {
   const seen = new Map();
 
-  for (const s of [...state.sessions.values()].filter(visible).sort(byWord)) {
-    for (const pr of s.prs || []) if (!seen.has(pr.url)) seen.set(pr.url, { ...pr, chatId: s.id, chat: s.title });
+  for (const session of [...state.sessions.values()].filter(visible).sort(byWord)) {
+    for (const pr of session.prs || []) {
+      if (!seen.has(pr.url)) seen.set(pr.url, { ...pr, chatId: session.id, chat: session.title });
+    }
   }
 
   return [...seen.values()];
@@ -247,8 +257,10 @@ function allPrs() {
 function allTickets() {
   const seen = new Map();
 
-  for (const s of [...state.sessions.values()].filter(visible).sort(byWord)) {
-    for (const t of s.tickets || []) if (!seen.has(t.key)) seen.set(t.key, { ...t, chatId: s.id, chat: s.title });
+  for (const session of [...state.sessions.values()].filter(visible).sort(byWord)) {
+    for (const ticket of session.tickets || []) {
+      if (!seen.has(ticket.key)) seen.set(ticket.key, { ...ticket, chatId: session.id, chat: session.title });
+    }
   }
 
   return [...seen.values()];
@@ -276,15 +288,17 @@ function typedPage(raw) {
 }
 
 /** The open chat's own pages that are not on a tab of it: its PRs, its tickets, its repository on GitHub. */
-function chatPages(s) {
-  if (!s) return [];
+function chatPages(session) {
+  if (!session) return [];
 
-  const open = u => !!pageTab(s, u);
-  const repo = s.cwd && state.repos[s.cwd]; // on a tab: a tab still at it
+  const open = url => !!pageTab(session, url);
+  const repo = session.cwd && state.repos[session.cwd]; // on a tab: a tab still at it
 
   return [
-    ...(s.prs || []).filter(pr => !open(pr.url)).map(pr => ({ kind: 'pr', id: `pr:${pr.url}`, pr })),
-    ...(s.tickets || []).filter(t => t.url && !open(t.url)).map(t => ({ kind: 'ticket', id: `tk:${t.key}`, t })),
+    ...(session.prs || []).filter(pr => !open(pr.url)).map(pr => ({ kind: 'pr', id: `pr:${pr.url}`, pr })),
+    ...(session.tickets || [])
+      .filter(ticket => ticket.url && !open(ticket.url))
+      .map(ticket => ({ kind: 'ticket', id: `tk:${ticket.key}`, t: ticket })),
     ...(repo && !open(repo)
       ? [
           {
@@ -312,38 +326,44 @@ const LAUNCH_SECTIONS = {
  *  them under a prefix. */
 function launchRows(raw) {
   const pre = /^[>#@!]/.exec(raw)?.[0] || '';
-  const q = raw.slice(pre.length).trim().toLowerCase();
+  const query = raw.slice(pre.length).trim().toLowerCase();
 
   if (!raw.trim()) return LAUNCH_MENU();
 
   const best = (items, fields) => {
     const hits = [];
 
-    items.forEach((x, i) => {
-      const m = q ? fuzzy(fields(x), q) : { score: 0 };
+    items.forEach((item, index) => {
+      const match = query ? fuzzy(fields(item), query) : { score: 0 };
 
-      if (m) hits.push([m.score, i, x]);
+      if (match) hits.push([match.score, index, item]);
     });
 
     return hits
-      .sort((a, b) => b[0] - a[0] || a[1] - b[1])
-      .map(h => h[2])
+      .sort((left, right) => right[0] - left[0] || left[1] - right[1])
+      .map(hit => hit[2])
       .slice(0, pre ? 400 : 6);
   };
 
-  const want = k =>
-    !pre || { '>': ['action', 'toggle'], '#': ['pr'], '@': ['project'], '!': ['ticket'] }[pre].includes(k);
+  const want = kind =>
+    !pre || { '>': ['action', 'toggle'], '#': ['pr'], '@': ['project'], '!': ['ticket'] }[pre].includes(kind);
 
   const chats = !want('chat')
     ? []
     : best(
-        [...state.sessions.values()].filter(visible).sort((a, b) => RANK[rankOf(a)] - RANK[rankOf(b)] || byWord(a, b)),
+        [...state.sessions.values()]
+          .filter(visible)
+          .sort((left, right) => RANK[rankOf(left)] - RANK[rankOf(right)] || byWord(left, right)),
         chatFields,
-      ).map(s => ({ kind: 'chat', id: s.id, s }));
+      ).map(session => ({ kind: 'chat', id: session.id, s: session }));
 
   const projects = !want('project')
     ? []
-    : best(projectList(), p => [p.name]).map(p => ({ kind: 'project', id: `pj:${p.key}`, p }));
+    : best(projectList(), project => [project.name]).map(project => ({
+        kind: 'project',
+        id: `pj:${project.key}`,
+        p: project,
+      }));
 
   const prs = !want('pr')
     ? []
@@ -355,15 +375,17 @@ function launchRows(raw) {
 
   const tickets = !want('ticket')
     ? []
-    : best(allTickets(), t => [t.key, t.summary || '', t.chat || '']).map(t => ({
+    : best(allTickets(), ticket => [ticket.key, ticket.summary || '', ticket.chat || '']).map(ticket => ({
         kind: 'ticket',
-        id: `tk:${t.key}`,
-        t,
+        id: `tk:${ticket.key}`,
+        t: ticket,
       }));
 
-  const agents = !want('action') || !q ? [] : best(agentActs(), a => [agentShort(a.agent.name), a.agent.name]); // by an agent's name (2026-11-06)
-  const actions = !want('action') ? [] : best(actionRows(), a => [a.name, a.sub || '']);
-  const toggles = !want('toggle') ? [] : best(toggleRows(), t => [t.name]);
+  const agents =
+    !want('action') || !query ? [] : best(agentActs(), action => [agentShort(action.agent.name), action.agent.name]); // by an agent's name (2026-11-06)
+
+  const actions = !want('action') ? [] : best(actionRows(), action => [action.name, action.sub || '']);
+  const toggles = !want('toggle') ? [] : best(toggleRows(), toggle => [toggle.name]);
 
   return [...chats, ...projects, ...prs, ...tickets, ...agents, ...actions, ...toggles];
 }
@@ -371,43 +393,43 @@ function launchRows(raw) {
 const swHtml = on => `<span class="lsw${on ? ' on' : ''}"><i></i></span>`;
 
 /** One launcher row; a section's first carries its head — the launcher's, not a new tab's list of pages. */
-function launchRow(x, i, sel, mark, heads = pick.mode === 'launch') {
+function launchRow(item, index, sel, mark, heads = pick.mode === 'launch') {
   const head =
-    heads && LAUNCH_SECTIONS[x.kind] && pick.list[i - 1]?.kind !== x.kind
-      ? `<div class="pkhd">${LAUNCH_SECTIONS[x.kind]}</div>`
+    heads && LAUNCH_SECTIONS[item.kind] && pick.list[index - 1]?.kind !== item.kind
+      ? `<div class="pkhd">${LAUNCH_SECTIONS[item.kind]}</div>`
       : '';
 
-  const r = (cls, g, n, num, t, style = '') =>
-    `${head}<div class="pkrow lx ${cls}${sel(i)}" data-i="${i}"${style}><span class="g">${g}</span><span class="n">${n}</span><span class="num">${num}</span><span class="t">${t}</span></div>`;
+  const row = (cls, glyph, label, num, tail, style = '') =>
+    `${head}<div class="pkrow lx ${cls}${sel(index)}" data-i="${index}"${style}><span class="g">${glyph}</span><span class="n">${label}</span><span class="num">${num}</span><span class="t">${tail}</span></div>`;
 
-  if (x.kind === 'chat') {
-    const s = x.s;
+  if (item.kind === 'chat') {
+    const session = item.s;
 
-    return r(
+    return row(
       'chat',
       '<span class="sq"></span>',
-      `${ticks(mark(s.title))}${s.id === state.current ? '<span class="cur">current</span>' : ''}`,
-      `${projIcon(s.project)}${mark(s.project)}`,
-      `<span class="st" data-state="${chatState(s)}">${chatState(s)}</span>`,
-      ` style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"`,
+      `${ticks(mark(session.title))}${session.id === state.current ? '<span class="cur">current</span>' : ''}`,
+      `${projIcon(session.project)}${mark(session.project)}`,
+      `<span class="st" data-state="${chatState(session)}">${chatState(session)}</span>`,
+      ` style="${repoStyle(repoColor(session.cwd))}" title="${esc(session.cwd || '')}"`,
     );
   }
 
-  if (x.kind === 'project') {
-    return r(
+  if (item.kind === 'project') {
+    return row(
       'project',
       '<span class="sq"></span>',
-      `${projIcon(x.p.name)}${mark(x.p.name)}${x.p.key === prefs.project ? '<span class="cur">current</span>' : ''}`,
+      `${projIcon(item.p.name)}${mark(item.p.name)}${item.p.key === prefs.project ? '<span class="cur">current</span>' : ''}`,
       '',
       '',
-      ` style="${repoStyle(projColor(x.p))}"`,
+      ` style="${repoStyle(projColor(item.p))}"`,
     );
   }
 
-  if (x.kind === 'pr') {
-    const pr = x.pr;
+  if (item.kind === 'pr') {
+    const pr = item.pr;
 
-    return r(
+    return row(
       'pr',
       `<span class="lpr" data-state="${esc(pr.state || '')}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`,
       `${pr.title ? mark(pr.title) : esc(pr.label)}<span class="cur">${esc(pr.label.replace(/#\d+$/, ''))}</span>`,
@@ -417,76 +439,95 @@ function launchRow(x, i, sel, mark, heads = pick.mode === 'launch') {
     );
   }
 
-  if (x.kind === 'ticket') {
-    const t = x.t;
+  if (item.kind === 'ticket') {
+    const ticket = item.t;
 
-    return r(
+    return row(
       'ticket',
-      `<span class="ltk" data-cat="${esc(t.cat)}">${esc(t.key)}</span>`,
-      mark(t.summary || t.key),
-      esc(t.chat || ''),
-      `<span class="st">${esc((t.status || '').toLowerCase())}</span>`,
-      ` title="${esc(t.url)}"`,
+      `<span class="ltk" data-cat="${esc(ticket.cat)}">${esc(ticket.key)}</span>`,
+      mark(ticket.summary || ticket.key),
+      esc(ticket.chat || ''),
+      `<span class="st">${esc((ticket.status || '').toLowerCase())}</span>`,
+      ` title="${esc(ticket.url)}"`,
     );
   }
 
-  if (x.kind === 'action') {
-    return r(
+  if (item.kind === 'action') {
+    return row(
       'action',
       '<span class="ac">&gt;</span>',
-      `${mark(x.name)}${x.sub ? `<span class="cur">${esc(x.sub)}</span>` : ''}`,
-      x.hint ? `<kbd>${esc(x.hint)}</kbd>` : '',
+      `${mark(item.name)}${item.sub ? `<span class="cur">${esc(item.sub)}</span>` : ''}`,
+      item.hint ? `<kbd>${esc(item.hint)}</kbd>` : '',
       '',
     );
   }
 
-  if (x.kind === 'toggle') {
-    return r('toggle', '<span class="ac">⏻</span>', mark(x.name), x.hint ? esc(x.hint) : '', swHtml(x.on()));
+  if (item.kind === 'toggle') {
+    return row(
+      'toggle',
+      '<span class="ac">⏻</span>',
+      mark(item.name),
+      item.hint ? esc(item.hint) : '',
+      swHtml(item.on()),
+    );
   }
 
-  if (x.kind === 'url') {
-    return r('url', ICON.globe, x.id === 'url:typed' ? esc(x.name) : mark(x.name), '', '', ` title="${esc(x.url)}"`);
+  if (item.kind === 'url') {
+    return row(
+      'url',
+      ICON.globe,
+      item.id === 'url:typed' ? esc(item.name) : mark(item.name),
+      '',
+      '',
+      ` title="${esc(item.url)}"`,
+    );
   } // a new tab's: a page
 
-  return r('menu', x.icon || '', mark(x.name), x.hint ? `<kbd>${esc(x.hint)}</kbd>` : '', x.leaf ? '' : '›'); // a menu row
+  return row(
+    'menu',
+    item.icon || '',
+    mark(item.name),
+    item.hint ? `<kbd>${esc(item.hint)}</kbd>` : '',
+    item.leaf ? '' : '›',
+  ); // a menu row
 }
 
-function launchChoose(x) {
+function launchChoose(item) {
   const dlg = $('#pick');
 
-  if (!x) return dlg.close();
+  if (!item) return dlg.close();
 
-  if (x.kind === 'toggle') {
-    return void Promise.resolve(x.flip()).finally(() => {
+  if (item.kind === 'toggle') {
+    return void Promise.resolve(item.flip()).finally(() => {
       if (dlg.open) pickRender(true);
     });
   }
 
-  if (x.kind === 'menu') {
-    if (x.leaf) dlg.close();
-    return x.go();
+  if (item.kind === 'menu') {
+    if (item.leaf) dlg.close();
+    return item.go();
   }
 
-  if (x.kind === 'action' && x.stay) return x.fn();
+  if (item.kind === 'action' && item.stay) return item.fn();
   dlg.close();
-  if (x.kind === 'chat') return openSession(x.id, { locate: true });
-  if (x.kind === 'project') return selectProject(x.p.key);
+  if (item.kind === 'chat') return openSession(item.id, { locate: true });
+  if (item.kind === 'project') return selectProject(item.p.key);
 
   // the page once its chat is in, and only if that chat is still the one open (2026-10-14): a late answer opened it
   // over whichever chat was open by then
-  if (x.kind === 'pr') {
-    return openSession(x.pr.chatId, { locate: true }).then(() => {
-      if (state.current === x.pr.chatId) showPr(x.pr.url);
+  if (item.kind === 'pr') {
+    return openSession(item.pr.chatId, { locate: true }).then(() => {
+      if (state.current === item.pr.chatId) showPr(item.pr.url);
     });
   }
 
-  if (x.kind === 'ticket') {
-    return openSession(x.t.chatId, { locate: true }).then(() => {
-      if (state.current === x.t.chatId) openExternal(x.t.url, { s: state.sessions.get(x.t.chatId) });
+  if (item.kind === 'ticket') {
+    return openSession(item.t.chatId, { locate: true }).then(() => {
+      if (state.current === item.t.chatId) openExternal(item.t.url, { s: state.sessions.get(item.t.chatId) });
     });
   }
 
-  if (x.kind === 'action') return x.fn();
+  if (item.kind === 'action') return item.fn();
 }
 
 // ?: the sheet of every key — Omarchy's Super+K — from anywhere but a box or a terminal, or the launcher's Keys. The
@@ -552,11 +593,11 @@ const KEYS = [
 ];
 
 const keysHtml = (rows, row) =>
-  [...new Set(rows.map(k => k[1]))]
+  [...new Set(rows.map(entry => entry[1]))]
     .map(
-      g =>
-        `<span class="kh">${esc(g)}</span>${rows
-          .filter(k => k[1] === g)
+      group =>
+        `<span class="kh">${esc(group)}</span>${rows
+          .filter(entry => entry[1] === group)
           .map(row)
           .join('')}`,
     )
@@ -571,11 +612,11 @@ function keysOpen() {
   if (dlg.open) return;
   if (inApp) post({ type: 'focus' });
 
-  $('#ksbody').innerHTML = keysHtml(KEYS, ([k, , d, more, , id]) => {
-    const n = keyNotes[id] || {};
-    const tip = n.title || more;
+  $('#ksbody').innerHTML = keysHtml(KEYS, ([press, , does, more, , id]) => {
+    const keyNote = keyNotes[id] || {};
+    const tip = keyNote.title || more;
 
-    return `<div class="kr"><kbd>${k}</kbd><span>${n.html || d}${tip ? `<i>${esc(tip)}</i>` : ''}</span></div>`;
+    return `<div class="kr"><kbd>${press}</kbd><span>${keyNote.html || does}${tip ? `<i>${esc(tip)}</i>` : ''}</span></div>`;
   }).replace(/<span class="kh">/g, '<span class="kh ksh">');
 
   $('#ksq').value = '';
@@ -587,41 +628,44 @@ function keysOpen() {
 
 function ksFilter() {
   const words = $('#ksq').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  let n = 0; // every word somewhere in the row: a sheet this long matches anything fuzzily
+  let shown = 0; // every word somewhere in the row: a sheet this long matches anything fuzzily
 
   let head = null;
   let any = false; // a group's head stands while any of its rows does (2026-10-12)
 
-  for (const r of $('#ksbody').children) {
-    if (r.classList.contains('ksh')) {
+  for (const row of $('#ksbody').children) {
+    if (row.classList.contains('ksh')) {
       if (head) head.hidden = !any;
-      head = r;
+      head = row;
       any = false;
       continue;
     }
 
-    const t = r.textContent.toLowerCase();
-    const on = words.every(w => t.includes(w));
+    const text = row.textContent.toLowerCase();
+    const on = words.every(word => text.includes(word));
 
-    r.hidden = !on;
-    n += on;
+    row.hidden = !on;
+    shown += on;
     any ||= on;
   }
 
   if (head) head.hidden = !any;
-  $('#ksnone').hidden = !!n;
+  $('#ksnone').hidden = !!shown;
 }
 
 $('#ksq').addEventListener('input', ksFilter);
 
-$('#keysheet').addEventListener('click', e => {
-  if (e.target === e.currentTarget) e.currentTarget.close();
+$('#keysheet').addEventListener('click', event => {
+  if (event.target === event.currentTarget) event.currentTarget.close();
 });
 
-document.addEventListener('keydown', e => {
-  if (e.key !== '?' || e.metaKey || e.ctrlKey || e.altKey || document.querySelector('dialog[open]')) return;
-  if (e.target.closest?.('input, textarea, select, [contenteditable], .tbody')) return;
-  e.preventDefault();
+document.addEventListener('keydown', event => {
+  if (event.key !== '?' || event.metaKey || event.ctrlKey || event.altKey || document.querySelector('dialog[open]')) {
+    return;
+  }
+
+  if (event.target.closest?.('input, textarea, select, [contenteditable], .tbody')) return;
+  event.preventDefault();
   keysOpen();
 });
 
@@ -785,28 +829,28 @@ const runHotkey = (code, mods = 'altcmd') => {
 
 document.addEventListener(
   'keydown',
-  e => {
-    if (!e.metaKey || (e.ctrlKey && e.shiftKey)) return;
+  event => {
+    if (!event.metaKey || (event.ctrlKey && event.shiftKey)) return;
 
-    const mods = e.ctrlKey
-      ? e.altKey
+    const mods = event.ctrlKey
+      ? event.altKey
         ? 'ctrlalt'
         : 'ctrlcmd'
-      : e.shiftKey
-        ? e.altKey
+      : event.shiftKey
+        ? event.altKey
           ? 'shift'
           : 'cmdshift'
-        : e.altKey
+        : event.altKey
           ? 'altcmd'
           : 'cmd';
 
-    if (!KEYMAPS[mods][e.code] || !keyLive(e.code, mods)) return;
-    e.stopPropagation();
-    if (e.repeat && !e.code.startsWith('Arrow')) return e.preventDefault(); // a key held down is one press — the arrows walk on
+    if (!KEYMAPS[mods][event.code] || !keyLive(event.code, mods)) return;
+    event.stopPropagation();
+    if (event.repeat && !event.code.startsWith('Arrow')) return event.preventDefault(); // a key held down is one press — the arrows walk on
     // ⌘W the board did not take — one half, on the chat's tab, nothing up — is left alone (2026-10-14): in the app the
     // web view hands an unprevented key equivalent on to the Window menu, whose Close asks again and closes the window
     // (closeHalfOrWindow); prevented, it was spent and the window stayed
-    if (runHotkey(e.code, mods) !== false || mods !== 'cmd' || e.code !== 'KeyW') e.preventDefault();
+    if (runHotkey(event.code, mods) !== false || mods !== 'cmd' || event.code !== 'KeyW') event.preventDefault();
   },
   true,
 );
@@ -848,15 +892,15 @@ function fillHint() {
   savePrefs();
   $('#fillHint')?.remove();
 
-  const n = state.notch;
+  const notch = state.notch;
   const head = $('#shead').getBoundingClientRect();
   const el = document.createElement('div');
 
   el.id = 'fillHint';
   el.setAttribute('role', 'status');
-  el.innerHTML = `<b>Full screen</b>${n ? ', up to the notch' : ''} · <kbd>⌃⌘F</kbd> leaves it, or the green light after a hold at the top edge`; // beside a housing too (2026-11-01)
-  el.style.left = `${n ? (n.left + n.right) / 2 : innerWidth / 2}px`;
-  el.style.top = `${Math.round(Math.max(head.bottom, n?.top || 0) + 10)}px`;
+  el.innerHTML = `<b>Full screen</b>${notch ? ', up to the notch' : ''} · <kbd>⌃⌘F</kbd> leaves it, or the green light after a hold at the top edge`; // beside a housing too (2026-11-01)
+  el.style.left = `${notch ? (notch.left + notch.right) / 2 : innerWidth / 2}px`;
+  el.style.top = `${Math.round(Math.max(head.bottom, notch?.top || 0) + 10)}px`;
   document.body.append(el);
 
   setTimeout(() => {
@@ -870,13 +914,13 @@ function fillHint() {
 const TV_HINTS = 3;
 const TV_HINT_MS = 6000;
 
-function tvHint(s) {
+function tvHint(session) {
   if (
     prefs.tvSeen ||
     (prefs.tvHints || 0) >= TV_HINTS ||
     tvHint.done ||
-    !(s.prs || []).length ||
-    timelineOpen.has(s.id)
+    !(session.prs || []).length ||
+    timelineOpen.has(session.id)
   ) {
     return;
   }
@@ -884,7 +928,7 @@ function tvHint(s) {
   tvHint.done = true;
 
   setTimeout(() => {
-    if (state.current !== s.id || prefs.tvSeen || document.querySelector('dialog[open]')) {
+    if (state.current !== session.id || prefs.tvSeen || document.querySelector('dialog[open]')) {
       tvHint.done = false;
       return;
     }
@@ -916,55 +960,60 @@ const noChat = () => note($('#shead'), 'Open a chat first');
 // runs here, ⌥⌘T on a zsh, ⌥⌘G on a page at the chat's PR (its repo with none: a page followed elsewhere is not what ⌥⌘G
 // brings up), ⌥⌘E on the editor, ⌥⌘D on the changes; with one half, what it always did.
 function zoomAgain(on) {
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  return !!(s && on(tabOf(s), s) && toggleZoom(s));
+  return !!(session && on(tabOf(session), session) && toggleZoom(session));
 }
 
 function hotClaudeKey() {
-  return zoomAgain((k, s) => k === 'chat' && termLive(s)) || hotClaude();
+  return zoomAgain((tab, session) => tab === 'chat' && termLive(session)) || hotClaude();
 }
 
 function hotShellKey() {
-  return zoomAgain((k, s) => isShellTab(k) && !isVimTab(s, k)) || hotShell();
+  return zoomAgain((tab, session) => isShellTab(tab) && !isVimTab(session, tab)) || hotShell();
 }
 
-const ghPages = s =>
-  s.prs?.length ? s.prs.map(pr => pr.url) : s.cwd && state.repos[s.cwd] ? [state.repos[s.cwd]] : []; // what ⌥⌘G opens
+const ghPages = session =>
+  session.prs?.length
+    ? session.prs.map(pr => pr.url)
+    : session.cwd && state.repos[session.cwd]
+      ? [state.repos[session.cwd]]
+      : []; // what ⌥⌘G opens
 
 // With several PRs (2026-10-16), ⌥⌘G again from one of them is their picker, the next one selected — ⏎ goes there, and
 // ⌥⌘G once more (prPickAgain) fills the column: the other PRs were a mouse's two clicks away while it zoomed at once.
-const atPrOf = (s, k) => (isPageTab(k) ? (s.prs || []).find(pr => atPage(paneUrl(k), pr.url)) || null : null);
+const atPrOf = (session, tab) =>
+  isPageTab(tab) ? (session.prs || []).find(pr => atPage(paneUrl(tab), pr.url)) || null : null;
 
 function hotGhKey() {
-  const s = state.sessions.get(state.current);
-  const at = s && s.prs?.length > 1 && atPrOf(s, tabOf(s));
+  const session = state.sessions.get(state.current);
+  const at = session && session.prs?.length > 1 && atPrOf(session, tabOf(session));
 
   if (at) {
     return pickOpen('pr', {
       at: at.url,
-      sid: s.id,
-      zoom: isSplit(s) ? (zoomed.get(s.id) === focusG ? 'back' : 'fill') : null,
+      sid: session.id,
+      zoom: isSplit(session) ? (zoomed.get(session.id) === focusG ? 'back' : 'fill') : null,
     });
   }
 
-  return zoomAgain((k, s) => isPageTab(k) && ghPages(s).some(u => atPage(paneUrl(k), u))) || hotGh();
+  return zoomAgain((tab, chat) => isPageTab(tab) && ghPages(chat).some(url => atPage(paneUrl(tab), url))) || hotGh();
 }
 
 /** ⌥⌘G with its picker up, opened from a PR's page: the picker goes, and that page's half fills the column — or gives it back. */
 function prPickAgain() {
-  const s = state.sessions.get(pick.ctx.sid);
+  const session = state.sessions.get(pick.ctx.sid);
 
   $('#pick').close();
-  if (s && s.id === state.current) toggleZoom(s);
+  if (session && session.id === state.current) toggleZoom(session);
 }
 
 function hotVsCodeKey() {
-  return zoomAgain((k, s) => /^ide:/.test(k || '') || isVimTab(s, k)) || hotVsCode();
+  return zoomAgain((tab, session) => /^ide:/.test(tab || '') || isVimTab(session, tab)) || hotVsCode();
 }
 
 function hotDiffKey() {
-  return zoomAgain(k => k === 'changes') || hotDiff();
+  return zoomAgain(tab => tab === 'changes') || hotDiff();
 }
 
 /** ⌥⌘R (2026-10-13; ⌘R's before, which is the page's in the pane now): the board, reloaded where it is. */
@@ -977,15 +1026,15 @@ const focusBoard = () => {
 }; // the key may have come from the pane: the board needs the keyboard back
 
 function hotClaude() {
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (!s) return noChat();
+  if (!session) return noChat();
   const tb = $('#termBtn');
 
   if (!tb) return;
   if (tb.disabled) return note(seen(tb), tb.title, true); // live somewhere it cannot be attached from — the tooltip says where
   focusBoard();
-  termAction(s);
+  termAction(session);
 }
 
 // ⌥⌘O (2026-09-20):
@@ -1004,12 +1053,12 @@ function hotOracle() {
     );
   }
 
-  const p = projectList().find(x => x.name === name && x.cwds.length);
+  const project = projectList().find(candidate => candidate.name === name && candidate.cwds.length);
 
-  if (!p) return note($('#shead'), `No ${name} folder on the board — ⌥⌘N starts a chat anywhere`);
+  if (!project) return note($('#shead'), `No ${name} folder on the board — ⌥⌘N starts a chat anywhere`);
   focusBoard();
-  if (p.cwds.length === 1) newChatIn(p.cwds[0], 'chats');
-  else pickOpen('folder', { cwds: p.cwds, then: 'chats' }); // one folder: straight to the environments
+  if (project.cwds.length === 1) newChatIn(project.cwds[0], 'chats');
+  else pickOpen('folder', { cwds: project.cwds, then: 'chats' }); // one folder: straight to the environments
 }
 
 // Esc with a page's tab on (2026-09-20): the chat tab, and the pane
@@ -1030,24 +1079,24 @@ function hotEscape() {
     return true;
   }
 
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (s && isBlankTab(tabOf(s))) {
-    blankEscape(s, tabOf(s));
+  if (session && isBlankTab(tabOf(session))) {
+    blankEscape(session, tabOf(session));
     return true;
   } // the keys on the board but not in its box, which has its own esc
 
-  if (!s || !isPaneTab(tabOf(s))) return false;
-  showChat(s);
-  syncTerm(s);
+  if (!session || !isPaneTab(tabOf(session))) return false;
+  showChat(session);
+  syncTerm(session);
   focusBoard();
   return true;
 }
 
 function hotVsCode() {
-  const b = $('#webBtn');
+  const button = $('#webBtn');
 
-  if (b) b.click();
+  if (button) button.click();
   else noChat();
 }
 
@@ -1076,8 +1125,10 @@ function hotMove(dir) {
   const cards = [...document.querySelectorAll('#slist > .card')];
 
   if (!cards.length) return note($('#shead'), 'No chats in this list');
-  const i = cards.findIndex(c => c.dataset.id === state.current);
-  const next = cards[i < 0 ? (dir > 0 ? 0 : cards.length - 1) : Math.max(0, Math.min(cards.length - 1, i + dir))];
+  const index = cards.findIndex(card => card.dataset.id === state.current);
+
+  const next =
+    cards[index < 0 ? (dir > 0 ? 0 : cards.length - 1) : Math.max(0, Math.min(cards.length - 1, index + dir))];
 
   if (next.dataset.id !== state.current) openSession(next.dataset.id);
 }
@@ -1097,8 +1148,8 @@ const TICK_MS = 230;
 const ARM_MS = 5000;
 
 function tickGate(id, anchor) {
-  const s = state.sessions.get(id);
-  const ends = s && watchEnds(s);
+  const session = state.sessions.get(id);
+  const ends = session && watchEnds(session);
 
   if (!ends) return true;
 

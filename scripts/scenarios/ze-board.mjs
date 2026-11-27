@@ -47,8 +47,8 @@ export const meta = {
   },
 };
 
-const hm = t =>
-  `${String(new Date(t).getHours()).padStart(2, '0')}:${String(new Date(t).getMinutes()).padStart(2, '0')}`;
+const hm = time =>
+  `${String(new Date(time).getHours()).padStart(2, '0')}:${String(new Date(time).getMinutes()).padStart(2, '0')}`;
 
 export default async function (ctx) {
   const out = {};
@@ -60,7 +60,7 @@ export default async function (ctx) {
     await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', code, key, windowsVirtualKeyCode: vk });
   };
 
-  const g = body => ctx.evaluate(`(() => { const g = window.peix.ze().g; ${body} })()`);
+  const inGame = body => ctx.evaluate(`(() => { const g = window.peix.ze().g; ${body} })()`);
 
   const canvas = () =>
     ctx.evaluate(
@@ -110,7 +110,7 @@ export default async function (ctx) {
 
     await ctx.server.post('api/lunch', { act: 'read' });
 
-    await waitFor(async () => (await ctx.server.api('api/lunch')).body.places.every(p => p.dishes?.length), {
+    await waitFor(async () => (await ctx.server.api('api/lunch')).body.places.every(place => place.dishes?.length), {
       what: 'the menu read',
     });
 
@@ -122,7 +122,7 @@ export default async function (ctx) {
     const web = join(tmpdir(), 'peix-ze', 'acme-web');
 
     const {
-      chats: [A, W],
+      chats: [apiChat, webChat],
     } = makeFixture(ctx.fixture.dir, [
       {
         cwd: api,
@@ -144,14 +144,14 @@ export default async function (ctx) {
       },
     ]);
 
-    const reg = c => join(ctx.fixture.dir, 'sessions', `${c.pid}.json`);
+    const reg = chat => join(ctx.fixture.dir, 'sessions', `${chat.pid}.json`);
 
-    const status = (c, s, more = {}) =>
+    const status = (chat, state, more = {}) =>
       writeFileSync(
-        reg(c),
+        reg(chat),
         JSON.stringify({
-          ...JSON.parse(readFileSync(reg(c), 'utf8')),
-          status: s,
+          ...JSON.parse(readFileSync(reg(chat), 'utf8')),
+          status: state,
           statusUpdatedAt: Date.now() + 1000,
           ...more,
         }),
@@ -166,8 +166,8 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('#zeGame').open && window.peix.ze().frames > 2`, { what: 'the game' });
     await press('Space', ' ', 32);
     await ctx.waitFor(`window.peix.ze().g.phase === 'play'`, { what: 'a round' });
-    await g(`g.spawn = 1e9; g.items.length = 0;`);
-    out.lunch = await g(`return g.lunch.map(d => [d.kind, d.e, d.say, d.place])`);
+    await inGame(`g.spawn = 1e9; g.items.length = 0;`);
+    out.lunch = await inGame(`return g.lunch.map(d => [d.kind, d.e, d.say, d.place])`);
 
     ctx.assert.deepEqual(
       out.lunch,
@@ -179,41 +179,41 @@ export default async function (ctx) {
       'the soup a green, the roast a special, the fish a fish, no pudding',
     );
 
-    await g(
+    await inGame(
       `g.lunch.forEach((d, i) => g.items.push({ ...d, x: 330 + i * 130, y: 340 + i * 30, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 })); g.x = 150;`,
     );
 
     await ctx.sleep(200);
     await ctx.shot('1-lunch', await canvas());
-    const s0 = await g(`return g.score`);
+    const s0 = await inGame(`return g.score`);
 
-    await g(`const it = g.items.find(i => i.kind === 'meat'); it.x = g.x; it.y = g.y - 150;`);
+    await inGame(`const it = g.items.find(i => i.kind === 'meat'); it.x = g.x; it.y = g.y - 150;`);
     await ctx.waitFor(`window.peix.ze().g.score === ${s0 + 30}`, { what: 'the special eaten' });
-    ctx.assert.deepEqual(await g(`return g.words.map(w => w.s).slice(-2)`), ['+30 Rojões à minhota', 'Trotas']);
-    await g(`g.items.length = 0`);
+    ctx.assert.deepEqual(await inGame(`return g.words.map(w => w.s).slice(-2)`), ['+30 Rojões à minhota', 'Trotas']);
+    await inGame(`g.items.length = 0`);
 
     // acme-web lands; acme-api asks — the game stops on a card
     appendFileSync(
-      W.file,
-      `${replyLines({ id: W.id, cwd: web, text: 'Fixed.' })
-        .map(l => JSON.stringify(l))
+      webChat.file,
+      `${replyLines({ id: webChat.id, cwd: web, text: 'Fixed.' })
+        .map(line => JSON.stringify(line))
         .join('\n')}\n`,
     );
 
-    status(W, 'idle');
+    status(webChat, 'idle');
 
     await ctx.waitFor(`window.peix.ze().g.news.some(n => n.title === 'Fix the login page' && !n.asks)`, {
       what: 'the landing kept',
     });
 
-    status(A, 'waiting', { waitingFor: 'permission prompt' });
+    status(apiChat, 'waiting', { waitingFor: 'permission prompt' });
 
     await ctx.waitFor(
       `window.peix.ze().g.phase === 'call' && window.peix.ze().music?.ac.state === 'suspended' && !window.peix.ze().raf`,
       { what: 'the call, the round held' },
     );
 
-    out.call = await g(`return { who: g.call.s.project, title: g.call.s.title }`);
+    out.call = await inGame(`return { who: g.call.s.project, title: g.call.s.title }`);
     ctx.assert.deepEqual(out.call, { who: 'acme-api', title: 'Run the migration on staging' });
     await ctx.shot('2-call', await canvas());
     await press('Escape', 'Escape', 27);
@@ -230,15 +230,15 @@ export default async function (ctx) {
     );
 
     // the K.O.: what landed and asked; a new best posted to the room; on a Friday, the week's poll
-    await g(
+    await inGame(
       `g.mass = 1; g.score = 420; g.items.push({ kind: 'veg', e: '🥦', say: 'BLEH!', x: g.x, y: g.y - 100, vx: 0, vy: 0, g: 0, rot: 0, spin: 0 })`,
     );
 
     await ctx.waitFor(`window.peix.ze().g.phase === 'over'`, { what: 'the K.O.' });
     await ctx.waitFor(`window.peix.ze().g.overT > .8`, { what: "the K.O.'s buttons" });
-    ctx.assert.equal(await g(`return g.best`), true, 'a new best');
+    ctx.assert.equal(await inGame(`return g.best`), true, 'a new best');
 
-    ctx.assert.deepEqual(await g(`return g.news.map(n => [n.project, n.asks])`), [
+    ctx.assert.deepEqual(await inGame(`return g.news.map(n => [n.project, n.asks])`), [
       ['acme-web', false],
       ['acme-api', true],
     ]);
@@ -258,7 +258,7 @@ export default async function (ctx) {
       out.poll = (await ctx.server.api('api/chat/messages')).body.msgs.at(-1).poll;
 
       ctx.assert.deepEqual(
-        out.poll.opts.map(o => o.label),
+        out.poll.opts.map(option => option.label),
         ['ana — 900 on HARD', 'me — 420 on NORMAL', 'rui — 300 on EASY'],
         "each one's best, best first",
       );
@@ -266,26 +266,29 @@ export default async function (ctx) {
     await ctx.shot('3-ko', await canvas());
 
     // a second ask: ⏎ goes to it — the game closed, the chat open
-    await g(`g.sel = 0`);
+    await inGame(`g.sel = 0`);
     await press('Space', ' ', 32);
     await ctx.waitFor(`window.peix.ze().g.phase === 'play'`, { what: 'another round' });
-    status(A, 'busy');
+    status(apiChat, 'busy');
 
-    await ctx.waitFor(`window.peix.sessions().find(s => s.id === ${JSON.stringify(A.id)})?.status === 'working'`, {
-      what: 'acme-api answered elsewhere',
-    });
+    await ctx.waitFor(
+      `window.peix.sessions().find(s => s.id === ${JSON.stringify(apiChat.id)})?.status === 'working'`,
+      {
+        what: 'acme-api answered elsewhere',
+      },
+    );
 
-    status(A, 'waiting', { waitingFor: 'permission prompt' });
+    status(apiChat, 'waiting', { waitingFor: 'permission prompt' });
     await ctx.waitFor(`window.peix.ze().g.phase === 'call'`, { what: 'the second call' });
     await press('Enter', 'Enter', 13);
 
     await ctx.waitFor(
-      `!document.querySelector('#zeGame').open && window.peix.state().current === ${JSON.stringify(A.id)} && !window.peix.ze().music`,
+      `!document.querySelector('#zeGame').open && window.peix.state().current === ${JSON.stringify(apiChat.id)} && !window.peix.ze().music`,
       { what: '⏎: the chat open, the game and its sound closed' },
     );
 
     // nothing waiting: Zé walks across All caught up, and a click on him is his game
-    for (const p of sleeps) p.kill();
+    for (const child of sleeps) child.kill();
     await ctx.waitFor(`window.peix.sessions().every(s => !s.alive)`, { what: 'the two ended' });
 
     for (const id of await ctx.evaluate(`window.peix.sessions().map(s => s.id)`)) {
@@ -307,7 +310,7 @@ export default async function (ctx) {
     await ctx.waitFor(`!document.querySelector('#zeGame').open`, { what: 'closed' });
     return out;
   } finally {
-    for (const p of sleeps) p.kill();
+    for (const child of sleeps) child.kill();
     await gh.close();
   }
 }

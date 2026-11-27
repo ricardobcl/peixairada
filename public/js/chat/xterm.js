@@ -29,48 +29,48 @@ function ensureXterm(tm) {
   // went out as ESC 2 and there was no way to type an @, of all characters. ⌥ over a letter stays Meta (readline's
   // ⌥b / ⌥f / ⌥⌫, and the ⌥Enter newline) unless it composed ASCII and no letter (ALT_ASCII); over a digit or a
   // punctuation key we send what macOS already composed, which is `e.key` itself. A dead key ('Dead') is longer than one character and falls through to xterm as before.
-  tm.xt.attachCustomKeyEventHandler(e => {
-    if (e.key === 'Enter' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      e.preventDefault();
-      if (e.type === 'keydown') termSend(tm, '\x1b\r');
+  tm.xt.attachCustomKeyEventHandler(event => {
+    if (event.key === 'Enter' && event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      event.preventDefault();
+      if (event.type === 'keydown') termSend(tm, '\x1b\r');
       return false;
     }
 
     if (
       prefs.optMeta !== false &&
-      e.altKey &&
-      !e.ctrlKey &&
-      !e.metaKey &&
-      e.key.length === 1 &&
-      (ALT_COMPOSES.test(e.code) || ALT_ASCII.test(e.key))
+      event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      event.key.length === 1 &&
+      (ALT_COMPOSES.test(event.code) || ALT_ASCII.test(event.key))
     ) {
-      e.preventDefault();
-      if (e.type === 'keydown') termSend(tm, e.key);
+      event.preventDefault();
+      if (event.type === 'keydown') termSend(tm, event.key);
       return false;
     }
 
-    if (e.code === 'KeyK' && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
-      e.preventDefault();
-      if (e.type === 'keydown') clearTerm(tm);
+    if (event.code === 'KeyK' && event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+      event.preventDefault();
+      if (event.type === 'keydown') clearTerm(tm);
       return false;
     }
 
-    const edit = macEdit(e);
+    const edit = macEdit(event);
 
     if (edit) {
-      e.preventDefault();
-      if (e.type === 'keydown') termSend(tm, edit);
+      event.preventDefault();
+      if (event.type === 'keydown') termSend(tm, edit);
       return false;
     }
 
-    return !(e.type === 'keydown' && chatZoomKey(e));
+    return !(event.type === 'keydown' && chatZoomKey(event));
   });
 
   tm.fit = new FitAddon.FitAddon();
   tm.xt.loadAddon(tm.fit);
   exactFit(tm);
   tm.xt.loadAddon(new WebLinksAddon.WebLinksAddon(termWebLink));
-  tm.xt.registerLinkProvider({ provideLinks: (y, cb) => cb(termLinks(tm, y)) }); // the paths on a line (2026-09-26)
+  tm.xt.registerLinkProvider({ provideLinks: (lineNumber, cb) => cb(termLinks(tm, lineNumber)) }); // the paths on a line (2026-09-26)
   tm.xt.open($(tm.el.tbody));
   exactGlyphs(tm.xt);
 
@@ -82,16 +82,16 @@ function ensureXterm(tm) {
   $(tm.el.tbody)
     .querySelector('.xterm-viewport')
     .addEventListener('scroll', () => {
-      const b = tm.xt.buffer.active;
+      const buffer = tm.xt.buffer.active;
 
-      if (b.viewportY < b.baseY) {
-        fitNote(tm, 'scrolled up', { by: b.baseY - b.viewportY, kept: performance.now() < tm.settleUntil });
+      if (buffer.viewportY < buffer.baseY) {
+        fitNote(tm, 'scrolled up', { by: buffer.baseY - buffer.viewportY, kept: performance.now() < tm.settleUntil });
       }
 
-      if (performance.now() < tm.settleUntil && b.viewportY < b.baseY) tm.xt.scrollToBottom();
+      if (performance.now() < tm.settleUntil && buffer.viewportY < buffer.baseY) tm.xt.scrollToBottom();
     });
 
-  tm.xt.onData(d => termSend(tm, d));
+  tm.xt.onData(data => termSend(tm, data));
   tm.xt.onWriteParsed(() => roomSoon(tm)); // under the floating header or behind it (checkRoom)
   $(tm.el.tbody).addEventListener('mousedown', () => focusGroup(tm.g)); // typing in a half is being in it
   new ResizeObserver(() => fitTerm(tm)).observe($(tm.el.tbody));
@@ -127,11 +127,11 @@ function ensureXterm(tm) {
 // whether to park is read at the call, not behind the queue: a fit that waited a tick left the grid at its old size
 // for the nudge and termSize to read, and an attach nudged the PTY to the wrong height (2026-10-03). A park waits anyway.
 function refitTerm(xt, rows, resize, done = () => {}) {
-  const b = xt.buffer.active;
+  const buffer = xt.buffer.active;
 
   const tail =
-    rows > xt.rows && b.baseY > 0
-      ? Math.max(0, Math.min(b.length - 1 - (b.baseY + b.cursorY), xt.rows - 1 - b.cursorY))
+    rows > xt.rows && buffer.baseY > 0
+      ? Math.max(0, Math.min(buffer.length - 1 - (buffer.baseY + buffer.cursorY), xt.rows - 1 - buffer.cursorY))
       : 0;
 
   if (!tail) {
@@ -142,17 +142,17 @@ function refitTerm(xt, rows, resize, done = () => {}) {
   // Parked from where the cursor is once the parser's queue has landed, and back only as far as it went (2026-10-14,
   // lib/refit.mjs): a scroll region stops CUD at its bottom margin, and output still queued at the call moves it.
   xt.write('', () => {
-    const b = xt.buffer.active;
-    const y0 = b.cursorY;
-    const n = Math.max(0, Math.min(b.length - 1 - (b.baseY + y0), xt.rows - 1 - y0));
+    const active = xt.buffer.active;
+    const y0 = active.cursorY;
+    const down = Math.max(0, Math.min(active.length - 1 - (active.baseY + y0), xt.rows - 1 - y0));
 
-    if (!n) {
+    if (!down) {
       resize();
       return void done();
     }
 
-    xt.write(`\x1b[${n}B`, () => {
-      const went = b.cursorY - y0;
+    xt.write(`\x1b[${down}B`, () => {
+      const went = active.cursorY - y0;
 
       resize();
       xt.write(went > 0 ? `\x1b[${went}A` : '', done);
@@ -162,9 +162,9 @@ function refitTerm(xt, rows, resize, done = () => {}) {
 
 /** What reaches a drawer's screen, in order — held while a refit, a nudge or a repaint is awaited (`refits`): the socket's
  *  bytes as they came, anything else as a function. */
-const toXt = (tm, f) => {
-  if (tm.refits) tm.held.push(f);
-  else f();
+const toXt = (tm, piece) => {
+  if (tm.refits) tm.held.push(piece);
+  else piece();
 };
 
 /** What was held, written in order: the bytes in a row as one write, which xterm parses whole before it draws (2026-11-05:
@@ -174,23 +174,23 @@ function flushHeld(tm) {
 
   const write = () => {
     if (!bytes.length) return;
-    const all = new Uint8Array(bytes.reduce((n, b) => n + b.length, 0));
+    const all = new Uint8Array(bytes.reduce((total, chunk) => total + chunk.length, 0));
     let at = 0;
 
-    for (const b of bytes) {
-      all.set(b, at);
-      at += b.length;
+    for (const chunk of bytes) {
+      all.set(chunk, at);
+      at += chunk.length;
     }
 
     bytes = [];
     tm.xt.write(all);
   };
 
-  for (const x of tm.held.splice(0)) {
-    if (typeof x === 'function') {
+  for (const piece of tm.held.splice(0)) {
+    if (typeof piece === 'function') {
       write();
-      x();
-    } else bytes.push(x);
+      piece();
+    } else bytes.push(piece);
   }
 
   write();
@@ -201,12 +201,12 @@ function flushHeld(tm) {
 function unhold(tm) {
   if (--tm.refits > 0) return;
 
-  const g = tm.gridDue;
+  const grid = tm.gridDue;
   const ws = tm.ws;
 
   tm.gridDue = null;
-  if (g) fitNote(tm, 'grid', { to: `${g.cols}x${g.rows}` });
-  if (!g || (g.cols === tm.xt.cols && g.rows === tm.xt.rows)) return flushHeld(tm);
+  if (grid) fitNote(tm, 'grid', { to: `${grid.cols}x${grid.rows}` });
+  if (!grid || (grid.cols === tm.xt.cols && grid.rows === tm.xt.rows)) return flushHeld(tm);
   tm.refits = 1;
 
   tm.xt.write('', () => {
@@ -215,11 +215,11 @@ function unhold(tm) {
 
     refitTerm(
       tm.xt,
-      g.rows,
+      grid.rows,
       () => {
         try {
           tm.xt._core._renderService.clear();
-          tm.xt.resize(g.cols, g.rows);
+          tm.xt.resize(grid.cols, grid.rows);
         } catch {}
       },
       () => {
@@ -249,11 +249,11 @@ const FIT_STILL_MS = 120;
 
 /** The last of what each drawer's fit decided, for the console and the harness (`peix.fits(g)`): a report of a wrong drawer
  *  reads it before anyone guesses (2026-11-05). */
-const fitNote = (tm, ev, x = {}) => {
-  const l = (tm.fitLog ||= []);
+const fitNote = (tm, ev, details = {}) => {
+  const log = (tm.fitLog ||= []);
 
-  l.push({ t: Math.round(performance.now()), ev, grid: `${tm.xt?.cols}x${tm.xt?.rows}`, ...x });
-  if (l.length > 40) l.shift();
+  log.push({ t: Math.round(performance.now()), ev, grid: `${tm.xt?.cols}x${tm.xt?.rows}`, ...details });
+  if (log.length > 40) log.shift();
 };
 
 const paintsItself = tm =>
@@ -264,41 +264,41 @@ const paintsItself = tm =>
     (tm.kind === 'claude' || tm.xt.buffer.active.type === 'alternate')
   );
 
-function awaitRepaint(tm, d, told) {
-  let h = tm.hold;
-  const fresh = !h;
+function awaitRepaint(tm, size, told) {
+  let hold = tm.hold;
+  const fresh = !hold;
 
-  if (!h) {
-    if (d.cols === tm.xt.cols && d.rows === tm.xt.rows) return; // the grid is already the size: nothing to wait for
+  if (!hold) {
+    if (size.cols === tm.xt.cols && size.rows === tm.xt.rows) return; // the grid is already the size: nothing to wait for
     keepEnd(tm); // the body moves now, the grid later
-    h = tm.hold = { ws: tm.ws, timer: 0, cap: setTimeout(() => endHold(tm, h), REPAINT_MAX_MS) };
+    hold = tm.hold = { ws: tm.ws, timer: 0, cap: setTimeout(() => endHold(tm, hold), REPAINT_MAX_MS) };
 
-    h.arm = ms => {
-      clearTimeout(h.timer);
-      h.timer = setTimeout(() => endHold(tm, h), ms);
+    hold.arm = ms => {
+      clearTimeout(hold.timer);
+      hold.timer = setTimeout(() => endHold(tm, hold), ms);
     };
 
-    h.resume = () => h.arm(h.got >= REPAINT_BYTES ? REPAINT_QUIET_MS : REPAINT_WAIT_MS); // a size that was to go and did not: the wait as it was
+    hold.resume = () => hold.arm(hold.got >= REPAINT_BYTES ? REPAINT_QUIET_MS : REPAINT_WAIT_MS); // a size that was to go and did not: the wait as it was
     tm.refits = (tm.refits || 0) + 1;
     tm.held ||= [];
   }
 
-  h.cols = d.cols;
-  h.rows = d.rows;
-  if (told) h.got = 0;
-  if (told) h.arm(REPAINT_WAIT_MS);
-  else if (fresh) h.arm(0);
-  else h.resume(); // the PTY already that size: nothing more is coming fitNote(tm, 'wait', { to: `${d.cols}x${d.rows}`, told });
+  hold.cols = size.cols;
+  hold.rows = size.rows;
+  if (told) hold.got = 0;
+  if (told) hold.arm(REPAINT_WAIT_MS);
+  else if (fresh) hold.arm(0);
+  else hold.resume(); // the PTY already that size: nothing more is coming fitNote(tm, 'wait', { to: `${d.cols}x${d.rows}`, told });
 }
 
 /** The wait over — answered, or given up on: the grid the PTY was told of, then everything that came. */
-function endHold(tm, h = tm.hold) {
-  if (!h || tm.hold !== h) return;
-  clearTimeout(h.timer);
-  clearTimeout(h.cap);
+function endHold(tm, hold = tm.hold) {
+  if (!hold || tm.hold !== hold) return;
+  clearTimeout(hold.timer);
+  clearTimeout(hold.cap);
   tm.hold = null;
-  tm.gridDue = tm.ws === h.ws ? { cols: h.cols, rows: h.rows } : null;
-  fitNote(tm, 'let go', { to: `${h.cols}x${h.rows}`, same: tm.ws === h.ws, refits: tm.refits });
+  tm.gridDue = tm.ws === hold.ws ? { cols: hold.cols, rows: hold.rows } : null;
+  fitNote(tm, 'let go', { to: `${hold.cols}x${hold.rows}`, same: tm.ws === hold.ws, refits: tm.refits });
   unhold(tm);
   setTimeout(() => fitTerm(tm)); // the layout moved meanwhile, or the screen stopped being a TUI's: the fit's own word
 }
@@ -306,11 +306,11 @@ function endHold(tm, h = tm.hold) {
 /** A wait dropped with its drawer — detached, ended: nothing it held is that screen's any more. */
 function dropHold(tm) {
   tm.gridDue = null; // a grid let go before the socket went, still behind a nudge
-  const h = tm.hold;
+  const hold = tm.hold;
 
-  if (!h) return;
-  clearTimeout(h.timer);
-  clearTimeout(h.cap);
+  if (!hold) return;
+  clearTimeout(hold.timer);
+  clearTimeout(hold.cap);
   tm.hold = null;
   tm.held = [];
   tm.refits = Math.max(0, (tm.refits || 0) - 1);
@@ -345,8 +345,8 @@ addEventListener('blur', () => {
 
 addEventListener(
   'mousemove',
-  e => {
-    if (!e.buttons) handDown = false;
+  event => {
+    if (!event.buttons) handDown = false;
   },
   true,
 ); // let go outside the window
@@ -368,21 +368,23 @@ const moving = () => handDown || performance.now() - windowMovedAt < FIT_STILL_M
 const KEEP_END_MS = 400;
 
 const keepEnd = tm => {
-  const b = tm.xt?.buffer.active;
+  const buffer = tm.xt?.buffer.active;
 
-  if (b && b.viewportY >= b.baseY) tm.settleUntil = Math.max(tm.settleUntil || 0, performance.now() + KEEP_END_MS);
+  if (buffer && buffer.viewportY >= buffer.baseY) {
+    tm.settleUntil = Math.max(tm.settleUntil || 0, performance.now() + KEEP_END_MS);
+  }
 };
 
 /** The page's grid to the body at once, the old way: xterm reflows what it holds (a zsh's lines, a screen no app answers for). */
-function fitLocal(tm, d) {
-  if (d.cols === tm.xt.cols && d.rows === tm.xt.rows) return;
+function fitLocal(tm, size) {
+  if (size.cols === tm.xt.cols && size.rows === tm.xt.rows) return;
   keepEnd(tm);
   tm.refits = (tm.refits || 0) + 1;
   tm.held ||= [];
 
   refitTerm(
     tm.xt,
-    d.rows,
+    size.rows,
     () => {
       try {
         tm.fit.fit();
@@ -397,25 +399,25 @@ function fitLocal(tm, d) {
 
 function fitTerm(tm, now = false) {
   if (!tm) {
-    for (const t of terms) fitTerm(t, now);
+    for (const term of terms) fitTerm(term, now);
     return;
   }
 
   if (!tm.xt || $(tm.el.term).hidden) return;
-  let d;
+  let size;
 
   try {
-    d = tm.fit.proposeDimensions();
+    size = tm.fit.proposeDimensions();
   } catch {
     return;
   }
 
-  if (!d || !(d.cols > 1) || !(d.rows > 1)) return;
-  const same = g => g && g.cols === d.cols && g.rows === d.rows;
+  if (!size || !(size.cols > 1) || !(size.rows > 1)) return;
+  const same = grid => grid && grid.cols === size.cols && grid.rows === size.rows;
 
   // nothing new: the PTY has the size, the grid has it or will once its repaint is in (a body's observer says it twice)
   fitNote(tm, 'fit', {
-    d: `${d.cols}x${d.rows}`,
+    d: `${size.cols}x${size.rows}`,
     sent: tm.sent && `${tm.sent.cols}x${tm.sent.rows}`,
     hold: !!tm.hold,
     paints: paintsItself(tm),
@@ -435,15 +437,15 @@ function fitTerm(tm, now = false) {
   }
 
   keepEnd(tm); // the body moved: whatever comes next, a drawer at its end stays there
-  if (!paintsItself(tm)) fitLocal(tm, d);
+  if (!paintsItself(tm)) fitLocal(tm, size);
   clearTimeout(tm.sizeTimer);
   tm.sizeTimer = 0;
 
   const send = () => {
     tm.sizeTimer = 0;
 
-    if (prefs.termSize?.cols !== d.cols || prefs.termSize?.rows !== d.rows) {
-      prefs.termSize = { cols: d.cols, rows: d.rows };
+    if (prefs.termSize?.cols !== size.cols || prefs.termSize?.rows !== size.rows) {
+      prefs.termSize = { cols: size.cols, rows: size.rows };
       savePrefs();
     } // what a drawer started before any xterm exists asks for
 
@@ -452,14 +454,14 @@ function fitTerm(tm, now = false) {
     const told = tm.ws?.readyState === 1 && !same(tm.sent);
 
     if (told) {
-      tm.sent = { cols: d.cols, rows: d.rows };
+      tm.sent = { cols: size.cols, rows: size.rows };
       tm.sentAt = performance.now();
-      tm.ws.send(JSON.stringify({ t: 'resize', cols: d.cols, rows: d.rows }));
+      tm.ws.send(JSON.stringify({ t: 'resize', cols: size.cols, rows: size.rows }));
     }
 
-    fitNote(tm, 'send', { d: `${d.cols}x${d.rows}`, told, paints: paintsItself(tm) });
-    if (paintsItself(tm)) awaitRepaint(tm, d, told);
-    else fitLocal(tm, d);
+    fitNote(tm, 'send', { d: `${size.cols}x${size.rows}`, told, paints: paintsItself(tm) });
+    if (paintsItself(tm)) awaitRepaint(tm, size, told);
+    else fitLocal(tm, size);
   };
 
   if (now || (!moving() && !tm.hold && performance.now() - (tm.sentAt || 0) > FIT_STILL_MS)) send();
@@ -506,15 +508,15 @@ function setUnder(tm, on) {
 }
 
 function blankRun(xt) {
-  const b = xt.buffer.active;
+  const buffer = xt.buffer.active;
 
   let run = 0;
   let most = 0;
 
-  for (let y = 0; y < xt.rows; y++) {
+  for (let row = 0; row < xt.rows; row++) {
     if (
-      b
-        .getLine(b.baseY + y)
+      buffer
+        .getLine(buffer.baseY + row)
         ?.translateToString(true)
         .trim()
     ) {
@@ -569,11 +571,11 @@ function checkRoom(tm) {
 // A read-only window on this closure for the console and the harness (scripts/scenario.mjs reads it as ctx.peix):
 // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
 window.peix = {
-  alert: a => onAlert(a), // the harness's: an alert as the stream would bring it (2026-11-01)
+  alert: alert => onAlert(alert), // the harness's: an alert as the stream would bring it (2026-11-01)
   priority: () => [...state.priority], // the pinned chats' order as this page holds it (2026-11-24)
   update: () => state.update ?? null, // the updater's word as this page last heard it (2026-11-27: the releases' scenario)
   details: () => detailsText(), // About's Copy details (2026-11-04), its text with no clipboard touched
-  skins: () => Object.entries(SKINS).map(([k, t]) => [k, t.dark]), // the picker's themes, each with its appearance (2026-11-01: the inks' check)
+  skins: () => Object.entries(SKINS).map(([name, skin]) => [name, skin.dark]), // the picker's themes, each with its appearance (2026-11-01: the inks' check)
   spFall: () => (spFall(true), document.querySelectorAll('#spsky .spfall').length), // Space's falling star, now (2026-11-18): the harness's, which cannot wait the minute
   spVisit: () => (spVisit(true), document.querySelector('#spsky .spvis')?.className || ''), // a planet or comet, now (2026-11-19)
   ze: () => ze, // ⌥⌘Z's game (2026-10-30), live: a scenario drops into its round what it needs to meet
@@ -595,7 +597,7 @@ window.peix = {
       fadeSoon.f ||
       listChanged.queued ||
       phaseAnims.queued ||
-      terms.some(t => t.hold || t.sizeTimer)
+      terms.some(term => term.hold || term.sizeTimer)
     ),
     project: prefs.project,
     person: prefs.person,
@@ -606,8 +608,8 @@ window.peix = {
     fill: state.fill,
     notch: state.notch,
     hidden: [...state.hidden],
-    paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, v.map(pageUrl)])),
-    paneTabs: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])),
+    paneGh: Object.fromEntries([...state.paneGh].map(([id, keys]) => [id, keys.map(pageUrl)])),
+    paneTabs: Object.fromEntries([...state.paneGh].map(([id, keys]) => [id, [...keys]])),
     tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null,
     tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [],
     pr: shownPr.url,
@@ -617,7 +619,7 @@ window.peix = {
     focusG,
     halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
     strips: state.sessions.has(state.current)
-      ? placeOf(state.sessions.get(state.current)).map((_, g) => keysIn(state.sessions.get(state.current), g))
+      ? placeOf(state.sessions.get(state.current)).map((_, half) => keysIn(state.sessions.get(state.current), half))
       : [[], []],
     tiles: trees.has(state.current) && splitNow() ? JSON.parse(JSON.stringify(trees.get(state.current))) : null,
     seen: [...(tileSeen.get(state.current) || [])], // the arrows' memory, the keys' last tile first
@@ -626,7 +628,7 @@ window.peix = {
       want: tl.want,
       press: !!tl.press,
       shown: $('#sessions').classList.contains('tlshow'),
-      runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })),
+      runs: tl.runs.map(run => ({ g: run.g, day: run.day, n: run.n, i: run.i })),
     },
     termId: curTerm().id,
     termSession: curTerm().sessionId,
@@ -640,7 +642,7 @@ window.peix = {
       pace: swimRate(Math.max(0, swim.n)),
       rate: swim.anim ? +(swimMs(swim.w) / swimLen()).toFixed(3) : 0,
       dart: swim.dart,
-      food: swim.food.map(b => b.x),
+      food: swim.food.map(bite => bite.x),
       eaten: swim.eaten,
     },
   }), // the bar's fish: its pace without a dart, what it has to eat (lane x)
@@ -650,48 +652,48 @@ window.peix = {
       : null, // each tile's box and body as the room checks read them (2026-11-26)
   spMini: tid => sp.minis.get(tid) || null, // Space's hidden xterm of a drawer asking (2026-11-24), live
   session: id => {
-    const s = state.sessions.get(id || state.current);
+    const session = state.sessions.get(id || state.current);
 
-    return s ? structuredClone(s) : null;
+    return session ? structuredClone(session) : null;
   },
-  motion: () => MOTION.map(m => ({ ...m })), // the list's last moves: {id, kind: flip | enter | leave, at}
+  motion: () => MOTION.map(move => ({ ...move })), // the list's last moves: {id, kind: flip | enter | leave, at}
   sessions: () =>
-    [...state.sessions.values()].map(s => ({
-      id: s.id,
-      project: s.project,
-      cwd: s.cwd,
-      env: s.env || null,
-      title: s.title,
-      status: s.status,
-      alive: s.alive,
-      prs: (s.prs || []).length,
-      terminal: s.terminal?.id || null,
-      agents: s.agents || 0,
-      tasks: s.tasks || [],
-      ask: s.ask || null,
+    [...state.sessions.values()].map(session => ({
+      id: session.id,
+      project: session.project,
+      cwd: session.cwd,
+      env: session.env || null,
+      title: session.title,
+      status: session.status,
+      alive: session.alive,
+      prs: (session.prs || []).length,
+      terminal: session.terminal?.id || null,
+      agents: session.agents || 0,
+      tasks: session.tasks || [],
+      ask: session.ask || null,
     })),
   prefs: () => ({ ...prefs }),
   tour: () => ({
     open: $('#tour').open,
     at: tour.i,
     step: tour.steps[tour.i]?.id || null,
-    steps: tour.steps.map(t => t.id),
+    steps: tour.steps.map(step => step.id),
     drawn: tour.drawn,
     parts: tour.els.map(el => {
-      const c = el.closest('#slist > .card');
-      const cls = [...el.classList].map(k => `.${k}`).join('');
+      const card = el.closest('#slist > .card');
+      const cls = [...el.classList].map(className => `.${className}`).join('');
 
       return el.id
         ? `#${el.id}`
-        : c
-          ? `#slist > .card[data-id="${c.dataset.id}"]${c === el ? '' : ` ${cls}`}`
+        : card
+          ? `#slist > .card[data-id="${card.dataset.id}"]${card === el ? '' : ` ${cls}`}`
           : el.localName + cls;
     }),
   }), // the tour (2026-10-14)
-  term: g => window.peixDebug(g),
-  fits: g => (terms[g ?? focusG].fitLog || []).slice(),
-  grid: g => {
-    const tm = terms[g ?? focusG];
+  term: half => window.peixDebug(half),
+  fits: half => (terms[half ?? focusG].fitLog || []).slice(),
+  grid: half => {
+    const tm = terms[half ?? focusG];
 
     return {
       cols: tm.xt?.cols ?? null,
@@ -701,27 +703,35 @@ window.peix = {
       hold: tm.hold ? { cols: tm.hold.cols, rows: tm.hold.rows } : null,
     };
   }, // a drawer's grid, reading no layout: lib/framewatch.mjs reads it every frame (2026-11-05)
-  screen: g =>
-    [...document.querySelectorAll(`${GEL[g ?? focusG].tbody} .xterm-rows > div`)].map(r =>
-      r.textContent.replace(/\s+$/, ''),
+  screen: half =>
+    [...document.querySelectorAll(`${GEL[half ?? focusG].tbody} .xterm-rows > div`)].map(row =>
+      row.textContent.replace(/\s+$/, ''),
     ),
   /** The whole buffer, scrollback included — what a row that scrolled off the screen went into. */
-  links: (y, g) => (termLinks(terms[g ?? focusG], y) || []).map(l => ({ text: l.text, href: l.href, range: l.range })),
-  buffer: g => {
-    const b = terms[g ?? focusG].xt?.buffer.active;
+  links: (lineNumber, half) =>
+    (termLinks(terms[half ?? focusG], lineNumber) || []).map(link => ({
+      text: link.text,
+      href: link.href,
+      range: link.range,
+    })),
+  buffer: half => {
+    const buffer = terms[half ?? focusG].xt?.buffer.active;
     const out = [];
 
-    for (let i = 0; b && i < b.length; i++) out.push(b.getLine(i)?.translateToString(true) || '');
+    for (let index = 0; buffer && index < buffer.length; index++) {
+      out.push(buffer.getLine(index)?.translateToString(true) || '');
+    }
+
     return out;
   },
 };
 
-window.peixDebug = (g = focusG) => {
-  const tm = terms[g];
-  const b = $(tm.el.tbody);
-  const sc = b.querySelector('.xterm-screen');
-  const cs = getComputedStyle(b);
-  const r = x => Math.round(x * 100) / 100;
+window.peixDebug = (half = focusG) => {
+  const tm = terms[half];
+  const body = $(tm.el.tbody);
+  const sc = body.querySelector('.xterm-screen');
+  const cs = getComputedStyle(body);
+  const hundredths = value => Math.round(value * 100) / 100;
 
   return {
     dpr: devicePixelRatio,
@@ -729,8 +739,11 @@ window.peixDebug = (g = focusG) => {
     cols: tm.xt?.cols,
     rows: tm.xt?.rows,
     propose: tm.fit?.proposeDimensions(),
-    body: { w: r(b.clientWidth - parseFloat(cs.paddingLeft)), h: r(b.clientHeight - parseFloat(cs.paddingTop)) },
-    screen: sc && { w: r(sc.getBoundingClientRect().width), h: r(sc.getBoundingClientRect().height) },
+    body: {
+      w: hundredths(body.clientWidth - parseFloat(cs.paddingLeft)),
+      h: hundredths(body.clientHeight - parseFloat(cs.paddingTop)),
+    },
+    screen: sc && { w: hundredths(sc.getBoundingClientRect().width), h: hundredths(sc.getBoundingClientRect().height) },
     ws: tm.ws?.readyState ?? null,
     id: tm.id,
     exited: tm.exited,
@@ -790,9 +803,9 @@ function nudgeTerm(tm) {
 
   setTimeout(() => {
     if (tm.ws !== ws || ws.readyState !== 1) return release();
-    const g = tm.sent || tm.xt;
+    const size = tm.sent || tm.xt;
 
-    ws.send(JSON.stringify({ t: 'resize', cols: g.cols, rows: g.rows }));
+    ws.send(JSON.stringify({ t: 'resize', cols: size.cols, rows: size.rows }));
     back = performance.now();
 
     poll = setInterval(() => {
@@ -809,35 +822,35 @@ function showDrawer(tm, on) {
   requestAnimationFrame(() => fitTerm(tm));
 }
 
-function attachTerm(tm, t) {
+function attachTerm(tm, term) {
   detachTerm(tm);
   ensureXterm(tm);
   tm.xt.reset();
   tm.held = []; // what the last socket had waiting behind a refit is that drawer's
 
   Object.assign(tm, {
-    id: t.id,
-    sessionId: t.sessionId,
-    cwd: t.cwd,
-    kind: t.shell ? 'shell' : 'claude',
-    exited: t.exited,
+    id: term.id,
+    sessionId: term.sessionId,
+    cwd: term.cwd,
+    kind: term.shell ? 'shell' : 'claude',
+    exited: term.exited,
     sent: null,
     lost: false,
     settleUntil: performance.now() + SETTLE_MAX_MS,
   });
 
-  setUnder(tm, underOf.get(t.id) ?? !t.resume); // before the first fit: as it was left, a new one under the header
+  setUnder(tm, underOf.get(term.id) ?? !term.resume); // before the first fit: as it was left, a new one under the header
   drawer.err = null;
   showDrawer(tm, true);
   // its socket once the server is proven (2026-11-27, key.js): never keyless meanwhile, which the server turns away
   const gen = (tm.attachGen = (tm.attachGen || 0) + 1);
 
-  if (keyTrusted) openTermSocket(tm, t);
-  else keySafe().then(() => tm.attachGen === gen && tm.id === t.id && !tm.ws && openTermSocket(tm, t));
+  if (keyTrusted) openTermSocket(tm, term);
+  else keySafe().then(() => tm.attachGen === gen && tm.id === term.id && !tm.ws && openTermSocket(tm, term));
 }
 
-function openTermSocket(tm, t) {
-  const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`));
+function openTermSocket(tm, term) {
+  const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${term.id}/ws`));
 
   ws.binaryType = 'arraybuffer';
   tm.ws = ws;
@@ -850,11 +863,11 @@ function openTermSocket(tm, t) {
     readFocusFromScreen(tm);
   };
 
-  ws.onmessage = e => {
+  ws.onmessage = event => {
     if (tm.ws !== ws) return;
 
-    if (typeof e.data !== 'string') {
-      const data = new Uint8Array(e.data);
+    if (typeof event.data !== 'string') {
+      const data = new Uint8Array(event.data);
 
       tm.outAt = performance.now();
       if (tm.hold && (tm.hold.got += data.length) >= REPAINT_BYTES && !tm.sizeTimer) tm.hold.arm(REPAINT_QUIET_MS); // it is coming: until it stops
@@ -869,10 +882,10 @@ function openTermSocket(tm, t) {
       return;
     }
 
-    const m = JSON.parse(e.data);
+    const message = JSON.parse(event.data);
 
-    if (m.t === 'exit') termEnded(tm, m.code);
-    else if (m.t === 'clear') toXt(tm, () => tm.xt.write('', () => tm.xt.clear())); // after what is already queued, or it repaints over the clear (see termhold)
+    if (message.t === 'exit') termEnded(tm, message.code);
+    else if (message.t === 'clear') toXt(tm, () => tm.xt.write('', () => tm.xt.clear())); // after what is already queued, or it repaints over the clear (see termhold)
   };
 
   // The socket dropped with the drawer still running — a server restart, a holder adopted again — or never opened:
@@ -891,9 +904,9 @@ function openTermSocket(tm, t) {
 
     tm.retryTimer = setTimeout(
       () => {
-        const s = state.sessions.get(state.current);
+        const session = state.sessions.get(state.current);
 
-        if (tm.lost && s) syncTerm(s);
+        if (tm.lost && session) syncTerm(session);
       },
       Math.min(5000, 250 * 2 ** tm.retry),
     );
@@ -943,10 +956,10 @@ function termEnded(tm, code) {
       `<div class="empty">The terminal ended (exit ${code}) before a chat began — the server log says why.</div>`;
   }
 
-  const s = state.sessions.get(state.current);
+  const session = state.sessions.get(state.current);
 
-  if (s) {
-    renderTabs(s);
-    renderHead(s);
+  if (session) {
+    renderTabs(session);
+    renderHead(session);
   }
 }

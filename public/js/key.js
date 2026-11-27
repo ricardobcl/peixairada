@@ -28,28 +28,29 @@ let boardKey =
 let proven = null; // the proof under way, as a promise; null: none
 let keyTrusted = !boardKey; // a proof holds now: keyed() and keyHeaders() carry the key only then
 
-const keyHex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+const keyHex = bytes => [...new Uint8Array(bytes)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 
 /** Whether what answers on the port holds the board's key: true, false (something answers without the proof), or null
  *  (nothing answers). */
 async function aliveProven() {
   const nonce = keyHex(crypto.getRandomValues(new Uint8Array(16)));
-  let r;
+  let response;
 
   try {
-    r = await fetch('/api/alive', { headers: { 'x-peix-nonce': nonce }, cache: 'no-store' });
+    response = await fetch('/api/alive', { headers: { 'x-peix-nonce': nonce }, cache: 'no-store' });
   } catch {
     return null;
   }
 
   const enc = new TextEncoder();
 
-  const k = await crypto.subtle.importKey('raw', enc.encode(boardKey), { name: 'HMAC', hash: 'SHA-256' }, false, [
+  const hmacKey = await crypto.subtle.importKey('raw', enc.encode(boardKey), { name: 'HMAC', hash: 'SHA-256' }, false, [
     'sign',
   ]);
 
   return (
-    r.headers.get('x-peix-proof') === keyHex(await crypto.subtle.sign('HMAC', k, enc.encode(`peix-alive:${nonce}`)))
+    response.headers.get('x-peix-proof') ===
+    keyHex(await crypto.subtle.sign('HMAC', hmacKey, enc.encode(`peix-alive:${nonce}`)))
   );
 }
 
@@ -72,7 +73,7 @@ function serverProven() {
       }
 
       if (ok === false) keyLock('unproven');
-      await new Promise(r => setTimeout(r, wait));
+      await new Promise(resolve => setTimeout(resolve, wait));
     }
   })());
 }
@@ -89,33 +90,33 @@ const keyed = url => {
 const keyHeaders = () =>
   boardKey && keyTrusted ? { 'x-peix-key': boardKey, ...(IN_APP && window.PEIX_KEY && { 'x-peix-app': '1' }) } : {};
 
-function takeKey(k) {
-  boardKey = k;
+function takeKey(key) {
+  boardKey = key;
   doubtServer();
 
   try {
-    localStorage.setItem(KEY_STORE, k);
+    localStorage.setItem(KEY_STORE, key);
   } catch {}
 }
 
 /** A ticket in the address — the tab the server opened — traded for the key, the address left plain. Every ask of the
  *  page's waits for it (keyReady): one sent before would go without the key. */
 async function keyTicket() {
-  const t = /^#ticket=([\w-]+)$/.exec(location.hash)?.[1];
+  const ticket = /^#ticket=([\w-]+)$/.exec(location.hash)?.[1];
 
-  if (!t) return;
+  if (!ticket) return;
   history.replaceState(null, '', location.pathname + location.search);
 
   try {
-    const r = await fetch('/api/key/claim', {
+    const response = await fetch('/api/key/claim', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ticket: t }),
+      body: JSON.stringify({ ticket }),
     });
 
-    const d = await r.json();
+    const data = await response.json();
 
-    if (r.ok && d.key) takeKey(d.key);
+    if (response.ok && data.key) takeKey(data.key);
   } catch {}
 }
 
@@ -147,8 +148,8 @@ function keyLock(why) {
   repostPane();
 }
 
-addEventListener('storage', e => {
-  if (e.key === KEY_STORE && e.newValue && e.newValue !== boardKey) location.reload();
+addEventListener('storage', event => {
+  if (event.key === KEY_STORE && event.newValue && event.newValue !== boardKey) location.reload();
 });
 
 addEventListener('hashchange', () => {
@@ -168,30 +169,36 @@ async function api(method, url, body) {
 
   await (bare ? keyReady : keySafe());
   const headers = { ...(!bare && keyHeaders()), ...(body !== undefined && { 'content-type': 'application/json' }) };
-  let r;
+  let response;
 
   try {
-    r = await fetch(url, body === undefined ? { method, headers } : { method, headers, body: JSON.stringify(body) });
-  } catch (e) {
+    response = await fetch(
+      url,
+      body === undefined ? { method, headers } : { method, headers, body: JSON.stringify(body) },
+    );
+  } catch (error) {
     doubtServer(); // nothing answered: whatever answers next proves itself first
-    throw e;
+    throw error;
   }
 
-  const d = await r.json().catch(() => ({}));
+  const data = await response.json().catch(() => ({}));
 
-  if (r.status === 401 && d.key) keyLock(d.key);
+  if (response.status === 401 && data.key) keyLock(data.key);
 
   // a route the server does not have (its router's own `not found`): this page is newer than the server serving it — a
   // pull by hand, not restarted (2026-11-25: every pin, the day Pinned came) — and said so, with the way out (`old`)
-  if (r.status === 404 && d.error === 'not found') {
+  if (response.status === 404 && data.error === 'not found') {
     throw Object.assign(
       new Error(
         `the server running is older than this page — ${state.update?.restart ? 'Settings › Updates restarts it' : 'scripts/launchd.sh restart restarts it'}`,
       ),
-      { status: 404, body: d, old: true },
+      { status: 404, body: data, old: true },
     );
   }
 
-  if (!r.ok) throw Object.assign(new Error(d.error || `HTTP ${r.status}`), { status: r.status, body: d });
-  return d;
+  if (!response.ok) {
+    throw Object.assign(new Error(data.error || `HTTP ${response.status}`), { status: response.status, body: data });
+  }
+
+  return data;
 }

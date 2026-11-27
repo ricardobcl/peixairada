@@ -127,22 +127,22 @@ precision highp float;in vec4 vC;in float vSoft;out vec4 o;
 void main(){vec2 d=gl_PointCoord*2.-1.;float r=dot(d,d);float a=vSoft<.5?1.:smoothstep(1.,.0,r);o=vec4(vC.rgb*a*vC.a,vSoft>0.?0.:a*vC.a);}`;
 
 function zgCompile(gl, vs, fs) {
-  const mk = (t, s) => {
-    const h = gl.createShader(t);
+  const mk = (type, source) => {
+    const shader = gl.createShader(type);
 
-    gl.shaderSource(h, s);
-    gl.compileShader(h);
-    if (!gl.getShaderParameter(h, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(h));
-    return h;
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+    return shader;
   };
 
-  const p = gl.createProgram();
+  const program = gl.createProgram();
 
-  gl.attachShader(p, mk(gl.VERTEX_SHADER, vs));
-  gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs));
-  gl.linkProgram(p);
-  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
-  return { p, u: new Map() };
+  gl.attachShader(program, mk(gl.VERTEX_SHADER, vs));
+  gl.attachShader(program, mk(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  return { p: program, u: new Map() };
 }
 
 /** The stage up or not. Made on the first frame of an opening; what cannot be made is the 2D canvas until the dialog is opened again. */
@@ -173,7 +173,7 @@ function zgOn() {
     zgKeep(gl);
     zg.gl = gl;
     zg.P = {};
-    for (const k of Object.keys(ZG_FS)) zg.P[k] = zgCompile(gl, ZG_VS, ZG_HEAD + ZG_FS[k]);
+    for (const name of Object.keys(ZG_FS)) zg.P[name] = zgCompile(gl, ZG_VS, ZG_HEAD + ZG_FS[name]);
     zg.Pt = zgCompile(gl, ZG_PT_VS, ZG_PT_FS);
     zg.pts = new Float32Array(8 * 4000);
     zg.ptVao = gl.createVertexArray();
@@ -192,21 +192,21 @@ function zgOn() {
     zg.ax = zgBatch(gl);
     zg.noise = zgNoise(gl);
     zg.tile = zgTile(gl);
-  } catch (e) {
-    console.error('Zé: no stage', e);
+  } catch (error) {
+    console.error('Zé: no stage', error);
     zg.gl = null;
     zg.off = true;
     return false;
   }
 
-  cv.addEventListener('webglcontextlost', e => {
-    e.preventDefault();
+  cv.addEventListener('webglcontextlost', event => {
+    event.preventDefault();
     if (zg.gl !== gl) return;
     zgFree();
     zg.off = true;
-    const c = $('#zeCanvas');
+    const canvas = $('#zeCanvas');
 
-    c.getContext('2d').setTransform(1, 0, 0, 1, 0, 0);
+    canvas.getContext('2d').setTransform(1, 0, 0, 1, 0, 0);
     if ($('#zeGame').open && !ze.raf) zeDraw();
   });
 
@@ -226,20 +226,20 @@ function zgKeep(gl) {
     ['createProgram', 'deleteProgram'],
     ['createSampler', 'deleteSampler'],
   ]) {
-    const f = gl[mk].bind(gl);
+    const create = gl[mk].bind(gl);
 
     gl[mk] = () => {
-      const o = f();
+      const resource = create();
 
-      made.push(del, o);
-      return o;
+      made.push(del, resource);
+      return resource;
     };
   }
 }
 
 /** A canvas done with, its pixels let go now: WebKit keeps a dropped one's until a collection, and a page with little script rarely has one. */
 const zgLetGo = (...cs) => {
-  for (const c of cs) if (c) c.width = c.height = 0;
+  for (const canvas of cs) if (canvas) canvas.width = canvas.height = 0;
 };
 
 /** All of it let go with the dialog: the context, so its memory with it — the next opening starts clean. */
@@ -250,20 +250,20 @@ function zgFree() {
 
   if (gl) {
     const cv = gl.canvas;
-    const m = zg.made;
+    const made = zg.made;
 
     gl.useProgram(null);
     gl.bindVertexArray(null);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-    for (let u = 0; u < 8; u++) {
-      gl.activeTexture(gl.TEXTURE0 + u);
+    for (let unit = 0; unit < 8; unit++) {
+      gl.activeTexture(gl.TEXTURE0 + unit);
       gl.bindTexture(gl.TEXTURE_2D, null);
-      gl.bindSampler(u, null);
+      gl.bindSampler(unit, null);
     }
 
-    for (let i = 0; i < m.length; i += 2) gl[m[i]](m[i + 1]);
+    for (let index = 0; index < made.length; index += 2) gl[made[index]](made[index + 1]);
     cv.width = cv.height = 1;
     gl.getExtension('WEBGL_lose_context')?.loseContext();
     cv.remove();
@@ -303,170 +303,170 @@ function zgFree() {
 }
 
 function zgTex(gl, filt = gl.LINEAR, wrap = gl.CLAMP_TO_EDGE) {
-  const t = gl.createTexture();
+  const texture = gl.createTexture();
 
-  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
-  return t;
+  return texture;
 }
 
-function zgFbo(gl, w, h, fmt = zg.fmt, mips = false) {
-  const t = zgTex(gl, mips ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
+function zgFbo(gl, width, height, fmt = zg.fmt, mips = false) {
+  const texture = zgTex(gl, mips ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
 
-  if (mips) gl.texStorage2D(gl.TEXTURE_2D, Math.floor(Math.log2(Math.max(w, h))) + 1, fmt[0], w, h);
-  else gl.texImage2D(gl.TEXTURE_2D, 0, fmt[0], w, h, 0, fmt[1], fmt[2], null);
-  const f = gl.createFramebuffer();
+  if (mips) gl.texStorage2D(gl.TEXTURE_2D, Math.floor(Math.log2(Math.max(width, height))) + 1, fmt[0], width, height);
+  else gl.texImage2D(gl.TEXTURE_2D, 0, fmt[0], width, height, 0, fmt[1], fmt[2], null);
+  const framebuffer = gl.createFramebuffer();
 
-  gl.bindFramebuffer(gl.FRAMEBUFFER, f);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
-  return { t, f, w, h };
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+  return { t: texture, f: framebuffer, w: width, h: height };
 }
 
-const zgDrop = (gl, b) => {
-  if (b) {
-    gl.deleteTexture(b.t);
-    gl.deleteFramebuffer(b.f);
+const zgDrop = (gl, framebuffer) => {
+  if (framebuffer) {
+    gl.deleteTexture(framebuffer.t);
+    gl.deleteFramebuffer(framebuffer.f);
   }
 };
 
 const zgUp = (gl, cv) => {
-  const t = zgTex(gl);
+  const texture = zgTex(gl);
 
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, cv);
-  return t;
+  return texture;
 };
 
 /** Tiling noise in three channels. */
 function zgNoise(gl) {
-  const N = 256;
-  const d = new Uint8Array(N * N * 4);
+  const SIZE = 256;
+  const pixels = new Uint8Array(SIZE * SIZE * 4);
 
-  const r = (x, y, s, c) => {
-    const f = v => Math.abs(Math.sin(v * 127.1 + c * 11.3) * 43758.5453) % 1;
+  const hash = (atX, atY, period, channel) => {
+    const scramble = value => Math.abs(Math.sin(value * 127.1 + channel * 11.3) * 43758.5453) % 1;
 
-    return f((((x % s) + s) % s) + (((y % s) + s) % s) * 57.3 + s);
+    return scramble((((atX % period) + period) % period) + (((atY % period) + period) % period) * 57.3 + period);
   };
 
-  const n = (x, y, s, c) => {
-    const ix = Math.floor(x);
-    const iy = Math.floor(y);
-    const fx = x - ix;
-    const fy = y - iy;
-    const u = fx * fx * (3 - 2 * fx);
-    const v = fy * fy * (3 - 2 * fy);
+  const noise = (atX, atY, period, channel) => {
+    const ix = Math.floor(atX);
+    const iy = Math.floor(atY);
+    const fx = atX - ix;
+    const fy = atY - iy;
+    const easeX = fx * fx * (3 - 2 * fx);
+    const easeY = fy * fy * (3 - 2 * fy);
 
     return (
-      (r(ix, iy, s, c) * (1 - u) + r(ix + 1, iy, s, c) * u) * (1 - v) +
-      (r(ix, iy + 1, s, c) * (1 - u) + r(ix + 1, iy + 1, s, c) * u) * v
+      (hash(ix, iy, period, channel) * (1 - easeX) + hash(ix + 1, iy, period, channel) * easeX) * (1 - easeY) +
+      (hash(ix, iy + 1, period, channel) * (1 - easeX) + hash(ix + 1, iy + 1, period, channel) * easeX) * easeY
     );
   };
 
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      for (let c = 0; c < 3; c++) {
-        let a = 0;
-        let w = 0.5;
-        let s = 8;
+  for (let row = 0; row < SIZE; row++) {
+    for (let col = 0; col < SIZE; col++) {
+      for (let channel = 0; channel < 3; channel++) {
+        let sum = 0;
+        let weight = 0.5;
+        let period = 8;
 
-        for (let o = 0; o < 5; o++) {
-          a += n((x / N) * s, (y / N) * s, s, c) * w;
-          w *= 0.5;
-          s *= 2;
+        for (let octave = 0; octave < 5; octave++) {
+          sum += noise((col / SIZE) * period, (row / SIZE) * period, period, channel) * weight;
+          weight *= 0.5;
+          period *= 2;
         }
 
-        d[(y * N + x) * 4 + c] = Math.min(255, a * 255 * 1.05);
+        pixels[(row * SIZE + col) * 4 + channel] = Math.min(255, sum * 255 * 1.05);
       }
     }
   }
 
-  const t = zgTex(gl, gl.LINEAR_MIPMAP_LINEAR, gl.REPEAT);
+  const texture = zgTex(gl, gl.LINEAR_MIPMAP_LINEAR, gl.REPEAT);
 
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, d);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, SIZE, SIZE, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
   gl.generateMipmap(gl.TEXTURE_2D);
-  return t;
+  return texture;
 }
 
 /** The azulejo, one tile: the game's own rosette and diamond, mipmapped for the floor's distance. */
 function zgTile(gl) {
-  const c = document.createElement('canvas');
+  const canvas = document.createElement('canvas');
 
-  c.width = c.height = 128;
+  canvas.width = canvas.height = 128;
 
-  const x = c.getContext('2d');
-  const s = 128 / 29;
+  const cx = canvas.getContext('2d');
+  const scale = 128 / 29;
 
-  x.scale(s, s);
-  x.fillStyle = '#ece6f4';
-  x.fillRect(0, 0, 29, 29);
-  x.fillStyle = '#2b4fa8';
+  cx.scale(scale, scale);
+  cx.fillStyle = '#ece6f4';
+  cx.fillRect(0, 0, 29, 29);
+  cx.fillStyle = '#2b4fa8';
 
-  for (const [a, b] of [
+  for (const [cornerX, cornerY] of [
     [0, 0],
     [29, 0],
     [0, 29],
     [29, 29],
   ]) {
-    x.beginPath();
-    x.arc(a, b, 8, 0, Math.PI * 2);
-    x.fill();
+    cx.beginPath();
+    cx.arc(cornerX, cornerY, 8, 0, Math.PI * 2);
+    cx.fill();
   }
 
-  x.beginPath();
-  x.moveTo(14.5, 8);
-  x.lineTo(21, 14.5);
-  x.lineTo(14.5, 21);
-  x.lineTo(8, 14.5);
-  x.fill();
-  x.fillStyle = 'rgba(30, 20, 50, .35)';
-  x.fillRect(0, 0, 29, 0.5);
-  x.fillRect(0, 0, 0.5, 29);
-  const t = zgTex(gl, gl.LINEAR_MIPMAP_LINEAR, gl.REPEAT);
+  cx.beginPath();
+  cx.moveTo(14.5, 8);
+  cx.lineTo(21, 14.5);
+  cx.lineTo(14.5, 21);
+  cx.lineTo(8, 14.5);
+  cx.fill();
+  cx.fillStyle = 'rgba(30, 20, 50, .35)';
+  cx.fillRect(0, 0, 29, 0.5);
+  cx.fillRect(0, 0, 0.5, 29);
+  const texture = zgTex(gl, gl.LINEAR_MIPMAP_LINEAR, gl.REPEAT);
 
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, c);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
   gl.generateMipmap(gl.TEXTURE_2D);
-  zgLetGo(c);
-  return t;
+  zgLetGo(canvas);
+  return texture;
 }
 
-function zgUse(P, rect, vals = {}, texs = {}) {
+function zgUse(program, rect, vals = {}, texs = {}) {
   const gl = zg.gl;
 
-  gl.useProgram(P.p);
+  gl.useProgram(program.p);
 
-  const U = n => {
-    if (!P.u.has(n)) P.u.set(n, gl.getUniformLocation(P.p, n));
-    return P.u.get(n);
+  const locationOf = name => {
+    if (!program.u.has(name)) program.u.set(name, gl.getUniformLocation(program.p, name));
+    return program.u.get(name);
   };
 
-  gl.uniform4f(U('uRect'), rect[0], rect[1], rect[2], rect[3]);
-  let i = 0;
+  gl.uniform4f(locationOf('uRect'), rect[0], rect[1], rect[2], rect[3]);
+  let unit = 0;
 
-  for (const n in texs) {
-    gl.activeTexture(gl.TEXTURE0 + i);
-    gl.bindTexture(gl.TEXTURE_2D, texs[n]);
-    gl.uniform1i(U(n), i);
-    i++;
+  for (const name in texs) {
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, texs[name]);
+    gl.uniform1i(locationOf(name), unit);
+    unit++;
   }
 
-  for (const n in vals) {
-    const v = vals[n];
-    const u = U(n);
+  for (const name in vals) {
+    const value = vals[name];
+    const location = locationOf(name);
 
-    if (u == null) continue;
-    if (typeof v === 'number') gl.uniform1f(u, v);
-    else if (v.int !== undefined) gl.uniform1i(u, v.int);
-    else if (v.v4) gl.uniform4fv(u, v.v4);
-    else if (v.v3) gl.uniform3fv(u, v.v3);
-    else if (v.m3) gl.uniformMatrix3fv(u, false, v.m3);
-    else if (v.length === 2) gl.uniform2f(u, v[0], v[1]);
-    else if (v.length === 3) gl.uniform3f(u, v[0], v[1], v[2]);
-    else if (v.length === 4) gl.uniform4f(u, v[0], v[1], v[2], v[3]);
+    if (location == null) continue;
+    if (typeof value === 'number') gl.uniform1f(location, value);
+    else if (value.int !== undefined) gl.uniform1i(location, value.int);
+    else if (value.v4) gl.uniform4fv(location, value.v4);
+    else if (value.v3) gl.uniform3fv(location, value.v3);
+    else if (value.m3) gl.uniformMatrix3fv(location, false, value.m3);
+    else if (value.length === 2) gl.uniform2f(location, value[0], value[1]);
+    else if (value.length === 3) gl.uniform3f(location, value[0], value[1], value[2]);
+    else if (value.length === 4) gl.uniform4f(location, value[0], value[1], value[2], value[3]);
   }
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -474,9 +474,9 @@ function zgUse(P, rect, vals = {}, texs = {}) {
 
 const ZG_FULL = [0, 0, ZE_W, ZE_H];
 
-function zgBind(b) {
+function zgBind(framebuffer) {
   const gl = zg.gl;
 
-  gl.bindFramebuffer(gl.FRAMEBUFFER, b ? b.f : null);
-  gl.viewport(0, 0, b ? b.w : gl.canvas.width, b ? b.h : gl.canvas.height);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer ? framebuffer.f : null);
+  gl.viewport(0, 0, framebuffer ? framebuffer.w : gl.canvas.width, framebuffer ? framebuffer.h : gl.canvas.height);
 }
