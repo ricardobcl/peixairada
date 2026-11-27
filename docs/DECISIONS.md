@@ -39,6 +39,14 @@ verdicts: *"fix everything"*. One commit each:
   every look that carries the token is preceded by the bare one and `vswebWhyNot`'s lsof; what is left is the
   milliseconds between the two. `vsweb.test`: an adopted serve-web (a process named `code`, node cloned) ends, a
   listener of the test's takes the port, and the next open is a 409 that sent it nothing.
+* **The updater's list of trusted keys went to a name another account could plant first** (lead 1; not here). `signedBy`
+  wrote `.github/allowed_signers` to `peixairada-signers.<pid>` in the temp folder, no exclusive create, and git's
+  ssh-keygen read it back: with no TMPDIR that is the shared /tmp, where a FIFO planted first would have handed it a key
+  of the planter's. The agent here runs with `TMPDIR=/var/folders/…/T/`, this account's alone, so it could not; still,
+  the list now goes to a folder of its own (`mkdtemp`, 0700; the file `wx`), as does `macSource`'s index. ssh-keygen is
+  `/usr/bin`'s — the comment said *never the PATH's*, and `findBin` looked up `SSH-KEYGEN_BIN`, then the PATH —; git
+  is asked for `gpg.minTrustLevel=fully`, and a good signature that names no signer of the list is none: git 2.55
+  already says *No principal matched* and fails for a key off the list (checked), so this is a second lock.
 
 ## Decisions of 2026-11-27 — make install, make update
 

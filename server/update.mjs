@@ -6,6 +6,7 @@ import {
   closeSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   openSync,
   readdirSync,
   readFileSync,
@@ -287,21 +288,26 @@ async function rewrittenHere() {
 // restart, the app rebuilt and signed with the user's own identity — so push access to the upstream was code on every
 // board that follows it. The keys are SIGNERS as HEAD has it, never as the new commits do: a commit that adds a key is
 // taken only when one already trusted signed it, and from then on that key is trusted too. Only the tip is checked, as
-// `git merge --verify-signatures` does: whoever signed it vouched for the tree it brings. ssh-keygen by its own path,
-// never the PATH's. No list at HEAD — a fork that dropped it — is nothing to trust: nothing is taken.
+// `git merge --verify-signatures` does: whoever signed it vouched for the tree it brings. No list at HEAD — a fork that
+// dropped it — is nothing to trust: nothing is taken. Hardened after an outside audit (2026-11-27): the list goes to a
+// file in a folder of its own (`mkdtemp`, 0700, the file `wx`) — a name made of the pid, in a /tmp with no TMPDIR, was
+// another account's to plant first (the agent has one: not here) —; ssh-keygen is the system's, /usr/bin, never the
+// PATH's; git is asked for full trust, and a good signature that names no signer of the list is none.
 const SIGNERS = '.github/allowed_signers';
 const COMMITS_SAID = 20; // the new commits named to the page, newest first
+const SSH_KEYGEN = '/usr/bin/ssh-keygen';
 async function signedBy(sha) {
   const git = findBin('git', 'the board does not update itself'),
-    keygen = findBin('ssh-keygen', "a commit's signature cannot be checked");
+    keygen = canRun(SSH_KEYGEN) ? SSH_KEYGEN : null;
   if (!git || !keygen)
     return { sha, ok: false, why: `cannot be checked: ${git ? 'ssh-keygen' : 'git'} is not installed` };
   const list = await gitIn(['show', `HEAD:${SIGNERS}`]).catch(() => '');
   if (!list.trim())
     return { sha, ok: false, why: `cannot be checked: this checkout names no key to trust (${SIGNERS})` };
-  const file = join(tmpdir(), `peixairada-signers.${process.pid}`);
+  const dir = mkdtempSync(join(tmpdir(), 'peixairada-signers-')),
+    file = join(dir, 'allowed_signers');
   try {
-    writeFileSync(file, list + '\n', { mode: 0o600 });
+    writeFileSync(file, list + '\n', { mode: 0o600, flag: 'wx' });
     const r = await execFileP(
       git,
       [
@@ -312,13 +318,15 @@ async function signedBy(sha) {
         `gpg.ssh.allowedSignersFile=${file}`,
         '-c',
         `gpg.ssh.program=${keygen}`,
+        '-c',
+        'gpg.minTrustLevel=fully',
         'verify-commit',
         sha,
       ],
       { env: updateEnv(), timeout: 30_000 },
     );
     const by = /Good "git" signature for (\S+)/.exec(String(r.stderr))?.[1] || null;
-    return { sha, ok: true, by };
+    return by ? { sha, ok: true, by } : { sha, ok: false, why: 'is not signed by a key this board trusts' };
   } catch (e) {
     const err = String(e?.stderr || '');
     // git says nothing at all of a commit with no signature
@@ -333,7 +341,7 @@ async function signedBy(sha) {
             : errText(e),
     };
   } finally {
-    rmSync(file, { force: true });
+    rmSync(dir, { recursive: true, force: true });
   }
 }
 /** HEAD's mac/ as the app is built from it: its tree, the notes (`*.md`, mac/CLAUDE.md) left out (2026-10-28) — as
@@ -344,15 +352,14 @@ async function macSource() {
     ? (await gitIn(['ls-tree', '-r', '-z', '--name-only', tree])).split('\0').filter(f => f.endsWith('.md'))
     : [];
   if (!notes.length) return tree;
-  const idx = join(tmpdir(), `peixairada-mac.${process.pid}`),
-    env = { GIT_INDEX_FILE: idx }; // an index of its own: the checkout's is not touched
+  const dir = mkdtempSync(join(tmpdir(), 'peixairada-mac-')), // a folder of its own, as signedBy's (2026-11-27)
+    env = { GIT_INDEX_FILE: join(dir, 'index') }; // an index of its own: the checkout's is not touched
   try {
     await gitIn(['read-tree', tree], 30_000, env);
     await gitIn(['update-index', '--force-remove', '--', ...notes], 30_000, env);
     return await gitIn(['write-tree'], 30_000, env);
   } finally {
-    rmSync(idx, { force: true });
-    rmSync(`${idx}.lock`, { force: true });
+    rmSync(dir, { recursive: true, force: true });
   }
 }
 /** The installed app against the checkout (2026-10-14): build.sh stamps the app with the tree of mac/ it was built from

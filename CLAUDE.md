@@ -183,7 +183,7 @@ CLAUDE_DIR or above). A chat's folder in it is refused where the board would wri
   default** (2026-10-13): what came is said, *update now* takes it; Settings › Updates, `GET/PUT/POST /api/update`, an
   `update` event): only the agent looks by the clock (`UNDER_AGENT`, `UPDATE_EVERY_MS`), fetching its branch's upstream
   alone (no FETCH_HEAD, no tags), **fast-forward only, to a tip a key in `.github/allowed_signers` signed** (2026-11-06;
-  `signedBy`, HEAD's list, never the new commits'; else `unsigned`, not even *update now*; named, `commits`) — a
+  `signedBy`, HEAD's list, never the new commits', a signer named, in a `mkdtemp` folder, 2026-11-27; else `unsigned`, not even *update now*; named, `commits`) — a
   rewritten history whose tip names every commit here (`.github/rewritten`, `rewrittenHere`) by `reset --keep` — not
   over a tracked change (`dirty`), a branch moved on its own (`diverged`), a held commit, or within `UPDATE_QUIET_MS` of a
   touch (`lastTouchAt`); *check now* (`asked`) skips that wait, *update now* (`apply`) the switch, the hold and a change

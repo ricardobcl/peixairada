@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readPage } from '../lib/page.mjs';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
@@ -366,11 +367,17 @@ test(
       );
       const stranger = p.keygen('stranger');
       p.push({ 'public/index.html': PAGE + '<!-- a stranger -->\n' }, "a stranger's", { sign: stranger });
+      // where the list went before 2026-11-27, a name of the server's pid in the temp folder: another account's to plant
+      // first. Nothing reads it now, nor writes over it
+      const planted = join(tmpdir(), `peixairada-signers.${srv.proc.pid}`);
+      writeFileSync(planted, p.signers(stranger));
       st = await look({ apply: true });
       assert.deepEqual(
         [st.why, st.sign.why, p.head()],
         ['unsigned', 'is not signed by a key this board trusts', first],
       );
+      assert.equal(readFileSync(planted, 'utf8'), p.signers(stranger), 'the list went to a folder of its own');
+      rmSync(planted);
       // a stranger's commit that names its own key: the list at HEAD decides, not the one it brings
       p.push({ '.github/allowed_signers': p.signers(p.signer, stranger) }, 'trust me', { sign: stranger });
       st = await look({ apply: true });
