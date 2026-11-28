@@ -390,3 +390,20 @@ $('#sessions').addEventListener('click', event => {
 
   openSession(card.dataset.id); // the title appears in the header where it is, nothing flies there (2026-11-01)
 });
+
+// A card double-clicked is the toolbar's tab clicked (2026-11-28): the list narrowed to its project, and again every project.
+// Not on a control of its own (the drag's list); its first click has opened the chat, so the open card's tab flies. That
+// click redrew the card, so one redrawn between the second press and its release is the card under the pointer.
+$('#slist').addEventListener('dblclick', event => {
+  const at = event.target.closest('#slist > .card')
+    ? event.target
+    : document.elementFromPoint(event.clientX, event.clientY) || event.target;
+
+  const card = at.closest('#slist > .card');
+
+  if (!card || event.altKey || event.metaKey || event.ctrlKey || event.shiftKey || at.closest(CD_CONTROLS)) return;
+
+  const session = state.sessions.get(card.dataset.id);
+
+  if (session?.cwd) selectProject(scopedOn(session) ? ALL : projDir(session.cwd));
+});

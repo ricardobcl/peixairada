@@ -3,7 +3,7 @@
 // Show all, the cards sliding by its height; a question elsewhere is counted on the way out, and a click goes to it; narrow,
 // the count gives way first and a long name fades, Show all whole; no ground takes its colour;
 // the toolbar's tab solid with the funnel while on, a named project's too; the list ends on what is hidden; ⌥⌘P ⌥⌘P lets go and
-// comes back, a card's menu too; a chat from elsewhere lets it go; its tab flies, and waves when left on; at the notch it stays level with the toolbar.
+// comes back, a card's menu too, and a card double-clicked; a chat from elsewhere lets it go; its tab flies, and waves when left on; at the notch it stays level with the toolbar.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { join } from 'node:path';
@@ -343,6 +343,47 @@ export default async function (ctx) {
     ctx.assert.notEqual(await menuRow('Every project'), 'none', 'on a project the row lets go');
     await ctx.settle();
     ctx.assert.equal(await project(), 'all', 'it lets go');
+
+    // a card double-clicked by the browser's own input narrows to its project and, again, lets go (2026-11-28)
+    const twice = async id => {
+      const at = await ctx.evaluate(
+        `(r => ({ x: Math.round(r.left + Math.min(12, r.width / 2)), y: Math.round(r.top + r.height / 2) }))(document.querySelector('#slist > .card[data-id="${id}"] .title').getBoundingClientRect())`,
+      );
+
+      await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
+
+      for (const clickCount of [1, 2]) {
+        for (const type of ['mousePressed', 'mouseReleased']) {
+          await ctx.send('Input.dispatchMouseEvent', {
+            type,
+            x: at.x,
+            y: at.y,
+            button: 'left',
+            buttons: type === 'mousePressed' ? 1 : 0,
+            clickCount,
+          });
+        }
+      }
+
+      await ctx.settle();
+    };
+
+    await twice(first.id);
+
+    ctx.assert.deepEqual(
+      [await project(), await ctx.evaluate(`window.peix.state().current`)],
+      ['shop', first.id],
+      'a double-click narrows to its project, the chat open',
+    );
+
+    ctx.assert.equal(
+      await ctx.evaluate(`!!document.querySelector('#slist > .card[data-id="${first.id}"]')`),
+      true,
+      'its card stays in view',
+    );
+
+    await twice(first.id);
+    ctx.assert.equal(await project(), 'all', 'again, every project');
 
     // the tab flies up with the filter and back without it, by a stand-in that leaves nothing behind; switching projects does not
     await ctx.openChat(first.id);

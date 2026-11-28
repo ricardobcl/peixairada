@@ -229,10 +229,10 @@ function chatRows(session, card, space = false) {
     ...(session.cwd
       ? [
           scopedOn(session)
-            ? { t: 'Every project', sub: 'show all · ⌥⌘P ⌥⌘P', fn: () => selectProject(ALL) }
+            ? { t: 'Every project', sub: 'show all · ⌥⌘P ⌥⌘P, or a double-click', fn: () => selectProject(ALL) }
             : {
                 t: `Only ${session.project}`,
-                sub: 'narrow the list to it',
+                sub: 'narrow the list to it · a double-click on the card',
                 fn: () => selectProject(projDir(session.cwd)),
               },
         ]

@@ -2,8 +2,28 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-11-27. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-11-28. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-11-28 — a card double-clicked narrows the list to its project
+
+Pedro: *"Double clicking a card should apply the only this project, and undo it as well."*
+
+* **A double-click on a card is the toolbar's project tab clicked** (a `dblclick` on `#slist`, beside the card's click
+  in `settings/color-picker.js`): the list narrowed to the chat's project (`selectProject(projDir(cwd))`), and on a
+  card of the project in view every project again (`scopedOn` → `ALL`) — the card menu's *Only …* and *Every project*,
+  by the pointer. A chat with no folder has nothing to narrow to: nothing happens.
+* **Its first click has done its own work**: it opened the chat, so the list narrows with the open card in view and
+  its tab flies, as from the menu. **That click redrew the card**, so the `dblclick`'s target can be a node replaced
+  between the second press and its release, no longer under `#slist`: then the card is the one under the pointer
+  (`elementFromPoint`).
+* **Not on a control of the card's own** (`CD_CONTROLS`, the drag's list: its buttons, chips, PR matrix, agents), **nor
+  with a modifier held**: a double-click there is two clicks of that control's, or another gesture's.
+* **Said where it can be found**: the menu's rows name it (*narrow the list to it · a double-click on the card*; *show
+  all · ⌥⌘P ⌥⌘P, or a double-click*). No line in CLAUDE.md: it is at its budget, and the toolbar tab's bullet holds.
+* Checked: `project-filter.mjs` double-clicks by Chrome's own input (`Input.dispatchMouseEvent`, `clickCount` 1 then
+  2) — narrowed with the chat open and its card in view, then every project again — and fails with the handler off;
+  `npm run check`. Run on Linux under Chromium (`CHROME=/usr/bin/chromium`). **Open**: not run in WebKit (no Mac here).
 
 ## Decisions of 2026-11-27, latest — the house rules: names in words, a blank line round a block
 
